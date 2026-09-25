@@ -80,7 +80,26 @@ The **version** is the unit of work. A **timeline strip** under the top bar is a
 | Learnability for non-developers | ★★☆ | ★★★ | ★★☆ |
 | Build effort | Low | Medium | Medium to high |
 
-## Recommendation
+## Decision (2026-09-24)
+
+**Approach 3, Version timeline, is the chosen direction.** It keeps the same pattern before and after the first release (the rail and the four phases never change), and the timeline makes the release cycle visible on every screen.
+
+### Refinements made after the decision (`approach-3-versions.html`)
+
+1. **A page for every change** (`#w=WI-42`). It has the bug report or requirement changes, the scoped architecture, branch, agent progress, tests, release checks and a four-step bar. Open it from any card title on a version's phase boards. The timeline stays visible above it, showing the change's version.
+2. **Suggested scheduling in triage.** High-severity bugs suggest a **hotfix**, and everything else suggests the **next release**. The reason is shown in one line, and the other option stays one select away.
+3. **Move a change between versions** with the **Version** picker on the change page (with Undo). Carry-over at release still happens automatically.
+4. **The timeline stays readable.** Released versions between the first release and the previous release collapse into "N more", which expands in place and remembers its state. The selected version always scrolls into view.
+
+### Build plan for `app/frontend`
+
+1. **Data:** a `versions` table (`id, project_id, name, kind[building|hotfix|next|planned|released], released_at`), plus `version_id` on work items. A project `stage` (`building` | `released`) is set by the first release.
+2. **Shell:** the `AppShell` layout route from `../PROPOSAL.md`, with a `VersionTimeline` component under the global bar. The selected version goes in the URL (`?v=1.5.0`), and the change page is `/p/:id/changes/:changeId`.
+3. **Phase scoping:** existing pages (Requirements, Canvas, Repository, Deploy) take a `versionId`. Released versions render read-only. Open versions show the delta.
+4. **Triage and scheduling:** an unscheduled list with the suggestion rule, hotfix creation (`patch + 1`), and a move-between-versions action.
+5. **Release:** the in-order rule, carry-over of unfinished changes, tagging, and deploying with the existing Deploy settings.
+
+## Earlier recommendation (before the decision)
 
 **Approach 2 (Build mode → Evolve mode)**, borrowing two ideas from Approach 3:
 
@@ -90,7 +109,7 @@ The **version** is the unit of work. A **timeline strip** under the top bar is a
 
 Choose Approach 3 instead if teams mainly plan in fixed release trains, or Approach 1 if keeping Option A exactly as it is matters more than a clear stage signal.
 
-## Build order (for Approach 2)
+## Build order for Approach 2 (not chosen, kept for reference)
 
 1. A project `stage` field (`building` | `evolving`) and the **First release** flow with checks. It locks `main`, tags v1.0.0 and deploys with the existing Deploy settings.
 2. Work items (`changes`) with type, branch per change, phase state and requirement deltas. The Changes list with inline triage.

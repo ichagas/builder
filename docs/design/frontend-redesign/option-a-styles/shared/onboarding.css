@@ -1,0 +1,97 @@
+/*
+ * Onboarding prototypes: existing apps that keep Pronghorn Standards in sync
+ * and run the Assurance Mesh. Loaded after base, blueprint and lifecycle CSS.
+ */
+:root { --m-green: #16A34A; --m-yellow: #CA8A04; --m-red: #DC2626; --m-blue: #2563EB; }
+body.is-connected { --mode-c: #A78BFA; --mode-ink: #1B0B3A; }
+
+/* mesh agent status: four small squares, one per agent */
+.mesh-dots { display: inline-flex; gap: 4px; align-items: center; }
+.md { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 3px; font: 700 11px var(--mono); color: #fff; }
+.md-green { background: var(--m-green); } .md-yellow { background: var(--m-yellow); } .md-red { background: var(--m-red); } .md-blue { background: var(--m-blue); }
+.md.warn { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--warn); }
+.md.fail { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--bad); }
+.md.skip { opacity: .3; }
+.md.none { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line-2); }
+.mesh-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); padding: 10px var(--pad); border-top: 1px solid var(--line); }
+.mesh-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.mesh-agent { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px var(--pad); }
+.mesh-agent .md { width: 30px; height: 30px; font-size: 13px; }
+.mesh-agent b { display: block; font-weight: 600; }
+.mesh-agent small { color: var(--muted); font-size: 12.5px; }
+
+/* stack badge */
+.stack { display: inline-flex; align-items: center; gap: 6px; font: 600 11.5px var(--mono); padding: 3px 7px; border-radius: 2px; background: var(--surface-2); border: 1px solid var(--line); white-space: nowrap; }
+.stack::before { content: ""; width: 8px; height: 8px; border-radius: 1px; background: var(--muted); }
+.stack.p-dotnet::before { background: #7C3AED; } .stack.p-node::before { background: #16A34A; } .stack.p-java::before { background: #D97706; } .stack.p-python::before { background: #2563EB; }
+
+/* repository rows */
+.repo-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 1fr) auto minmax(120px, auto) auto; gap: 14px; align-items: center; min-height: 58px; padding: 10px var(--pad); }
+.repo-row code { font: 600 13px var(--mono); }
+.repo-row .muted { font-size: 12.5px; }
+.pr-chip { font: 600 12px var(--mono); padding: 3px 8px; border-radius: 2px; white-space: nowrap; border: 1px solid var(--line-2); }
+.pr-chip.open { color: var(--primary); border-color: var(--primary); }
+.pr-chip.merged { background: #F1EAFE; color: #6D28D9; border-color: transparent; }
+.pr-chip.none { color: var(--muted); }
+
+/* sandbox run log */
+.sandbox { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 0; }
+.sandbox .steps { border-right: 1px solid var(--line); }
+.log { white-space: pre-wrap; word-break: break-word; margin: 0; padding: 12px var(--pad); min-height: 280px; max-height: 360px; overflow: auto; background: #0B1830; color: #C9D6EE; font: 12.5px/1.7 var(--mono); }
+.log .ok { color: #6EE7A0; } .log .warn { color: #FCD34D; } .log .dim { color: #7D8FB0; }
+
+/* file tree preview */
+.tree-file { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 44px; padding: 6px var(--pad); }
+.tree-file code { font: 12.5px var(--mono); }
+.tree-file span.muted { font-size: 12.5px; grid-column: 2; }
+.tag-new { font: 600 11px var(--mono); padding: 2px 6px; border-radius: 2px; background: var(--ok-soft); color: var(--ok); }
+.tag-upd { font: 600 11px var(--mono); padding: 2px 6px; border-radius: 2px; background: var(--warn-soft); color: var(--warn); }
+.tag-same { font: 600 11px var(--mono); padding: 2px 6px; border-radius: 2px; background: var(--surface-2); color: var(--muted); }
+
+/* manifest / code */
+pre.code { margin: 0; padding: 14px var(--pad); background: #F7F9FC; border-top: 1px solid var(--line); font: 12.5px/1.7 var(--mono); overflow-x: auto; color: var(--ink); }
+pre.code .k { color: #7C3AED; } pre.code .s { color: #13803D; } pre.code .c { color: var(--muted); }
+
+/* baseline ratchet */
+.ratchet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.ratchet div { padding: 12px var(--pad); border-right: 1px solid var(--line); display: grid; gap: 2px; }
+.ratchet div:last-child { border-right: 0; }
+.ratchet span { font-size: 12.5px; color: var(--muted); }
+.ratchet b { font: 600 18px var(--mono); }
+.ratchet b.bad { color: var(--bad); } .ratchet b.ok { color: var(--ok); }
+
+/* portfolio matrix */
+.matrix { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.matrix th, .matrix td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.matrix th { font: 600 11.5px var(--mono); color: var(--muted); background: var(--surface-2); }
+.matrix tr.app-row td { background: #F7F9FC; font-weight: 600; }
+.matrix tr.app-row td button { font: inherit; font-weight: 600; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.matrix td.behind { color: var(--warn); font-weight: 600; }
+.tbl-scroll { overflow-x: auto; }
+
+/* timeline variants */
+.tl-node.verdict-pass .tl-dot { background: var(--ok); border-color: var(--ok); }
+.tl-node.verdict-warn .tl-dot { background: var(--warn); border-color: var(--warn); }
+.tl-node.verdict-fail .tl-dot { background: var(--bad); border-color: var(--bad); }
+.tl-node .adopt { font: 600 11px var(--mono); color: var(--primary); }
+.tl-flag.onboard { color: #7C3AED; }
+
+.kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.kv-grid div { padding: 12px var(--pad); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; gap: 2px; }
+.kv-grid span { font-size: 12.5px; color: var(--muted); }
+.kv-grid b { font-weight: 600; }
+
+.wizard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+@media (max-width: 900px) {
+  .sandbox { grid-template-columns: 1fr; }
+  .sandbox .steps { border-right: 0; border-bottom: 1px solid var(--line); }
+  .repo-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .repo-row > :nth-child(3), .repo-row > :nth-child(4) { grid-column: 1 / -1; }
+  .ratchet { grid-template-columns: 1fr; }
+  .ratchet div { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+.kind-tag { margin-left: 8px; font: 600 10.5px var(--mono); padding: 2px 6px; border-radius: 2px; background: #2A1F4D; color: #C4B5FD; vertical-align: 1px; }
+.repo-row .stack { justify-self: start; }

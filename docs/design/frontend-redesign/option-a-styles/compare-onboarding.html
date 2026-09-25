@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronghorn · Onboarding existing apps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #E8EDF4; --ink: #0F1D35; --muted: #4F5F78; --line: #C9D3E1; --surface: #fff; --primary: #2451D6; --navy: #0B1830; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
+  header.top { background: var(--navy); color: #EAF0FA; padding: 28px 24px 24px; }
+  header.top .in, .wrap { max-width: 1480px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 28px; font-weight: 600; }
+  header.top p { margin: 0; color: #93A4C3; max-width: 90ch; }
+  .wrap { padding: 24px; }
+  .bar { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 12px 0; background: var(--bg); }
+  .bar b { font-weight: 600; margin-right: 4px; }
+  .bar button { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); background: var(--surface); border-radius: 3px; font: inherit; font-weight: 600; cursor: pointer; }
+  .bar button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  section.ap { margin: 18px 0 44px; display: grid; gap: 12px; }
+  .ap header { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+  .ap h2 { margin: 0; font-size: 21px; font-weight: 600; }
+  .ap .tag { font: 600 12px "IBM Plex Mono", monospace; color: var(--primary); }
+  .ap a { color: var(--primary); font-weight: 600; }
+  .ap p { margin: 0; color: var(--muted); max-width: 95ch; }
+  .frames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .frame { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .cap { display: flex; justify-content: space-between; padding: 8px 12px; font: 600 12px "IBM Plex Mono", monospace; border-bottom: 1px solid var(--line); }
+  .cap.b { color: #2451D6; } .cap.r { color: #13803D; }
+  .desk { position: relative; aspect-ratio: 1440 / 900; overflow: hidden; }
+  .desk iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 900px; border: 0; transform-origin: 0 0; }
+  .note { padding: 40px 24px; color: var(--muted); display: grid; place-items: center; text-align: center; aspect-ratio: 1440 / 900; }
+  .tbl { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { background: #F2F5F9; font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  @media (max-width: 1000px) { .frames { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <h1>Onboarding existing applications: three options</h1>
+  <p>For apps that aren't built in Pronghorn but adopt its Standards: agents, skills, tools and the Assurance Mesh (Green, Yellow, Red and Blue agents, Velocity White Paper No. 07). Onboarding runs once in a sandbox, then Pronghorn keeps the Standards in sync through pull requests. Every frame is live. See <code>ONBOARDING.md</code> for the reasoning.</p>
+</div></header>
+<div class="wrap">
+  <section class="ap">
+    <header><span class="tag">OPTION A</span><h2>Connected project</h2><a href="onboard-a-connected.html" target="_blank">Open</a></header>
+    <p>The same Approach 3 shell as greenfield projects. The timeline shows the <b>Standards packs</b> this app adopted, the flag is <b>Onboarded</b>, and the four phases become <b>Review → Standards → Agents → Mesh</b>. They run once for onboarding and again for every pack update. Repository tabs handle multi-repo and multi-stack apps.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap b"><span>ONBOARDING</span><span>sandbox run</span></div><div class="desk"><iframe data-src="onboard-a-connected.html#p=onboarding&v=overview" title="Option A onboarding"></iframe></div></div>
+      <div class="frame"><div class="cap r"><span>CONNECTED</span><span>Standards update</span></div><div class="desk"><iframe data-src="onboard-a-connected.html#p=connected&v=overview" title="Option A connected"></iframe></div></div>
+    </div>
+  </section>
+  <section class="ap">
+    <header><span class="tag">OPTION B</span><h2>Assurance console</h2><a href="onboard-b-console.html" target="_blank">Open</a></header>
+    <p>Connected apps aren't projects. They live in one organization-level console: a <b>portfolio grid</b> of apps × repositories × mesh agents, a timeline of <b>merges to main with their verdicts</b> (select one for its evidence), and a four-step <b>onboarding wizard</b>.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap r"><span>PORTFOLIO</span><span>3 apps · 6 repos</span></div><div class="desk"><iframe data-src="onboard-b-console.html#v=portfolio" title="Option B portfolio"></iframe></div></div>
+      <div class="frame"><div class="cap b"><span>APP + EVIDENCE</span><span>merge #214</span></div><div class="desk"><iframe data-src="onboard-b-console.html#v=app&a=permits&s=214" title="Option B evidence"></iframe></div></div>
+    </div>
+  </section>
+  <section class="ap">
+    <header><span class="tag">OPTION C</span><h2>Standards subscriptions</h2><a href="onboard-c-registry.html" target="_blank">Open</a></header>
+    <p>Pronghorn as a <b>package registry for Standards</b>. A repository subscribes once. <code>pronghorn.standards.yml</code> pins a pack, and new packs arrive as update pull requests. The timeline shows pack releases with how many repos pin each one. The four sections describe what a pack contains, per stack profile.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap r"><span>LATEST PACK</span><span>2026.3 · who's behind</span></div><div class="desk"><iframe data-src="onboard-c-registry.html#v=pack" title="Option C pack"></iframe></div></div>
+      <div class="frame"><div class="cap b"><span>PACK CONTENTS</span><span>skills per stack</span></div><div class="desk"><iframe data-src="onboard-c-registry.html#v=skills&t=java" title="Option C skills"></iframe></div></div>
+    </div>
+  </section>
+  <h2 style="font-weight:600">Side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>A · Connected project</th><th>B · Assurance console</th><th>C · Standards subscriptions</th></tr>
+    <tr><td>Unit</td><td>App (project)</td><td>App in a portfolio</td><td>Repository</td></tr>
+    <tr><td>Timeline shows</td><td>Packs adopted by this app</td><td>Merges to main with mesh verdicts</td><td>Pack releases, org-wide</td></tr>
+    <tr><td>Reuses Approach 3</td><td>Fully</td><td>Partly</td><td>Mostly</td></tr>
+    <tr><td>Best for</td><td>App owners</td><td>Assurance and security leads</td><td>Development teams</td></tr>
+    <tr><td>Oversight and evidence</td><td>Per app</td><td>Strongest, org-wide</td><td>Optional reporting</td></tr>
+    <tr><td>Build effort</td><td>Medium</td><td>Medium</td><td>Low to medium</td></tr>
+  </table></div>
+  <p style="color:var(--muted);max-width:95ch;margin-top:16px">These options can be combined: C as the mechanism (packs, manifest, update PRs, reusable mesh workflow), A as the app owner's view, and B as the organization view built from the same mesh reports.</p>
+</div>
+<script>
+  const frames = [...document.querySelectorAll("iframe[data-src]")];
+  frames.forEach((f) => (f.src = f.dataset.src));
+  function fit() { document.querySelectorAll(".desk").forEach((d) => { d.querySelector("iframe").style.transform = `scale(${d.clientWidth / 1440})`; }); }
+  addEventListener("resize", fit); fit();
+</script>
+</body>
+</html>

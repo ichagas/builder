@@ -124,3 +124,20 @@ body.has-timeline { --ctx-h: 76px; }
   .tl-node { min-width: 84px; padding: 14px 8px 4px; }
   .tl-flag { padding-top: 6px; }
 }
+
+/* change page + triage refinements (approach 3) */
+.card-link { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-weight: 600; color: var(--ink); text-align: left; }
+.card-link:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.card-link .ic { color: var(--muted); }
+.crumb-link { font: inherit; color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.suggest { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--primary) !important; }
+.sev-chip { font: 600 11px var(--mono); padding: 3px 6px; border-radius: 2px; background: var(--bad-soft); color: var(--bad); }
+.item-head .ver-move { margin-left: auto; font-size: 13px; }
+.item-head .ver-move select { min-height: 36px; font: 600 13px var(--mono); color: var(--primary); }
+.tl-node.more { cursor: pointer; }
+button.tl-node.more:hover .tl-v { color: var(--primary); }
+@media (max-width: 768px) {
+  .item-head .ver-move { margin-left: 0; width: 100%; }
+  .item-head .ver-move select { flex: 1; }
+  .card-h h2 { min-width: 0; }
+}
