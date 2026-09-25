@@ -65,7 +65,51 @@ Every repository also gets **`pronghorn.standards.yml`**. It pins the Standards 
 - **Good:** lightest for teams, most "repo-native", and easiest to adopt for apps that will never be managed in Pronghorn.
 - **Risk:** Pronghorn sees less about each app (no per-app page beyond its repositories), so evidence depends on repos choosing to report.
 
-## Comparison
+## Decision (2026-09-25): Option B, organized as Teams → Applications → Repositories
+
+**Option B (Assurance console) is the chosen direction.** A user belongs to one or more **teams** and sees their team's **portfolio**: every **application**, and inside it every **repository**, measured against the Standards pack and the four mesh agents. **Onboard an app** is the way in.
+
+### How the refined prototype works (`onboard-b-console.html`)
+
+- **Team switcher** in the top bar (select the team name) is the only place to change team. Shows "Your teams", an **All teams** assurance view, and other teams.
+- **Portfolio (team scope):**
+  - Each application is a row with totals ("11/15 on 2026.3 · 1 with new findings") that expands into its repositories.
+  - Small apps start expanded and large ones collapsed, and the choice is remembered.
+  - Filters: All, Needs attention, Behind the latest pack, New findings.
+  - "Send update PRs (N)" on each application.
+- **Application page, built for 15+ repositories** (sample: *Inspections Hub*, 15 repos on .NET, Node and Java):
+  - A **Standards adoption bar** (11 on 2026.3 · 3 on 2026.2 · 1 on 2026.1) with totals.
+  - The same filters.
+  - A repository grid **grouped by part of the system** (APIs, Front ends, Batch & integration) **or by stack**, with "Send update PRs" per group.
+  - Exceptions, collapsed.
+- **Timeline = merges to main grouped by day** ("Today · 4 merges · 1 flagged"). Select a day for its merges, then **Evidence** for the four agents' results on one merge.
+- **Onboard an app** is five steps: **Team & app → Connect repos** (pick from the GitHub organization, stack and part detected, leave out old repos) **→ Run in sandbox** (one run for all repos) **→ Review output** (grouped by part) **→ Open pull requests**. After merge, the app joins the team's portfolio.
+- **Organization level:** Standards packs and Mesh policy. Teams can tighten the policy, never loosen it. **Mesh reporting is required.** A repository that stops reporting shows as "not reporting".
+
+### Data it needs
+
+| Entity | Key fields |
+|---|---|
+| `teams` | id, name |
+| `team_members` | team_id, user_id, role (member, owner) |
+| `applications` | id, team_id, name |
+| `repositories` | id, application_id, url, profile, part, pinned_pack, pr_state |
+| `mesh_runs` | id, repository_id, merge_sha, pr_number, verdicts per agent, new_findings, report_url, run_at |
+| `baselines` | repository_id, agent, finding_fingerprint |
+| `exceptions` | repository_id, rule, reason, approved_by, expires_at |
+| `packs` | version, published_at, notes |
+
+Assurance leads get a role that can see **All teams**. Everyone else sees only their teams.
+
+### Build order
+
+1. Teams, membership and applications. Link existing repositories. The portfolio without mesh data.
+2. The shared mesh workflow (`goa-standards/assurance-mesh@v3`) with required reporting, plus the `mesh_runs` ingest API.
+3. Onboard an app: GitHub organization import, the sandbox run, pull requests per repository.
+4. The application page (adoption bar, grouped grid, evidence by day) and "Send update PRs" when a pack is published.
+5. The All teams view, exceptions workflow and policy.
+
+## Comparison (before the decision)
 
 | | A · Connected project | B · Assurance console | C · Standards subscriptions |
 |---|---|---|---|
