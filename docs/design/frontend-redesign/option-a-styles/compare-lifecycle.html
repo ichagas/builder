@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronghorn · Blueprint · Building vs after release</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #E8EDF4; --ink: #0F1D35; --muted: #4F5F78; --line: #C9D3E1; --surface: #fff; --primary: #2451D6; --navy: #0B1830; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
+  header.top { background: var(--navy); color: #EAF0FA; padding: 28px 24px 24px; }
+  header.top .in, .wrap { max-width: 1480px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 28px; font-weight: 600; }
+  header.top p { margin: 0; color: #93A4C3; max-width: 90ch; }
+  .wrap { padding: 24px; }
+  .bar { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 12px 0; background: var(--bg); }
+  .bar b { font-weight: 600; margin-right: 4px; }
+  .bar button { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); background: var(--surface); border-radius: 3px; font: inherit; font-weight: 600; cursor: pointer; }
+  .bar button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  section.ap { margin: 18px 0 44px; display: grid; gap: 12px; }
+  .ap header { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+  .ap h2 { margin: 0; font-size: 21px; font-weight: 600; }
+  .ap .tag { font: 600 12px "IBM Plex Mono", monospace; color: var(--primary); }
+  .ap a { color: var(--primary); font-weight: 600; }
+  .ap p { margin: 0; color: var(--muted); max-width: 95ch; }
+  .frames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .frame { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .cap { display: flex; justify-content: space-between; padding: 8px 12px; font: 600 12px "IBM Plex Mono", monospace; border-bottom: 1px solid var(--line); }
+  .cap.b { color: #2451D6; } .cap.r { color: #13803D; }
+  .desk { position: relative; aspect-ratio: 1440 / 900; overflow: hidden; }
+  .desk iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 900px; border: 0; transform-origin: 0 0; }
+  .note { padding: 40px 24px; color: var(--muted); display: grid; place-items: center; text-align: center; aspect-ratio: 1440 / 900; }
+  .tbl { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { background: #F2F5F9; font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  @media (max-width: 1000px) { .frames { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <h1>Building vs. after release: three approaches</h1>
+  <p>Blueprint style. Pronghorn covers building the app and then changing it (bug fixes, enhancements, features). It does not monitor the running app. Each approach shows the same project <b>before its first release</b> (left) and <b>after it</b> (right). Every frame is live. See <code>LIFECYCLE.md</code> for the reasoning.</p>
+</div></header>
+<div class="wrap">
+  <div class="bar" role="group" aria-label="Screen shown in the frames">
+    <b>Show</b>
+    <button aria-pressed="true" data-set="home">Home</button>
+    <button aria-pressed="false" data-set="define">Define</button>
+    <button aria-pressed="false" data-set="design">Design</button>
+    <button aria-pressed="false" data-set="ship">Release</button>
+  </div>
+
+  <section class="ap">
+    <header><span class="tag">APPROACH 1</span><h2>Baseline + work items</h2><a href="style-2-blueprint.html" target="_blank">Open</a></header>
+    <p>One navigation for the project's whole life. After the first release, a <b>Work</b> list and a <b>Working on</b> switcher appear above the same four phases, and the phases re-scope to one work item. The difference between building and after release is small and gradual. Only the "after release" side is prototyped. Before release it would look like the original Option A, without Work or the switcher.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap b"><span>BEFORE FIRST RELEASE</span><span>not prototyped</span></div><div class="note">Same rail and phases, with no Work list and no "Working on" switcher.<br>This is the original single-page Option A (<code>../option-a-lifecycle.html</code>).</div></div>
+      <div class="frame"><div class="cap r"><span>AFTER RELEASE</span><span>v1.4.2</span></div><div class="desk"><iframe data-ap="1" data-mode="r" title="Approach 1 after release"></iframe></div></div>
+    </div>
+  </section>
+
+  <section class="ap">
+    <header><span class="tag">APPROACH 2</span><h2>Build mode → Evolve mode</h2><a href="approach-2-modes.html" target="_blank">Open</a></header>
+    <p>Two clearly different modes with an explicit <b>first release</b> step between them. In Build mode the rail is the four phases and the agent commits to main. In Evolve mode the rail becomes <b>Changes, Releases</b> and a locked <b>Baseline</b> (requirements, architecture, code, data). The four phases move inside each change as a stepper. The top bar's color band and badge show the mode everywhere.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap b"><span>BUILD MODE</span><span>building v1.0.0</span></div><div class="desk"><iframe data-ap="2" data-mode="b" title="Approach 2 building"></iframe></div></div>
+      <div class="frame"><div class="cap r"><span>EVOLVE MODE</span><span>v1.4.2 released</span></div><div class="desk"><iframe data-ap="2" data-mode="r" title="Approach 2 after release"></iframe></div></div>
+    </div>
+  </section>
+
+  <section class="ap">
+    <header><span class="tag">APPROACH 3</span><h2>Version timeline</h2><a href="approach-3-versions.html" target="_blank">Open</a></header>
+    <p>The unit of work is a <b>version</b>. A timeline strip is always visible. Everything left of the <b>First release</b> flag is the build era, and everything right of it is changes. Before the first release there is one version, v1.0.0. After it, each request is scheduled into a hotfix or the next version, and selecting a version scopes the four phases to it. Released versions are read-only. Versions go out in order, and unfinished changes move forward automatically.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap b"><span>BEFORE FIRST RELEASE</span><span>building v1.0.0</span></div><div class="desk"><iframe data-ap="3" data-mode="b" title="Approach 3 building"></iframe></div></div>
+      <div class="frame"><div class="cap r"><span>AFTER RELEASE</span><span>v1.4.2 current</span></div><div class="desk"><iframe data-ap="3" data-mode="r" title="Approach 3 after release"></iframe></div></div>
+    </div>
+  </section>
+
+  <h2 style="font-weight:600">Side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>1 · Baseline + work items</th><th>2 · Build mode → Evolve mode</th><th>3 · Version timeline</th></tr>
+    <tr><td>How you know which stage you're in</td><td>Subtle: Work and "Working on" appear, and a context bar shows when you're inside an item.</td><td>Very clear: mode badge, color band and a different rail.</td><td>Clear: the timeline always shows the First release flag and where you are.</td></tr>
+    <tr><td>Main unit of work after release</td><td>Work item</td><td>Change (work item)</td><td>Version (a set of changes)</td></tr>
+    <tr><td>Where the four phases live</td><td>Rail, scoped to the selected item</td><td>Build mode: the rail. Evolve mode: a stepper inside each change.</td><td>Rail, scoped to the selected version and totalled across its changes</td></tr>
+    <tr><td>Released system</td><td>"Baseline" in the switcher, read-only</td><td>Its own locked rail section: Requirements, Architecture, Code, Data</td><td>Any released version on the timeline, read-only</td></tr>
+    <tr><td>Moment of change</td><td>Implicit</td><td>Explicit "Release v1.0.0" step with checks. The project switches mode.</td><td>Explicit. The flag moves onto the timeline.</td></tr>
+    <tr><td>Best at</td><td>Continuity: nothing moves, so there's nothing to relearn</td><td>Clarity for mixed teams, and focus on one change at a time</td><td>Release planning: hotfixes, what ships when, ordering</td></tr>
+    <tr><td>Weak at</td><td>Easy to miss which mode you're in. Release planning is thin.</td><td>Two navigations to learn and build</td><td>Harder to focus on a single change. Needs version discipline.</td></tr>
+    <tr><td>Build effort</td><td>Low (extends Option A)</td><td>Medium (second rail, change page)</td><td>Medium to high (timeline, version scoping, carry-over rules)</td></tr>
+  </table></div>
+</div>
+<script>
+  const URLS = {
+    "1": { r: { home: "v=work", define: "v=define&w=WI-42", design: "v=design&w=WI-38", ship: "v=ship&t=release" } },
+    "2": { b: { home: "p=building&v=build", define: "p=building&v=define", design: "p=building&v=design", ship: "p=building&v=ship&t=release" },
+           r: { home: "p=evolve&v=changes", define: "p=evolve&v=changes&w=WI-42&t=define", design: "p=evolve&v=changes&w=WI-38&t=design", ship: "p=evolve&v=releases" } },
+    "3": { b: { home: "p=building&v=versions", define: "p=building&v=define", design: "p=building&v=design", ship: "p=building&v=ship&t=release" },
+           r: { home: "p=evolve&v=versions", define: "p=evolve&r=v1.5.0&v=define", design: "p=evolve&r=v1.5.0&v=design", ship: "p=evolve&r=v1.5.0&v=ship" } },
+  };
+  const FILES = { "1": "style-2-blueprint.html", "2": "approach-2-modes.html", "3": "approach-3-versions.html" };
+  const frames = [...document.querySelectorAll("iframe[data-ap]")];
+  function show(k) { frames.forEach((f) => { f.src = FILES[f.dataset.ap] + "#" + URLS[f.dataset.ap][f.dataset.mode][k]; }); }
+  function fit() { document.querySelectorAll(".desk").forEach((d) => { d.querySelector("iframe").style.transform = `scale(${d.clientWidth / 1440})`; }); }
+  document.querySelectorAll("[data-set]").forEach((b) => b.onclick = () => { document.querySelectorAll("[data-set]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); show(b.dataset.set); });
+  addEventListener("resize", fit); fit(); show("home");
+</script>
+</body>
+</html>

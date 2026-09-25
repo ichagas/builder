@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pronghorn · Option C · Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#15181C; --panel:#1D2126; --raised:#262B31; --line:#323840; --text:#E4E8EC; --muted:#96A0AC;
+    --accent:#3FC1D0; --accent-ink:#06282C;
+    --run:#F0B429; --ok:#4CC38A; --bad:#F2665A;
+    --top:48px; --dock:76px; --rundock:36px; --insp:340px;
+    --font:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{font:14px/1.5 var(--font);color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  /* ---------- top: breadcrumb ---------- */
+  .top{position:fixed;inset:0 0 auto 0;height:var(--top);display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);z-index:30}
+  .mark{width:28px;height:28px;border-radius:7px;background:var(--accent);color:var(--accent-ink);font-weight:700;display:grid;place-items:center}
+  .crumbs{display:flex;align-items:center;gap:6px;min-width:0;font-size:14px}
+  .crumbs a{color:var(--muted);text-decoration:none;white-space:nowrap}
+  .crumbs a:hover{color:var(--text)}
+  .crumbs .sep{color:#4B535D}
+  .crumbs .cur{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cmdk{margin-left:auto;display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--bg);border-radius:8px;height:34px;padding:0 10px;color:var(--muted);min-width:240px}
+  .cmdk kbd{margin-left:auto;font:12px var(--mono);color:var(--muted)}
+  .top .icon-btn{width:36px;height:36px;border-radius:8px;border:0;background:none;display:grid;place-items:center;color:var(--muted)}
+  .top .icon-btn:hover{background:var(--raised);color:var(--text)}
+
+  /* ---------- tool dock ---------- */
+  .dock{position:fixed;top:var(--top);bottom:var(--rundock);left:0;width:var(--dock);background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:stretch;padding:6px;gap:2px;overflow-y:auto;z-index:20}
+  .dock .grp{font-size:10.5px;color:#6E7883;text-align:center;padding:10px 0 2px;font-weight:600;letter-spacing:.02em}
+  .dock .grp:first-child{padding-top:4px}
+  .tool{display:grid;justify-items:center;gap:2px;border:0;background:none;border-radius:8px;padding:7px 2px;color:var(--muted);font-size:11px;font-weight:500;min-height:48px;position:relative}
+  .tool svg{width:20px;height:20px}
+  .tool:hover{background:var(--raised);color:var(--text)}
+  .tool[aria-current="page"]{background:var(--raised);color:var(--text)}
+  .tool[aria-current="page"]::before{content:"";position:absolute;left:-6px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+  .tool .badge{position:absolute;top:4px;right:10px;min-width:16px;height:16px;border-radius:8px;background:var(--run);color:#241A00;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+
+  /* ---------- surface ---------- */
+  .surface{position:fixed;top:var(--top);bottom:var(--rundock);left:var(--dock);right:0;transition:right .2s}
+  body.insp-open .surface{right:var(--insp)}
+  .canvas{position:absolute;inset:0;background:radial-gradient(circle,#2C3238 1px,transparent 1.3px) 0 0/22px 22px,var(--bg);overflow:hidden}
+  .canvas svg.edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .node{position:absolute;min-width:150px;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 12px 10px 14px;text-align:left;display:grid;gap:2px;box-shadow:0 6px 16px rgba(0,0,0,.25);transition:border-color .15s, box-shadow .15s}
+  .node::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--nc,var(--accent))}
+  .node b{font-weight:600}
+  .node small{color:var(--muted);font-size:12px}
+  .node[aria-selected="true"]{border-color:var(--accent);box-shadow:0 0 0 3px rgba(63,193,208,.25),0 6px 16px rgba(0,0,0,.25)}
+  .node.working{border-color:var(--run);animation:work 1.4s ease-in-out infinite}
+  @keyframes work{50%{box-shadow:0 0 0 6px rgba(240,180,41,.18),0 6px 16px rgba(0,0,0,.25)}}
+  .node .tag{position:absolute;top:-10px;right:8px;font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px}
+  .node .tag.run{background:var(--run);color:#241A00}
+  .node .tag.new{background:var(--ok);color:#062A18}
+  .hint{position:absolute;left:16px;top:16px;color:var(--muted);font-size:13px;background:rgba(29,33,38,.8);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+
+  .editor{position:absolute;inset:0;display:grid;grid-template-columns:240px 1fr}
+  .tree{border-right:1px solid var(--line);background:var(--panel);overflow:auto;padding:8px 0}
+  .tree button{display:flex;gap:8px;align-items:center;width:100%;border:0;background:none;text-align:left;padding:6px 14px;font:13px var(--mono);color:var(--muted);min-height:32px}
+  .tree button:hover{background:var(--raised);color:var(--text)}
+  .tree button[aria-selected="true"]{background:var(--raised);color:var(--text)}
+  .tree .st{margin-left:auto;font-size:11px}
+  .st.a{color:var(--ok)}.st.m{color:var(--run)}
+  .code{font:13px/1.7 var(--mono);padding:14px 0;overflow:auto;counter-reset:ln}
+  .code div{padding:0 16px 0 56px;position:relative;white-space:pre}
+  .code div::before{counter-increment:ln;content:counter(ln);position:absolute;left:0;width:40px;text-align:right;color:#56606B}
+  .code .add{background:rgba(76,195,138,.1)}
+  .k{color:#C792EA}.s{color:#C3E88D}.f{color:#82AAFF}.c{color:#6E7883}
+
+  .blank{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted)}
+  .blank b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
+
+  /* ---------- inspector ---------- */
+  .insp{position:fixed;top:var(--top);bottom:var(--rundock);right:0;width:var(--insp);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;z-index:25;display:flex;flex-direction:column}
+  body.insp-open .insp{transform:none}
+  .insp-h{display:flex;align-items:center;gap:8px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--line)}
+  .insp-h h2{margin:0;font-size:15px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .save{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .save.saving::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--run)}
+  .save.saved::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  .x{width:36px;height:36px;border:0;background:none;border-radius:8px;color:var(--muted)}
+  .x:hover{background:var(--raised)}
+  .handle{display:none}
+  .insp-b{padding:16px;overflow:auto;display:grid;gap:16px;align-content:start}
+  .f{display:grid;gap:6px;font-size:12.5px;color:var(--muted);font-weight:500}
+  .f input,.f select,.f textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:40px;color:var(--text);font-size:14px}
+  .f textarea{min-height:72px;resize:vertical}
+  details.adv{border:1px solid var(--line);border-radius:8px}
+  details.adv summary{padding:10px 12px;cursor:pointer;font-weight:600;color:var(--muted);list-style:none;display:flex;justify-content:space-between;min-height:44px;align-items:center}
+  details.adv summary::-webkit-details-marker{display:none}
+  details.adv summary::after{content:"+";font-size:18px}
+  details.adv[open] summary::after{content:"−"}
+  details.adv .in{padding:0 12px 12px;display:grid;gap:12px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--raised);border-radius:8px;min-height:40px;padding:0 14px;font-weight:600}
+  .btn:hover{border-color:#4B535D}
+  .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .btn[data-state="pending"]{pointer-events:none;opacity:.8}
+  .btn[data-state="pending"]::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .links{display:grid;gap:6px}
+  .links span{display:flex;justify-content:space-between;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+  .links em{font-style:normal;color:var(--muted)}
+
+  /* ---------- run dock ---------- */
+  .rundock{position:fixed;left:0;right:0;bottom:0;height:var(--rundock);background:#101316;border-top:1px solid var(--line);display:flex;align-items:stretch;z-index:40;font-size:12.5px;transition:height .2s}
+  .rundock > button{border:0;background:none;display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--muted);border-right:1px solid var(--line);white-space:nowrap}
+  .rundock > button:hover{background:var(--panel);color:var(--text)}
+  .rundock .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .dot.run{background:var(--run);animation:blink 1s infinite}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+  @keyframes blink{50%{opacity:.35}}
+  .rundock .meter{width:80px;height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+  .rundock .meter i{display:block;height:100%;background:var(--run);transition:width .4s}
+  .rundock .num{color:var(--text);font-weight:600}
+  .rundock .num.bump{animation:bump .5s}
+  @keyframes bump{30%{color:var(--run);transform:scale(1.25)}}
+  .rundock .grow{flex:1;border-right:0}
+  .tray{position:fixed;left:0;right:0;bottom:var(--rundock);height:260px;background:var(--panel);border-top:1px solid var(--line);z-index:39;display:grid;grid-template-rows:auto 1fr;transform:translateY(100%);transition:transform .2s;visibility:hidden}
+  body.tray-open .tray{transform:none;visibility:visible}
+  .tray-tabs{display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid var(--line);align-items:center}
+  .tray-tabs button{border:0;background:none;padding:6px 12px;border-radius:6px;color:var(--muted);font-weight:600;min-height:36px}
+  .tray-tabs button[aria-selected="true"]{background:var(--raised);color:var(--text)}
+  .tray-tabs .btn{margin-left:auto}
+  .tray-body{overflow:auto;padding:8px 16px;font:12.5px/1.8 var(--mono);color:var(--muted)}
+  .tray-body .ln b{color:var(--text);font-weight:500}
+  .tray-body .row{display:flex;gap:12px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+  .tray-body .row:last-child{border:0}
+
+  /* ---------- command palette ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:70}
+  .palette{position:fixed;top:12vh;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));background:var(--panel);border:1px solid var(--line);border-radius:12px;z-index:71;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.5)}
+  .palette input{width:100%;border:0;border-bottom:1px solid var(--line);background:none;padding:14px 16px;font-size:16px;outline:none}
+  .palette ul{list-style:none;margin:0;padding:6px;max-height:320px;overflow:auto}
+  .palette li button{width:100%;border:0;background:none;text-align:left;padding:10px 12px;border-radius:8px;display:flex;justify-content:space-between;min-height:44px;align-items:center}
+  .palette li button:hover,.palette li button.hl{background:var(--raised)}
+  .palette li em{font-style:normal;color:var(--muted);font-size:12px}
+
+  /* ---------- mobile ---------- */
+  .fab,.mnav,.groupsheet{display:none}
+  @media (max-width:768px){
+    :root{--top:48px;--rundock:32px;--mnav:60px}
+    .cmdk{min-width:0;width:40px;padding:0;justify-content:center}.cmdk span,.cmdk kbd{display:none}
+    .crumbs a,.crumbs .sep{display:none}
+    .crumbs a.keep,.crumbs .sep.keep{display:inline}
+    .dock{display:none}
+    .surface{left:0;right:0!important;bottom:calc(var(--rundock) + var(--mnav) + var(--safe-b))}
+    .editor{grid-template-columns:1fr}.tree{display:none}
+    .rundock{bottom:calc(var(--mnav) + var(--safe-b))}
+    .rundock > button:nth-child(n+3):not(.grow){display:none}
+    .tray{bottom:calc(var(--rundock) + var(--mnav) + var(--safe-b));height:50vh}
+    .mnav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;height:calc(var(--mnav) + var(--safe-b));padding-bottom:var(--safe-b);background:var(--panel);border-top:1px solid var(--line);z-index:41}
+    .mnav button{border:0;background:none;display:grid;justify-items:center;align-content:center;gap:2px;color:var(--muted);font-size:11.5px;font-weight:600}
+    .mnav button[aria-current="page"]{color:var(--accent)}
+    .mnav svg{width:22px;height:22px}
+    .fab{display:flex;position:fixed;right:16px;bottom:calc(var(--rundock) + var(--mnav) + var(--safe-b) + 16px);z-index:36;align-items:center;gap:8px;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:0 20px;height:56px;box-shadow:0 10px 24px rgba(0,0,0,.45)}
+    body.insp-open .fab{display:none}
+    /* inspector becomes a bottom sheet with detents */
+    .insp{top:auto;left:0;width:auto;bottom:calc(var(--mnav) + var(--safe-b));border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(105%);height:var(--sheet-h,45vh);transition:transform .2s,height .2s;box-shadow:0 -16px 40px rgba(0,0,0,.45)}
+    body.insp-open .insp{transform:none}
+    .insp[data-detent="peek"]{--sheet-h:132px}
+    .insp[data-detent="half"]{--sheet-h:52vh}
+    .insp[data-detent="full"]{--sheet-h:calc(100vh - var(--top) - var(--mnav) - 8px)}
+    .handle{display:block;border:0;background:none;padding:10px 0 0;min-height:28px;width:100%}
+    .handle::before{content:"";display:block;margin:0 auto;width:44px;height:5px;border-radius:5px;background:#4B535D}
+    .insp-h{padding-top:4px}
+    .groupsheet{position:fixed;left:8px;right:8px;bottom:calc(var(--mnav) + var(--safe-b) + 8px);background:var(--panel);border:1px solid var(--line);border-radius:14px;z-index:60;padding:8px;box-shadow:0 -10px 30px rgba(0,0,0,.5)}
+    .groupsheet.show{display:grid}
+    .groupsheet button{border:0;background:none;text-align:left;display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;min-height:52px;font-weight:600}
+    .groupsheet button:hover,.groupsheet button[aria-current="page"]{background:var(--raised)}
+    .groupsheet svg{width:20px;height:20px;color:var(--muted)}
+    .hint{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="mark" aria-hidden="true">P</div>
+  <nav class="crumbs" aria-label="Breadcrumb" id="crumbs"></nav>
+  <button class="cmdk" id="cmdk" aria-label="Open command palette"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>Go to tool, file or node</span><kbd>⌘K</kbd></button>
+  <button class="icon-btn" aria-label="Project settings" data-go="project/settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>
+</header>
+
+<nav class="dock" id="dock" aria-label="Tools"></nav>
+
+<section class="surface" id="surface"></section>
+
+<aside class="insp" id="insp" data-detent="half" aria-label="Inspector">
+  <button class="handle" id="handle" aria-label="Resize inspector"></button>
+  <div class="insp-h"><h2 id="inspTitle">—</h2><span class="save" id="save"></span><button class="x" id="inspClose" aria-label="Close inspector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="insp-b" id="inspBody"></div>
+</aside>
+
+<div class="tray" id="tray" aria-label="Run tray">
+  <div class="tray-tabs" role="tablist">
+    <button role="tab" data-tray="staged" aria-selected="true">Staged</button>
+    <button role="tab" data-tray="logs" aria-selected="false">Agent log</button>
+    <button role="tab" data-tray="envs" aria-selected="false">Environments</button>
+    <button class="btn primary" id="commitBtn">Commit staged</button>
+  </div>
+  <div class="tray-body" id="trayBody"></div>
+</div>
+
+<footer class="rundock" id="rundock"></footer>
+
+<button class="fab" id="fab"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>Run agent</button>
+<nav class="mnav" id="mnav" aria-label="Tool groups"></nav>
+<div class="groupsheet" id="groupsheet" role="menu"></div>
+<div id="paletteRoot"></div>
+
+<script>
+function store(k,v){try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){return null}}
+const I = {
+  req:'<path d="M4 6h16M4 12h10M4 18h7"/>', std:'<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/>', art:'<path d="M4 4h6l2 2h8v14H4z"/>', chat:'<path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/>',
+  canvas:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4a3 3 0 013 3V14"/>', spec:'<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>',
+  agent:'<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01"/>', repo:'<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M18 11.5c0 3-3 3.5-6 4"/>', db:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+  deploy:'<path d="M12 2c4 3 5 7 4 12l-4 3-4-3c-1-5 0-9 4-12z"/><path d="M8 14l-3 3 1 4 3-2M16 14l3 3-1 4-3-2"/>', audit:'<path d="M9 11l2 2 4-4"/><rect x="4" y="3" width="16" height="18" rx="2"/>', present:'<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M12 16v4M8 20h8"/>',
+};
+const svg = (p)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const GROUPS = [
+  {id:"define",name:"Define",tools:[["requirements","Reqs",I.req],["standards","Standards",I.std],["artifacts","Artifacts",I.art],["chat","Chat",I.chat]]},
+  {id:"design",name:"Design",tools:[["canvas","Canvas",I.canvas],["specifications","Specs",I.spec]]},
+  {id:"build",name:"Build",tools:[["agent","Agent",I.agent],["repository","Repo",I.repo],["database","Data",I.db]]},
+  {id:"ship",name:"Ship",tools:[["deploy","Deploy",I.deploy],["audit","Audit",I.audit],["present","Present",I.present]]},
+];
+const FULL = {requirements:"Requirements",standards:"Standards",artifacts:"Artifacts",chat:"Chat",canvas:"Canvas",specifications:"Specifications",agent:"Build agent",repository:"Repository",database:"Database",deploy:"Deploy",audit:"Audit",present:"Present",settings:"Project settings"};
+
+const S = {
+  nodes:[
+    {id:"web",name:"Applicant web",type:"Web app",stack:"React + Vite",x:6,y:14,mx:4,my:6,c:"#3FC1D0"},
+    {id:"api",name:"Intake API",type:"API service",stack:"Express + TypeScript",x:40,y:38,mx:22,my:36,c:"#8B9CFF"},
+    {id:"case",name:"Caseworker app",type:"Web app",stack:"React + Vite",x:70,y:12,mx:40,my:18,c:"#3FC1D0"},
+    {id:"db",name:"Applicants DB",type:"Database",stack:"PostgreSQL 16",x:22,y:70,mx:4,my:62,c:"#4CC38A"},
+    {id:"docs",name:"Document store",type:"Blob storage",stack:"Azure Blob",x:62,y:70,mx:44,my:76,c:"#F0B429"},
+  ],
+  edges:[["web","api"],["case","api"],["api","db"],["api","docs"]],
+  staged:[{p:"src/api/eligibility.ts",op:"m"},{p:"src/pages/Apply.tsx",op:"a"}],
+  logs:["09:41 <b>agent</b> read spec §3.2 Document upload","09:41 <b>agent</b> planned 3 changes","09:42 <b>agent</b> staged src/pages/Apply.tsx","09:42 <b>agent</b> staged src/api/eligibility.ts"],
+  agent:{live:false,pct:0,node:null},
+  envs:[["Development","ok","a3f91c2"],["Test","ok","9e0b7d1"],["Production","idle","—"]],
+  files:["src/api/eligibility.ts","src/api/upload.ts","src/pages/Apply.tsx","src/pages/Status.tsx","db/migrations/003_applicants.sql","package.json"],
+  tray:"staged",
+};
+
+/* ---------- routing (P3) ---------- */
+function R(){ const [g="design",t="canvas",sel] = location.hash.slice(1).split("/"); return {g,t,sel:sel?decodeURIComponent(sel):null}; }
+function go(h){ location.hash=h; }
+window.addEventListener("hashchange", render);
+
+function render(){
+  const {g,t,sel} = R();
+  const grp = GROUPS.find(x=>x.id===g);
+  // breadcrumb: always tells you where you are
+  document.getElementById("crumbs").innerHTML = `<a href="#design/canvas">Benefits Intake</a><span class="sep">/</span>${grp?`<a href="#${g}/${grp.tools[0][0]}">${grp.name}</a><span class="sep">/</span>`:""}<a class="keep" href="#${g}/${t}">${FULL[t]||t}</a>${sel?`<span class="sep keep">/</span><span class="cur">${label(sel)}</span>`:""}`;
+  // dock
+  document.getElementById("dock").innerHTML = GROUPS.map(G=>`<div class="grp">${G.name}</div>${G.tools.map(([id,l,ic])=>`<button class="tool" data-go="${G.id}/${id}" ${id===t?'aria-current="page"':""} title="${FULL[id]}">${svg(ic)}${l}${id==="agent"&&S.staged.length?`<span class="badge">${S.staged.length}</span>`:""}</button>`).join("")}`).join("");
+  // mobile nav: groups
+  document.getElementById("mnav").innerHTML = GROUPS.map(G=>`<button data-group="${G.id}" ${G.id===g?'aria-current="page"':""}>${svg(G.tools[0][2])}${G.name}</button>`).join("");
+  // surface
+  const surf = document.getElementById("surface");
+  if(t==="canvas") surf.innerHTML = canvasView(sel);
+  else if(t==="repository") surf.innerHTML = repoView(sel);
+  else surf.innerHTML = `<div class="blank"><div><b>${FULL[t]||t}</b>The existing page mounts here. The dock, inspector and run dock stay where they are.</div></div>`;
+  if(t==="canvas") drawEdges();
+  // inspector (P2: only when something is selected)
+  if(sel){ document.body.classList.add("insp-open"); inspector(t, sel); }
+  else document.body.classList.remove("insp-open");
+  renderDock();
+}
+function mobile(){ return matchMedia('(max-width:768px)').matches; }
+function label(sel){ const n=S.nodes.find(n=>n.id===sel); return n?n.name:sel.split("/").pop(); }
+
+function canvasView(sel){
+  return `<div class="canvas" id="canvas"><svg class="edges" id="edges"></svg>
+    <div class="hint">Select a component to edit it. Nothing else opens until you do.</div>
+    ${S.nodes.map(n=>`<button class="node ${S.agent.live&&S.agent.node===n.id?"working":""}" style="left:${mobile()?n.mx:n.x}%;top:${mobile()?n.my:n.y}%;--nc:${n.c}" data-node="${n.id}" aria-selected="${sel===n.id}" id="n-${n.id}">
+      ${S.agent.live&&S.agent.node===n.id?`<span class="tag run">Agent editing</span>`:n.fresh?`<span class="tag new">+${n.fresh} files</span>`:""}
+      <b data-name="${n.id}">${n.name}</b><small>${n.type} · ${n.stack}</small></button>`).join("")}
+  </div>`;
+}
+function drawEdges(){
+  const c=document.getElementById("canvas"), e=document.getElementById("edges"); if(!c) return;
+  const box=c.getBoundingClientRect();
+  e.innerHTML = S.edges.map(([a,b])=>{ const A=document.getElementById("n-"+a).getBoundingClientRect(), B=document.getElementById("n-"+b).getBoundingClientRect();
+    const x1=A.left+A.width/2-box.left, y1=A.top+A.height/2-box.top, x2=B.left+B.width/2-box.left, y2=B.top+B.height/2-box.top, my=(y1+y2)/2;
+    return `<path d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" fill="none" stroke="#3A424B" stroke-width="2"/>`; }).join("");
+}
+let wasMobile=mobile(); window.addEventListener("resize", ()=>{ if(mobile()!==wasMobile){wasMobile=mobile(); render();} else drawEdges(); });
+
+function repoView(sel){
+  const stagedSet = Object.fromEntries(S.staged.map(s=>[s.p,s.op]));
+  return `<div class="editor"><nav class="tree" aria-label="Files">${S.files.map(f=>`<button data-file="${f}" aria-selected="${sel===f}">${f}${stagedSet[f]?`<span class="st ${stagedSet[f]}">${stagedSet[f].toUpperCase()}</span>`:""}</button>`).join("")}</nav>
+  <div class="code">${sel?`<div><span class="k">export async function</span> <span class="f">checkEligibility</span>(household) {</div><div class="add">  <span class="k">const</span> limit = <span class="f">limitFor</span>(household.size);</div><div class="add">  <span class="k">if</span> (household.income &lt;= limit) {</div><div class="add">    <span class="k">return</span> { eligible: <span class="k">true</span>, reason: <span class="k">null</span> };</div><div class="add">  }</div><div>  <span class="k">return</span> { eligible: <span class="k">false</span>, reason: <span class="s">"income"</span> };</div><div>}</div>`:`<div class="c">// Pick a file on the left. On a phone, use ⌘K / search.</div>`}</div></div>`;
+}
+
+function inspector(t, sel){
+  const title=document.getElementById("inspTitle"), body=document.getElementById("inspBody");
+  document.getElementById("save").className="save"; document.getElementById("save").textContent="";
+  if(t==="canvas"){
+    const n=S.nodes.find(x=>x.id===sel); if(!n) return;
+    title.textContent=n.name;
+    body.innerHTML = `
+      <label class="f">Name<input id="nameIn" value="${n.name}"></label>
+      <label class="f">Technology<select id="stackIn">${["React + Vite","Express + TypeScript","PostgreSQL 16","Azure Blob","Next.js"].map(s=>`<option ${s===n.stack?"selected":""}>${s}</option>`).join("")}</select></label>
+      <button class="btn primary" data-act="agentNode" data-id="${n.id}">${svg('<path d="M7 4l13 8-13 8z"/>').replace('stroke="currentColor"','fill="currentColor" stroke="none"').replace('<svg','<svg width="14" height="14"')} Build this with the agent</button>
+      <div class="links"><span>Requirements <em>4 linked</em></span><span>Spec section <em>§3.2</em></span></div>
+      <details class="adv" data-pref="c.adv" ${store("c.adv")==="1"?"open":""}><summary>Advanced</summary><div class="in">
+        <label class="f">Agent instructions<textarea>Follow GoA Design System. Keep handlers under 50 lines.</textarea></label>
+        <label class="f">Layer<select><option>Application</option><option>Data</option></select></label></div></details>`;
+    const nameIn=document.getElementById("nameIn");
+    let t1; nameIn.oninput=()=>{ n.name=nameIn.value; document.querySelector(`[data-name="${n.id}"]`).textContent=n.name; title.textContent=n.name; saving(); };
+    document.getElementById("stackIn").onchange=e=>{ n.stack=e.target.value; document.querySelector(`#n-${n.id} small`).textContent=`${n.type} · ${n.stack}`; saving(); };
+  } else if(t==="repository"){
+    const st=S.staged.find(s=>s.p===sel);
+    title.textContent=sel.split("/").pop();
+    body.innerHTML = `<div class="links"><span>Path <em>${sel}</em></span><span>Status <em>${st?(st.op==="a"?"New, staged":"Modified, staged"):"Committed"}</em></span><span>Last change <em>Build agent · 4 min ago</em></span></div>
+      ${st?`<button class="btn" data-act="unstage" data-p="${sel}">Unstage this file</button>`:""}
+      <details class="adv" data-pref="c.adv2" ${store("c.adv2")==="1"?"open":""}><summary>History</summary><div class="in" style="color:var(--muted);font-size:13px">7d2c4ea Add eligibility endpoint<br>1b9e0aa Scaffold API</div></details>`;
+  }
+}
+let saveT; function saving(){ const s=document.getElementById("save"); s.className="save saving"; s.textContent="Saving"; clearTimeout(saveT); saveT=setTimeout(()=>{s.className="save saved"; s.textContent="Saved";},600); }
+
+/* ---------- run dock (P5) ---------- */
+let lastStaged = S.staged.length;
+function renderDock(){
+  const a=S.agent;
+  const envDot = S.envs.map(e=>`<button data-tray-open="envs"><span class="dot ${e[1]==="ok"?"ok":e[1]==="run"?"run":""}"></span>${e[0]}</button>`).slice(0,2).join("");
+  document.getElementById("rundock").innerHTML =
+    `<button data-tray-open="logs"><span class="dot ${a.live?"run":"ok"}"></span>${a.live?`Agent working <span class="meter"><i style="width:${a.pct}%"></i></span>`:"Agent idle"}</button>
+     <button data-tray-open="staged"><span class="num ${S.staged.length!==lastStaged?"bump":""}">${S.staged.length}</span> staged</button>
+     ${envDot}
+     <button class="grow" data-tray-toggle aria-expanded="${document.body.classList.contains("tray-open")}"><span style="margin-left:auto">${document.body.classList.contains("tray-open")?"Hide tray ▾":"Show tray ▴"}</span></button>`;
+  lastStaged = S.staged.length;
+  renderTray();
+}
+function renderTray(){
+  document.querySelectorAll("[data-tray]").forEach(b=>b.setAttribute("aria-selected", b.dataset.tray===S.tray));
+  document.getElementById("commitBtn").hidden = S.tray!=="staged" || !S.staged.length;
+  const b=document.getElementById("trayBody");
+  if(S.tray==="staged") b.innerHTML = S.staged.length? S.staged.map(s=>`<div class="row"><span class="st ${s.op}">${s.op.toUpperCase()}</span><span style="color:var(--text)">${s.p}</span></div>`).join("") : "Nothing staged. Run the agent on a component to generate code.";
+  if(S.tray==="logs") b.innerHTML = S.logs.map(l=>`<div class="ln">${l}</div>`).join("");
+  if(S.tray==="envs") b.innerHTML = S.envs.map(e=>`<div class="row"><span class="dot ${e[1]==="ok"?"ok":""}" style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${e[1]==="ok"?"var(--ok)":"var(--muted)"}"></span><span style="color:var(--text);width:110px">${e[0]}</span>${e[2]}</div>`).join("");
+}
+function openTray(tab){ S.tray=tab; document.body.classList.add("tray-open"); store("c.tray","1"); renderDock(); }
+
+function runAgent(nodeId){
+  if(S.agent.live) return;
+  const n=S.nodes.find(x=>x.id===nodeId) || S.nodes[1];
+  S.agent={live:true,pct:4,node:n.id}; S.logs.push(`${now()} <b>agent</b> started on ${n.name}`); render();
+  const iv=setInterval(()=>{ S.agent.pct=Math.min(100,S.agent.pct+9);
+    if(S.agent.pct===40) { S.logs.push(`${now()} <b>agent</b> writing handlers for ${n.name}`); }
+    if(S.agent.pct>=100){ clearInterval(iv); S.agent.live=false;
+      const f1=`src/${n.id}/index.ts`, f2=`src/${n.id}/${n.id}.test.ts`;
+      [f1,f2].forEach(p=>{ if(!S.staged.find(s=>s.p===p)){S.staged.push({p,op:"a"}); S.files.push(p);} });
+      n.fresh=2; S.logs.push(`${now()} <b>agent</b> staged 2 files for ${n.name}`); render(); setTimeout(()=>{n.fresh=0; if(R().t==="canvas") render();},6000); return; }
+    const m=document.querySelector(".rundock .meter i"); if(m) m.style.width=S.agent.pct+"%"; },450);
+}
+function now(){ return new Date().toTimeString().slice(0,5); }
+
+/* ---------- events ---------- */
+document.addEventListener("click", e=>{
+  const gsheet=document.getElementById("groupsheet");
+  const gb=e.target.closest("[data-group]");
+  if(gb){ const G=GROUPS.find(x=>x.id===gb.dataset.group); const {t}=R();
+    gsheet.innerHTML = G.tools.map(([id,l,ic])=>`<button data-go="${G.id}/${id}" ${id===t?'aria-current="page"':""}>${svg(ic)}${FULL[id]}</button>`).join("");
+    gsheet.classList.toggle("show", !(gsheet.classList.contains("show") && gsheet.dataset.g===G.id)); gsheet.dataset.g=G.id; return; }
+  if(!e.target.closest("#groupsheet")) gsheet.classList.remove("show");
+  const g=e.target.closest("[data-go]"); if(g){ gsheet.classList.remove("show"); go(g.dataset.go); return; }
+  const n=e.target.closest("[data-node]"); if(n){ const {g,t}=R(); go(`${g}/${t}/${n.dataset.node}`); return; }
+  const f=e.target.closest("[data-file]"); if(f){ const {g,t}=R(); go(`${g}/${t}/${encodeURIComponent(f.dataset.file)}`); return; }
+  if(e.target.closest("#inspClose")){ const {g,t}=R(); go(`${g}/${t}`); return; }
+  if(e.target.closest("#handle")){ const i=document.getElementById("insp"); const order=["peek","half","full"]; i.dataset.detent=order[(order.indexOf(i.dataset.detent)+1)%3]; store("c.detent",i.dataset.detent); return; }
+  const to=e.target.closest("[data-tray-open]"); if(to){ openTray(to.dataset.trayOpen); return; }
+  if(e.target.closest("[data-tray-toggle]")){ const open=!document.body.classList.contains("tray-open"); document.body.classList.toggle("tray-open",open); store("c.tray",open?"1":"0"); renderDock(); return; }
+  const tt=e.target.closest("[data-tray]"); if(tt){ S.tray=tt.dataset.tray; renderTray(); return; }
+  const a=e.target.closest("[data-act]");
+  if(a && a.dataset.act==="agentNode"){ a.dataset.state="pending"; a.lastChild.textContent=" Agent started"; runAgent(a.dataset.id); return; }
+  if(a && a.dataset.act==="unstage"){ S.staged=S.staged.filter(s=>s.p!==a.dataset.p); render(); return; }
+  if(e.target.closest("#fab")){ const {sel}=R(); runAgent(sel); openTray("logs"); return; }
+  if(e.target.closest("#commitBtn")){ const b=document.getElementById("commitBtn"); b.dataset.state="pending"; b.textContent=" Committing";
+    setTimeout(()=>{ const n=S.staged.length; S.staged=[]; S.logs.push(`${now()} <b>you</b> committed ${n} files to main`); b.dataset.state=""; b.textContent="Commit staged"; S.tray="logs"; render(); },900); return; }
+  if(e.target.closest("#cmdk")) openPalette();
+});
+document.addEventListener("toggle", e=>{ const d=e.target; if(d.dataset && d.dataset.pref) store(d.dataset.pref, d.open?"1":"0"); }, true);
+
+/* ---------- command palette ---------- */
+function openPalette(){
+  const entries = [...GROUPS.flatMap(G=>G.tools.map(([id])=>({l:FULL[id],k:G.name,h:`${G.id}/${id}`}))), ...S.nodes.map(n=>({l:n.name,k:"Canvas node",h:`design/canvas/${n.id}`})), ...S.files.map(f=>({l:f,k:"File",h:`build/repository/${encodeURIComponent(f)}`}))];
+  const root=document.getElementById("paletteRoot");
+  root.innerHTML=`<div class="scrim" data-pclose></div><div class="palette" role="dialog" aria-label="Command palette"><input id="pq" placeholder="Type a tool, component or file"><ul id="pl"></ul></div>`;
+  const q=document.getElementById("pq"), l=document.getElementById("pl"); let hl=0, list=entries;
+  const draw=()=>{ list=entries.filter(x=>x.l.toLowerCase().includes(q.value.toLowerCase())).slice(0,8); l.innerHTML=list.map((x,i)=>`<li><button class="${i===hl?"hl":""}" data-ph="${x.h}">${x.l}<em>${x.k}</em></button></li>`).join(""); };
+  q.oninput=()=>{hl=0;draw()}; q.onkeydown=ev=>{ if(ev.key==="ArrowDown"){hl=Math.min(hl+1,list.length-1);draw();ev.preventDefault()} if(ev.key==="ArrowUp"){hl=Math.max(hl-1,0);draw();ev.preventDefault()} if(ev.key==="Enter"&&list[hl]){root.innerHTML="";go(list[hl].h)} };
+  draw(); q.focus();
+  root.onclick=ev=>{ const b=ev.target.closest("[data-ph]"); if(b){root.innerHTML="";go(b.dataset.ph);} if(ev.target.closest("[data-pclose]")) root.innerHTML=""; };
+}
+document.addEventListener("keydown", e=>{
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="k"){ e.preventDefault(); openPalette(); }
+  if(e.key==="Escape"){ if(document.getElementById("paletteRoot").innerHTML){document.getElementById("paletteRoot").innerHTML="";return;} const {g,t,sel}=R(); if(sel) go(`${g}/${t}`); }
+});
+
+/* restore prefs (P3) */
+if(store("c.tray")==="1") document.body.classList.add("tray-open");
+document.getElementById("insp").dataset.detent = store("c.detent") || "half";
+render();
+</script>
+</body>
+</html>

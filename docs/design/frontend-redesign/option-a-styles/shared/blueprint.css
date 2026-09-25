@@ -1,0 +1,78 @@
+/*
+ * Style 2 · Blueprint
+ * An engineering drawing: navy chrome, a faint drafting grid, square-ish corners,
+ * dense rows and a mono face reserved for identifiers (WI-42, branches, versions).
+ * The memorable element: the navy rail reads as the title block of a drawing sheet.
+ */
+:root {
+  color-scheme: light;
+  --bg: #E8EDF4; --surface: #FFFFFF; --surface-2: #F2F5F9; --ink: #0F1D35; --muted: #4F5F78; --line: #D3DBE6; --line-2: #AFBCCE;
+  --primary: #2451D6; --primary-soft: #E3EAFC; --focus: #2451D6;
+  --ok: #13803D; --ok-soft: #DDF2E5; --warn: #B45309; --warn-soft: #FCEEDB; --bad: #C0262D; --bad-soft: #FBE4E5; --run: #D97706;
+  --c-define: #7C3AED; --c-design: #0891B2; --c-build: #D97706; --c-ship: #16A34A;
+  --t-bug: #C0262D; --t-bug-soft: #FBE4E5; --t-feat: #2451D6; --t-feat-soft: #E3EAFC; --t-enh: #0E7490; --t-enh-soft: #DDF3F7;
+  --rail-bg: #102040; --rail-ink: #EAF0FA; --rail-muted: #93A4C3; --rail-hover: #182C54; --rail-line: #22365F; --rail-active: #1D3566;
+  --gbar-bg: #0B1830; --gbar-ink: #EAF0FA; --gbar-line: #22365F;
+  --ctx-bg: #2451D6; --ctx-ink: #FFFFFF;
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --fs: 14px; --h1: 26px; --h1-weight: 600; --h1-track: -0.01em; --h2: 14px;
+  --radius: 4px; --radius-s: 3px; --radius-pill: 3px;
+  --row: 48px; --pad: 14px; --gap: 14px;
+  --rail-w: 248px; --bar-h: 52px; --ctx-h: 40px;
+  --shadow: none; --shadow-pop: 0 10px 28px rgba(11, 24, 48, .28);
+  --card-border: 1px solid #C9D3E1;
+}
+main { background:
+  repeating-linear-gradient(0deg, transparent 0 23px, rgba(36, 81, 214, .06) 23px 24px),
+  repeating-linear-gradient(90deg, transparent 0 23px, rgba(36, 81, 214, .06) 23px 24px); min-height: 100vh; }
+.logo { background: #fff; color: #0B1830; border-radius: 3px; }
+.switcher, .search, .pill { border-color: var(--gbar-line); }
+.search { background: #13234A; color: #93A4C3; }
+.search kbd { border-color: #2C4474; color: #93A4C3; }
+.avatar { background: #2451D6; color: #fff; border-radius: 3px; }
+.rail-top { border-bottom-color: var(--rail-line); }
+.rail-label { font-family: var(--mono); font-size: 11px; font-weight: 500; }
+.ctx-switch { background: #0C1A36; }
+.rail-item .n { background: #2451D6; color: #fff; }
+.node { border-radius: 3px; background: var(--rail-bg); }
+.st-active .node::after { border-radius: 1px; }
+.journey::before { left: 22px; width: 1px; background: repeating-linear-gradient(var(--rail-muted) 0 3px, transparent 3px 6px); }
+.phase[aria-current="page"] { box-shadow: inset 3px 0 0 var(--pc); border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+.ph-note { font-family: var(--mono); font-size: 11.5px; }
+.crumb { font-family: var(--mono); font-size: 12px; letter-spacing: .01em; }
+h1 { display: flex; align-items: center; gap: 12px; }
+h1::after { content: ""; flex: 1; height: 1px; background: var(--line-2); min-width: 24px; }
+.phead { align-items: center; }
+.tools { padding: 0; gap: 0; border-radius: var(--radius); overflow: hidden; }
+.tool { border-radius: 0; min-height: 40px; border-right: 1px solid var(--line); }
+.tool:last-child { border-right: 0; }
+.tool[aria-selected="true"] { background: var(--ink); box-shadow: inset 0 -3px 0 var(--view-c); }
+.chip { border-radius: 3px; }
+.next { border-left-width: 3px; border-left-color: var(--view-c); background: var(--surface); }
+.next-ic { border-radius: 3px; }
+.card-h { background: var(--surface-2); padding-top: 10px; padding-bottom: 10px; }
+.card-h h2 { font-weight: 600; }
+.card-h .meta { font-family: var(--mono); font-size: 11.5px; }
+.btn { border-radius: 3px; min-height: 40px; }
+.btn.primary { background: var(--primary); }
+.wi-main { grid-template-columns: auto 64px minmax(0, 1fr) auto 150px 18px; }
+.wi-id, .rid, .ver { color: var(--primary); }
+.type { border-radius: 2px; font-family: var(--mono); font-weight: 600; font-size: 11px; padding: 4px 6px; }
+.delta, .linkchip { border-radius: 2px; }
+.seg { width: 16px; height: 8px; border-radius: 1px; }
+.cnode { border-radius: 2px; border-width: 1px; font-family: var(--font); }
+.canvas { background: repeating-linear-gradient(0deg, transparent 0 19px, #DCE4F0 19px 20px), repeating-linear-gradient(90deg, transparent 0 19px, #DCE4F0 19px 20px), #F7F9FC; }
+.hv { font-family: var(--mono); font-weight: 600; font-size: 16px; }
+.ctxbar { background: var(--ctx-bg); font-family: var(--font); }
+.ctxbar .type { background: #fff; color: var(--primary); }
+.cb-exit { border-radius: 3px; }
+.undo { border-radius: 3px; background: #0B1830; color: #EAF0FA; }
+.undo button { color: #8FB0FF; }
+.sheet { border-radius: 4px; }
+.type-opt { border-radius: 3px; }
+.tabbar { background: #102040; }
+@media (max-width: 768px) {
+  .sheet { border-radius: 8px 8px 0 0; }
+  .tabbar button[aria-current="page"]::before { border-radius: 0; left: 0; right: 0; }
+}

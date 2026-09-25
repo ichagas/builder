@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pronghorn · Option A · Style 3 · Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/base.css">
+<style>
+/*
+ * Style 3 · Studio
+ * Dark, soft and expressive, built for long focused sessions. Every phase owns a
+ * colour, and the page takes on the colour of wherever you are.
+ * The memorable element: the active phase glows through the rail, header and tabs.
+ */
+:root {
+  color-scheme: dark;
+  --bg: #17151F; --surface: #211E2B; --surface-2: #2A2637; --ink: #EEEBF7; --muted: #A9A3BD; --line: #332E42; --line-2: #4A4460;
+  --primary: #A08CFF; --primary-ink: #150E33; --primary-soft: rgba(160, 140, 255, .16); --focus: #C7BBFF;
+  --ok: #72D99D; --ok-soft: rgba(114, 217, 157, .14); --warn: #FFB65E; --warn-soft: rgba(255, 182, 94, .14); --bad: #FF8080; --bad-soft: rgba(255, 128, 128, .14); --run: #FFB65E;
+  --c-define: #B9A1FF; --c-design: #5FD8CA; --c-build: #FFB65E; --c-ship: #7FDE96;
+  --t-bug: #FF9A9A; --t-bug-soft: rgba(255, 128, 128, .15); --t-feat: #B9A1FF; --t-feat-soft: rgba(185, 161, 255, .16); --t-enh: #6DD5E3; --t-enh-soft: rgba(109, 213, 227, .14); --t-base: #CFC9E0; --t-base-soft: rgba(207, 201, 224, .12);
+  --rail-bg: #1B1925; --rail-ink: #EEEBF7; --rail-muted: #948EAA; --rail-hover: #252130; --rail-line: #2C283A; --rail-active: #2A2538;
+  --gbar-bg: #1B1925; --gbar-ink: #EEEBF7; --gbar-line: #2C283A;
+  --ctx-bg: #2B2344; --ctx-ink: #EEEBF7;
+  --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Fira Code", ui-monospace, Menlo, monospace;
+  --fs: 15px; --h1: 36px; --h1-weight: 700; --h1-track: -0.025em; --h2: 16px;
+  --radius: 18px; --radius-s: 12px;
+  --row: 60px; --pad: 18px; --gap: 16px;
+  --rail-w: 272px;
+  --shadow: none; --shadow-pop: 0 20px 50px rgba(0, 0, 0, .5);
+  --card-border: 1px solid var(--line);
+}
+body { background: radial-gradient(1200px 500px at 70% -10%, color-mix(in srgb, var(--view-c) 13%, transparent), transparent 60%), var(--bg); background-attachment: fixed; transition: background .4s; }
+.logo { background: linear-gradient(135deg, var(--c-define), var(--c-design)); color: #150E33; border-radius: 10px; }
+.search { background: var(--surface); }
+.avatar { background: var(--surface-2); color: var(--ink); }
+.pill { background: var(--surface); }
+.rail { padding: 14px; }
+.rail-item[aria-current="page"] { background: var(--primary-soft); color: var(--primary); }
+.rail-item .n { background: var(--primary); color: var(--primary-ink); }
+.ctx-switch { border-radius: 14px; background: var(--surface); }
+.journey { gap: 6px; }
+.journey::before { display: none; }
+.phase { border-radius: 14px; min-height: 60px; }
+.phase[aria-current="page"] { background: color-mix(in srgb, var(--pc) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pc) 40%, transparent); }
+.phase[aria-current="page"] .ph-name { color: var(--pc); }
+.st-done .node::after { border-color: var(--rail-bg); }
+h1 { background: linear-gradient(90deg, var(--ink) 40%, var(--view-c)); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: 2px; }
+.crumb { color: var(--view-c); font-weight: 600; }
+.tools { border-radius: var(--radius-pill); background: var(--surface); }
+.tool { border-radius: var(--radius-pill); }
+.tool[aria-selected="true"] { background: var(--view-c); color: #17151F; }
+.tool[aria-selected="true"] .n { background: rgba(23, 21, 31, .2); color: #17151F; }
+.chip[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.next { border: 0; background: color-mix(in srgb, var(--primary) 9%, var(--surface)); border-radius: var(--radius); }
+.next.tone-ok { background: color-mix(in srgb, var(--ok) 9%, var(--surface)); } .next.tone-warn { background: color-mix(in srgb, var(--warn) 9%, var(--surface)); }
+.next-ic { border-radius: 12px; }
+.card-h { border-bottom-color: var(--line); }
+.btn { border-radius: var(--radius-pill); padding: 0 20px; background: var(--surface-2); border-color: var(--line-2); }
+.btn.primary { background: var(--primary); color: var(--primary-ink); font-weight: 700; }
+.btn.primary:hover { background: #B5A5FF; }
+.btn[data-state="done"] { color: #0F2A1A; }
+.type { border-radius: var(--radius-pill); padding: 5px 10px; }
+.seg { width: 20px; height: 8px; border-radius: 8px; }
+.cnode { border-radius: 14px; background: var(--surface-2); }
+.canvas { background: radial-gradient(circle, #3A3450 1px, transparent 1.3px) 0 0 / 22px 22px, #1C1A26; }
+.edges line.hot { stroke: var(--view-c); }
+.cnode.hit { border-color: var(--view-c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--view-c) 20%, transparent), 0 0 30px color-mix(in srgb, var(--view-c) 25%, transparent); }
+.cn-tag { background: var(--view-c); color: #17151F; }
+.agent-run { background: color-mix(in srgb, var(--run) 9%, var(--surface)); }
+.ctxbar { background: linear-gradient(90deg, #2B2344, #231F33); border-bottom: 1px solid var(--line); }
+.cb-exit { border-radius: var(--radius-pill); }
+.undo { background: #EEEBF7; color: #17151F; border-radius: 16px; }
+.undo button { color: #5B45D9; }
+.fresh { animation-name: fresh-dark; }
+@keyframes fresh-dark { from { background: rgba(160, 140, 255, .22); } to { background: transparent; } }
+.sheet { border: 1px solid var(--line); }
+.type-opt { border-radius: 14px; }
+.from { background: var(--warn-soft); }
+.tabbar button[aria-current="page"] { color: var(--pc, var(--primary)); }
+@media (max-width: 768px) { :root { --h1: 28px; } }
+</style>
+</head>
+<body data-style="studio">
+<script src="shared/app.js"></script>
+</body>
+</html>

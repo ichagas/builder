@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronghorn redesign · compare options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F2F4F7;--ink:#172033;--muted:#5B6478;--line:#D9DEE6;--surface:#fff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Public Sans",system-ui,sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:32px 24px 64px}
+  h1{font-size:30px;margin:0 0 6px;letter-spacing:-.02em}
+  .lede{color:var(--muted);margin:0 0 20px;max-width:70ch}
+  .switch{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+  .switch button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+  .switch button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .opt{display:grid;gap:14px;margin-bottom:48px}
+  .opt header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .opt h2{margin:0;font-size:22px}
+  .opt header a{color:#1D5FC4;font-weight:600}
+  .opt p{margin:0;color:var(--muted);max-width:80ch}
+  .frames{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:20px;align-items:start}
+  .frame{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .frame .cap{padding:8px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)}
+  .desk{position:relative;aspect-ratio:1440/900}
+  .desk iframe{position:absolute;top:0;left:0;width:1440px;height:900px;border:0;transform-origin:0 0}
+  .phone iframe{display:block;width:390px;height:780px;border:0}
+  table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:#F7F8FA}
+  .tbl{overflow-x:auto}
+  @media (max-width:1000px){.frames{grid-template-columns:1fr}.phone{justify-self:center}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pronghorn frontend redesign</h1>
+  <p class="lede">Three working prototypes for the same product, each applying the same five principles differently. Every frame is live: click, commit, deploy, answer the agent. State is kept in the URL and in local storage, so reloading a frame keeps your place. See <code>PROPOSAL.md</code> for the reasoning and rollout plan.</p>
+
+  <div class="switch" role="group" aria-label="Show option">
+    <button aria-pressed="true" data-show="all">All three</button>
+    <button aria-pressed="false" data-show="a">A. Lifecycle Rail</button>
+    <button aria-pressed="false" data-show="b">B. Next Action</button>
+    <button aria-pressed="false" data-show="c">C. Workbench</button>
+  </div>
+
+  <section class="opt" data-opt="a">
+    <header><h2>A. Lifecycle Rail</h2><a href="option-a-lifecycle.html" target="_blank">Open full screen</a></header>
+    <p>You navigate by project phase: Define, Design, Build and Ship. Each phase shows its progress, and its tools sit inside it. A "next step" banner and a single primary action appear in the same place on every screen. Try: Build → Commit changes, then Undo. On Define, select a story to open its detail panel.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap">Desktop 1440 × 900</div><div class="desk"><iframe src="option-a-lifecycle.html#build/agent" title="Option A desktop" loading="lazy"></iframe></div></div>
+      <div class="frame phone"><div class="cap">Phone 390 × 780</div><iframe src="option-a-lifecycle.html#define/requirements" title="Option A phone" loading="lazy"></iframe></div>
+    </div>
+  </section>
+
+  <section class="opt" data-opt="b">
+    <header><h2>B. Next Action</h2><a href="option-b-next-action.html" target="_blank">Open full screen</a></header>
+    <p>The project opens on a ranked queue of what needs you. Each card has one main action, and its details expand inline. Answering the agent's question starts a run, and the run adds a new review card when it finishes. All tools are under "Project", grouped by task.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap">Desktop 1440 × 900</div><div class="desk"><iframe src="option-b-next-action.html#now/q1" title="Option B desktop" loading="lazy"></iframe></div></div>
+      <div class="frame phone"><div class="cap">Phone 390 × 780</div><iframe src="option-b-next-action.html#now" title="Option B phone" loading="lazy"></iframe></div>
+    </div>
+  </section>
+
+  <section class="opt" data-opt="c">
+    <header><h2>C. Workbench</h2><a href="option-c-workbench.html" target="_blank">Open full screen</a></header>
+    <p>One persistent workspace. A tool dock is grouped by task, and an inspector appears only when you select something. On a phone the inspector becomes a bottom sheet with three heights. An IDE-style run dock shows agent, staging and environment status everywhere. Try: select "Intake API", rename it, then press "Build this with the agent". ⌘K jumps to any tool, component or file.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap">Desktop 1440 × 900</div><div class="desk"><iframe src="option-c-workbench.html#design/canvas/api" title="Option C desktop" loading="lazy"></iframe></div></div>
+      <div class="frame phone"><div class="cap">Phone 390 × 780</div><iframe src="option-c-workbench.html#design/canvas" title="Option C phone" loading="lazy"></iframe></div>
+    </div>
+  </section>
+
+  <h2>How each option applies the principles</h2>
+  <div class="tbl"><table>
+    <tr><th>Principle</th><th>A. Lifecycle Rail</th><th>B. Next Action</th><th>C. Workbench</th></tr>
+    <tr><td>Task-oriented hierarchy</td><td>4 phases, then tools. Settings is moved into the rail footer.</td><td>Now (tasks) → Project (tools grouped by task) → Activity</td><td>Dock grouped by task. The breadcrumb shows project / group / tool / entity.</td></tr>
+    <tr><td>Contextual progressive disclosure</td><td>Next-step banner. The detail panel opens only on selection. Options stay collapsed and remember their state.</td><td>Each card shows one line and one action. Details expand inline.</td><td>Inspector appears only on selection. Advanced settings are collapsed.</td></tr>
+    <tr><td>Fixed, predictable state</td><td>URL <code>#phase/tool/item</code>. Rail collapse and expanded rows persist.</td><td>URL <code>#view/card</code>. The Ask draft is saved.</td><td>URL <code>#group/tool/entity</code>. Tray and sheet heights persist.</td></tr>
+    <tr><td>Thumb and reach</td><td>Bottom phase bar. Full-width primary button above it.</td><td>Bottom tabs with a raised Ask button. Card actions sit on the right edge.</td><td>Bottom group bar, a Run agent button, and a 3-height inspector sheet.</td></tr>
+    <tr><td>Immediate feedback</td><td>Progress inside the button, a status pill, and a fixed Undo bar.</td><td>Cards resolve in place with Undo. Counters update and activity is logged.</td><td>Nodes pulse while an agent edits them. The run dock updates live and edits save inline.</td></tr>
+  </table></div>
+</div>
+<script>
+  function fit(){document.querySelectorAll(".desk").forEach(d=>{const f=d.querySelector("iframe");f.style.transform=`scale(${d.clientWidth/1440})`;});}
+  addEventListener("resize",fit); fit();
+  document.querySelectorAll("[data-show]").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("[data-show]").forEach(x=>x.setAttribute("aria-pressed",x===b));
+    document.querySelectorAll(".opt").forEach(o=>o.hidden=!(b.dataset.show==="all"||o.dataset.opt===b.dataset.show)); fit();
+  });
+</script>
+</body>
+</html>

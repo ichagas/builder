@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronghorn · Option A · compare styles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #F2F4F7; --ink: #172033; --muted: #5B6478; --line: #D9DEE6; --surface: #fff; --primary: #1C5BC0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Public Sans", system-ui, sans-serif; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -.02em; }
+  h2 { font-size: 22px; margin: 0; }
+  p { margin: 0; color: var(--muted); max-width: 78ch; }
+  .lede { margin-bottom: 20px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 24px; }
+  .bar button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0 16px; min-height: 44px; font: inherit; font-weight: 600; cursor: pointer; }
+  .bar button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .bar .sep { width: 1px; height: 28px; background: var(--line); margin: 0 6px; }
+  .style { display: grid; gap: 12px; margin-bottom: 48px; }
+  .style header { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+  .style a { color: var(--primary); font-weight: 600; }
+  .swatches { display: flex; gap: 6px; }
+  .swatches i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); }
+  .frames { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 20px; align-items: start; }
+  .frame { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .cap { padding: 8px 12px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .desk { position: relative; aspect-ratio: 1440 / 900; overflow: hidden; }
+  .desk iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 900px; border: 0; transform-origin: 0 0; }
+  .phone iframe { display: block; width: 390px; height: 800px; border: 0; }
+  .tbl { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { background: #F7F8FA; }
+  code { font-size: 13px; }
+  @media (max-width: 1000px) { .frames { grid-template-columns: 1fr; } .phone { justify-self: center; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Option A: three visual styles</h1>
+  <p class="lede">The structure, flows and code behind these three pages are identical (<code>shared/app.js</code> + <code>shared/base.css</code>). Only the visual layer differs. Every frame is live. The scenario is the Benefits Intake Portal <strong>after its first release</strong>: reported bugs, requested enhancements, a feature in design, and the next release. See <code>EVOLVE.md</code> and, for the building-vs-released comparison, <code>compare-lifecycle.html</code>.</p>
+
+  <div class="bar" role="group" aria-label="Choose the screen shown in every frame">
+    <span style="font-weight:600">Show</span>
+    <button aria-pressed="true" data-h="v=work">Work</button>
+    <button aria-pressed="false" data-h="v=define&w=WI-42">Bug · Define</button>
+    <button aria-pressed="false" data-h="v=design&w=WI-38">Feature · Design</button>
+    <button aria-pressed="false" data-h="v=build&w=WI-42">Bug · Build</button>
+    <button aria-pressed="false" data-h="v=ship&t=release">Release train</button>
+  </div>
+
+  <section class="style">
+    <header><h2>1. Clarity</h2><span class="swatches"><i style="background:#16213A"></i><i style="background:#1C5BC0"></i><i style="background:#7048CC"></i><i style="background:#0C8577"></i><i style="background:#C46A0C"></i><i style="background:#F3F5F8"></i></span><a href="style-1-clarity.html" target="_blank">Open full screen</a></header>
+    <p>A calm, light public-service UI. Generous spacing, soft elevation and one confident blue. Phase colors appear only in the rail and page markers. Public Sans throughout. Best if Pronghorn must feel trustworthy to non-technical ministry staff.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap">Desktop 1440 × 900</div><div class="desk"><iframe data-src="style-1-clarity.html" title="Clarity desktop"></iframe></div></div>
+      <div class="frame phone"><div class="cap">Phone 390 × 800</div><iframe data-src="style-1-clarity.html" title="Clarity phone"></iframe></div>
+    </div>
+  </section>
+
+  <section class="style">
+    <header><h2>2. Blueprint</h2><span class="swatches"><i style="background:#0B1830"></i><i style="background:#102040"></i><i style="background:#2451D6"></i><i style="background:#D97706"></i><i style="background:#E8EDF4"></i></span><a href="style-2-blueprint.html" target="_blank">Open full screen</a></header>
+    <p>An engineering drawing. Navy chrome, a faint drafting grid, near-square corners, denser rows, and IBM Plex with the mono face kept for identifiers (WI-42, branches, versions). Best for delivery teams who spend all day in it and want more on screen.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap">Desktop 1440 × 900</div><div class="desk"><iframe data-src="style-2-blueprint.html" title="Blueprint desktop"></iframe></div></div>
+      <div class="frame phone"><div class="cap">Phone 390 × 800</div><iframe data-src="style-2-blueprint.html" title="Blueprint phone"></iframe></div>
+    </div>
+  </section>
+
+  <section class="style">
+    <header><h2>3. Studio</h2><span class="swatches"><i style="background:#17151F"></i><i style="background:#211E2B"></i><i style="background:#A08CFF"></i><i style="background:#5FD8CA"></i><i style="background:#FFB65E"></i></span><a href="style-3-studio.html" target="_blank">Open full screen</a></header>
+    <p>Dark, soft and expressive, built for long focused sessions. Each phase owns a color, and the page takes on the color of wherever you are: the background glow, heading, active tab and highlighted canvas nodes. Rounded shapes and pill buttons. Onest. Best if Pronghorn wants a distinctive product identity.</p>
+    <div class="frames">
+      <div class="frame"><div class="cap">Desktop 1440 × 900</div><div class="desk"><iframe data-src="style-3-studio.html" title="Studio desktop"></iframe></div></div>
+      <div class="frame phone"><div class="cap">Phone 390 × 800</div><iframe data-src="style-3-studio.html" title="Studio phone"></iframe></div>
+    </div>
+  </section>
+
+  <h2 style="margin-bottom:12px">How the styles differ</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>1. Clarity</th><th>2. Blueprint</th><th>3. Studio</th></tr>
+    <tr><td>Mood</td><td>Calm, official, light</td><td>Technical, precise, dense</td><td>Focused, expressive, dark</td></tr>
+    <tr><td>Type</td><td>Public Sans 15px, 800 headings</td><td>IBM Plex Sans 14px + Plex Mono for IDs</td><td>Onest 15px, 36px gradient headings</td></tr>
+    <tr><td>Shape</td><td>12px corners, soft shadows</td><td>3–4px corners, flat, hairline borders</td><td>18px corners, pill buttons and tabs</td></tr>
+    <tr><td>Density</td><td>60px rows</td><td>48px rows (44px touch minimum kept)</td><td>60px rows</td></tr>
+    <tr><td>Chrome</td><td>White rail, gradient journey line</td><td>Navy rail and top bar, drafting grid</td><td>Dark rail, phase-colored glow follows you</td></tr>
+    <tr><td>Phase color</td><td>Accents: rail node + heading marker</td><td>Signals: rail edge + tab underline</td><td>Environment: glow, heading, tabs, canvas</td></tr>
+    <tr><td>Risk</td><td>Can feel plain</td><td>Can feel intimidating to non-developers</td><td>Dark-only needs a light twin for accessibility preferences</td></tr>
+  </table></div>
+</div>
+<script>
+  const frames = [...document.querySelectorAll("iframe[data-src]")];
+  function show(h) { frames.forEach((f) => { f.src = f.dataset.src + "#" + h; }); }
+  function fit() { document.querySelectorAll(".desk").forEach((d) => { d.querySelector("iframe").style.transform = `scale(${d.clientWidth / 1440})`; }); }
+  document.querySelectorAll("[data-h]").forEach((b) => b.onclick = () => {
+    document.querySelectorAll("[data-h]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    show(b.dataset.h);
+  });
+  addEventListener("resize", fit); fit(); show("v=work");
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pronghorn · Option A · Style 1 · Clarity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/base.css">
+<style>
+/*
+ * Style 1 · Clarity
+ * Calm, public-service light UI. Lots of air, soft elevation, one confident blue.
+ * The memorable element: the rail "journey" line that fills with each phase colour.
+ */
+:root {
+  color-scheme: light;
+  --bg: #F3F5F8; --surface: #FFFFFF; --surface-2: #F6F8FB; --ink: #16213A; --muted: #56627A; --line: #E1E6EE; --line-2: #C8D0DC;
+  --primary: #1C5BC0; --primary-soft: #E7EEFB; --focus: #1C5BC0;
+  --ok: #257A43; --ok-soft: #E4F3E9; --warn: #A95A07; --warn-soft: #FDF1E2; --bad: #B8341F; --bad-soft: #FBEAE6; --run: #C46A0C;
+  --c-define: #7048CC; --c-design: #0C8577; --c-build: #C46A0C; --c-ship: #257A43;
+  --ctx-bg: #16213A; --ctx-ink: #FFFFFF;
+  --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --fs: 15px; --h1: 32px; --h1-weight: 800;
+  --radius: 12px; --radius-s: 8px;
+  --row: 60px; --pad: 20px; --gap: 18px;
+  --shadow: 0 1px 2px rgba(22, 33, 58, .05), 0 1px 1px rgba(22, 33, 58, .03);
+  --card-border: 1px solid var(--line);
+}
+.gbar { box-shadow: 0 1px 0 var(--line); border-bottom: 0; }
+.logo { background: var(--ink); }
+.rail { padding: 16px 14px; }
+.journey::before { background: linear-gradient(var(--c-define), var(--c-design), var(--c-build), var(--c-ship)); opacity: .28; }
+.phase[aria-current="page"] { background: color-mix(in srgb, var(--pc) 9%, var(--surface)); }
+.phase[aria-current="page"] .ph-name { color: var(--pc); }
+.rail-item[aria-current="page"] { background: var(--primary-soft); color: var(--primary); }
+h1::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 12px; border-radius: 4px; background: var(--view-c); vertical-align: 5px; }
+.next { border-left-width: 0; box-shadow: inset 4px 0 0 var(--primary), var(--shadow); }
+.next.tone-ok { box-shadow: inset 4px 0 0 var(--ok), var(--shadow); } .next.tone-warn { box-shadow: inset 4px 0 0 var(--warn), var(--shadow); }
+.card-h { border-bottom-color: var(--surface-2); }
+.card-h h2 { font-size: 17px; }
+.btn.primary { box-shadow: 0 1px 2px rgba(28, 91, 192, .3); }
+.tool[aria-selected="true"] { background: var(--primary); color: #fff; }
+.chip[aria-selected="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.wi-main:hover { background: #F9FAFC; }
+.seg { width: 20px; height: 7px; }
+.ctxbar { background: linear-gradient(90deg, var(--ctx-bg), #22305A); }
+.ctxbar .type { background: rgba(255, 255, 255, .14); color: #fff; }
+</style>
+</head>
+<body data-style="clarity">
+<script src="shared/app.js"></script>
+</body>
+</html>
