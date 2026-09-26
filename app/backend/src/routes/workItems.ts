@@ -20,6 +20,7 @@ import { Errors } from "../middleware/errorHandler";
 import db from "../utils/database";
 import { broadcast } from "../websocket";
 import { authorizeProject, tokenFromQuery } from "../services/versions/access";
+import { ensureBranchForWorkItem } from "../services/versions/branchService";
 
 const WORK_ITEM_TYPES = ["bug", "enhancement", "feature"] as const;
 const WORK_ITEM_SEVERITIES = ["high", "medium", "low"] as const;
@@ -360,6 +361,24 @@ workItemByIdRouter.patch("/:id", async (req: Request, res: Response) => {
     broadcast(`versions-${existing.project_id}`, "item_moved", workItem);
   }
   broadcast(`work-item-${id}`, "work_item_updated", workItem);
+
+  // Scheduling a change into a version, or accepting it (status -> active),
+  // gets it a real Git branch (D-9, WP-BE2 T104). Best-effort: a project
+  // without a linked repo, or without a resolvable GitHub token, just
+  // leaves the change without a branch — never blocks this response.
+  const wasScheduled =
+    "versionId" in body && body.versionId && body.versionId !== existing.version_id;
+  const wasAccepted = "status" in body && body.status === "active" && existing.status !== "active";
+  if ((wasScheduled || wasAccepted) && !workItem.branch) {
+    try {
+      const branchResult = await ensureBranchForWorkItem(workItem.id);
+      if (branchResult.branch) {
+        workItem.branch = branchResult.branch;
+      }
+    } catch {
+      // Never block the update on branch creation failures.
+    }
+  }
 
   res.json(workItem);
 });
