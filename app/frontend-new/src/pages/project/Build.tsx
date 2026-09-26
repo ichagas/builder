@@ -880,7 +880,7 @@ export default function Build() {
                           onSave={handleEditorSave}
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full bg-[#1e1e1e] text-gray-400">
+                        <div className="flex items-center justify-center h-full bg-[#1e1e1e] text-muted-foreground">
                           <p>Select a file to view or edit</p>
                         </div>
                       )}
@@ -1158,11 +1158,11 @@ export default function Build() {
         <AlertDialogContent className="bg-[#252526] border-[#3e3e42]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-[#cccccc]">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-warn" />
               Large File Warning
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[#858585]">
-              This file is <span className="text-yellow-400 font-semibold">
+              This file is <span className="text-warn font-semibold">
                 {largeFileWarning ? (largeFileWarning.contentLength / (1024 * 1024)).toFixed(1) : 0} MB
               </span>. Loading large files may slow down your browser.
               <br /><br />
@@ -1175,7 +1175,7 @@ export default function Build() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmLoadLargeFile}
-              className="bg-yellow-600 text-white hover:bg-yellow-700"
+              className="bg-warn text-white hover:bg-warn"
             >
               Load Anyway
             </AlertDialogAction>

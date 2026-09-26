@@ -169,11 +169,11 @@ export function ProjectActivityHeatmap({ projectId, shareToken, isTokenSet = tru
               <span>Less</span>
               <div className="flex gap-1">
                 <div className="w-4 h-4 rounded-sm bg-muted" title="0" />
-                <div className="w-4 h-4 rounded-sm bg-emerald-100 dark:bg-emerald-950" title="Low" />
-                <div className="w-4 h-4 rounded-sm bg-emerald-200 dark:bg-emerald-900" title="Low-Medium" />
-                <div className="w-4 h-4 rounded-sm bg-emerald-300 dark:bg-emerald-800" title="Medium" />
-                <div className="w-4 h-4 rounded-sm bg-emerald-400 dark:bg-emerald-700" title="Medium-High" />
-                <div className="w-4 h-4 rounded-sm bg-emerald-500 dark:bg-emerald-600" title="High" />
+                <div className="w-4 h-4 rounded-sm bg-ok-soft dark:bg-ok" title="Low" />
+                <div className="w-4 h-4 rounded-sm bg-ok-soft dark:bg-ok" title="Low-Medium" />
+                <div className="w-4 h-4 rounded-sm bg-ok-soft dark:bg-ok" title="Medium" />
+                <div className="w-4 h-4 rounded-sm bg-ok" title="Medium-High" />
+                <div className="w-4 h-4 rounded-sm bg-ok" title="High" />
               </div>
               <span>More</span>
             </div>

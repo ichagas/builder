@@ -738,7 +738,7 @@ export default function Audit() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${isPipelineRunning ? "bg-green-500 animate-pulse" : getStatusColor(session.status)} ${isRunning && !isPipelineRunning ? "animate-pulse" : ""}`} />
+                        <div className={`w-3 h-3 rounded-full ${isPipelineRunning ? "bg-ok animate-pulse" : getStatusColor(session.status)} ${isRunning && !isPipelineRunning ? "animate-pulse" : ""}`} />
                         <span className="font-medium capitalize text-sm">
                           {isPipelineRunning ? pipelineProgress.phase.replace(/_/g, " ") : session.status.replace(/_/g, " ")}
                         </span>
@@ -786,7 +786,7 @@ export default function Audit() {
                       )}
                       
                       {session.consensus_reached && (
-                        <Badge variant="default" className="bg-green-500 text-xs">
+                        <Badge variant="default" className="bg-ok text-xs">
                           Consensus
                         </Badge>
                       )}
@@ -801,7 +801,7 @@ export default function Audit() {
 
             {/* Step Mode Toggle & Paused State */}
             {(isPipelineRunning || pausedAfterStep) && (
-              <Card className={`mb-6 ${pausedAfterStep ? "border-amber-500" : "border-border"}`}>
+              <Card className={`mb-6 ${pausedAfterStep ? "border-warn" : "border-border"}`}>
                 <CardContent className="py-3">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-4">
@@ -819,13 +819,13 @@ export default function Audit() {
                         </label>
                       </div>
                       {pausedAfterStep && (
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500">
+                        <Badge variant="outline" className="bg-warn/10 text-warn border-warn">
                           Paused after: {pausedAfterStep}
                         </Badge>
                       )}
                     </div>
                     {pausedAfterStep && (
-                      <Button onClick={continueToNextStep} size="sm" className="bg-amber-600 hover:bg-amber-700">
+                      <Button onClick={continueToNextStep} size="sm" className="bg-warn hover:bg-warn">
                         <PlayCircle className="h-4 w-4 mr-2" />
                         Continue to Next Step
                       </Button>
@@ -842,11 +842,11 @@ export default function Audit() {
 
             {/* Pipeline Complete - Save Results */}
             {!isPipelineRunning && pipelineResults && pipelineProgress.phase === "completed" && (
-              <Card className="mb-6 border-green-500">
+              <Card className="mb-6 border-ok">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                      <p className="font-medium text-green-600">Pipeline Complete</p>
+                      <p className="font-medium text-ok">Pipeline Complete</p>
                       <p className="text-sm text-muted-foreground">
                         {pipelineResults.nodes.length} nodes, {pipelineResults.edges.length} edges, {pipelineResults.tesseractCells.length} tesseract cells
                       </p>
@@ -855,7 +855,7 @@ export default function Audit() {
                       <Button 
                         onClick={handleSaveResults} 
                         disabled={isSaving}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-ok hover:bg-ok"
                       >
                         {isSaving ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -879,11 +879,11 @@ export default function Audit() {
 
             {/* Saved Session - Download option */}
             {!isPipelineRunning && !pipelineResults && session?.status === "completed" && (
-              <Card className="mb-6 border-blue-500/50">
+              <Card className="mb-6 border-primary/50">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                      <p className="font-medium text-blue-600">Audit Complete</p>
+                      <p className="font-medium text-primary">Audit Complete</p>
                       <p className="text-sm text-muted-foreground">
                         {graphNodes.length} nodes, {graphEdges.length} edges, {tesseractCells.length} tesseract cells
                       </p>

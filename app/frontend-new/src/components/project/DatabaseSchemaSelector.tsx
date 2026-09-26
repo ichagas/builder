@@ -422,15 +422,15 @@ export function DatabaseSchemaSelector({
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "table": return <Table2 className="h-4 w-4 text-blue-500" />;
-      case "view": return <Eye className="h-4 w-4 text-purple-500" />;
-      case "function": return <FunctionSquare className="h-4 w-4 text-green-500" />;
-      case "trigger": return <Zap className="h-4 w-4 text-yellow-500" />;
-      case "index": return <Key className="h-4 w-4 text-orange-500" />;
-      case "sequence": return <Hash className="h-4 w-4 text-cyan-500" />;
-      case "type": return <List className="h-4 w-4 text-pink-500" />;
-      case "savedQuery": return <FileText className="h-4 w-4 text-emerald-500" />;
-      case "migration": return <History className="h-4 w-4 text-amber-500" />;
+      case "table": return <Table2 className="h-4 w-4 text-primary" />;
+      case "view": return <Eye className="h-4 w-4 text-define" />;
+      case "function": return <FunctionSquare className="h-4 w-4 text-ok" />;
+      case "trigger": return <Zap className="h-4 w-4 text-warn" />;
+      case "index": return <Key className="h-4 w-4 text-warn" />;
+      case "sequence": return <Hash className="h-4 w-4 text-design" />;
+      case "type": return <List className="h-4 w-4 text-bad" />;
+      case "savedQuery": return <FileText className="h-4 w-4 text-ok" />;
+      case "migration": return <History className="h-4 w-4 text-warn" />;
       default: return <Columns3 className="h-4 w-4 text-muted-foreground" />;
     }
   };
@@ -539,7 +539,7 @@ export function DatabaseSchemaSelector({
             onCheckedChange={() => toggleFolder(databaseId, "savedQuery", "savedQuery")}
             className="data-[state=indeterminate]:bg-primary/50"
           />
-          <FileText className="h-4 w-4 text-emerald-500" />
+          <FileText className="h-4 w-4 text-ok" />
           <span className="text-sm font-medium">Saved Queries</span>
           <span className="text-xs text-muted-foreground ml-auto opacity-0 group-hover:opacity-100">
             {savedQueries.length}
@@ -564,7 +564,7 @@ export function DatabaseSchemaSelector({
                     checked={isSelected}
                     onCheckedChange={() => toggleItem(itemKey)}
                   />
-                  <FileText className="h-4 w-4 text-emerald-500" />
+                  <FileText className="h-4 w-4 text-ok" />
                   <span className="text-sm truncate">{query.name}</span>
                 </div>
               );
@@ -604,7 +604,7 @@ export function DatabaseSchemaSelector({
             onCheckedChange={() => toggleFolder(databaseId, "migration", "migration")}
             className="data-[state=indeterminate]:bg-primary/50"
           />
-          <History className="h-4 w-4 text-amber-500" />
+          <History className="h-4 w-4 text-warn" />
           <span className="text-sm font-medium">Migrations</span>
           <span className="text-xs text-muted-foreground ml-auto opacity-0 group-hover:opacity-100">
             {migrations.length}
@@ -629,7 +629,7 @@ export function DatabaseSchemaSelector({
                     checked={isSelected}
                     onCheckedChange={() => toggleItem(itemKey)}
                   />
-                  <History className="h-4 w-4 text-amber-500" />
+                  <History className="h-4 w-4 text-warn" />
                   <span className="text-sm truncate">{migration.name || `${migration.sequence_number}_${migration.statement_type}`}</span>
                 </div>
               );
@@ -724,26 +724,26 @@ export function DatabaseSchemaSelector({
           />
           <Database className={cn(
             "h-4 w-4",
-            isExternal ? "text-purple-500" : "text-green-500"
+            isExternal ? "text-define" : "text-ok"
           )} />
           <span className="text-sm font-medium truncate">{database.name}</span>
           {database.status === "available" && (
-            <span className="text-[10px] text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-ok bg-ok-soft dark:bg-ok/30 px-1.5 py-0.5 rounded">
               Available
             </span>
           )}
           {database.status === "failed" && (
-            <span className="text-[10px] text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-bad bg-bad-soft dark:bg-bad/30 px-1.5 py-0.5 rounded">
               Failed
             </span>
           )}
           {database.status === "deleted" && (
-            <span className="text-[10px] text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-muted-foreground bg-surface-2 dark:bg-surface-2/30 px-1.5 py-0.5 rounded">
               Deleted
             </span>
           )}
           {isExternal && (
-            <span className="text-[10px] text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-define bg-define dark:bg-define/30 px-1.5 py-0.5 rounded">
               External
             </span>
           )}
