@@ -98,8 +98,48 @@ test("gray/slate neutrals map by prefix + shade range", () => {
 });
 
 test("out-of-range neutrals and unmapped families are reported unmapped", () => {
-  assert.equal(classifyClassToken("bg-gray-800").kind, "unmapped");
-  assert.equal(classifyClassToken("text-pink-500").kind, "unmapped");
+  // No neutral rule reaches ring/shadow/etc-style prefixes at all, and no
+  // family/neutral covers the "grey" spelling or a color this codemod does
+  // not know about.
+  assert.equal(classifyClassToken("shadow-gray-800").kind, "unmapped");
+  assert.equal(classifyClassToken("text-grey-500").kind, "unmapped");
+});
+
+// T031 (WP-F2b) hand-fix pass: broadened shade ranges (every family/neutral
+// rule now reaches the full 50-950 scale) and three new color groups
+// (lime/rose/pink folded into ok/bad, cyan/sky/teal -> design, fuchsia ->
+// the purple/violet ambiguous pair, stone -> the neutral rules) that the
+// T030 dry run reported as "no rule for ...".
+test("T031: broadened shade ranges map former out-of-range neutrals/families", () => {
+  assert.equal((classifyClassToken("bg-gray-800") as any).output, "bg-surface-2");
+  assert.equal((classifyClassToken("border-slate-500") as any).output, "border-line-2");
+  assert.equal((classifyClassToken("text-slate-100") as any).output, "text-muted-foreground");
+});
+
+test("T031: lime -> ok, rose/pink -> bad (extra hue neighbors)", () => {
+  assert.equal((classifyClassToken("bg-lime-500") as any).output, "bg-ok");
+  assert.equal((classifyClassToken("text-rose-700") as any).output, "text-bad");
+  assert.equal((classifyClassToken("text-pink-500") as any).output, "text-bad");
+});
+
+test("T031: cyan/sky/teal -> design (nearest hue, no soft variant)", () => {
+  assert.equal((classifyClassToken("text-cyan-700") as any).output, "text-design");
+  assert.equal((classifyClassToken("border-sky-500") as any).output, "border-design");
+  assert.equal((classifyClassToken("bg-teal-500") as any).output, "bg-design");
+  // Even a "soft" shade still resolves to the one solid `design` utility;
+  // an existing opacity modifier does the tinting instead.
+  assert.equal((classifyClassToken("bg-cyan-100") as any).output, "bg-design");
+});
+
+test("T031: fuchsia joins the purple/violet ambiguous pair", () => {
+  const r = classifyClassToken("bg-fuchsia-500") as any;
+  assert.equal(r.kind, "ambiguous");
+  assert.equal(r.output, "bg-define");
+});
+
+test("T031: stone folds into the neutral rules like gray/slate", () => {
+  assert.equal((classifyClassToken("text-stone-700") as any).output, "text-foreground");
+  assert.equal((classifyClassToken("bg-stone-500") as any).output, "bg-surface-2");
 });
 
 test("non-palette keywords (white/black/transparent/current) are left untouched", () => {

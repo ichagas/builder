@@ -130,44 +130,77 @@ type Family = {
   softPrefixes?: string[];
 };
 
+// T031 fix round 1 (hand-fix pass): the original T030 shade lists only
+// covered the "typical" shades (500-700 solid, 50/100 soft) that a status
+// badge is usually built from. The dry run's unmapped list showed the same
+// families used at *other* shades too — e.g. `text-green-400` (a dark-mode
+// foreground), `bg-blue-900` (a dark-mode translucent panel, always paired
+// with an opacity modifier like `/20`), `bg-red-300` (a heatmap cell). These
+// are the same semantic color at a different lightness, not a different
+// color, so the nearest token is still the family's solid/soft token — a
+// lighter shade (<=300) reads as a tint (soft), everything else reads as the
+// saturated color (solid). `lime` and `rose`/`pink` are added to the
+// ok/bad families for the same reason (Tailwind's own "green-ish"/"red-ish"
+// neighbors), matching CanvasNode.tsx's node-type legend and
+// ZoneNode.tsx's zone-kind colors, which otherwise had no rule at all.
+const SOFT_SHADE_RANGE = [50, 100, 150, 200, 300];
+const SOLID_SHADE_RANGE = [400, 500, 600, 700, 800, 900, 950];
+
 const FAMILIES: Family[] = [
   {
     name: "ok",
-    colors: ["green", "emerald"],
-    solidShades: [500, 600, 700],
+    colors: ["green", "emerald", "lime"],
+    solidShades: SOLID_SHADE_RANGE,
     solidToken: "ok",
-    softShades: [50, 100],
+    softShades: SOFT_SHADE_RANGE,
     softToken: "ok-soft",
   },
   {
     name: "bad",
-    colors: ["red"],
-    solidShades: [500, 600, 700],
+    colors: ["red", "rose", "pink"],
+    solidShades: SOLID_SHADE_RANGE,
     solidToken: "bad",
-    softShades: [50, 100],
+    softShades: SOFT_SHADE_RANGE,
     softToken: "bad-soft",
   },
   {
     name: "warn",
     colors: ["yellow", "amber", "orange"],
-    solidShades: [500, 600, 700],
+    solidShades: SOLID_SHADE_RANGE,
     solidToken: "warn",
-    softShades: [50, 100],
+    softShades: SOFT_SHADE_RANGE,
     softToken: "warn-soft",
   },
   {
     name: "primary",
     colors: ["blue", "indigo"],
-    solidShades: [500, 600, 700],
+    solidShades: SOLID_SHADE_RANGE,
     solidToken: "primary",
-    softShades: [50, 100],
+    softShades: SOFT_SHADE_RANGE,
     softToken: "primary-soft",
+  },
+  // `cyan`/`sky`/`teal` have no dedicated status meaning, but their hue is
+  // closest to the `design` phase token (`--c-design: #0891B2`, itself a
+  // cyan/teal) — nearer than any status color, and a much better match than
+  // forcing them into the neutral scale. There is no `design-soft` token in
+  // the contract, so every shade maps to the one solid `design` utility;
+  // existing opacity modifiers (`/10`, `/60`, ...) already do the tinting
+  // that a soft variant would otherwise provide.
+  {
+    name: "design",
+    colors: ["cyan", "sky", "teal"],
+    solidShades: [...SOFT_SHADE_RANGE, ...SOLID_SHADE_RANGE],
+    solidToken: "design",
   },
 ];
 
-// purple/violet: ambiguous between phase (`define`) and change-type (`feat`).
-const PURPLE_VIOLET_COLORS = ["purple", "violet"];
-const PURPLE_VIOLET_SHADES = [500, 600, 700];
+// purple/violet/fuchsia: ambiguous between phase (`define`) and change-type
+// (`feat`). `fuchsia` is grouped in here too (T031 hand-fix): it is
+// Tailwind's other purple/magenta neighbor and every occurrence found by the
+// dry run (CanvasNode.tsx's SCHEMA node type) is the same "phase-ish"
+// categorical use as the plain purple/violet cases, not a change-type badge.
+const PURPLE_VIOLET_COLORS = ["purple", "violet", "fuchsia"];
+const PURPLE_VIOLET_SHADES = [50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 const PURPLE_VIOLET_DEFAULT_TOKEN = "define";
 const PURPLE_VIOLET_FEAT_TOKEN = "feat";
 // Heuristic: if "feat"/"feature" appears in the same class blob's nearby
@@ -175,22 +208,39 @@ const PURPLE_VIOLET_FEAT_TOKEN = "feat";
 // `feature:` or a string like "Feature"), prefer the change-type token.
 const FEATURE_CONTEXT_RE = /feat(?:ure)?/i;
 
-// gray/slate: neutrals -> surface/text tokens, prefix-specific.
+// gray/slate/stone: neutrals -> surface/text tokens, prefix-specific.
+// T031 hand-fix: the original rule set only covered the shade *ranges* a
+// typical shadcn component uses (mid-tones for text, light tints for
+// surfaces). The dry run's unmapped list showed the same neutral uses at the
+// scale's extremes too (`bg-gray-900` dark-mode panels, `border-slate-500`
+// stronger dividers, `text-slate-100` dark-mode foreground) — same role,
+// different lightness, so every shade now resolves to one of the four
+// neutral roles instead of only the "common" middle band. Borders now split
+// on shade: light borders (<=300, the original range) still get the
+// standard hairline `line`, anything stronger gets the darker `line-2`
+// token (already defined for this purpose in tokens.css). `stone` (a warm
+// gray Tailwind ships as a separate scale) is folded into the same neutral
+// rules as gray/slate — it has no separate design-system meaning.
 type NeutralRule = { prefixes: string[]; shades: number[]; token: string };
 const NEUTRAL_RULES: NeutralRule[] = [
   // `placeholder` is included alongside `text`: placeholder text is the
   // same muted-text concern the contract's text rule targets, just scoped
   // to the `::placeholder` pseudo-element instead of the element itself.
-  { prefixes: ["text", "placeholder"], shades: [400, 500, 600], token: "muted-foreground" },
-  { prefixes: ["text"], shades: [700, 800, 900], token: "foreground" },
-  { prefixes: ["bg"], shades: [50, 100, 200], token: "surface-2" },
+  { prefixes: ["text", "placeholder"], shades: [50, 100, 150, 200, 300, 400, 500, 600], token: "muted-foreground" },
+  { prefixes: ["text"], shades: [700, 800, 900, 950], token: "foreground" },
+  { prefixes: ["bg"], shades: [50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 950], token: "surface-2" },
   {
     prefixes: ["border", "border-t", "border-b", "border-l", "border-r", "border-x", "border-y"],
-    shades: [200, 300],
+    shades: [50, 100, 150, 200, 300],
     token: "line",
   },
+  {
+    prefixes: ["border", "border-t", "border-b", "border-l", "border-r", "border-x", "border-y"],
+    shades: [400, 500, 600, 700, 800, 900, 950],
+    token: "line-2",
+  },
 ];
-const NEUTRAL_COLORS = ["gray", "slate"];
+const NEUTRAL_COLORS = ["gray", "slate", "stone"];
 
 // ---------------------------------------------------------------------------
 // Hex -> token nearest-match table (contracts/design-system.md §1)
