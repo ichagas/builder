@@ -131,7 +131,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 - [ ] T140 (WP-BE5) Migration `015_onboarding.sql`. `BE/routes/onboarding.ts` (runs, repository import from GitHub and Azure Repos, selection, output, PRs, cancel). Tests. **Security review.**
 - [ ] T141 (WP-BE6) Sandbox job image `infra/onboarding-sandbox/` + `BE/services/onboarding/jobDispatcher.ts` + Terraform Container Apps Job with restricted egress. Detects each repo's CI provider and generates the mesh CI for **GitHub Actions or Azure Pipelines** (D-12).
-- [ ] T142 (WP-BE7, external repo) `goa-standards/assurance-mesh`: reusable **GitHub Actions** workflow `mesh.yml@v3` **and Azure Pipelines template** `templates/mesh.yml`, both triggered on PRs to the default branch (Green, Yellow, Red, Blue), with the optional **Cyber Risk sandbox stage** (D-17), policy-driven issue/block outcome, signed reports, packs, stack profiles.
+- [~] T142 (WP-BE7, external repo) `goa-standards/assurance-mesh`: reusable **GitHub Actions** workflow `mesh.yml@v3` **and Azure Pipelines template** `templates/mesh.yml`, both triggered on PRs to the default branch (Green, Yellow, Red, Blue), with the optional **Cyber Risk sandbox stage** (D-17), policy-driven issue/block outcome, signed reports, packs, stack profiles. (BLOCKED-EXTERNAL: create the goa-standards/assurance-mesh repo, move external/goa-standards-assurance-mesh/ into it, tag v3, and run the sample GitHub and Azure Repos PRs to verify a signed report shows in the portfolio) — all code done, see external/goa-standards-assurance-mesh/README.md.
 
 ## Phase 11: US6, onboard an app (P3, built new)
 

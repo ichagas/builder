@@ -1,0 +1,23 @@
+profile: dotnet
+label: ".NET 8"
+setup:
+  - uses: actions/setup-dotnet
+    with:
+      dotnet-version: "8.0.x"
+build:
+  default_command: "dotnet build --configuration Release"
+test:
+  default_command: "dotnet test --configuration Release --logger trx --collect:'XPlat Code Coverage'"
+  coverage_format: cobertura
+green:
+  dependency_scan: "dotnet list package --vulnerable --include-transitive"
+  license_scan: "dotnet-project-licenses -i ."
+  sbom: "dotnet CycloneDX -j -o sbom/"
+  lint: "dotnet format --verify-no-changes"
+yellow:
+  copy_sources: ["**/*.resx", "**/wwwroot/**/*.html", "**/Views/**/*.cshtml"]
+red:
+  recon_tooling: "nmap, nikto (against test_environment_url only)"
+blue:
+  sast: "dotnet build with Roslyn analyzers + Security Code Scan"
+  secret_scan: "gitleaks"

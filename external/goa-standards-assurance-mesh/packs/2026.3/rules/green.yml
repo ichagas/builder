@@ -1,0 +1,18 @@
+# Green: deterministic code quality and hygiene.
+agent: green
+checks:
+  - id: dependency-vulnerabilities
+    description: "Fail on known-vulnerable dependencies at or above the configured severity."
+    severity_threshold: high
+  - id: license-policy
+    description: "Flag dependencies under a disallowed license."
+    disallowed_licenses: [GPL-3.0, AGPL-3.0]
+  - id: no-hardcoded-secrets
+    description: "Scan source for hardcoded credentials, keys and tokens."
+  - id: dangerous-patterns
+    description: "Flag known-dangerous patterns per stack profile (see profiles/*.yml lint config)."
+  - id: test-coverage
+    description: "Fail when coverage on changed files drops below the threshold."
+    min_coverage_percent: 70
+  - id: contract-tests
+    description: "Testing agent v2: require contract tests for new/changed public APIs."

@@ -1,0 +1,19 @@
+# Blue: runs last. Produces a threat model, checks OWASP ASVS L2 and the
+# Alberta cybersecurity rules, and writes a ranked summary.
+agent: blue
+checks:
+  - id: threat-model
+    description: "Generate/update a threat model from the repository's architecture and Red's findings."
+  - id: asvs-l2
+    description: "Evaluate the 285 OWASP ASVS L2 requirements."
+    total_requirements: 285
+    report_field: asvs_passed
+  - id: alberta-rules-2026
+    description: "Evaluate the 62 Alberta cybersecurity rules (2026 update, 4 new)."
+    total_rules: 62
+    report_field: alberta_passed
+  - id: ranked-summary
+    description: "Write a ranked summary of findings (severity x exploitability) into the evidence report."
+  - id: cyber-risk-sandbox-verification
+    description: "When the optional Cyber Risk sandbox stage is enabled (D-17), verify ASVS L2 and Alberta rules against the ephemeral sandbox build."
+    enabled_when: cyber_risk_sandbox

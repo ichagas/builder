@@ -1,0 +1,16 @@
+# Red: reconnaissance of the Test environment, then proposed attack paths.
+# Never scans production. Without a Test URL, Red is recorded as an exception
+# (mesh_exceptions) rather than failing the job.
+agent: red
+checks:
+  - id: recon
+    description: "Passive/active recon of the Test environment: open ports, exposed endpoints, headers, TLS config."
+    target: test_environment_url
+    requires_target: true
+    on_missing_target: exception
+  - id: attack-paths
+    description: "Propose and attempt non-destructive attack paths derived from recon findings."
+    depends_on: recon
+  - id: cyber-risk-sandbox-recon
+    description: "When the optional Cyber Risk sandbox stage is enabled (D-17), recon and attack paths run against the ephemeral sandbox instead of/in addition to Test."
+    enabled_when: cyber_risk_sandbox

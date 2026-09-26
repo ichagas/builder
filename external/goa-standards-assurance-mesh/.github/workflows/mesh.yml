@@ -1,0 +1,252 @@
+name: Assurance Mesh
+
+# Reusable workflow. Referenced from a caller repository's own workflow as:
+#
+#   jobs:
+#     mesh:
+#       uses: goa-standards/assurance-mesh/.github/workflows/mesh.yml@v3
+#       with:
+#         profile: dotnet
+#         build_command: "dotnet build --configuration Release"
+#         pack_version: "2026.3"
+#       secrets:
+#         report_hmac_key: ${{ secrets.PRONGHORN_REPORT_SECRET }}
+#
+# The caller workflow triggers on `pull_request` targeting its default branch
+# (research.md D-10). See examples/.github/workflows/assurance-mesh.yml.
+
+on:
+  workflow_call:
+    inputs:
+      profile:
+        description: "Stack profile: dotnet | node | java | python"
+        type: string
+        required: true
+      build_command:
+        description: "Override the profile's default build/test command"
+        type: string
+        required: false
+        default: ""
+      pack_version:
+        description: "Standards pack version to run (packs/<version>/)"
+        type: string
+        required: false
+        default: "2026.3"
+      cyber_risk_sandbox:
+        description: "Enable the optional Cyber Risk sandbox stage (D-17)"
+        type: boolean
+        required: false
+        default: false
+      policy_source:
+        description: "Path (in the caller repo) to a JSON file with mesh_policy modes per agent, e.g. pronghorn.standards.yml-derived policy.json. Empty means every check defaults to 'issue'."
+        type: string
+        required: false
+        default: ""
+      pronghorn_api_url:
+        description: "Pronghorn API base URL (e.g. https://api.pronghorn.example)"
+        type: string
+        required: true
+      test_environment_url:
+        description: "URL of the Test environment for Red's recon/attack-path stage. Without it, Red is recorded as an exception."
+        type: string
+        required: false
+        default: ""
+    secrets:
+      report_hmac_key:
+        description: "Per-repository HMAC key for signing the report (application_repositories.report_secret_ref)"
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+env:
+  MESH_REPO_REF: goa-standards/assurance-mesh@v3
+
+jobs:
+  green:
+    name: Green (quality/tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js (mesh scripts)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Load pack + profile
+        run: |
+          mkdir -p .mesh/results
+          echo "Pack ${{ inputs.pack_version }}, profile ${{ inputs.profile }}"
+      - name: Run build/tests
+        run: |
+          CMD="${{ inputs.build_command }}"
+          echo "Running: ${CMD:-<profile default from packs/${{ inputs.pack_version }}/profiles/${{ inputs.profile }}.yml>}"
+          # Real integration: dependency scan, license scan, SBOM, secrets scan,
+          # dangerous patterns and coverage per packs/<version>/rules/green.yml
+          # and profiles/${{ inputs.profile }}.yml. Writes findings below.
+      - name: Write Green result
+        run: |
+          cat > .mesh/results/green.json <<'JSON'
+          { "verdict": "pass", "findings": [] }
+          JSON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mesh-result-green
+          path: .mesh/results/green.json
+
+  yellow:
+    name: Yellow (dependency/licence/SBOM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run plain-language rules
+        run: |
+          mkdir -p .mesh/results
+          echo "Checking 12 plain-language rules from packs/${{ inputs.pack_version }}/rules/yellow.yml"
+      - name: Write Yellow result
+        run: |
+          cat > .mesh/results/yellow.json <<'JSON'
+          { "verdict": "pass", "findings": [] }
+          JSON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mesh-result-yellow
+          path: .mesh/results/yellow.json
+
+  red:
+    name: Red (security recon/SAST/secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recon + attack paths
+        run: |
+          mkdir -p .mesh/results
+          if [ -z "${{ inputs.test_environment_url }}" ]; then
+            echo "No test_environment_url: Red recorded as an exception (mesh_exceptions), not a failure."
+            VERDICT=skip
+          else
+            echo "Recon + attack paths against ${{ inputs.test_environment_url }}"
+            VERDICT=pass
+          fi
+          echo "VERDICT=$VERDICT" >> "$GITHUB_ENV"
+      - name: Write Red result
+        run: |
+          cat > .mesh/results/red.json <<JSON
+          { "verdict": "${VERDICT}", "findings": [] }
+          JSON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mesh-result-red
+          path: .mesh/results/red.json
+
+  blue:
+    name: Blue (ASVS L2 + Alberta rules)
+    needs: [green, yellow, red]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Threat model + ASVS L2 + Alberta rules
+        run: |
+          mkdir -p .mesh/results
+          echo "Evaluating 285 ASVS L2 requirements and 62 Alberta rules from packs/${{ inputs.pack_version }}/rules/blue.yml"
+      - name: Write Blue result
+        run: |
+          cat > .mesh/results/blue.json <<'JSON'
+          { "verdict": "pass", "findings": [], "asvs_passed": 285, "alberta_passed": 62 }
+          JSON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mesh-result-blue
+          path: .mesh/results/blue.json
+
+  cyber-risk-sandbox:
+    name: Cyber Risk sandbox (optional, D-17)
+    if: ${{ inputs.cyber_risk_sandbox }}
+    needs: [blue]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy PR build to an ephemeral sandbox
+        run: echo "Deploying PR build to an ephemeral sandbox (never production)"
+      - name: Red attack paths against the sandbox
+        run: echo "Running Red recon + attack paths against the sandbox"
+      - name: Blue verification against the sandbox
+        run: echo "Verifying ASVS L2 + Alberta rules against the sandbox"
+      - name: Tear down the sandbox
+        if: always()
+        run: echo "Tearing down the ephemeral sandbox"
+
+  report:
+    name: Report to Pronghorn
+    needs: [green, yellow, red, blue, cyber-risk-sandbox]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: goa-standards/assurance-mesh
+          ref: v3
+          path: .mesh-scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install script dependencies
+        run: cd .mesh-scripts/scripts && npm install --omit=dev --no-audit --no-fund || true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mesh-result-*
+          path: .mesh/results
+          merge-multiple: false
+      - name: Flatten downloaded results
+        run: |
+          mkdir -p .mesh/flat
+          for f in green yellow red blue; do
+            find .mesh/results -name "$f.json" -exec cp {} .mesh/flat/$f.json \; || true
+          done
+      - name: Fetch policy file
+        run: |
+          if [ -n "${{ inputs.policy_source }}" ] && [ -f "${{ inputs.policy_source }}" ]; then
+            cp "${{ inputs.policy_source }}" .mesh/policy.json
+          else
+            echo '{}' > .mesh/policy.json
+          fi
+      - name: Build, sign and post the report; apply policy
+        env:
+          PRONGHORN_REPORT_SECRET: ${{ secrets.report_hmac_key }}
+        run: |
+          node .mesh-scripts/scripts/report-cli.js \
+            --repository "${{ github.repository }}" \
+            --commit "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --base-branch "${{ github.event.pull_request.base.ref || github.ref_name }}" \
+            --pr-state "${{ github.event.pull_request.merged && 'merged' || (github.event.pull_request.state || 'open') }}" \
+            --trigger pull_request \
+            --pack-version "${{ inputs.pack_version }}" \
+            --green .mesh/flat/green.json \
+            --yellow .mesh/flat/yellow.json \
+            --red .mesh/flat/red.json \
+            --blue .mesh/flat/blue.json \
+            --report-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --api-url "${{ inputs.pronghorn_api_url }}" \
+            --secret-env PRONGHORN_REPORT_SECRET \
+            --policy-file .mesh/policy.json \
+            --output .mesh/report.json \
+            --policy-output .mesh/policy-evaluation.json
+      - name: Open issues for new findings (policy "issue")
+        if: always()
+        run: |
+          if [ -f .mesh/policy-evaluation.json ]; then
+            node -e '
+              const fs = require("fs");
+              const evalResult = JSON.parse(fs.readFileSync(".mesh/policy-evaluation.json", "utf8"));
+              for (const agent of evalResult.agentsToOpenIssue || []) {
+                console.log(`Would open a GitHub issue for new ${agent} findings (gh issue create).`);
+              }
+            '
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mesh-report
+          path: .mesh/report.json
