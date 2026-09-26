@@ -67,6 +67,13 @@ Every repository also gets **`pronghorn.standards.yml`**. It pins the Standards 
 
 ## Decision (2026-09-25): Option B, organized as Teams → Applications → Repositories
 
+> **Updated 2026-09-25 (answers recorded in `specs/007-frontend-new/research.md` D-8…D-16).** These take precedence over details below and in the prototype:
+> - **The mesh runs on pull requests to the default branch** (main, master, develop…), not only after merge. A merged PR's evidence is its last run.
+> - **Onboarding generates the CI for each repository's platform:** GitHub Actions or Azure Pipelines.
+> - **Roles follow GitHub:** team owners and members. Organization admins see **All teams**. There is no separate assurance-lead role.
+> - **New findings:** notify and open an issue by default. Blocking for some checks is TBD.
+> - **Change branches** (Builder, Approach 3) are real Git branches from the first commit.
+
 **Option B (Assurance console) is the chosen direction.** A user belongs to one or more **teams** and sees their team's **portfolio**: every **application**, and inside it every **repository**, measured against the Standards pack and the four mesh agents. **Onboard an app** is the way in.
 
 ### How the refined prototype works (`onboard-b-console.html`)
