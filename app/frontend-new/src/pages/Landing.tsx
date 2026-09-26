@@ -133,44 +133,44 @@ export default function Landing() {
   
   const canvasAgents = [{
     name: "Architect",
-    color: "bg-blue-500",
+    color: "bg-primary",
     description: "System architecture"
   }, {
     name: "Developer",
-    color: "bg-orange-500",
+    color: "bg-warn",
     description: "Components & APIs"
   }, {
     name: "DBA",
-    color: "bg-indigo-500",
+    color: "bg-primary",
     description: "Database schemas"
   }, {
     name: "Cloud Ops",
-    color: "bg-teal-500",
+    color: "bg-design",
     description: "Infrastructure"
   }, {
     name: "QA",
-    color: "bg-green-500",
+    color: "bg-ok",
     description: "Testing & quality"
   }, {
     name: "UAT",
-    color: "bg-yellow-500",
+    color: "bg-warn",
     description: "User validation"
   }, {
     name: "Compliance",
-    color: "bg-purple-500",
+    color: "bg-define",
     description: "Standards adherence"
   }, {
     name: "Cyber Security",
-    color: "bg-blue-500",
+    color: "bg-primary",
     description: "Security analysis",
     featured: true
   }, {
     name: "Integrator",
-    color: "bg-pink-500",
+    color: "bg-bad",
     description: "System connections"
   }, {
     name: "Simplifier",
-    color: "bg-gray-500",
+    color: "bg-surface-2",
     description: "Reduces complexity"
   }];
   
@@ -266,7 +266,7 @@ export default function Landing() {
             <path d="M0,50 Q25,25 50,50 T100,50" fill="none" stroke="currentColor" strokeWidth="0.5" />
             <path d="M0,60 Q25,35 50,60 T100,60" fill="none" stroke="currentColor" strokeWidth="0.5" />
           </svg>
-          <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-blue-100/30 dark:from-blue-900/20 to-transparent blur-3xl" />
+          <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary-soft/30 dark:from-primary/20 to-transparent blur-3xl" />
         </div>
 
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-16 items-center relative z-10">
@@ -280,7 +280,7 @@ export default function Landing() {
               Build{" "}
               <span className="public-brand relative inline-block">
                 Context-Driven
-                <svg className="absolute w-full h-3 -bottom-1 left-0 text-blue-200 dark:text-blue-800 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary-soft dark:text-primary -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0,5 Q50,10 100,5" stroke="currentColor" strokeWidth="8" fill="none" />
                 </svg>
               </span>{" "}
@@ -302,7 +302,7 @@ export default function Landing() {
           <div className="relative h-[500px] w-full hidden lg:flex items-center justify-center">
             <div className="relative w-full max-w-md aspect-square">
               {/* Glow background */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-100/50 dark:bg-blue-900/30 rounded-full blur-3xl" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-primary-soft/50 dark:bg-primary/30 rounded-full blur-3xl" />
 
               {/* Floating shield icon */}
               <div className="absolute top-0 right-10 z-20 animate-float">
@@ -313,40 +313,40 @@ export default function Landing() {
 
               {/* Floating git branch icon */}
               <div className="absolute bottom-20 left-0 z-20 animate-float-delayed">
-                <div className="bg-emerald-500 p-4 rounded-2xl shadow-xl transform -rotate-12">
+                <div className="bg-ok p-4 rounded-2xl shadow-xl transform -rotate-12">
                   <GitBranch className="w-12 h-12 text-white" />
                 </div>
               </div>
 
               {/* Floating check icon */}
               <div className="absolute top-1/2 right-0 z-20 animate-float">
-                <div className="bg-amber-500 p-3 rounded-full shadow-xl">
+                <div className="bg-warn p-3 rounded-full shadow-xl">
                   <CheckCircle className="w-8 h-8 text-white" />
                 </div>
               </div>
 
               {/* Main card */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 public-card rounded-2xl shadow-2xl border-blue-100 dark:border-blue-900/50 overflow-hidden transform hover:scale-105 transition-transform duration-500">
-                <div className="w-full bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-[var(--public-card)] p-6 flex flex-col gap-4">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 public-card rounded-2xl shadow-2xl border-primary-soft dark:border-primary/50 overflow-hidden transform hover:scale-105 transition-transform duration-500">
+                <div className="w-full bg-gradient-to-br from-primary-soft dark:from-primary/20 to-[var(--public-card)] p-6 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-400" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                    <div className="w-3 h-3 rounded-full bg-green-400" />
+                    <div className="w-3 h-3 rounded-full bg-bad" />
+                    <div className="w-3 h-3 rounded-full bg-warn" />
+                    <div className="w-3 h-3 rounded-full bg-ok" />
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 p-3 public-chip-emerald rounded-lg">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <div className="w-2 h-2 rounded-full bg-ok" />
                       <span className="text-sm font-medium">Requirements validated</span>
                     </div>
                     <div className="flex items-center gap-3 p-3 public-chip-blue rounded-lg">
-                      <div className="w-2 h-2 rounded-full bg-blue-400" />
+                      <div className="w-2 h-2 rounded-full bg-primary" />
                       <span className="text-sm font-medium">Architecture designed</span>
                     </div>
                     <div className="flex items-center gap-3 p-3 public-chip-violet rounded-lg">
-                      <div className="w-2 h-2 rounded-full bg-violet-400" />
+                      <div className="w-2 h-2 rounded-full bg-define" />
                       <span className="text-sm font-medium">Standards linked</span>
                     </div>
-                    <div className="flex items-center gap-3 p-3 public-chip-rose rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div className="flex items-center gap-3 p-3 public-chip-rose rounded-lg border border-primary-soft dark:border-primary">
                       <div className="w-2 h-2 rounded-full bg-[hsl(210,100%,55%)] animate-pulse" />
                       <span className="text-sm font-medium">AI agents building...</span>
                     </div>
@@ -415,9 +415,9 @@ export default function Landing() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
             {workflowSteps.map((step, index) => {
               const phaseColors = {
-                plan: "border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20",
-                design: "border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20",
-                ship: "border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20"
+                plan: "border-primary-soft dark:border-primary hover:border-primary dark:hover:border-primary hover:bg-primary-soft/50 dark:hover:bg-primary/20",
+                design: "border-primary-soft dark:border-primary hover:border-primary dark:hover:border-primary hover:bg-primary-soft/50 dark:hover:bg-primary/20",
+                ship: "border-ok-soft dark:border-ok hover:border-ok dark:hover:border-ok hover:bg-ok-soft/50 dark:hover:bg-ok/20"
               };
               const iconColors = {
                 plan: "public-chip-blue",
@@ -484,7 +484,7 @@ export default function Landing() {
                         <ul className="space-y-2">
                           {selectedStep.aiDetails.capabilities.map((capability, idx) => (
                             <li key={idx} className="flex items-start gap-2 text-sm">
-                              <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                              <Check className="w-4 h-4 text-ok mt-0.5 flex-shrink-0" />
                               <span>{capability}</span>
                             </li>
                           ))}
@@ -531,7 +531,7 @@ export default function Landing() {
             {/* Canvas Orchestration Agents */}
             <Card className="public-card p-8 rounded-2xl hover:shadow-xl transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary rounded-xl flex items-center justify-center">
                   <Layout className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -542,7 +542,7 @@ export default function Landing() {
               
               <div className="grid grid-cols-2 gap-2 mb-6">
                 {canvasAgents.map((agent, i) => (
-                  <div key={i} className={`flex items-center gap-2 p-2 rounded-lg ${agent.featured ? "ring-1 ring-blue-300 dark:ring-blue-700 public-chip-rose" : "public-bg-tertiary"}`}>
+                  <div key={i} className={`flex items-center gap-2 p-2 rounded-lg ${agent.featured ? "ring-1 ring-primary-soft dark:ring-primary public-chip-rose" : "public-bg-tertiary"}`}>
                     <div className={`w-2 h-2 rounded-full ${agent.color}`}></div>
                     <span className={`text-xs font-medium ${agent.featured ? "" : "public-text-muted"}`}>
                       {agent.name}
@@ -559,7 +559,7 @@ export default function Landing() {
             {/* Coding Agent */}
             <Card className="public-card p-8 rounded-2xl hover:shadow-xl transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-warn to-warn rounded-xl flex items-center justify-center">
                   <Code className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -581,15 +581,15 @@ export default function Landing() {
               
               <div className="public-code rounded-lg p-4 font-mono text-xs">
                 <div className="opacity-60">// Agent executing...</div>
-                <div>staged: <span className="text-amber-400">3 files</span></div>
-                <div>commit: <span className="text-cyan-400">"Add user auth"</span></div>
+                <div>staged: <span className="text-warn">3 files</span></div>
+                <div>commit: <span className="text-design">"Add user auth"</span></div>
               </div>
             </Card>
 
             {/* Specification Agents */}
             <Card className="public-card p-8 rounded-2xl hover:shadow-xl transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-define to-define rounded-xl flex items-center justify-center">
                   <FileText className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -635,7 +635,7 @@ export default function Landing() {
           <div className="public-gradient-dark rounded-3xl p-10 md:p-16 relative overflow-hidden">
             {/* Background decorations */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-[hsl(210,100%,50%)]/20 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-ok/20 rounded-full blur-3xl" />
             
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-6">
@@ -654,8 +654,8 @@ export default function Landing() {
               {/* Cyber Security Highlight */}
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/10">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-6 h-6 text-blue-400" />
+                  <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Shield className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <h3 className="text-lg font-medium text-white mb-2">Evolving Cyber Security Agents</h3>
@@ -670,7 +670,7 @@ export default function Landing() {
               <div className="grid md:grid-cols-3 gap-6 mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-amber-400" />
+                    <Zap className="w-5 h-5 text-warn" />
                   </div>
                   <div>
                     <div className="text-white font-medium">JSON Configs</div>
@@ -679,7 +679,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                    <Heart className="w-5 h-5 text-blue-400" />
+                    <Heart className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <div className="text-white font-medium">Community-Driven</div>
@@ -688,7 +688,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                    <CheckCircle className="w-5 h-5 text-ok" />
                   </div>
                   <div>
                     <div className="text-white font-medium">MIT License</div>
@@ -723,7 +723,7 @@ export default function Landing() {
             {/* Tech Stacks */}
             <Card className="public-card p-6 rounded-2xl hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary to-define rounded-xl flex items-center justify-center">
                   <Layers className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -742,7 +742,7 @@ export default function Landing() {
             {/* Standards */}
             <Card className="public-card p-6 rounded-2xl hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-ok to-design rounded-xl flex items-center justify-center">
                   <ShieldCheck className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -761,7 +761,7 @@ export default function Landing() {
             {/* Build Books */}
             <Card className="public-card p-6 rounded-2xl hover:shadow-xl transition-all duration-300 hover:-translate-y-1 lg:col-span-1 md:col-span-2 lg:row-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-sky-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary to-design rounded-xl flex items-center justify-center">
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -781,12 +781,12 @@ export default function Landing() {
           </div>
 
           {/* Take Away Feature Highlight */}
-          <div className="bg-gradient-to-br from-amber-50 dark:from-amber-900/20 to-orange-50 dark:to-orange-900/10 rounded-3xl p-8 md:p-10 border border-amber-200/50 dark:border-amber-800/30">
+          <div className="bg-gradient-to-br from-warn-soft dark:from-warn/20 to-warn-soft dark:to-warn/10 rounded-3xl p-8 md:p-10 border border-warn-soft/50 dark:border-warn/30">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <Download className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                  <span className="text-sm font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Take Away Resource</span>
+                  <Download className="w-5 h-5 text-warn" />
+                  <span className="text-sm font-medium text-warn uppercase tracking-wide">Take Away Resource</span>
                 </div>
                 <h3 className="text-2xl font-medium public-heading mb-4">
                   Download Complete Build Books for Any AI Tool
@@ -810,26 +810,26 @@ export default function Landing() {
                   ))}
                 </ul>
               </div>
-              <div className="public-card rounded-2xl p-6 shadow-lg border border-amber-100 dark:border-amber-800/30">
+              <div className="public-card rounded-2xl p-6 shadow-lg border border-warn-soft dark:border-warn/30">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                  <div className="w-3 h-3 rounded-full bg-bad" />
+                  <div className="w-3 h-3 rounded-full bg-warn" />
+                  <div className="w-3 h-3 rounded-full bg-ok" />
                   <span className="text-xs public-text-subtle ml-2">build-book-export.md</span>
                 </div>
                 <div className="font-mono text-xs space-y-2 public-text-muted">
-                  <div className="text-violet-600 dark:text-violet-400"># Enterprise React Application</div>
+                  <div className="text-define"># Enterprise React Application</div>
                   <div className="public-text-subtle">---</div>
-                  <div><span className="text-emerald-600 dark:text-emerald-400">## Tech Stack</span></div>
+                  <div><span className="text-ok">## Tech Stack</span></div>
                   <div className="pl-4 public-text-subtle">- React 18 + TypeScript</div>
                   <div className="pl-4 public-text-subtle">- Tailwind CSS + shadcn/ui</div>
                   <div className="pl-4 public-text-subtle">- Azure PostgreSQL Backend</div>
-                  <div className="mt-2"><span className="text-emerald-600 dark:text-emerald-400">## Standards</span></div>
+                  <div className="mt-2"><span className="text-ok">## Standards</span></div>
                   <div className="pl-4 public-text-subtle">- WCAG 2.1 AA Compliance</div>
                   <div className="pl-4 public-text-subtle">- SOC2 Security Controls</div>
-                  <div className="mt-2"><span className="text-emerald-600 dark:text-emerald-400">## AI Instructions</span></div>
+                  <div className="mt-2"><span className="text-ok">## AI Instructions</span></div>
                   <div className="pl-4 public-text-subtle">- Follow component patterns...</div>
-                  <div className="pl-4 text-amber-500 animate-pulse">|</div>
+                  <div className="pl-4 text-warn animate-pulse">|</div>
                 </div>
               </div>
             </div>
@@ -861,7 +861,7 @@ export default function Landing() {
           {/* Stats Card */}
           <div className="relative h-[450px] w-full rounded-3xl overflow-hidden shadow-2xl public-gradient-dark p-10 flex flex-col justify-center">
             <div className="absolute top-0 right-0 w-64 h-64 bg-[hsl(210,100%,50%)]/20 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-ok/20 rounded-full blur-3xl" />
             <div className="relative z-10 space-y-6">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center">
@@ -899,9 +899,9 @@ export default function Landing() {
       {/* CTA Section */}
       <section className="py-16 md:py-24 px-4 md:px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-blue-100/50 dark:from-blue-900/20 to-blue-50 dark:to-blue-950/10 rounded-3xl p-8 md:p-12 lg:p-16 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-primary-soft/50 dark:from-primary/20 to-primary-soft dark:to-primary/10 rounded-3xl p-8 md:p-12 lg:p-16 relative overflow-hidden">
             <div className="absolute -top-20 -right-20 w-64 h-64 bg-[hsl(210,100%,50%)]/10 rounded-full blur-3xl" />
-            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-warn/10 rounded-full blur-3xl" />
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight mb-6 public-heading">
                 Ready to Build with AI Precision?

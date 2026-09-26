@@ -55,7 +55,7 @@ export default function Terms() {
           {/* Alpha Testing Notice */}
           <div className="my-8 p-6 public-alert-amber rounded-xl not-prose">
             <div className="flex items-start gap-4">
-              <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-1" />
+              <AlertTriangle className="w-8 h-8 text-warn flex-shrink-0 mt-1" />
               <div>
                 <h2 className="text-xl font-semibold public-alert-amber-heading mb-3">Alpha Testing Notice</h2>
                 <div className="space-y-3">

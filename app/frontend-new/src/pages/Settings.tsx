@@ -154,7 +154,7 @@ export default function Settings() {
     switch (userRole) {
       case "superadmin":
         return (
-          <Badge className="gap-1 bg-purple-600 hover:bg-purple-700">
+          <Badge className="gap-1 bg-define hover:bg-define">
             <Crown className="h-3 w-3" />
             Superadmin
           </Badge>
