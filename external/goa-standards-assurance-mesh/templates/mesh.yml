@@ -12,7 +12,7 @@
 #       - repository: assuranceMesh
 #         type: github
 #         name: goa-standards/assurance-mesh
-#         ref: refs/tags/v3
+#         ref: 0000000000000000000000000000000000000000 # PLACEHOLDER: pin to the full commit SHA of the v3 release, never a mutable tag/branch (README.md "Release process")
 #         endpoint: goa-standards-github
 #
 #   extends:
@@ -175,13 +175,20 @@ jobs:
       - group: assurance-mesh-secrets # must define ${{ parameters.reportHmacKeyVariable }} as a secret variable
     steps:
       - checkout: self
-      - checkout: git://goa-standards/assurance-mesh@refs/tags/v3
+      # Reuses the same `assuranceMesh` repository resource the caller
+      # declared for `extends` (resources.repositories, top of this file) --
+      # it is pinned there to the full commit SHA of the v3 release, never a
+      # mutable tag/branch. See README.md "Versioning" / "Release process".
+      - checkout: assuranceMesh
         path: mesh-scripts
       - task: NodeTool@0
         inputs:
           versionSpec: "20.x"
-      - script: cd $(Build.SourcesDirectory)/mesh-scripts/scripts && npm install --omit=dev --no-audit --no-fund || true
-        displayName: "Install script dependencies"
+      # scripts/ has zero external dependencies (node:crypto, node:fs,
+      # node:http(s), node:path, node:url only -- see README.md "Validating
+      # this repo"), so there is nothing to install here. If that ever
+      # changes, add a real `npm ci --omit=dev` step and let it fail the job
+      # on error (no `|| true`).
       - download: current
         patterns: "mesh-result-*/*.json"
       - script: |

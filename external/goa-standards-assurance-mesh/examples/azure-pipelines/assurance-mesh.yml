@@ -14,7 +14,10 @@ resources:
     - repository: assuranceMesh
       type: github
       name: goa-standards/assurance-mesh
-      ref: refs/tags/v3
+      # Pin to the full commit SHA of the v3 release, never a mutable
+      # tag/branch (README.md "Release process"). Onboarding fills in the
+      # real SHA when it generates this file.
+      ref: 0000000000000000000000000000000000000000 # PLACEHOLDER
       endpoint: goa-standards-github # a GitHub service connection with read access to the mesh repo
 
 extends:

@@ -163,12 +163,53 @@ keep reproducible behavior.
 
 ## Versioning
 
-Tag releases `v3`, `v3.1`, … Callers pin the **major** tag
-(`goa-standards/assurance-mesh@v3` / `refs/tags/v3`) so patch fixes to the
-workflow/template/scripts roll out automatically, while a breaking change to
-the report contract or job structure bumps to `v4` and callers upgrade
-explicitly (onboarding-generated files reference the major tag; update PRs
-bump it when Pronghorn decides to).
+Tag releases `v3`, `v3.1`, … The **reusable workflow itself**
+(`goa-standards/assurance-mesh/.github/workflows/mesh.yml@v3` in a GitHub
+caller's `uses:`) is referenced by the major tag, per GitHub's own reusable-
+workflow model. Everything the mesh **checks out and executes as a second
+step within a job** — `scripts/report-cli.js` and its `lib/` — is different:
+it is fetched by an explicit `checkout` inside the `report` job (GitHub) or
+via the `assuranceMesh` repository resource (Azure Pipelines), and **that
+reference must be a full commit SHA, never a mutable tag or branch**, so a
+compromised or force-pushed tag can't silently change what code runs with
+access to `PRONGHORN_REPORT_SECRET`:
+
+- GitHub: the `mesh_scripts_ref` input on the reusable workflow (default is a
+  placeholder SHA — every real caller must set it).
+- Azure Pipelines: the `ref:` on the `assuranceMesh` repository resource the
+  caller declares for `extends:` (the `Report` job's `checkout: assuranceMesh`
+  step reuses that same pinned resource — there is no separate ad hoc
+  checkout to pin).
+
+A breaking change to the report contract or job structure bumps the major
+tag to `v4` and callers upgrade explicitly (onboarding-generated files
+reference the major tag for `uses:`/`template:`, and update PRs bump both the
+major tag and `mesh_scripts_ref`/the resource `ref:` when Pronghorn decides
+to).
+
+## Release process (human steps, so `mesh_scripts_ref` has something real to pin)
+
+1. Merge to the repository's default branch through a required, reviewed PR
+   (branch protection: no direct pushes, no force-pushes).
+2. Tag the merge commit `v3.<patch>` with a **signed** tag
+   (`git tag -s v3.<patch> -m "…"`) and, for the major tag, move `v3` to the
+   same commit (`git tag -f -s v3 -m "…"`) — both pushed to a **protected**
+   tag ref (GitHub: tag protection rules restricting who can push/delete
+   `v*`; the same principle applies to whatever namespace Azure DevOps repo
+   protections use if this ever mirrors there).
+3. Record that commit's full SHA (`git rev-parse v3^{commit}`) as the value
+   onboarding (D-12) writes into every newly generated caller's
+   `mesh_scripts_ref` (GitHub) / `resources.repositories[].ref` (Azure), and
+   as the value used in `examples/` and this README's placeholders going
+   forward.
+4. Existing callers get that SHA via an **update PR** (never silently, and
+   never by moving their pin themselves to `v3` and expecting it to
+   "float" — see above).
+
+Marketplace tasks referenced in `templates/mesh.yml` (e.g. `NodeTool@0`) are
+pinned by major version, per Azure Pipelines' own task versioning model —
+there is no commit-SHA equivalent for a Marketplace task the way there is for
+a `uses:` action or a checked-out repository.
 
 ## Validating this repo
 
@@ -185,6 +226,14 @@ docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint -color .github/workflo
 # script unit tests
 cd scripts && npm test
 ```
+
+Every `actions/*` step in `.github/workflows/mesh.yml` is pinned to a full
+commit SHA with a trailing `# vN` comment naming the tag it currently
+resolves to (`actions/checkout`, `actions/setup-node`,
+`actions/upload-artifact`, `actions/download-artifact`), resolved with e.g.
+`git ls-remote https://github.com/actions/checkout refs/tags/v4`. Bumping one
+means re-resolving that tag's SHA and updating every occurrence and its `#
+vN` comment together.
 
 ## Publishing this repo (human steps, BLOCKED-EXTERNAL)
 

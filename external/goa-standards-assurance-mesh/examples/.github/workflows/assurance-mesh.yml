@@ -18,5 +18,8 @@ jobs:
       policy_source: "" # empty: every check defaults to policy mode "issue"
       pronghorn_api_url: "https://api.pronghorn.example"
       test_environment_url: "https://test.permits-web.example.gov.ab.ca"
+      # Pin to the commit SHA of the v3 release (README.md "Versioning"),
+      # never the mutable v3 tag itself. Onboarding fills in the real SHA.
+      mesh_scripts_ref: "0000000000000000000000000000000000000000" # PLACEHOLDER
     secrets:
       report_hmac_key: ${{ secrets.PRONGHORN_REPORT_SECRET }}

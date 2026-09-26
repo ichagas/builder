@@ -42,6 +42,16 @@ on:
         type: string
         required: false
         default: ""
+      mesh_scripts_ref:
+        description: >
+          Full commit SHA of goa-standards/assurance-mesh to check out for
+          scripts/report-cli.js in the report job. Callers MUST pin this to
+          the commit SHA of the tagged v3 release they are using (never a
+          mutable tag/branch) -- see README.md "Versioning" and "Release
+          process" for how that SHA is published and verified.
+        type: string
+        required: false
+        default: "0000000000000000000000000000000000000000" # PLACEHOLDER: replace with the real v3 release commit SHA on publish
       pronghorn_api_url:
         description: "Pronghorn API base URL (e.g. https://api.pronghorn.example)"
         type: string
@@ -61,17 +71,14 @@ permissions:
   issues: write
   pull-requests: read
 
-env:
-  MESH_REPO_REF: goa-standards/assurance-mesh@v3
-
 jobs:
   green:
     name: Green (quality/tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up Node.js (mesh scripts)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "20"
       - name: Load pack + profile
@@ -90,7 +97,7 @@ jobs:
           cat > .mesh/results/green.json <<'JSON'
           { "verdict": "pass", "findings": [] }
           JSON
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mesh-result-green
           path: .mesh/results/green.json
@@ -99,7 +106,7 @@ jobs:
     name: Yellow (dependency/licence/SBOM)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Run plain-language rules
         run: |
           mkdir -p .mesh/results
@@ -109,7 +116,7 @@ jobs:
           cat > .mesh/results/yellow.json <<'JSON'
           { "verdict": "pass", "findings": [] }
           JSON
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mesh-result-yellow
           path: .mesh/results/yellow.json
@@ -118,7 +125,7 @@ jobs:
     name: Red (security recon/SAST/secrets)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Recon + attack paths
         run: |
           mkdir -p .mesh/results
@@ -135,7 +142,7 @@ jobs:
           cat > .mesh/results/red.json <<JSON
           { "verdict": "${VERDICT}", "findings": [] }
           JSON
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mesh-result-red
           path: .mesh/results/red.json
@@ -145,7 +152,7 @@ jobs:
     needs: [green, yellow, red]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Threat model + ASVS L2 + Alberta rules
         run: |
           mkdir -p .mesh/results
@@ -155,7 +162,7 @@ jobs:
           cat > .mesh/results/blue.json <<'JSON'
           { "verdict": "pass", "findings": [], "asvs_passed": 285, "alberta_passed": 62 }
           JSON
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mesh-result-blue
           path: .mesh/results/blue.json
@@ -166,7 +173,7 @@ jobs:
     needs: [blue]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Deploy PR build to an ephemeral sandbox
         run: echo "Deploying PR build to an ephemeral sandbox (never production)"
       - name: Red attack paths against the sandbox
@@ -183,17 +190,19 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: goa-standards/assurance-mesh
-          ref: v3
+          ref: ${{ inputs.mesh_scripts_ref }} # full commit SHA of the v3 release; never a mutable tag/branch
           path: .mesh-scripts
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "20"
-      - name: Install script dependencies
-        run: cd .mesh-scripts/scripts && npm install --omit=dev --no-audit --no-fund || true
-      - uses: actions/download-artifact@v4
+      # scripts/ has zero external dependencies (node:crypto, node:fs, node:http(s),
+      # node:path, node:url only -- see README.md "Validating this repo"), so there
+      # is nothing to install here. If that ever changes, add a real
+      # `npm ci --omit=dev` step and let it fail the job on error (no `|| true`).
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: mesh-result-*
           path: .mesh/results
@@ -245,7 +254,7 @@ jobs:
               }
             '
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: mesh-report
