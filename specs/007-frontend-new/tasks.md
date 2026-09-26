@@ -42,7 +42,7 @@
 - [X] T024 (WP-F3) `AppShell`, `GlobalBar`, `ModeBadge`, `StatusPill` — `FE/src/components/shell/`.
 - [X] T025 [P] (WP-F3) `Rail`, `PhaseNode` (collapse pref).
 - [X] T026 [P] (WP-F3) `TimelineStrip` (one "Building" version until B1).
-- [ ] T027 [P] (WP-F3) `PageHeader`, `PrimaryActionSlot`, `MobileTabBar`.
+- [X] T027 [P] (WP-F3) `PageHeader`, `PrimaryActionSlot`, `MobileTabBar`.
 - [ ] T028 [P] (WP-F3) `ActionButton`, `NextStepBanner`, `Disclosure`, `Stepper`, `Inspector`, `FilterChips`.
 - [ ] T029 [P] (WP-F3) `UndoBar` + `useUndo`, `StatusCenter` + `useLongTask` — `FE/src/lib/state/`.
 - [ ] T030 (WP-F2b) Codemod `scripts/codemods/colors-to-tokens.ts` with the mapping table from `contracts/design-system.md` §1.1, a dry-run report and a list of unmapped cases.
