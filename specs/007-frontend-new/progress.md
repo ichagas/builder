@@ -20,6 +20,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T010 | done | 111538a | Fork copy only, done by the orchestrator (mechanical copy) |
 | T120 | done | 81cf4be | WP-BE3. mesh_policy.scope adds `repository` (needed by D-17) |
 | T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
+| T126 | done | (pending commit) | WP-BE8. `infra/main.tf` adds `azurerm_role_assignment.api_system_identity_platform_kv_secrets_officer` (Key Vault Secrets Officer, scoped to the platform vault, for the API's system-assigned identity) so the Integrations service can write/delete Azure DevOps PAT secrets at runtime. **BLOCKED-EXTERNAL:** not applied (no cloud access from this agent) — an operator must run `terraform apply` before Admin → Integrations can use a real Key Vault; until then the backend falls back to the in-memory secret store (`INTEGRATIONS_SECRET_STORE=memory` or `KEY_VAULT_URL` unset) |
 
 ## Escalations to Opus 5.5
 

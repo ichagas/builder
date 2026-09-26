@@ -25,6 +25,7 @@ import githubRouter from "../github";
 import teamsRouter from "../teams";
 import applicationsRouter from "../applications";
 import packsRouter from "../packs";
+import adminIntegrationsRouter from "../admin/integrations";
 
 const router = Router();
 
@@ -50,6 +51,7 @@ router.use("/github", optionalAuthMiddleware, githubRouter);
 router.use("/teams", authMiddleware, teamsRouter);
 router.use("/applications", authMiddleware, applicationsRouter);
 router.use("/packs", authMiddleware, packsRouter);
+router.use("/admin/integrations", authMiddleware, adminIntegrationsRouter);
 
 // - db is protected (require auth)
 // - rpc and functions use optional auth (some calls allow anonymous)
