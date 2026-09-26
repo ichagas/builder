@@ -531,6 +531,12 @@ variable "frontend_app_url_override" {
   default     = null
 }
 
+variable "frontend_new_app_url_override" {
+  description = "Frontend-new (redesigned frontend, spec 007) application URL — the public custom domain fronting it (e.g. https://next.<domain>). Used as an additional Entra App Registration redirect URI and baked into the frontend-new build as VITE_AZURE_REDIRECT_URI. Leave null to use the auto-derived Container App URL (module.frontend_new.app_url)."
+  type        = string
+  default     = null
+}
+
 variable "api_base_url_override" {
   description = "Public base URL the browser uses to reach the API (e.g. https://api.example.com). When set, overrides the auto-derived internal APIM gateway URL for the frontend build (VITE_API_BASE_URL and the derived VITE_WS_URL). Use when the API is fronted by a public custom domain / App Gateway. Leave null to use the internal APIM gateway URL."
   type        = string
@@ -575,6 +581,19 @@ variable "frontend_build_vars" {
     Keys must be VITE_ prefixed (Vite requirement). The combined map is
     exported as the `frontend_build_env_vars` output so the CI workflow can
     pass them to `npm run build`.
+  EOT
+  type        = map(string)
+  default     = {}
+}
+
+variable "frontend_new_build_vars" {
+  description = <<-EOT
+    Static build-time environment variables for the frontend-new (redesigned
+    frontend, spec 007) container, set per-environment via tfvars. Mirrors
+    frontend_build_vars; merged with infrastructure-derived values (Entra IDs,
+    APIM URL, etc.) in local.frontend_new_build_environment_variables and
+    exported as the `frontend_new_build_env_vars` output. Keys must be VITE_
+    prefixed (Vite requirement).
   EOT
   type        = map(string)
   default     = {}
@@ -717,6 +736,48 @@ variable "frontend_min_replicas" {
 
 variable "frontend_max_replicas" {
   description = "Maximum frontend container replicas"
+  type        = number
+  default     = 5
+}
+
+# -----------------------------------------------------------------------------
+# Frontend-new (redesigned frontend, spec 007) — mirrors the legacy frontend
+# variables above. Runs as its own Container App (module "frontend_new") at
+# its own host (next.<domain>), alongside the legacy frontend, until cutover.
+# -----------------------------------------------------------------------------
+
+variable "frontend_new_container_name" {
+  description = "Name of the container inside the frontend-new container app."
+  type        = string
+  default     = "frontend-new"
+}
+
+variable "frontend_new_container_image" {
+  description = "Container image for frontend-new"
+  type        = string
+  default     = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+}
+
+variable "frontend_new_container_cpu" {
+  description = "CPU cores for frontend-new container"
+  type        = number
+  default     = 0.25
+}
+
+variable "frontend_new_container_memory" {
+  description = "Memory for frontend-new container"
+  type        = string
+  default     = "0.5Gi"
+}
+
+variable "frontend_new_min_replicas" {
+  description = "Minimum frontend-new container replicas"
+  type        = number
+  default     = 1
+}
+
+variable "frontend_new_max_replicas" {
+  description = "Maximum frontend-new container replicas"
   type        = number
   default     = 5
 }
