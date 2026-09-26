@@ -168,6 +168,11 @@ output "frontend_uami_id" {
   value       = azurerm_user_assigned_identity.frontend.id
 }
 
+output "frontend_new_uami_id" {
+  description = "Resource ID of the frontend-new (redesigned frontend, spec 007) container app's user-assigned managed identity"
+  value       = azurerm_user_assigned_identity.frontend_new.id
+}
+
 # -----------------------------------------------------------------------------
 # Workload Environment Outputs
 # -----------------------------------------------------------------------------
@@ -199,6 +204,16 @@ output "frontend_app_url" {
 output "frontend_fqdn" {
   description = "Frontend Container App FQDN"
   value       = module.frontend.app_fqdn
+}
+
+output "frontend_new_url" {
+  description = "Frontend-new (redesigned frontend, spec 007) Container App URL"
+  value       = module.frontend_new.app_url
+}
+
+output "frontend_new_fqdn" {
+  description = "Frontend-new (redesigned frontend, spec 007) Container App FQDN"
+  value       = module.frontend_new.app_fqdn
 }
 
 # -----------------------------------------------------------------------------
@@ -286,6 +301,11 @@ output "vite_use_azure_api" {
 output "frontend_build_env_vars" {
   description = "Frontend build-time env vars for `npm run build`. Merges static config from frontend_build_vars with infrastructure-derived values."
   value       = local.frontend_build_environment_variables
+}
+
+output "frontend_new_build_env_vars" {
+  description = "Frontend-new (redesigned frontend, spec 007) build-time env vars for `npm run build`. Merges static config from frontend_new_build_vars with infrastructure-derived values."
+  value       = local.frontend_new_build_environment_variables
 }
 
 # -----------------------------------------------------------------------------

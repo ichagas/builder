@@ -1,0 +1,8 @@
+{
+  "description": "HMAC-SHA256 signature test vector for POST /api/v1/mesh/runs. The Pronghorn API (WP-BE4) should reuse this to verify its own verification of X-Pronghorn-Signature. `signature` is HMAC-SHA256(secret, body) hex, matching the header value `sha256=<signature>` exactly. `body` must be sent to the API byte-for-byte (do not re-serialize/pretty-print it) for the signature to verify.",
+  "secret": "test-secret-do-not-use-in-production",
+  "header_name": "X-Pronghorn-Signature",
+  "header_value": "sha256=ae0a077643798e60a0e44cdb1182eb0d55ae5152237934baa791a1ed96b92f06",
+  "signature": "ae0a077643798e60a0e44cdb1182eb0d55ae5152237934baa791a1ed96b92f06",
+  "body": "{\"repository\":\"goa/permits-api\",\"commit_sha\":\"abc123def4567890abc123def4567890abcdef1\",\"pr_number\":214,\"base_branch\":\"main\",\"pr_state\":\"open\",\"trigger\":\"pull_request\",\"pack_version\":\"2026.3\",\"verdicts\":{\"green\":\"pass\",\"yellow\":\"fail\",\"red\":\"pass\",\"blue\":\"pass\"},\"findings\":[{\"agent\":\"yellow\",\"rule\":\"plain-language-07\",\"file\":\"src/errors.ts\",\"location\":\"L42\",\"severity\":\"warn\",\"message\":\"Error message uses an internal code (E1043) instead of plain language.\",\"fingerprint\":\"fd83e152bb694b02eb3289a3614a152dab791e6884af75c7f461a9b64f4a4eb4\"}],\"new_findings\":1,\"asvs_passed\":280,\"alberta_passed\":62,\"report_url\":\"https://example.blob.core.windows.net/mesh-reports/permits-api/214/report.json\",\"received_at\":\"2026-09-25T12:00:00.000Z\"}"
+}

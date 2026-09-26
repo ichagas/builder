@@ -453,6 +453,23 @@ resource "azurerm_role_assignment" "frontend_uami_acr_pull" {
   principal_id         = azurerm_user_assigned_identity.frontend.principal_id
 }
 
+# Frontend-new (redesigned frontend, spec 007) — own UAMI, mirrors the legacy
+# frontend identity/role-assignment pair above.
+resource "azurerm_user_assigned_identity" "frontend_new" {
+  name                = "${local.frontend_new_app_name}-identity"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = local.common_tags
+
+  depends_on = [time_sleep.wait_for_resource_group]
+}
+
+resource "azurerm_role_assignment" "frontend_new_uami_acr_pull" {
+  scope                = local.acr_id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.frontend_new.principal_id
+}
+
 resource "azurerm_role_assignment" "api_uami_storage_blob_contributor" {
   scope                = module.storage_repo.id
   role_definition_name = "Storage Blob Data Contributor"
@@ -604,6 +621,36 @@ module "container_apps" {
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
+# Platform Key Vault write access for the Integrations service (spec 007,
+# D-18, WP-BE8)
+# -----------------------------------------------------------------------------
+# Admin -> Integrations writes and deletes Azure DevOps PAT secrets in the
+# platform Key Vault at runtime (services/integrations/secretStore.ts), which
+# needs create/set/delete on secrets -- "Key Vault Secrets User" (read-only,
+# granted above) is not enough. Scoped to the platform vault only (not the
+# resource group), following least privilege.
+#
+# The runtime credential is `getAzureCredential()` (DefaultAzureCredential).
+# Per the existing comment on api_system_identity_storage_blob_contributor
+# above: when the API container app has both a system-assigned identity and
+# the UAMI attached, the Azure SDK's DefaultAzureCredential resolves to the
+# SYSTEM-assigned identity, not the UAMI -- so this grant targets
+# module.container_apps.principal_id, matching the genapp Key Vault grant
+# (api_system_identity_genapp_kv_secrets_officer) below.
+#
+# BLOCKED-EXTERNAL: this role assignment has not been applied (no `terraform
+# apply` was run — no cloud access from this agent). An operator with
+# subscription access must run `terraform apply` (or an equivalent role
+# assignment) before Admin -> Integrations can write secrets in a real
+# environment; until then, set INTEGRATIONS_SECRET_STORE=memory or leave
+# KEY_VAULT_URL unset so the backend falls back to the in-memory secret store.
+resource "azurerm_role_assignment" "api_system_identity_platform_kv_secrets_officer" {
+  scope                = module.keyvault.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = module.container_apps.principal_id
+}
+
+# -----------------------------------------------------------------------------
 # ACR Pull Role Assignment for Container App
 # -----------------------------------------------------------------------------
 
@@ -691,6 +738,9 @@ module "api_management" {
     var.allowed_origins,
     [module.frontend.app_url],
     var.frontend_app_url_override != null ? [var.frontend_app_url_override] : [],
+    # Frontend-new (redesigned frontend, spec 007) — own host, own origin.
+    [module.frontend_new.app_url],
+    var.frontend_new_app_url_override != null ? [var.frontend_new_app_url_override] : [],
     var.enable_development_access ? ["http://localhost:5173"] : []
   )
 
@@ -745,6 +795,55 @@ module "frontend" {
 }
 
 # =============================================================================
+# Frontend-new Container App Module (redesigned frontend, spec 007)
+# =============================================================================
+# Reuses the same ./modules/frontend module as the legacy frontend above, at
+# its own host (next.<domain> via frontend_new_app_url_override), running
+# alongside it until cutover. See specs/007-frontend-new/.
+# =============================================================================
+
+module "frontend_new" {
+  source = "./modules/frontend"
+
+  subscription_id              = var.subscription_id
+  resource_group_name          = var.resource_group_name
+  location                     = var.location
+  container_app_name           = local.frontend_new_app_name
+  container_app_environment_id = module.container_apps.environment_id
+
+  # User-Assigned Managed Identity for ACR access (avoids bootstrap race)
+  user_assigned_identity_id = azurerm_user_assigned_identity.frontend_new.id
+
+  # Bootstrap uses public MCR image for initial deploy (online archetype)
+  container_image = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+
+  # Container configuration
+  container_name   = var.frontend_new_container_name
+  container_cpu    = var.frontend_new_container_cpu
+  container_memory = var.frontend_new_container_memory
+
+  # Scaling
+  min_replicas = var.frontend_new_min_replicas
+  max_replicas = var.frontend_new_max_replicas
+
+  # Container Registry — Terraform owns the registries block (see API container app comment).
+  registry_server               = local.acr_login_server
+  use_managed_identity_for_acr  = true
+  registry_username             = null
+  registry_password_secret_name = null
+
+  secrets = {}
+
+  tags = local.common_tags
+
+  depends_on = [
+    time_sleep.wait_for_resource_group,
+    module.container_apps,
+    azurerm_role_assignment.frontend_new_uami_acr_pull
+  ]
+}
+
+# =============================================================================
 # Entra ID App Registration (optional – controlled by create_entra_app_registration)
 # =============================================================================
 
@@ -761,13 +860,16 @@ module "entra_app_registration" {
     # Primary redirect: frontend Container App URL (auto-detected)
     # Azure AD requires a trailing slash on URIs without a path segment
     ["${trimsuffix(coalesce(var.frontend_app_url_override, module.frontend.app_url), "/")}/"],
+    # Frontend-new (redesigned frontend, spec 007) — own host redirect URI,
+    # e.g. https://next.<domain>/ via frontend_new_app_url_override.
+    ["${trimsuffix(coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url), "/")}/"],
     # Additional redirect URIs (e.g. custom domains)
     var.entra_app_redirect_uris,
     # Optional localhost for dev
     var.entra_app_include_localhost_redirect ? ["http://localhost:5173/"] : []
   )
 
-  depends_on = [module.frontend]
+  depends_on = [module.frontend, module.frontend_new]
 }
 
 # =============================================================================

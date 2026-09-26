@@ -26,21 +26,28 @@ import teamsRouter from "../teams";
 import applicationsRouter from "../applications";
 import packsRouter from "../packs";
 import meshRouter from "../mesh";
+import versionsRouter from "../versions";
+import workItemsRouter, { workItemByIdRouter } from "../workItems";
+import adminIntegrationsRouter from "../admin/integrations";
 
 const router = Router();
 
-// ============================================================================
-// Public Routes (no auth required)
-// ============================================================================
-
+// =====================================================================// Public Routes (no auth required)
+// =====================================================================
 router.use("/health", healthRouter);
 router.use("/auth", authRateLimiter, authRouter);
 
-// ============================================================================
-// Protected Routes (auth required)
-// ============================================================================
-
+// =====================================================================// Protected Routes (auth required)
+// =====================================================================
 router.use("/chat", authMiddleware, chatRouter);
+// versions/work-items (B1) accept BOTH user auth and `?token=` share-token
+// access (authorized against `authorize_project_access`), so they use
+// optionalAuthMiddleware and are mounted ahead of the authMiddleware-gated
+// /projects router below to avoid its 401 short-circuit for anonymous,
+// token-only requests.
+router.use("/projects", optionalAuthMiddleware, versionsRouter);
+router.use("/projects", optionalAuthMiddleware, workItemsRouter);
+router.use("/work-items", optionalAuthMiddleware, workItemByIdRouter);
 router.use("/projects", authMiddleware, projectsRouter);
 router.use("/artifacts", authMiddleware, artifactsRouter);
 router.use("/canvas", authMiddleware, canvasRouter);
@@ -55,6 +62,7 @@ router.use("/packs", authMiddleware, packsRouter);
 // HMAC (no user session), every other /mesh route requires req.user — see
 // routes/mesh.ts.
 router.use("/mesh", optionalAuthMiddleware, meshRouter);
+router.use("/admin/integrations", authMiddleware, adminIntegrationsRouter);
 
 // - db is protected (require auth)
 // - rpc and functions use optional auth (some calls allow anonymous)

@@ -29,11 +29,12 @@ locals {
   # Kept separate from the platform storage account above so code-file traffic and
   # access control are isolated. Name must be globally unique, <=24 chars, lowercase
   # alphanumeric — "repo" infix keeps it distinct from local.storage_name.
-  repo_storage_name  = "st${var.project_name}repo${random_string.suffix.result}"
-  container_app_name = "ca-${var.project_name}-api"
-  frontend_app_name  = "ca-${var.project_name}-frontend"
-  apim_name          = "apim-${var.project_name}-${random_string.suffix.result}"
-  frontdoor_name     = "afd-${var.project_name}-${random_string.suffix.result}"
+  repo_storage_name     = "st${var.project_name}repo${random_string.suffix.result}"
+  container_app_name    = "ca-${var.project_name}-api"
+  frontend_app_name     = "ca-${var.project_name}-frontend"
+  frontend_new_app_name = "ca-${var.project_name}-frontend-new"
+  apim_name             = "apim-${var.project_name}-${random_string.suffix.result}"
+  frontdoor_name        = "afd-${var.project_name}-${random_string.suffix.result}"
 
   # AI Foundry naming
   ai_foundry_name = "ai-${var.project_name}-${random_string.suffix.result}"
@@ -186,6 +187,30 @@ locals {
       "VITE_WS_URL"             = var.api_base_url_override != null ? replace(var.api_base_url_override, "https://", "wss://") : module.container_apps.app_url
     },
     # Derive VITE_GITHUB_ORG from canonical github_org (with compatibility fallback)
+    local.configured_github_org != "" ? {
+      "VITE_GITHUB_ORG" = local.configured_github_org
+    } : {}
+  )
+
+  # ---------------------------------------------------------------------------
+  # Frontend-new (redesigned frontend, spec 007) build-time environment
+  # variables. Mirrors frontend_build_environment_variables above, but points
+  # at the "next" channel's own host (module.frontend_new / the next.<domain>
+  # custom domain via frontend_new_app_url_override) instead of the legacy
+  # frontend host. Kept as a separate map (not merged into the legacy one) so
+  # the two frontends can have independent redirect URIs / channel flags while
+  # sharing the same API/APIM backend.
+  # ---------------------------------------------------------------------------
+  frontend_new_build_environment_variables = merge(
+    var.frontend_new_build_vars,
+    {
+      "VITE_APP_CHANNEL"        = "next"
+      "VITE_ENTRA_CLIENT_ID"    = local.effective_client_id
+      "VITE_ENTRA_TENANT_ID"    = local.effective_tenant_id
+      "VITE_API_BASE_URL"       = coalesce(var.api_base_url_override, module.api_management.gateway_url)
+      "VITE_AZURE_REDIRECT_URI" = coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url)
+      "VITE_WS_URL"             = var.api_base_url_override != null ? replace(var.api_base_url_override, "https://", "wss://") : module.container_apps.app_url
+    },
     local.configured_github_org != "" ? {
       "VITE_GITHUB_ORG" = local.configured_github_org
     } : {}

@@ -17,19 +17,19 @@
 - [X] T000 (WP-F0) Amend `.specify/memory/constitution.md` Principle VI to **UI/UX Layout Contract** (v1.1.0 → **2.0.0**, MAJOR, because a principle is redefined): `contracts/design-system.md` + prototypes are the contract for `app/frontend-new/`, and the legacy `app/frontend/` stays immutable until switch-over. Updated `.specify/templates/plan-template.md`, `.github/copilot-instructions.md`, `.github/instructions/frontend.instructions.md`, `.github/agents/code-review.agent.md`. No client sign-off is required while pre-go-live. A sign-off step can be added once the UI is stable.
 - [X] T001 [P] (WP-F0) `.github/instructions/frontend-new.instructions.md` (applyTo `app/frontend-new/**`): the restyle recipe (plan.md), shell ownership, tokens only, "behavior must not change" rule, tests expected.
 - [X] T002 [P] (WP-F0) Resolve the open questions in `research.md` with `/speckit.clarify` and record them in `spec.md` → Clarifications.
-- [ ] T003 [P] (WP-F0) README note: `app/frontend/` receives no more feature work (pre-go-live pivot) and remains only as the regression reference until cutover.
+- [X] T003 [P] (WP-F0) README note: `app/frontend/` receives no more feature work (pre-go-live pivot) and remains only as the regression reference until cutover.
 
 ## Phase 1: Fork and setup
 
-- [ ] T010 (WP-F1) **Fork:** copy `app/frontend/` → `app/frontend-new/` in one commit ("Fork app/frontend as app/frontend-new"), excluding `node_modules`/`dist`. Rename `package.json` name to `pronghorn-frontend-new`. No other change in this commit.
-- [ ] T011 (WP-F1) `FE/.env.example`: add `VITE_APP_CHANNEL=next`. Confirm the Entra redirect URI variable for the new host.
-- [ ] T012 [P] (WP-F1) `FE/Dockerfile` and `FE/nginx.conf` (from the fork) with `/health`, SPA fallback and legacy-path rewrites placeholder.
-- [ ] T013 (WP-F1) CI: `frontend-new` job in `.github/workflows/ci.yml` (path filter `app/frontend-new/**`: lint, typecheck, unit, build) added to `ci-gate`.
-- [ ] T014 (WP-F1) Build and push the `frontend-new` image in `.github/workflows/platform-deploy.yml`.
-- [ ] T015 (WP-F1) Terraform `module "frontend_new"` (reuse `infra/modules/frontend`) at `next.<domain>`. API CORS and APIM origins. Entra redirect URI.
+- [X] T010 (WP-F1) **Fork:** copy `app/frontend/` → `app/frontend-new/` in one commit ("Fork app/frontend as app/frontend-new"), excluding `node_modules`/`dist`. Rename `package.json` name to `pronghorn-frontend-new`. No other change in this commit.
+- [X] T011 (WP-F1) `FE/.env.example`: add `VITE_APP_CHANNEL=next`. Confirm the Entra redirect URI variable for the new host.
+- [X] T012 [P] (WP-F1) `FE/Dockerfile` and `FE/nginx.conf` (from the fork) with `/health`, SPA fallback and legacy-path rewrites placeholder.
+- [X] T013 (WP-F1) CI: `frontend-new` job in `.github/workflows/ci.yml` (path filter `app/frontend-new/**`: lint, typecheck, unit, build) added to `ci-gate`. UPDATE (fix round 1): the 8 inherited type errors that initially failed the typecheck step have been fixed with minimal, type-only casts (no runtime behavior change) — see the "T013 (WP-F1): fix inherited type errors so the typecheck gate passes" commit for the file-by-file list and the `NOTE(spec-007 Phase R)` comments left at each call site (several reveal pre-existing runtime bugs — dead code, always-undefined values — that were deliberately left as-is per orchestrator decision). `npx tsc -p tsconfig.app.json --noEmit` now exits 0.
+- [X] T014 (WP-F1) Build and push the `frontend-new` image in `.github/workflows/platform-deploy.yml`. UPDATE (fix round 1, non-blocking follow-up): `ca-pronghorn-frontend-new` / `module.frontend_new` now also included in `infra/config/rollback-component-sets.json` (application-runtime set) and the rollback snapshot path (`capture-runtime-revisions` + `get-deployment-snapshot.ps1` in `platform-deploy.yml`), mirroring the legacy frontend and no-op'ing (empty revision/image strings) on an environment where the app doesn't exist yet.
+- [~] T015 (WP-F1) Terraform `module "frontend_new"` (reuse `infra/modules/frontend`) at `next.<domain>`. API CORS and APIM origins. Entra redirect URI. (BLOCKED-EXTERNAL: terraform apply in each environment, DNS for next.<domain>, Entra redirect URI registration) — code is complete: `module "frontend_new"` (infra/main.tf) reuses `./modules/frontend` with its own UAMI/AcrPull role assignment; `cors_allowed_origins` (API Management module call) and the Entra `redirect_uris` list both include `module.frontend_new.app_url` / `var.frontend_new_app_url_override`; new vars `frontend_new_app_url_override`, `frontend_new_build_vars`, `frontend_new_container_*` (infra/variables.tf); new outputs `frontend_new_uami_id`, `frontend_new_url`, `frontend_new_fqdn`, `frontend_new_build_env_vars` (infra/outputs.tf). Validated with `terraform fmt -check -recursive`, `init -backend=false`, and `validate` via `hashicorp/terraform:1.11` in Docker (all pass; 1.9/1.10 fail on unrelated AVM submodule `required_version` floors, unrelated to this change).
 - [ ] T016 [P] (WP-F6) Playwright harness shared by both apps: `e2e/` at repo root or `FE/e2e/` with `BASE_URL` switch, `fixtures.ts` (mock auth, share tokens), `seed.sql`, and a docker compose profile `e2e`.
 - [ ] T017 (WP-F6) **Legacy smoke suite**, written and passing **against `app/frontend`**: one spec per regression row PR-01…PR-21 (page loads, main read, main write, reload). Files `e2e/regression/pr-xx.spec.ts`. This is the regression gate.
-- [ ] T018 [P] (WP-F1) Token lint (`FE/eslint.config.js` custom rule): report raw Tailwind palette classes and hex outside `src/design/**`. Warn mode now, error mode after T031.
+- [X] T018 [P] (WP-F1) Token lint (`FE/eslint.config.js` custom rule): report raw Tailwind palette classes and hex outside `src/design/**`. Warn mode now, error mode after T031.
 
 ## Phase 2: Foundation, design system and shell (blocks page work)
 
@@ -93,11 +93,11 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 ## Phase 6: Backend B1, versions and changes (parallel from M0)
 
-- [ ] T100 (WP-BE1) Migration `infra/migrations/012_versions_work_items.sql` per `data-model.md` §1.
-- [ ] T101 (WP-BE1) `BE/routes/versions.ts`, `BE/routes/workItems.ts`, mounted in `BE/routes/v1/index.ts`, with token auth. Tests.
+- [X] T100 (WP-BE1) Migration `infra/migrations/012_versions_work_items.sql` per `data-model.md` §1.
+- [X] T101 (WP-BE1) `BE/routes/versions.ts`, `BE/routes/workItems.ts`, mounted in `BE/routes/v1/index.ts`, with token auth. Tests.
 - [ ] T102 (WP-BE2) `BE/services/versions/releaseService.ts` (in order, carry-over, merge reviewed branches into the default branch, notes, tag, deploy, first release) + staging `branch` dimension in `BE/utils/staging.ts` with legacy tests unchanged.
 - [ ] T104 (WP-BE2) `BE/services/versions/branchService.ts`: create the **real Git branch** for a change when it is scheduled or accepted, and route its commits there (D-9). Tests with a mocked GitHub API.
-- [ ] T103 [P] (WP-BE1) Realtime `versions-{projectId}`, `work-item-{id}`.
+- [X] T103 [P] (WP-BE1) Realtime `versions-{projectId}`, `work-item-{id}`.
 
 ## Phase 7: US4, versions and changes UI (P2, built new)
 
@@ -112,7 +112,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [X] T120 (WP-BE3) Migrations `013_teams_applications.sql`, `014_assurance_mesh.sql`. Team roles `owner`/`member`. All teams for organization admins (D-8).
 - [X] T121 (WP-BE3) `BE/routes/teams.ts`, `applications.ts`, `packs.ts` (portfolio aggregate in one query). Tests.
 - [X] T122 (WP-BE4) `BE/routes/mesh.ts`: HMAC-verified ingest of PR runs to the default branch, baseline ratchet, evidence, exceptions, policy per check (`issue` default, `notify`, `block`, `off`; org admins set it, team owners only tighten) and the optional Cyber Risk sandbox flag per repository (D-15, D-17). Tests. **Security review.**
-- [ ] T126 (WP-BE8) Integrations config (D-18): migration `016_integrations.sql` (`integration_connections`: provider `github_app`|`azure_devops`, auth type `service_connection`|`pat`, Key Vault secret ref, org scope), `BE/routes/admin/integrations.ts` (org admins only; test connection), used by the onboarding import, PR and issue services. Tests. **Security review.**
+- [X] T126 (WP-BE8) Integrations config (D-18): migration `016_integrations.sql` (`integration_connections`: provider `github_app`|`azure_devops`, auth type `service_connection`|`pat`, Key Vault secret ref, org scope), `BE/routes/admin/integrations.ts` (org admins only; test connection), used by the onboarding import, PR and issue services. Tests. **Security review.**
 - [X] T125 (WP-BE4) `BE/services/mesh/issueService.ts`: open a GitHub issue or Azure DevOps work item for new findings when the policy is `issue` (D-15). Tests with mocked providers.
 - [X] T123 (WP-BE4) `BE/services/github/updatePrs.ts` (GitHub App, bump the manifest, keep local edits). Tests.
 - [X] T124 [P] (WP-BE4) Realtime `team-{teamId}`. "Not reporting" after 7 days.
@@ -131,7 +131,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 - [ ] T140 (WP-BE5) Migration `015_onboarding.sql`. `BE/routes/onboarding.ts` (runs, repository import from GitHub and Azure Repos, selection, output, PRs, cancel). Tests. **Security review.**
 - [ ] T141 (WP-BE6) Sandbox job image `infra/onboarding-sandbox/` + `BE/services/onboarding/jobDispatcher.ts` + Terraform Container Apps Job with restricted egress. Detects each repo's CI provider and generates the mesh CI for **GitHub Actions or Azure Pipelines** (D-12).
-- [ ] T142 (WP-BE7, external repo) `goa-standards/assurance-mesh`: reusable **GitHub Actions** workflow `mesh.yml@v3` **and Azure Pipelines template** `templates/mesh.yml`, both triggered on PRs to the default branch (Green, Yellow, Red, Blue), with the optional **Cyber Risk sandbox stage** (D-17), policy-driven issue/block outcome, signed reports, packs, stack profiles.
+- [~] T142 (WP-BE7, external repo) `goa-standards/assurance-mesh`: reusable **GitHub Actions** workflow `mesh.yml@v3` **and Azure Pipelines template** `templates/mesh.yml`, both triggered on PRs to the default branch (Green, Yellow, Red, Blue), with the optional **Cyber Risk sandbox stage** (D-17), policy-driven issue/block outcome, signed reports, packs, stack profiles. (BLOCKED-EXTERNAL: create the goa-standards/assurance-mesh repo, move external/goa-standards-assurance-mesh/ into it, tag v3, and run the sample GitHub and Azure Repos PRs to verify a signed report shows in the portfolio) — all code done, see external/goa-standards-assurance-mesh/README.md.
 
 ## Phase 11: US6, onboard an app (P3, built new)
 

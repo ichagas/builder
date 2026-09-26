@@ -1116,6 +1116,11 @@ jobs:
           read_terraform_output "frontend_uami_id" || true
           printf 'frontend_uami_id=%s\n' "$TF_OUTPUT_VALUE" >> "$GITHUB_OUTPUT"
 
+          # Frontend-new (redesigned frontend, spec 007) — may be absent on an
+          # environment that hasn't applied the frontend_new module yet.
+          read_terraform_output "frontend_new_uami_id" || true
+          printf 'frontend_new_uami_id=%s\n' "$TF_OUTPUT_VALUE" >> "$GITHUB_OUTPUT"
+
           # Export API env vars as a single JSON blob for dynamic --set-env-vars
           API_ENV_JSON="$(terraform output -json api_container_env_vars 2>/dev/null || echo '{}')"
           printf 'api_env_vars=%s\n' "$API_ENV_JSON" >> "$GITHUB_OUTPUT"
@@ -1123,6 +1128,10 @@ jobs:
           # Export frontend build env vars as a single JSON blob
           FRONTEND_ENV_JSON="$(terraform output -json frontend_build_env_vars 2>/dev/null || echo '{}')"
           printf 'frontend_build_env_vars=%s\n' "$FRONTEND_ENV_JSON" >> "$GITHUB_OUTPUT"
+
+          # Export frontend-new build env vars as a single JSON blob
+          FRONTEND_NEW_ENV_JSON="$(terraform output -json frontend_new_build_env_vars 2>/dev/null || echo '{}')"
+          printf 'frontend_new_build_env_vars=%s\n' "$FRONTEND_NEW_ENV_JSON" >> "$GITHUB_OUTPUT"
 
       - name: build-frontend
         if:
@@ -1140,6 +1149,28 @@ jobs:
             while IFS='=' read -r key value; do
               export "$key=$value"
             done < <(echo "$FRONTEND_VARS" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
+          fi
+
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm run build
+
+      - name: build-frontend-new
+        if:
+          ${{ env.PLAN_ONLY != 'true' && (github.event_name != 'workflow_dispatch' ||
+          !inputs.skip_build) && env.AUTO_SKIP_DOWNSTREAM_DEPLOYMENT != 'true'
+          }}
+        working-directory: app/frontend-new
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Frontend-new (redesigned frontend, spec 007) — mirrors build-frontend
+          # above, injecting its own build vars (single source of truth: Terraform).
+          FRONTEND_NEW_VARS='${{ steps.tfout.outputs.frontend_new_build_env_vars }}'
+          if [ -n "$FRONTEND_NEW_VARS" ] && [ "$FRONTEND_NEW_VARS" != "{}" ]; then
+            while IFS='=' read -r key value; do
+              export "$key=$value"
+            done < <(echo "$FRONTEND_NEW_VARS" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
           fi
 
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
@@ -1194,6 +1225,22 @@ jobs:
           docker build -t "$FRONTEND_IMAGE" -f app/frontend/Dockerfile app/frontend
           docker push "$FRONTEND_IMAGE"
           echo "Pushed frontend image: ${FRONTEND_IMAGE}"
+
+      - name: build-and-push-frontend-new-image
+        if:
+          ${{ env.PLAN_ONLY != 'true' && (github.event_name != 'workflow_dispatch' ||
+          !inputs.skip_build) && env.AUTO_SKIP_DOWNSTREAM_DEPLOYMENT != 'true'
+          }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Frontend-new (redesigned frontend, spec 007) — mirrors
+          # build-and-push-frontend-image above.
+          az acr login --name "${{ steps.tfout.outputs.acr_name }}"
+          FRONTEND_NEW_IMAGE="${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${IMAGE_TAG}"
+          docker build -t "$FRONTEND_NEW_IMAGE" -f app/frontend-new/Dockerfile app/frontend-new
+          docker push "$FRONTEND_NEW_IMAGE"
+          echo "Pushed frontend-new image: ${FRONTEND_NEW_IMAGE}"
 
       - name: build-api
         if:
@@ -1254,6 +1301,7 @@ jobs:
             -var-file="${TFVARS_FILE}" \
             -var="container_image=${{ steps.tfout.outputs.acr_login_server }}/pronghorn-api:${IMAGE_TAG}" \
             -var="frontend_container_image=${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend:${IMAGE_TAG}" \
+            -var="frontend_new_container_image=${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${IMAGE_TAG}" \
             ${{ steps.tfvars.outputs.tf_secret_args }}
 
       - name: update-container-apps-images
@@ -1268,6 +1316,7 @@ jobs:
           RG="${{ steps.tfout.outputs.resource_group }}"
           API_UAMI="${{ steps.tfout.outputs.api_uami_id }}"
           FRONTEND_UAMI="${{ steps.tfout.outputs.frontend_uami_id }}"
+          FRONTEND_NEW_UAMI="${{ steps.tfout.outputs.frontend_new_uami_id }}"
 
           echo "Configuring ACR registry on container apps..."
           az containerapp registry set \
@@ -1281,6 +1330,19 @@ jobs:
             --resource-group "$RG" \
             --server "$ACR_SERVER" \
             --identity "${FRONTEND_UAMI:-system}"
+
+          # Frontend-new (redesigned frontend, spec 007) — skipped gracefully
+          # (empty FRONTEND_NEW_UAMI) on an environment that hasn't applied the
+          # frontend_new Terraform module yet.
+          if [ -n "$FRONTEND_NEW_UAMI" ]; then
+            az containerapp registry set \
+              --name ca-pronghorn-frontend-new \
+              --resource-group "$RG" \
+              --server "$ACR_SERVER" \
+              --identity "${FRONTEND_NEW_UAMI:-system}"
+          else
+            echo "Skipping ca-pronghorn-frontend-new registry configuration: frontend_new_uami_id output is empty."
+          fi
 
           echo "Waiting for registry operations to settle..."
           sleep 30
@@ -1321,6 +1383,19 @@ jobs:
             --resource-group "$RG" \
             --image "${ACR_SERVER}/pronghorn-frontend:${IMAGE_TAG}"
 
+          # Frontend-new (redesigned frontend, spec 007) — skipped gracefully
+          # (empty FRONTEND_NEW_UAMI) on an environment that hasn't applied the
+          # frontend_new Terraform module yet.
+          if [ -n "$FRONTEND_NEW_UAMI" ]; then
+            echo "Updating frontend-new container app with image tag: ${IMAGE_TAG}"
+            retry_containerapp_update az containerapp update \
+              --name ca-pronghorn-frontend-new \
+              --resource-group "$RG" \
+              --image "${ACR_SERVER}/pronghorn-frontend-new:${IMAGE_TAG}"
+          else
+            echo "Skipping ca-pronghorn-frontend-new image update: frontend_new_uami_id output is empty."
+          fi
+
       - name: show-deployment-outputs
         if:
           ${{ env.PLAN_ONLY != 'true' && (github.event_name != 'workflow_dispatch' ||
@@ -1332,11 +1407,13 @@ jobs:
           set -euo pipefail
           API_URL="$(terraform output -raw container_app_url 2>/dev/null || true)"
           FRONTEND_URL="$(terraform output -raw frontend_app_url 2>/dev/null || true)"
+          FRONTEND_NEW_URL="$(terraform output -raw frontend_new_url 2>/dev/null || true)"
           APIM_URL="$(terraform output -raw api_management_gateway_url 2>/dev/null || true)"
 
-          echo "Frontend URL: $FRONTEND_URL"
-          echo "API URL:      $API_URL"
-          echo "APIM URL:     $APIM_URL"
+          echo "Frontend URL:     $FRONTEND_URL"
+          echo "Frontend-new URL: $FRONTEND_NEW_URL"
+          echo "API URL:          $API_URL"
+          echo "APIM URL:         $APIM_URL"
 
       - name: capture-terraform-outputs-json
         if: ${{ env.PLAN_ONLY != 'true' &&
@@ -1358,8 +1435,13 @@ jobs:
           mkdir -p .rollback
           FRONTEND_REVISION="$(az containerapp revision list --name ca-pronghorn-frontend --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
           API_REVISION="$(az containerapp revision list --name ca-pronghorn-api --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
+          # Frontend-new (redesigned frontend, spec 007) — `|| true` makes this
+          # a no-op (empty string) on an environment where ca-pronghorn-frontend-new
+          # doesn't exist yet (frontend_new Terraform module not applied).
+          FRONTEND_NEW_REVISION="$(az containerapp revision list --name ca-pronghorn-frontend-new --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
           printf 'frontend_revision=%s\n' "$FRONTEND_REVISION" >> "$GITHUB_OUTPUT"
           printf 'api_revision=%s\n' "$API_REVISION" >> "$GITHUB_OUTPUT"
+          printf 'frontend_new_revision=%s\n' "$FRONTEND_NEW_REVISION" >> "$GITHUB_OUTPUT"
 
       - name: capture-deployment-snapshot
         if: ${{ env.PLAN_ONLY != 'true' &&
@@ -1374,8 +1456,10 @@ jobs:
             -TerraformOutputsPath ".rollback/terraform-outputs.json" `
             -FrontendImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend:${{ env.IMAGE_TAG }}" `
             -ApiImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-api:${{ env.IMAGE_TAG }}" `
+            -FrontendNewImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${{ env.IMAGE_TAG }}" `
             -FrontendRevision "${{ steps.runtime_revisions.outputs.frontend_revision }}" `
             -ApiRevision "${{ steps.runtime_revisions.outputs.api_revision }}" `
+            -FrontendNewRevision "${{ steps.runtime_revisions.outputs.frontend_new_revision }}" `
             -OutputPath ".rollback/deployment-snapshot.json"
 
       - name: upload-deployment-snapshot

@@ -1,0 +1,24 @@
+# New in 2026.3 (research.md D-8..D-12 changelog, onboard-data.js PACKS[3]).
+profile: python
+label: "Python 3.12"
+setup:
+  - uses: actions/setup-python
+    with:
+      python-version: "3.12"
+build:
+  default_command: "pip install -r requirements.txt"
+test:
+  default_command: "pytest --cov --cov-report=xml"
+  coverage_format: cobertura
+green:
+  dependency_scan: "pip-audit"
+  license_scan: "pip-licenses --fail-on='GPL-3.0;AGPL-3.0'"
+  sbom: "cyclonedx-py -o sbom/bom.json"
+  lint: "ruff check ."
+yellow:
+  copy_sources: ["**/templates/**/*.html", "**/*.md"]
+red:
+  recon_tooling: "nmap, nikto (against test_environment_url only)"
+blue:
+  sast: "bandit -r ."
+  secret_scan: "gitleaks"

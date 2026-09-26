@@ -30,6 +30,12 @@ The platform operates in four modes:
 
 ---
 
+## Frontend redesign in progress
+
+`app/frontend/` is being superseded by a redesigned frontend under active development at `app/frontend-new/` (see `specs/007-frontend-new/`). As of this pre-go-live pivot, **`app/frontend/` receives no more feature work** — it is kept only as the regression reference (visual/behavioral parity baseline) until `app/frontend-new/` cuts over and replaces it as the production frontend. Bug fixes required to keep the regression baseline meaningful are still permitted in `app/frontend/`; new features and redesign work belong in `app/frontend-new/`.
+
+---
+
 ## Features
 
 - **AI-Powered Requirements & Standards** — Decompose ideas into Epics, Features, User Stories, and Acceptance Criteria linked to a reusable global standards library and organizational build books
@@ -133,7 +139,7 @@ This repository ships with **placeholder values** in place of any organization-s
 ```
 pronghorn/
 ├── app/
-│   ├── frontend/              # React + Vite + TypeScript
+│   ├── frontend/              # React + Vite + TypeScript (regression reference only; no more feature work — see "Frontend redesign in progress" above)
 │   │   ├── src/
 │   │   │   ├── components/    # UI components (canvas, build, audit, present, etc.)
 │   │   │   ├── hooks/         # React hooks
@@ -142,6 +148,7 @@ pronghorn/
 │   │   │   ├── lib/           # Auth, API clients, helpers
 │   │   │   └── utils/         # Utility functions
 │   │   └── .env.example
+│   ├── frontend-new/          # Redesigned frontend under active development (spec 007); will replace app/frontend/ at cutover
 │   └── backend/               # Express.js API + TypeScript
 │       ├── src/
 │       │   ├── __tests__/     # Jest test suites
