@@ -8,8 +8,8 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** 1
-- **Open blockers:** none
+- **Wave:** 1–2 (paused by the user on 2026-09-26 ~12:40; resume only on instruction)
+- **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
 ## Tasks
@@ -53,3 +53,21 @@ None yet.
 - **Merged WP-F1** (tester PASS, reviewer CHANGES REQUIRED → fix round 1 → verified: FE lint 0 errors, tsc OK, 330 tests, build OK). F2 and F2b (T030 only) dispatched.
 - **Merged WP-BE8** (tester FAIL + reviewer CHANGES REQUIRED + security PASS/medium → fix round 1 → verified: BE 652 tests). BE5 dispatched (deps BE3, BE8 merged).
 - **2026-09-26 ~11:10: spend limit hit again (HTTP 429)**; stopped: F6 dev (PR-04..07 written, rerunning), F2 dev (tokens.css in progress), F2b dev (codemod starting), BE2 dev (1 commit + WIP), BE5 dev (reading), BE4 tester. BE4 reviewer APPROVE, security PASS (medium: parse-before-size-check on /mesh/runs; low: report_url validation, repo-scoped GitHub token, markdown escaping). Resumed 12:08.
+- **2026-09-26 ~12:40: PAUSED by the user** ("complete all work until now, update progress, commit, stop"). Agents told to finish their current task, commit and stop. No new WPs dispatched.
+
+## Paused state (resume from here)
+
+Merged on `feature/frontend-new`: F1, BE1, BE3, BE7, BE8 (+ T003, T010). Backend 652 tests, frontend-new lint 0 errors / tsc OK / 330 tests / build OK.
+
+Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
+
+| WP | Branch commits | State | Next step |
+|---|---|---|---|
+| F6 | ef1b586 T016, 98e9221 + 83759f7 T017 | T016 done. T017: PR-01..PR-13 + PR-15 green on legacy at 1440/390 (32/32). T017 not ticked | Write PR-14 (Audit, deleted as flaky), PR-16..PR-21; run `npm run test:legacy` to produce `e2e/baselines/axe-legacy.json`; tick T017; then tester + reviewer; merge. Finding: `VITE_AUTH_MODE=mock` is dead code in the legacy app; harness seeds the MSAL cache instead. Legacy bug noted: ProjectSettings name field clobbered by a re-sync useEffect |
+| F2 | 4fdb817 T020, 7b4345d T021, d93a5b6 T022 | T020–T022 done (344 FE tests, contrast test ≥ 4.5:1). Fonts via Google Fonts link (not self-hosted) | T023 (domain atoms) not started; then tester + reviewer; merge |
+| F2b | 7ea3204 T030 | T030 done: codemod + 28 tests + dry-run report `specs/007-frontend-new/codemod/colors-dry-run.md` (412 mapped, 161 unmapped, 23 ambiguous purple). Note: plan estimated 877 palette classes; check the gap | Tester + reviewer; T031 after F2 merges |
+| BE2 | 910f589 T104, 74aefe9 T102 | Both done, 609 BE tests. Known limitation: commit isn't yet partitioned by staging branch | Tester + reviewer; merge |
+| BE4 | 3b9431c, 0e4d61a, 8f1ff15, a171714, 05b6c70 (+ merge of feature) | T122–T125 done. Tester PASS, reviewer APPROVE, security PASS. Fix round 1 was in progress at pause | Finish fix round: route-scoped 2 MB raw parser for /mesh/runs and remove global rawBody hook; report_url https validation + markdown escaping; repo-scoped GitHub App tokens; wire Azure DevOps to BE8 `getAzureDevOpsClient`. Then merge |
+| BE5 | 242fec5 (migration 015 only) | T140 partial: migration done and verified; routes/service not started | Routes, service module, JobDispatcher interface, tests; then tester + reviewer + security |
+
+Not started: F3, F5, T031, T037, all of waves 3–5, BE6, polish, T170–T171.
