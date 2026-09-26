@@ -37,4 +37,25 @@ describe("RepoRow", () => {
     render(<RepoRow name="repo" stack={{ profile: "java", label: "Java 17" }} mesh={{ green: "fail" }} />);
     expect(screen.getByLabelText(/Assurance Mesh:/)).toBeInTheDocument();
   });
+
+  // Fix round 1, item 3: onboarding.css:87-91 collapses the row to 2 columns
+  // at <=900px, with the findings and mesh cells each spanning the full row.
+  it("collapses to 2 columns <=900px, with findings and mesh spanning the full row", () => {
+    const { container } = render(
+      <RepoRow
+        name="repo"
+        stack={{ profile: "node", label: "Node 20" }}
+        findings="baseline 4 · new 1"
+        mesh={{ green: "pass" }}
+      />,
+    );
+    const row = container.firstElementChild as HTMLElement;
+    expect(row.className).toContain("max-[900px]:grid-cols-[minmax(0,1fr)_auto]");
+
+    const findings = screen.getByText("baseline 4 · new 1");
+    expect(findings.className).toContain("max-[900px]:col-span-full");
+
+    const mesh = screen.getByLabelText(/Assurance Mesh:/);
+    expect(mesh.className).toContain("max-[900px]:col-span-full");
+  });
 });

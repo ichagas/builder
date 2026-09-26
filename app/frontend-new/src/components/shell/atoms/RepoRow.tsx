@@ -7,8 +7,9 @@ import { StackBadge, type StackProfile } from "./StackBadge";
 /**
  * RepoRow (T023). One repository line in the Assurance console's
  * Applications view: name + sync note, stack, findings, mesh verdict and PR
- * state. Reference: `shared/onboarding.css` `.repo-row`,
- * `shared/onboard-b.js` `repoRow()`.
+ * state. Reference: `shared/onboarding.css` `.repo-row` (lines 87-91:
+ * `@media (max-width: 900px)` collapses to 2 columns, with the findings and
+ * mesh cells each spanning the full row), `shared/onboard-b.js` `repoRow()`.
  */
 export interface RepoRowProps extends React.HTMLAttributes<HTMLDivElement> {
   name: string;
@@ -27,6 +28,7 @@ export function RepoRow({ name, note, stack, findings, mesh, pr, className, ...p
       className={cn(
         "grid min-h-[58px] items-center gap-gap px-pad py-[10px]",
         "grid-cols-[minmax(180px,1.2fr)_minmax(150px,1fr)_auto_minmax(120px,auto)_auto]",
+        "max-[900px]:grid-cols-[minmax(0,1fr)_auto]",
         className,
       )}
       {...props}
@@ -36,8 +38,12 @@ export function RepoRow({ name, note, stack, findings, mesh, pr, className, ...p
         {note ? <span className="block text-[12.5px] text-muted">{note}</span> : null}
       </span>
       <StackBadge profile={stack.profile} label={stack.label} />
-      {findings ? <span className="text-[12.5px] text-muted">{findings}</span> : <span />}
-      <MeshDots statuses={mesh} />
+      {findings ? (
+        <span className="text-[12.5px] text-muted max-[900px]:col-span-full">{findings}</span>
+      ) : (
+        <span className="max-[900px]:col-span-full" />
+      )}
+      <MeshDots statuses={mesh} className="max-[900px]:col-span-full" />
       {pr && "number" in pr ? (
         <PrChip number={pr.number} state={pr.state} />
       ) : (
