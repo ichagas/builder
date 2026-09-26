@@ -52,6 +52,7 @@ export const designSystemPreset = {
         },
         ink: themeColor("--ink-rgb"),
         muted: themeColor("--muted-rgb"),
+        focus: themeColor("--focus-rgb"),
 
         // Status
         ok: softGroup("ok"),
