@@ -212,7 +212,7 @@ export function AgentFileTree({
             </ContextMenuItem>
             <ContextMenuItem 
               onClick={() => onDeleteFile(node.id, node.path)}
-              className="text-red-400 focus:bg-[#2a2d2e] focus:text-red-300"
+              className="text-bad focus:bg-[#2a2d2e] focus:text-bad-soft"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -258,8 +258,8 @@ export function AgentFileTree({
                       variant="outline" 
                       className={`text-[10px] px-1 py-0 h-4 shrink-0 ${
                         isDangerSize 
-                          ? "border-red-500/50 text-red-400 bg-red-500/10" 
-                          : "border-yellow-500/50 text-yellow-400 bg-yellow-500/10"
+                          ? "border-bad/50 text-bad bg-bad/10" 
+                          : "border-warn/50 text-warn bg-warn/10"
                       }`}
                     >
                       {formatFileSize(size)}
@@ -277,7 +277,7 @@ export function AgentFileTree({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <AlertTriangle className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+                    <AlertTriangle className="h-3.5 w-3.5 text-warn shrink-0" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{isNonImageBinary ? "Binary file - download to view" : "Too large for browser editing"}</p>
@@ -288,7 +288,7 @@ export function AgentFileTree({
             
             {node.isStaged && !isLargeFile && (
               <span className={`text-xs ml-auto ${
-                node.operationType === "delete" ? "text-red-400" : "text-green-400"
+                node.operationType === "delete" ? "text-bad" : "text-ok"
               }`}>
                 {node.operationType === "delete" ? "deleting" : "staged"}
               </span>
@@ -313,7 +313,7 @@ export function AgentFileTree({
           </ContextMenuItem>
           <ContextMenuItem 
             onClick={() => onDeleteFile(node.id, node.path)}
-            className="text-red-400 focus:bg-[#2a2d2e] focus:text-red-300"
+            className="text-bad focus:bg-[#2a2d2e] focus:text-bad-soft"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete

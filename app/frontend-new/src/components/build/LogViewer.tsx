@@ -19,7 +19,7 @@ interface LogViewerProps {
 }
 
 const levelColors = {
-  info: "text-blue-600 dark:text-blue-400",
+  info: "text-primary",
   warning: "text-warning",
   error: "text-destructive",
   success: "text-success",

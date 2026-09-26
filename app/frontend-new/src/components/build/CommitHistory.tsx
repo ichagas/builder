@@ -198,11 +198,11 @@ export function CommitHistory({ projectId, shareToken }: CommitHistoryProps) {
                       {commit.files_changed} file{commit.files_changed !== 1 ? "s" : ""}
                     </Badge>
                     {commit.pushed_at ? (
-                      <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                      <Badge variant="outline" className="text-xs text-ok border-ok">
                         Pushed
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-600">
+                      <Badge variant="outline" className="text-xs text-warn border-warn">
                         Local
                       </Badge>
                     )}
