@@ -35,6 +35,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T122–T125 | done | 3b9431c, 0e4d61a, 8f1ff15, a171714, 05b6c70, 3abdca1, 3cf26ee, 411f02d, 9f5188d | WP-BE4. Fix round 1: route-scoped raw body (413 before parse), report_url validation, Markdown/HTML/@mention escaping in issues, repo-scoped GitHub App tokens, Azure DevOps via BE8 `getAzureDevOpsClient` |
 | T020–T023 | done | 4fdb817, 7b4345d, d93a5b6, 3da919f, 35d4fa9, d8a7ff8, 65ffc24, b0fd31c, c5da929, 7ac7f14 | WP-F2. 9 atoms (RepoRow added per contract). Fix round 1: radius key s→xs (Tailwind `rounded-s` collision), TypeChip font, RepoRow ≤900px collapse, light contrast (ok #13803D→#127B3B, warn #B45309→#B05109, dark ink on mesh green/yellow), D-19 fonts via Google Fonts |
 | T102, T104 | done | 910f589, 74aefe9, ad830f7, 968742d, 6779f30, 7533733 | WP-BE2. Fix round 1: release() gated by releaseChecks, advisory lock + FOR UPDATE, carry-over reuses version by name, staging partitioned by branch (migration 018), branch-scoped unstage/discard. Follow-up (low): release and WI-key advisory locks share the hashtext(projectId) key space |
+| T016, T017 | done | ef1b586, 98e9221, 83759f7, 4efeb81, 96282a1 | WP-F6. PR-01..PR-21 54/54 green on legacy (1440 + 390), twice on a fresh stack; axe-legacy.json baseline (46 rows; 2 rows ±1 node run to run). Specs are app-agnostic (routes.ts urlPattern helpers). T037 still open (after F3) |
 | T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
 
 ## Escalations to Opus 5.5
@@ -85,5 +86,6 @@ Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
 - F6: T017 done (4efeb81): PR-01..PR-21 54/54 green twice on legacy, axe-legacy.json baseline. Reviewer APPROVE. Legacy bugs recorded in e2e/README.md (restyles keep them; Phase R): BuildBook create never inserts (QueryBuilder.select after insert), Gallery clone param mismatch + missing toaster, Gallery titles blank (project_name alias), ProjectSettings name clobber.
 - BE2 fix round 1 done (968742d, 6779f30, 7533733; 652 BE tests; migration 018) → re-review.
 - **Merged WP-BE2** (re-review APPROVE; verified by orchestrator: BE build OK, 806 tests on feature/frontend-new).
+- **Merged WP-F6** (tester PASS, reviewer APPROVE; tasks.md conflict resolved: kept feature ticks, ticked T016/T017). **T017 gate for restyles is met.**
 
 Not started: F5, T037, T037, all of waves 3–5, BE6, polish, T170–T171.
