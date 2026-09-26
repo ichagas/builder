@@ -509,4 +509,144 @@ describe("PUT /mesh/policy (tighten-only rule)", () => {
 
     expect(res.status).toBe(200);
   });
+
+  it("allows an organization admin to loosen at team scope too (isOrgAdmin bypasses tighten-only everywhere, not just at organization scope)", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // getTeamOrgId (checkTeamAccess)
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "profile-1" }] }); // getProfileId
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ org_id: "org-1" }] }); // getUserOrgId
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "admin-row" }] }); // isOrgAdmin -> true
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ role: "owner" }] }); // getTeamRole
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow select
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow insert
+    mockDbQuery.mockResolvedValue({ rows: [] }); // remaining effective policy/sandbox lookups
+
+    const res = await request(createApp("admin-1"))
+      .put(`/mesh/policy?scope=team&scopeId=${TEAM_ID}`)
+      .send({ agent: "blue", mode: "notify" }); // a loosen (block/issue -> notify), only legal for an org admin
+
+    expect(res.status).toBe(200);
+  });
+
+  it("allows an application owner to tighten (application scope, mirrors the team-scope rule)", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // checkApplicationAccess: applications lookup
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // getTeamOrgId
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "profile-1" }] }); // getProfileId
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ org_id: "org-1" }] }); // getUserOrgId
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // isOrgAdmin -> false
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ role: "owner" }] }); // getTeamRole
+    // resolveEffectiveMode -> resolveScopeChain(application) -> applications lookup, then team chain
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // resolveScopeChain: applications
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // resolveScopeChain: teams
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // mesh_policy at application scope: none
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // mesh_policy at team scope: none
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // mesh_policy at org scope: none -> default 'issue'
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow select
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow insert
+    mockDbQuery.mockResolvedValue({ rows: [] }); // remaining effective policy/sandbox lookups
+
+    const res = await request(createApp("user-1"))
+      .put(`/mesh/policy?scope=application&scopeId=${APPLICATION_ID}`)
+      .send({ agent: "red", mode: "block" }); // issue -> block is a tighten
+
+    expect(res.status).toBe(200);
+  });
+
+  it("403s a repository owner trying to loosen (repository scope)", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ application_id: APPLICATION_ID }] }); // checkPolicyScopeAccess: repo -> application
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // checkApplicationAccess: applications lookup
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // getTeamOrgId
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "profile-1" }] }); // getProfileId
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ org_id: "org-1" }] }); // getUserOrgId
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // isOrgAdmin -> false
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ role: "owner" }] }); // getTeamRole
+    // resolveEffectiveMode -> resolveScopeChain(repository) -> repo, application, team, org
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ application_id: APPLICATION_ID }] }); // resolveScopeChain: application_repositories
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // resolveScopeChain: applications
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // resolveScopeChain: teams
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ mode: "block" }] }); // mesh_policy at repository scope: explicit "block"
+
+    const res = await request(createApp("user-1"))
+      .put(`/mesh/policy?scope=repository&scopeId=${REPO_ID}`)
+      .send({ agent: "green", mode: "notify" }); // block -> notify is a loosen
+
+    expect(res.status).toBe(403);
+  });
+
+  it("404s when the policy scope doesn't resolve (unknown repository id)", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // repo -> application lookup: none
+
+    const res = await request(createApp("user-1"))
+      .put(`/mesh/policy?scope=repository&scopeId=does-not-exist`)
+      .send({ agent: "green", mode: "block" });
+
+    expect(res.status).toBe(404);
+  });
+
+  describe("cyberRiskSandbox (D-17): same tighten-only rule, enable-only for non-admins", () => {
+    it("400s cyberRiskSandbox at team/organization scope (only application/repository may set it)", async () => {
+      const res = await request(createApp("user-1"))
+        .put(`/mesh/policy?scope=team&scopeId=${TEAM_ID}`)
+        .send({ cyberRiskSandbox: true });
+
+      expect(res.status).toBe(400);
+    });
+
+    it("allows an application owner to enable the sandbox (false -> true)", async () => {
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // checkApplicationAccess: applications lookup
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // getTeamOrgId
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "profile-1" }] }); // getProfileId
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ org_id: "org-1" }] }); // getUserOrgId
+      mockDbQuery.mockResolvedValueOnce({ rows: [] }); // isOrgAdmin -> false
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ role: "owner" }] }); // getTeamRole
+      // resolveEffectiveSandbox -> resolveScopeChain(application) -> applications, teams; only application/repository links are queried
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // resolveScopeChain: applications
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // resolveScopeChain: teams
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ enabled: false }] }); // mesh_policy sandbox at application scope: currently off
+      mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow select
+      mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow insert
+      mockDbQuery.mockResolvedValue({ rows: [] }); // remaining effective policy/sandbox lookups
+
+      const res = await request(createApp("user-1"))
+        .put(`/mesh/policy?scope=application&scopeId=${APPLICATION_ID}`)
+        .send({ cyberRiskSandbox: true });
+
+      expect(res.status).toBe(200);
+    });
+
+    it("403s an application owner trying to disable an already-enabled sandbox", async () => {
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // checkApplicationAccess: applications lookup
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // getTeamOrgId
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "profile-1" }] }); // getProfileId
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ org_id: "org-1" }] }); // getUserOrgId
+      mockDbQuery.mockResolvedValueOnce({ rows: [] }); // isOrgAdmin -> false
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ role: "owner" }] }); // getTeamRole
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // resolveScopeChain: applications
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // resolveScopeChain: teams
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ enabled: true }] }); // mesh_policy sandbox at application scope: currently ON
+
+      const res = await request(createApp("user-1"))
+        .put(`/mesh/policy?scope=application&scopeId=${APPLICATION_ID}`)
+        .send({ cyberRiskSandbox: false });
+
+      expect(res.status).toBe(403);
+    });
+
+    it("allows an organization admin to disable the sandbox freely", async () => {
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ team_id: TEAM_ID }] }); // checkApplicationAccess: applications lookup
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ organization_id: "org-1" }] }); // getTeamOrgId
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "profile-1" }] }); // getProfileId
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ org_id: "org-1" }] }); // getUserOrgId
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ id: "admin-row" }] }); // isOrgAdmin -> true
+      mockDbQuery.mockResolvedValueOnce({ rows: [{ role: "owner" }] }); // getTeamRole (irrelevant, isOrgAdmin bypasses)
+      mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow select
+      mockDbQuery.mockResolvedValueOnce({ rows: [] }); // upsertPolicyRow insert
+      mockDbQuery.mockResolvedValue({ rows: [] }); // remaining effective policy/sandbox lookups
+
+      const res = await request(createApp("admin-1"))
+        .put(`/mesh/policy?scope=application&scopeId=${APPLICATION_ID}`)
+        .send({ cyberRiskSandbox: false });
+
+      expect(res.status).toBe(200);
+    });
+  });
 });
