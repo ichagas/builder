@@ -20,6 +20,7 @@ import { Errors } from "../middleware/errorHandler";
 import db from "../utils/database";
 import { broadcast } from "../websocket";
 import { authorizeProject, tokenFromQuery } from "../services/versions/access";
+import { ensureBranchForWorkItem, computeBranchName } from "../services/versions/branchService";
 
 const WORK_ITEM_TYPES = ["bug", "enhancement", "feature"] as const;
 const WORK_ITEM_SEVERITIES = ["high", "medium", "low"] as const;
@@ -341,7 +342,21 @@ workItemByIdRouter.patch("/:id", async (req: Request, res: Response) => {
     }
     push("components", body.components);
   }
-  if ("branch" in body) push("branch", body.branch ?? null);
+  if ("branch" in body) {
+    // Callers may only ever set `branch` to null (clear it — should never
+    // normally happen) or to the exact branch `branchService` would compute
+    // for this work item (e.g. a client re-sending its own last-known
+    // state); anything else could point commits/merges at an arbitrary
+    // branch the change doesn't own.
+    const titleForBranch = "title" in body ? String(body.title).trim() : existing.title;
+    const expectedBranch = computeBranchName({ key: existing.key, type: existing.type, title: titleForBranch });
+    if (body.branch !== null && body.branch !== expectedBranch) {
+      throw Errors.validation({
+        branch: `branch must be the computed branch for this change ("${expectedBranch}") or null`,
+      });
+    }
+    push("branch", body.branch ?? null);
+  }
   if ("previewUrl" in body) push("preview_url", body.previewUrl ?? null);
 
   if (updates.length === 0) {
@@ -355,6 +370,26 @@ workItemByIdRouter.patch("/:id", async (req: Request, res: Response) => {
   );
   if (rows.length === 0) throw Errors.notFound("Work item");
   const workItem = rows[0];
+
+  // Scheduling a change into a version, or accepting it (status -> active),
+  // gets it a real Git branch (D-9, WP-BE2 T104). Best-effort: a project
+  // without a linked repo, or without a resolvable GitHub token, just
+  // leaves the change without a branch — never blocks this response. Done
+  // before the broadcasts below so subscribers see the branch immediately,
+  // not on a later refresh.
+  const wasScheduled =
+    "versionId" in body && body.versionId && body.versionId !== existing.version_id;
+  const wasAccepted = "status" in body && body.status === "active" && existing.status !== "active";
+  if ((wasScheduled || wasAccepted) && !workItem.branch) {
+    try {
+      const branchResult = await ensureBranchForWorkItem(workItem.id);
+      if (branchResult.branch) {
+        workItem.branch = branchResult.branch;
+      }
+    } catch {
+      // Never block the update on branch creation failures.
+    }
+  }
 
   if ("versionId" in body && body.versionId !== existing.version_id) {
     broadcast(`versions-${existing.project_id}`, "item_moved", workItem);

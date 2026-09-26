@@ -20,6 +20,7 @@ import { ensureGenappKeyVault, deriveGenappKeyVaultName, deriveGenappKeyVaultUri
 import { stagingChannel, repoFilesChannel } from "../utils/repoChannels";
 import { getRepoBlobStore } from "../utils/repoBlobStore";
 import { resolveAttachedContext } from "../utils/resolveAttachedContext";
+import { stagingBranchForWorkItem } from "../services/versions/branchService";
 
 const router = Router();
 const POSTGRES_IDENTIFIER_MAX_LENGTH = 63;
@@ -2875,12 +2876,23 @@ async function handleCodingAgentOrchestrator(
     maxIterations: requestedMaxIterations = 100,
     autoCommit = false,
     projectContext,
+    // The change (work item) this coding-agent run is driving, if any —
+    // routes its staged edits to that change's real Git branch (D-9 /
+    // WP-BE2 T104) instead of the repo's default 'main' staging branch.
+    workItemId,
   } = body;
 
   if (!projectId || !repoId) {
     res.status(400).json({ error: "projectId and repoId are required" });
     return;
   }
+
+  // Resolve the change's real Git branch once up front (D-9 / WP-BE2 T104):
+  // best-effort — a missing/unbranched work item just falls back to 'main'
+  // staging, the same as when no workItemId is given at all.
+  const workItemStagingBranch = workItemId
+    ? await stagingBranchForWorkItem(workItemId).catch(() => null)
+    : null;
 
   // Set up SSE headers
   res.setHeader("Content-Type", "text/event-stream");
@@ -4006,6 +4018,7 @@ async function handleCodingAgentOrchestrator(
               const _r = await rpc.getStagedChangesWithToken(
                 repoId,
                 shareToken || null,
+                workItemStagingBranch || null,
               );
               return { rows: _r };
             })();
@@ -4023,6 +4036,7 @@ async function handleCodingAgentOrchestrator(
               repoId,
               op.params.file_path,
               shareToken || null,
+              workItemStagingBranch || null,
             );
             if (sessionFileRegistry.has(op.params.file_path))
               sessionFileRegistry.delete(op.params.file_path);
@@ -4031,7 +4045,7 @@ async function handleCodingAgentOrchestrator(
             break;
           }
           case "discard_all_staged": {
-            await rpc.discardStagedWithToken(repoId, shareToken || null);
+            await rpc.discardStagedWithToken(repoId, shareToken || null, workItemStagingBranch || null);
             sessionFileRegistry.clear();
             result = { data: [] };
             filesChanged = true;
@@ -4117,6 +4131,9 @@ async function handleCodingAgentOrchestrator(
           operationType: file.operationType!,
           newContent: file.operationType === "delete" ? null : file.content,
           oldPath: file.oldPath || null,
+          // Staging branch dimension (D-9): the change's own branch when one
+          // was resolved above, otherwise omitted (defaults to 'main').
+          ...(workItemStagingBranch ? { branch: workItemStagingBranch } : {}),
         }));
 
       if (filesToStage.length > 0) {
@@ -4145,6 +4162,7 @@ async function handleCodingAgentOrchestrator(
               null,
               file.newContent ?? null,
               file.oldPath ?? null,
+              workItemStagingBranch || null,
             );
           }
         }
@@ -5075,6 +5093,10 @@ async function handleStagingOperations(
     filePaths,
     commitMessage,
     branch,
+    // The change (work item) this staging call is for, if any — resolved to
+    // its real Git branch below when `branch` itself wasn't given directly
+    // (D-9 / WP-BE2 T104).
+    workItemId,
   } = body;
 
   logger.info(`[staging-operations] Action: ${action}, RepoId: ${repoId}`);
@@ -5085,6 +5107,9 @@ async function handleStagingOperations(
       .json({ success: false, error: "action and repoId are required" });
     return;
   }
+
+  const resolvedBranch =
+    branch || (workItemId ? await stagingBranchForWorkItem(workItemId).catch(() => null) : null);
 
   try {
     let result: any = null;
@@ -5107,6 +5132,11 @@ async function handleStagingOperations(
             oldContent ?? null,
             newContent ?? null,
             oldPath ?? null,
+            // Staging branch dimension (D-9 / WP-BE2 T102/T104): routes this
+            // staged change to a work item's real Git branch when the
+            // caller names one (directly, or via workItemId); defaults to
+            // 'main' (legacy behaviour).
+            resolvedBranch || null,
           );
           return { rows: [{ result: _r }] };
         })();
@@ -5126,6 +5156,7 @@ async function handleStagingOperations(
             repoId,
             filePath,
             shareToken || null,
+            resolvedBranch || null,
           );
           return { rows: [{ result: _r }] };
         })();
@@ -5145,6 +5176,7 @@ async function handleStagingOperations(
             repoId,
             filePaths,
             shareToken || null,
+            resolvedBranch || null,
           );
           return { rows: [{ result: _r }] };
         })();
@@ -5156,6 +5188,7 @@ async function handleStagingOperations(
           const _r = await rpc.discardStagedWithToken(
             repoId,
             shareToken || null,
+            resolvedBranch || null,
           );
           return { rows: [{ result: _r }] };
         })();
@@ -5182,7 +5215,7 @@ async function handleStagingOperations(
             repoId,
             shareToken || null,
             commitMessage,
-            branch || "main",
+            resolvedBranch || "main",
             Array.isArray(filePaths) ? filePaths : null,
           );
           return { rows: [{ result: _r }] };

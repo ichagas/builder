@@ -43,6 +43,8 @@ export interface StagedFileContent {
   operationType: StagingOpType;
   /** Previous path for rename operations; null for all other op types. */
   oldPath: string | null;
+  /** Real Git branch this staged change is routed to (D-9). */
+  branch: string;
 }
 
 /** Lightweight staging row metadata — no content bytes. */
@@ -55,6 +57,8 @@ export interface StagedFileMetadata {
   isBinary: boolean;
   contentLength: number | null;
   oldPath: string | null;
+  /** Real Git branch this staged change is routed to (D-9). Defaults to 'main'. */
+  branch: string;
   /** Always null post-blob-refactor; kept for API shape compatibility. */
   oldContent: null;
   /** Always null post-blob-refactor; content lives in blob storage. */
@@ -70,6 +74,12 @@ export interface PutStagedFileOptions {
   operationType: StagingOpType | string;
   /** Old file path for rename operations. */
   oldPath?: string | null;
+  /**
+   * Real Git branch this staged change belongs to (the staging `branch`
+   * dimension, D-9 / WP-BE2 T102). Defaults to `'main'`, identical to
+   * legacy (pre-branch-dimension) behaviour.
+   */
+  branch?: string | null;
 }
 
 // =============================================================================
@@ -108,6 +118,7 @@ function rowToMetadata(r: Record<string, unknown>): StagedFileMetadata {
     isBinary: (r.is_binary as boolean) ?? false,
     contentLength: (r.content_length as number | null) ?? null,
     oldPath: (r.old_path as string | null) ?? null,
+    branch: (r.branch as string | null) || "main",
     oldContent: null,
     newContent: null,
     createdAt: r.created_at as Date,
@@ -137,10 +148,11 @@ function rowToMetadata(r: Record<string, unknown>): StagedFileMetadata {
 export async function getStagedContent(
   repoId: string,
   filePath: string,
+  branch: string = "main",
 ): Promise<StagedFileContent | null> {
   const result = await db.query(
-    "SELECT operation_type, is_binary, old_path, project_id FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
-    [repoId, filePath],
+    "SELECT operation_type, is_binary, old_path, project_id, branch FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3",
+    [repoId, filePath, branch || "main"],
   );
 
   if (result.rows.length === 0) {
@@ -163,6 +175,7 @@ export async function getStagedContent(
     contentLength: Buffer.byteLength(content),
     operationType: row.operation_type as StagingOpType,
     oldPath: (row.old_path as string | null) ?? null,
+    branch: (row.branch as string | null) || "main",
   };
 }
 
@@ -215,11 +228,17 @@ export async function putStagedFile(
   }
 
   const { isBinary, contentLength } = computeContentMeta(opType !== "delete" ? content : null);
+  const branch = options.branch || "main";
 
+  // ON CONFLICT targets (repo_id, file_path, branch) — the staging branch
+  // dimension (D-9 / WP-BE2 T104, infra/migrations/018_staging_branch_unique.sql):
+  // the same file can be staged independently on more than one change's
+  // branch, so the conflict target (and re-stage/UPSERT below) is scoped to
+  // this specific branch rather than colliding across branches.
   const result = await db.query(
-    `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-     ON CONFLICT (repo_id, file_path) DO UPDATE SET
+    `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, branch, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+     ON CONFLICT (repo_id, file_path, branch) DO UPDATE SET
        operation_type = CASE
          WHEN repo_staging.operation_type IN ('add', 'create') AND $4 IN ('modify', 'edit')
          THEN repo_staging.operation_type
@@ -235,6 +254,7 @@ export async function putStagedFile(
       options.oldPath ?? null,
       isBinary,
       contentLength,
+      branch,
     ],
   );
 
@@ -245,13 +265,20 @@ export async function putStagedFile(
  * Remove a staged file: deletes both the blob and the metadata row.
  * The blob deletion is best-effort — a missing blob does not cause an error.
  *
+ * `branch` is optional (D-9 / WP-BE2 T104): omitted, this deletes the
+ * staged row for `filePath` across every branch, identical to legacy
+ * (pre-branch-dimension) behaviour; given, it only deletes that file's row
+ * on that one branch, leaving another change's staged edit to the same
+ * path on a different branch untouched.
+ *
  * @param repoId   - Repo UUID.
  * @param filePath - Repository-relative file path.
+ * @param branch   - Optional branch to scope the delete to.
  *
  * @example
  * await removeStagedFile('repo-1', 'src/old-file.ts');
  */
-export async function removeStagedFile(repoId: string, filePath: string): Promise<void> {
+export async function removeStagedFile(repoId: string, filePath: string, branch?: string | null): Promise<void> {
   // Look up project_id before deleting the staging row (needed for blob container name)
   const repoLookup = await db.query(
     "SELECT project_id FROM project_repos WHERE id = $1",
@@ -259,10 +286,17 @@ export async function removeStagedFile(repoId: string, filePath: string): Promis
   );
   const projectId = repoLookup.rows[0]?.project_id;
 
-  await db.query(
-    "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
-    [repoId, filePath],
-  );
+  if (branch) {
+    await db.query(
+      "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3",
+      [repoId, filePath, branch],
+    );
+  } else {
+    await db.query(
+      "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
+      [repoId, filePath],
+    );
+  }
   if (projectId) {
     try {
       await getRepoBlobStore().deleteStaged(projectId, repoId, filePath);
