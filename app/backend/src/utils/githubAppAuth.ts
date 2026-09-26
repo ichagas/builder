@@ -18,6 +18,7 @@
  */
 import jwt from "jsonwebtoken";
 import { logger } from "./logger";
+import { parseRepositoryFullName } from "../services/repositories/fullName";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -123,10 +124,9 @@ export async function getInstallationTokenForRepo(options: RepoScopedTokenOption
     );
   }
 
-  const repoName = options.fullName.split("/").pop();
-  if (!repoName) {
-    throw new Error(`Invalid repository full name: "${options.fullName}"`);
-  }
+  // Throws on anything but a well-formed GitHub "<owner>/<repo>" (e.g. an
+  // Azure Repos "<adoOrg>/<project>/<repo>" handed to GitHub code by mistake).
+  const { repo: repoName } = parseRepositoryFullName("github", options.fullName);
 
   const appJwt = createAppJwt();
   const url = `https://api.github.com/app/installations/${GITHUB_APP_INSTALLATION_ID}/access_tokens`;

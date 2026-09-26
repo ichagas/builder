@@ -180,6 +180,37 @@ describe("POST /mesh/runs", () => {
     expect(res.body.code).toBe("MESH_INGEST_UNAUTHORIZED");
   });
 
+  it.each([
+    ["a bare repo name (what the Azure template used to send)", "permits-api"],
+    ["the legacy 2-segment-looking Azure name with an extra segment", "a/b/c/d"],
+    ["a non-string", 42],
+  ])("401s %s without touching the database (canonical full_name only)", async (_label, repository) => {
+    const body = JSON.stringify(reportBody({ repository }));
+    const res = await request(createApp())
+      .post("/mesh/runs")
+      .set("Content-Type", "application/json")
+      .set("X-Pronghorn-Signature", sign(body))
+      .send(body);
+
+    expect(res.status).toBe(401);
+    expect(mockDbQuery).not.toHaveBeenCalled();
+  });
+
+  it("looks an Azure Repos report up by its exact <adoOrg>/<project>/<repo> full_name (no normalization)", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // repo lookup
+
+    const body = JSON.stringify(reportBody({ repository: "contoso/My Project/permits-api" }));
+    const res = await request(createApp())
+      .post("/mesh/runs")
+      .set("Content-Type", "application/json")
+      .set("X-Pronghorn-Signature", sign(body))
+      .send(body);
+
+    expect(res.status).toBe(401);
+    expect(mockDbQuery).toHaveBeenCalledTimes(1);
+    expect(mockDbQuery.mock.calls[0][1]).toEqual(["contoso/My Project/permits-api"]);
+  });
+
   it("401s for a missing signature header", async () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [repoRow()] });
 

@@ -41,6 +41,7 @@ import { listGitHubRepositories, ImportableRepository } from "./githubImport";
 import { listAzureDevOpsRepositories, ImportableAzureRepository } from "./azureImport";
 import { openRepositoryPullRequest } from "./pullRequests";
 import { findDisallowedPath } from "./pathValidation";
+import { inferRepositoryProvider, RepositoryProvider } from "../repositories/fullName";
 
 export interface OnboardingRunView extends OnboardingRunRow {
   repositories: OnboardingRunRepositoryRow[];
@@ -289,8 +290,14 @@ export async function setRunRepositories(
     throw Errors.validation({ repositories: `at most ${MAX_REPOSITORIES_PER_RUN} repositories are allowed per run` });
   }
   for (const repo of repositories) {
-    if (!repo || typeof repo.fullName !== "string" || !repo.fullName.includes("/")) {
-      throw Errors.validation({ repositories: `each entry needs a "fullName" like "org/repo"` });
+    // Strictly validated by the shared full_name parser
+    // (services/repositories/fullName) — the same one PR opening, mesh
+    // ingest and work-item filing use — so a name accepted here can never
+    // fail to split (or split into the wrong segments) later.
+    if (!repo || inferRepositoryProvider(repo.fullName) === null) {
+      throw Errors.validation({
+        repositories: `each entry needs a "fullName" like "owner/repo" (GitHub) or "adoOrg/project/repo" (Azure Repos)`,
+      });
     }
   }
 
@@ -407,8 +414,16 @@ export async function getRunOutput(userId: string, runId: string): Promise<Onboa
 
 const PR_ELIGIBLE_STATUSES = ["ready", "prs_open"];
 
-function providerForCi(detectedCi: string | null): "github" | "azure_devops" {
-  return detectedCi === "azure_pipelines" ? "azure_devops" : "github";
+/**
+ * The source-control provider hosting a repository, from its `full_name`
+ * shape (2 segments → GitHub, 3 → Azure Repos; services/repositories/
+ * fullName). Fix round 3: this used to be inferred from `detected_ci`, which
+ * is the CI system the sandbox detected, not where the repository lives — a
+ * GitHub repository built with Azure Pipelines was routed to the Azure Repos
+ * PR code (and vice versa) and its `full_name` split the wrong way.
+ */
+function providerForRepository(fullName: string): RepositoryProvider | null {
+  return inferRepositoryProvider(fullName);
 }
 
 /**
@@ -587,7 +602,7 @@ async function linkApplicationForRun(
        WHERE application_repositories.application_id = EXCLUDED.application_id`,
       [
         resolvedApplicationId,
-        providerForCi(repo.detected_ci),
+        providerForRepository(repo.full_name),
         repo.full_name,
         defaultBranch,
         repo.detected_ci,
@@ -670,7 +685,13 @@ export async function openPullRequests(
         continue;
       }
 
-      const provider = providerForCi(repo.detected_ci);
+      const provider = providerForRepository(repo.full_name);
+      if (!provider) {
+        // Only reachable for a row written before selection-time validation
+        // (setRunRepositories) was tightened.
+        await markRepoError(repo, "invalid repository name");
+        continue;
+      }
       const files = (repo.generated_manifest ?? []) as Array<{ path: string; content: string }>;
       if (files.length === 0) {
         await markRepoError(repo, "no generated files to open a PR from");

@@ -18,6 +18,7 @@
 import { logger } from "../../utils/logger";
 import { getAzureDevOpsClient } from "../integrations";
 import { extractAzureDevOpsOrgLogin } from "../integrations/providers/azureDevOps";
+import { tryParseRepositoryFullName } from "../repositories/fullName";
 
 const AZURE_DEVOPS_API_VERSION = "7.1";
 
@@ -95,8 +96,19 @@ export async function listAzureDevOpsRepositories(
     const reposData = (await reposRes.json()) as { value: AzureRepository[] };
 
     for (const repo of reposData.value ?? []) {
+      // Built and validated through the shared full_name parser
+      // (services/repositories/fullName): a name that couldn't round-trip
+      // through it later (PR opening, mesh ingest, work items) is skipped
+      // here rather than offered for import.
+      const parsed = tryParseRepositoryFullName("azure_devops", `${adoOrg}/${project.name}/${repo.name}`);
+      if (!parsed) {
+        logger.warn(
+          `[onboarding/azureImport] skipping repository with an unsupported name in project "${project.name}"`
+        );
+        continue;
+      }
       results.push({
-        fullName: `${adoOrg}/${project.name}/${repo.name}`,
+        fullName: parsed.fullName,
         adoOrg,
         project: project.name,
         defaultBranch: (repo.defaultBranch || "refs/heads/main").replace(/^refs\/heads\//, ""),

@@ -48,6 +48,7 @@ import {
   isTightenOrEqual,
 } from "../services/mesh/policy";
 import { openIssueForNewFindings } from "../services/mesh/issueService";
+import { inferRepositoryProvider } from "../services/repositories/fullName";
 
 const router = Router();
 
@@ -120,8 +121,14 @@ router.post("/runs", async (req: Request, res: Response) => {
     throw Errors.badRequest("Body is not valid JSON");
   }
 
-  const repositoryFullName: string | undefined = body.repository;
-  if (!repositoryFullName || typeof repositoryFullName !== "string") {
+  // `repository` must be the canonical `application_repositories.full_name`
+  // ("<owner>/<repo>" for GitHub, "<adoOrg>/<project>/<repo>" for Azure
+  // Repos — contracts/api.md `POST /mesh/runs`); the mesh CI templates send
+  // exactly that and this endpoint does no normalization, only an exact
+  // lookup. Anything that isn't one of those two shapes can't match a row,
+  // so it's rejected (with the same generic 401) before touching the DB.
+  const repositoryFullName: unknown = body?.repository;
+  if (typeof repositoryFullName !== "string" || inferRepositoryProvider(repositoryFullName) === null) {
     return rejectIngestAuth(res);
   }
 

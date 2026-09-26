@@ -21,6 +21,7 @@ import { logger } from "../../utils/logger";
 import { getInstallationTokenForRepo } from "../../utils/githubAppAuth";
 import { getAzureDevOpsClient } from "../integrations";
 import { extractAzureDevOpsOrgLogin } from "../integrations/providers/azureDevOps";
+import { parseRepositoryFullName } from "../repositories/fullName";
 import { GeneratedFile } from "./jobDispatcher";
 
 export interface OpenPullRequestInput {
@@ -51,8 +52,7 @@ async function githubRequest(token: string, path: string, init: RequestInit = {}
 }
 
 async function openGitHubPullRequest(input: OpenPullRequestInput): Promise<OpenPullRequestResult> {
-  const [owner, repo] = input.fullName.split("/");
-  if (!owner || !repo) throw new Error(`Invalid GitHub repository full name: "${input.fullName}"`);
+  const { owner, repo } = parseRepositoryFullName("github", input.fullName);
 
   const token = await getInstallationTokenForRepo({
     fullName: input.fullName,
@@ -137,13 +137,9 @@ async function openAzureDevOpsPullRequest(input: OpenPullRequestInput): Promise<
   // Convention (fix round 2, item 1): an Azure DevOps repository's full_name
   // is `<adoOrg>/<project>/<repo>` — `<project>/<repo>` alone isn't globally
   // unique across different Azure DevOps organizations, and
-  // `application_repositories.full_name` is (see data-model.md §2).
-  const [adoOrg, project, repoName] = input.fullName.split("/");
-  if (!adoOrg || !project || !repoName) {
-    throw new Error(
-      `Invalid Azure DevOps repository full name: "${input.fullName}" (expected "adoOrg/project/repo")`
-    );
-  }
+  // `application_repositories.full_name` is (see data-model.md §2). Parsed
+  // strictly by the shared parser (services/repositories/fullName).
+  const { adoOrg, project, repo: repoName } = parseRepositoryFullName("azure_devops", input.fullName);
 
   const client = await getAzureDevOpsClient(input.organizationId, input.connectionId ?? undefined);
 

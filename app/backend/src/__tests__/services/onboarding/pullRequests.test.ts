@@ -155,6 +155,48 @@ describe("openRepositoryPullRequest — github", () => {
   });
 });
 
+describe("openRepositoryPullRequest — full_name / provider mismatch (fix round 3)", () => {
+  afterEach(() => jest.resetAllMocks());
+
+  it("refuses an Azure-shaped full_name on the github path before minting any token", async () => {
+    const fetchMock = jest.fn();
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      await expect(
+        openRepositoryPullRequest({
+          provider: "github",
+          fullName: "contoso/MyProject/permits-api",
+          organizationId: "org-1",
+          branchName: "b",
+          title: "t",
+          body: "b",
+          files,
+        })
+      ).rejects.toThrow(/Invalid GitHub repository full name/);
+    } finally {
+      global.fetch = originalFetch;
+    }
+    expect(mockGetInstallationTokenForRepo).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a GitHub-shaped full_name on the azure_devops path before resolving a connection", async () => {
+    await expect(
+      openRepositoryPullRequest({
+        provider: "azure_devops",
+        fullName: "goa/permits-api",
+        organizationId: "org-1",
+        branchName: "b",
+        title: "t",
+        body: "b",
+        files,
+      })
+    ).rejects.toThrow(/Invalid Azure DevOps repository full name/);
+    expect(mockGetAzureDevOpsClient).not.toHaveBeenCalled();
+  });
+});
+
 describe("openRepositoryPullRequest — azure_devops", () => {
   afterEach(() => jest.resetAllMocks());
 
@@ -231,7 +273,7 @@ describe("openRepositoryPullRequest — azure_devops", () => {
         body: "b",
         files,
       })
-    ).rejects.toThrow(/expected "adoOrg\/project\/repo"/i);
+    ).rejects.toThrow(/expected "<adoOrg>\/<project>\/<repo>"/i);
   });
 
   it("rejects when the full_name's adoOrg doesn't match the resolved connection's organization (fix round 2, item 1)", async () => {

@@ -204,9 +204,18 @@ jobs:
             echo '{}' > .mesh/policy.json
           fi
         displayName: "Fetch policy file"
+      # `repository` in the report must be the canonical Pronghorn full_name
+      # (scripts/lib/repository.js): for an Azure Repos (TfsGit) repository
+      # that is "<adoOrg>/<project>/<repo>" -- Build.Repository.Name alone is
+      # only "<repo>" -- so the CLI builds it from the collection URI and team
+      # project. For a GitHub repository built here, Build.Repository.Name is
+      # already "<owner>/<repo>" and is sent as-is.
       - script: |
           node "$(Build.SourcesDirectory)/mesh-scripts/scripts/report-cli.js" \
             --repository "$(Build.Repository.Name)" \
+            --repository-provider "$(Build.Repository.Provider)" \
+            --azure-collection-uri "$(System.CollectionUri)" \
+            --azure-project "$(System.TeamProject)" \
             --commit "$(Build.SourceVersion)" \
             --pr-number "$(System.PullRequest.PullRequestNumber)" \
             --base-branch "$(System.PullRequest.TargetBranch)" \

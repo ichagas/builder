@@ -55,6 +55,16 @@ Token access: every route accepts `?token=` and authorizes through `authorize_pr
 | **POST** | **`/mesh/runs`** | **Ingest from the generated CI (GitHub Actions or Azure Pipelines) on PRs to the default branch. HMAC header `X-Pronghorn-Signature`. No user auth.** |
 | POST | `/mesh/runs/:runId/issue` | Open an issue (GitHub) or work item (Azure DevOps) for new findings (policy `issue`, D-15) |
 
+`POST /mesh/runs`'s `repository` is the repository's canonical
+`application_repositories.full_name` (data-model.md §2): `"<owner>/<repo>"`
+for GitHub, `"<adoOrg>/<project>/<repo>"` for Azure Repos. The API matches it
+**exactly** and does no normalization (it can't: a bare Azure repo name
+doesn't identify the organization or project); the mesh CI templates are
+responsible for sending the canonical form (`templates/mesh.yml` builds the
+Azure one from `System.CollectionUri`/`System.TeamProject`/
+`Build.Repository.Name` via `scripts/lib/repository.js`). A value that is
+neither shape gets the same generic 401 as an unknown repository.
+
 ### Admin: Integrations (D-18), organization admins only
 | Method | Path | Purpose |
 |---|---|---|
@@ -80,7 +90,7 @@ see.
 | GET | `/onboarding/runs/:id` | Wizard state |
 | GET | `/onboarding/github/repos?teamId=&q=` | Import list (GitHub App installation, scoped to `teamId`'s organization — see below) |
 | GET | `/onboarding/azure/repos?teamId=&connectionId=&q=` | Import list (Azure Repos, via the organization's configured connection) |
-| PUT | `/onboarding/runs/:id/repositories` | Selected repos |
+| PUT | `/onboarding/runs/:id/repositories` | Selected repos: `{ repositories: [{ fullName, selected? }] }`, each `fullName` a canonical full_name (`owner/repo` or `adoOrg/project/repo`, as returned by the import lists) — anything else is 422 |
 | POST | `/onboarding/runs/:id/start` | Start the sandbox job (Container Apps Job) |
 | GET | `/onboarding/runs/:id/output` | Review, generated files, baselines per repo |
 | POST | `/onboarding/runs/:id/pull-requests` | Open one PR per repo: GitHub (GitHub App) or Azure Repos, with the generated CI for that platform |

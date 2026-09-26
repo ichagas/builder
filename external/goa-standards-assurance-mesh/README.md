@@ -94,7 +94,16 @@ behavior — report shape, signing, policy — is identical.
 ```
 
 `repository` (a `full_name` string) is included so the API can resolve
-`repository_id` via `application_repositories.full_name`; every other field
+`repository_id` via `application_repositories.full_name`. It must be the
+repository's **canonical** Pronghorn `full_name` — the API does an exact
+lookup and never normalizes it: `"<owner>/<repo>"` for a GitHub repository
+(GitHub Actions' `github.repository`; also Azure Pipelines'
+`Build.Repository.Name` when it builds a GitHub repo), and
+`"<adoOrg>/<project>/<repo>"` for an Azure Repos repository, which
+`scripts/lib/repository.js` builds from `System.CollectionUri`,
+`System.TeamProject` and `Build.Repository.Name` (report-cli flags
+`--repository-provider "$(Build.Repository.Provider)" --azure-collection-uri
+--azure-project`, already wired into `templates/mesh.yml`). Every other field
 maps 1:1 onto a `mesh_runs` column. `findings[]` (not itself a `mesh_runs`
 column) carries every finding this run produced, each tagged with a stable
 `fingerprint` — `sha256(lowercase(agent|rule|file|location))`

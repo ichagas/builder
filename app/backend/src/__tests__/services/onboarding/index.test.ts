@@ -397,7 +397,7 @@ describe("listImportableAzureRepositories", () => {
   });
 
   it("derives the organization from teamId, never a client-supplied value, and forwards connectionId/query", async () => {
-    mockListAzureDevOpsRepositories.mockResolvedValue([{ fullName: "MyProject/permits-api" }]);
+    mockListAzureDevOpsRepositories.mockResolvedValue([{ fullName: "contoso/MyProject/permits-api" }]);
 
     const repos = await onboarding.listImportableAzureRepositories(USER_ID, {
       teamId: TEAM_ID,
@@ -406,7 +406,7 @@ describe("listImportableAzureRepositories", () => {
     });
 
     expect(mockListAzureDevOpsRepositories).toHaveBeenCalledWith("org-1", "conn-1", "permits");
-    expect(repos).toEqual([{ fullName: "MyProject/permits-api" }]);
+    expect(repos).toEqual([{ fullName: "contoso/MyProject/permits-api" }]);
   });
 
   it("surfaces a missing/misconfigured connection as a 400, not a 500", async () => {
@@ -449,6 +449,28 @@ describe("setRunRepositories", () => {
       onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "not-a-valid-full-name" }])
     ).rejects.toMatchObject({ statusCode: 422 });
     expect(mockReplaceRepos).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["four segments", "a/b/c/d"],
+    ["an empty segment", "goa//permits-api"],
+    ["a path-traversal repo", "goa/.."],
+    ["a forbidden character", "contoso/Pro:ject/repo"],
+  ])("422s a repository fullName with %s (shared full_name parser)", async (_label, fullName) => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    await expect(onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName }])).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockReplaceRepos).not.toHaveBeenCalled();
+  });
+
+  it("accepts an Azure Repos <adoOrg>/<project>/<repo> fullName", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    mockReplaceRepos.mockResolvedValue([]);
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "draft", step: "connect" }));
+    mockListRepos.mockResolvedValue([]);
+
+    await onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "contoso/My Project/permits-api" }]);
+
+    expect(mockReplaceRepos).toHaveBeenCalledWith(RUN_ID, [{ fullName: "contoso/My Project/permits-api", selected: true }]);
   });
 
   it("422s a repository entry missing fullName entirely", async () => {
@@ -1041,12 +1063,12 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(view.status).toBe("prs_open");
   });
 
-  it("routes azure_pipelines repos to the azure_devops provider", async () => {
+  it("routes an Azure Repos (<adoOrg>/<project>/<repo>) repository to the azure_devops provider", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "ready", connection_id: "conn-1" }));
     mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready", connection_id: "conn-1" }));
     mockListRepos.mockResolvedValue([
       {
-        full_name: "MyProject/permits-api",
+        full_name: "contoso/MyProject/permits-api",
         selected: true,
         pr_number: null,
         detected_ci: "azure_pipelines",
@@ -1061,6 +1083,28 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(mockOpenPr).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "azure_devops", connectionId: "conn-1", organizationId: "org-1" })
     );
+  });
+
+  it("routes a GitHub repository built with Azure Pipelines to the github provider (provider comes from full_name, not detected_ci)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "azure_pipelines",
+        generated_manifest: [{ path: "azure-pipelines/assurance-mesh.yml", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 5, prState: "open", defaultBranch: "main" });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open" }));
+
+    await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ provider: "github", fullName: "goa/permits-api" }));
+    const insert = mockDbQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO public.application_repositories"));
+    expect(insert?.[1]?.[1]).toBe("github");
   });
 
   it("claims an atomic PR-opening lease rather than holding a transaction/connection open (fix round 2, item 4)", async () => {

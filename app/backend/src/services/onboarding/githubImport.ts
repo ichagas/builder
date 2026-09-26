@@ -9,6 +9,7 @@
  */
 import { getInstallationToken, isGitHubAppConfigured } from "../../utils/githubAppAuth";
 import { logger } from "../../utils/logger";
+import { tryParseRepositoryFullName } from "../repositories/fullName";
 
 export interface ImportableRepository {
   fullName: string;
@@ -96,6 +97,9 @@ export async function listGitHubRepositories(
       return !org || login === org;
     })
     .filter((r) => !query || r.full_name.toLowerCase().includes(query))
+    // Only names the shared full_name parser accepts (services/repositories/
+    // fullName) — anything else couldn't be onboarded anyway.
+    .filter((r) => tryParseRepositoryFullName("github", r.full_name) !== null)
     .map((r) => ({
       fullName: r.full_name,
       defaultBranch: r.default_branch,
