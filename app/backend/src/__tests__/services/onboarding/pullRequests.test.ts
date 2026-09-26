@@ -5,15 +5,19 @@ jest.mock("../../../utils/logger", () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
 
-jest.mock("jsonwebtoken", () => ({ sign: jest.fn(() => "fake-app-jwt") }));
+jest.mock("../../../utils/githubAppAuth", () => ({
+  getInstallationTokenForRepo: jest.fn(),
+}));
 
 jest.mock("../../../services/integrations", () => ({
   getAzureDevOpsClient: jest.fn(),
 }));
 
+import { getInstallationTokenForRepo } from "../../../utils/githubAppAuth";
 import { getAzureDevOpsClient } from "../../../services/integrations";
 import { openRepositoryPullRequest } from "../../../services/onboarding/pullRequests";
 
+const mockGetInstallationTokenForRepo = getInstallationTokenForRepo as jest.Mock;
 const mockGetAzureDevOpsClient = getAzureDevOpsClient as jest.Mock;
 
 const files = [{ path: ".github/workflows/assurance-mesh.yml", content: "name: assurance-mesh\n" }];
@@ -21,9 +25,7 @@ const files = [{ path: ".github/workflows/assurance-mesh.yml", content: "name: a
 describe("openRepositoryPullRequest — github", () => {
   const originalFetch = global.fetch;
   beforeEach(() => {
-    process.env.GITHUB_APP_ID = "12345";
-    process.env.GITHUB_APP_INSTALLATION_ID = "67890";
-    process.env.GITHUB_APP_PRIVATE_KEY = "fake-key";
+    mockGetInstallationTokenForRepo.mockResolvedValue("repo-scoped-token");
   });
   afterEach(() => {
     global.fetch = originalFetch;
@@ -35,9 +37,6 @@ describe("openRepositoryPullRequest — github", () => {
     const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
 
-      if (url.includes("/access_tokens")) {
-        return { ok: true, json: async () => ({ token: "repo-scoped-token" }) };
-      }
       if (url.match(/\/repos\/goa\/permits-api$/)) {
         return { ok: true, json: async () => ({ default_branch: "main" }) };
       }
@@ -66,8 +65,8 @@ describe("openRepositoryPullRequest — github", () => {
     return { fetchMock, calls };
   }
 
-  it("mints a token scoped to exactly the one repository, not the shared installation token", async () => {
-    const { calls } = installFetchSequence();
+  it("mints a token scoped to exactly the one repository via getInstallationTokenForRepo, never the shared installation token", async () => {
+    installFetchSequence();
 
     await openRepositoryPullRequest({
       provider: "github",
@@ -79,10 +78,10 @@ describe("openRepositoryPullRequest — github", () => {
       files,
     });
 
-    const tokenCall = calls.find((c) => c.url.includes("/access_tokens"));
-    expect(tokenCall).toBeDefined();
-    const body = JSON.parse((tokenCall!.init!.body as string) ?? "{}");
-    expect(body.repositories).toEqual(["permits-api"]);
+    expect(mockGetInstallationTokenForRepo).toHaveBeenCalledWith({
+      fullName: "goa/permits-api",
+      permissions: { contents: "write", pull_requests: "write" },
+    });
   });
 
   it("opens a PR and returns its number", async () => {

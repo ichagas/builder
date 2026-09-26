@@ -5,25 +5,22 @@
  * is `ready`/`prs_open` — this module does no confirmation or state-machine
  * enforcement of its own, it only knows how to open one PR.
  *
- * GitHub: mints a token scoped to the single target repository (GitHub
- * App "Get an installation access token" with a `repositories` filter) so a
+ * GitHub: mints a token scoped to the single target repository via
+ * `utils/githubAppAuth#getInstallationTokenForRepo` (shared with WP-BE4's
+ * mesh issue/update-PR services — do not reimplement this locally) so a
  * failure or bug here cannot touch any other repository, even though the
  * platform installation may span many. This is intentionally a fresh,
  * short-lived token per call — never the shared, broadly-scoped token from
- * `utils/githubAppAuth`.
+ * `getInstallationToken`.
  *
  * Azure DevOps: uses the organization's configured connection
  * (`services/integrations#getAzureDevOpsClient`), which is PAT-scoped to
  * whatever projects/repos the admin granted it.
  */
-import jwt from "jsonwebtoken";
 import { logger } from "../../utils/logger";
+import { getInstallationTokenForRepo } from "../../utils/githubAppAuth";
 import { getAzureDevOpsClient } from "../integrations";
 import { GeneratedFile } from "./jobDispatcher";
-
-const GITHUB_APP_ID = process.env.GITHUB_APP_ID || "";
-const GITHUB_APP_INSTALLATION_ID = process.env.GITHUB_APP_INSTALLATION_ID || "";
-const GITHUB_APP_PRIVATE_KEY = (process.env.GITHUB_APP_PRIVATE_KEY || "").replace(/\\n/g, "\n");
 
 export interface OpenPullRequestInput {
   provider: "github" | "azure_devops";
@@ -41,48 +38,6 @@ export interface OpenPullRequestResult {
   prState: "open";
 }
 
-function createRepoScopedAppJwt(): string {
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  return jwt.sign(
-    { iss: GITHUB_APP_ID, iat: nowSeconds - 60, exp: nowSeconds + 10 * 60 },
-    GITHUB_APP_PRIVATE_KEY,
-    { algorithm: "RS256" }
-  );
-}
-
-/**
- * A GitHub App installation token scoped to exactly one repository —
- * least-privilege for the PR-opening call, distinct from the shared,
- * install-wide token used for read-only listing (`githubImport.ts`) and the
- * mesh services (WP-BE4).
- */
-async function getRepoScopedInstallationToken(owner: string, repo: string): Promise<string> {
-  const appJwt = createRepoScopedAppJwt();
-  const res = await fetch(
-    `https://api.github.com/app/installations/${GITHUB_APP_INSTALLATION_ID}/access_tokens`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${appJwt}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      body: JSON.stringify({
-        repositories: [repo],
-        permissions: { contents: "write", pull_requests: "write" },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to mint repo-scoped token for ${owner}/${repo}: ${res.status} ${text.slice(0, 200)}`);
-  }
-
-  const data = (await res.json()) as { token: string };
-  return data.token;
-}
-
 async function githubRequest(token: string, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
@@ -96,7 +51,10 @@ async function openGitHubPullRequest(input: OpenPullRequestInput): Promise<OpenP
   const [owner, repo] = input.fullName.split("/");
   if (!owner || !repo) throw new Error(`Invalid GitHub repository full name: "${input.fullName}"`);
 
-  const token = await getRepoScopedInstallationToken(owner, repo);
+  const token = await getInstallationTokenForRepo({
+    fullName: input.fullName,
+    permissions: { contents: "write", pull_requests: "write" },
+  });
 
   const repoRes = await githubRequest(token, `/repos/${owner}/${repo}`);
   if (!repoRes.ok) throw new Error(`Could not read ${owner}/${repo}: ${repoRes.status}`);
