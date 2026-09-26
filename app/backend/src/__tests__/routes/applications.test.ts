@@ -219,6 +219,17 @@ describe("GET /applications/:appId — response shape and adoption", () => {
     });
     expect(res.body.exceptions).toEqual([]);
   });
+
+  it("surfaces not_reporting per repository (research D-10, 7-day rule) — T124", async () => {
+    const res = await request(createApp(MEMBER_USER_ID)).get(`/applications/${APP_ID}`);
+    expect(res.status).toBe(200);
+    // APPLICATION_ROW.onboarded_at is set; every repository carries the flag
+    // (computed via services/mesh/realtime.ts's isNotReporting, shared with
+    // routes/teams.ts's portfolio query).
+    for (const repo of res.body.repositories) {
+      expect(typeof repo.not_reporting).toBe("boolean");
+    }
+  });
 });
 
 describe("GET /applications/:appId/runs", () => {

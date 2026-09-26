@@ -115,7 +115,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [ ] T126 (WP-BE8) Integrations config (D-18): migration `016_integrations.sql` (`integration_connections`: provider `github_app`|`azure_devops`, auth type `service_connection`|`pat`, Key Vault secret ref, org scope), `BE/routes/admin/integrations.ts` (org admins only; test connection), used by the onboarding import, PR and issue services. Tests. **Security review.**
 - [X] T125 (WP-BE4) `BE/services/mesh/issueService.ts`: open a GitHub issue or Azure DevOps work item for new findings when the policy is `issue` (D-15). Tests with mocked providers.
 - [X] T123 (WP-BE4) `BE/services/github/updatePrs.ts` (GitHub App, bump the manifest, keep local edits). Tests.
-- [ ] T124 [P] (WP-BE4) Realtime `team-{teamId}`. "Not reporting" after 7 days.
+- [X] T124 [P] (WP-BE4) Realtime `team-{teamId}`. "Not reporting" after 7 days.
 
 ## Phase 9: US5, Assurance console (P2, built new)
 

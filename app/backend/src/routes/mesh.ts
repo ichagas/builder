@@ -17,7 +17,7 @@ import { Router, Request, Response } from "express";
 import { Errors } from "../middleware/errorHandler";
 import { logger } from "../utils/logger";
 import db from "../utils/database";
-import { broadcast } from "../websocket";
+import { broadcastMeshRunReceived, broadcastPrStateChanged } from "../services/mesh/realtime";
 import {
   getProfileId,
   isOrgAdmin,
@@ -243,7 +243,7 @@ router.post("/runs", async (req: Request, res: Response) => {
   const cyberRiskSandbox = await resolveEffectiveSandbox("repository", repo.id);
 
   if (repo.team_id) {
-    broadcast(`team-${repo.team_id}`, "mesh_run_received", {
+    broadcastMeshRunReceived({
       teamId: repo.team_id,
       applicationId: repo.application_id,
       repositoryId: repo.id,
@@ -253,7 +253,7 @@ router.post("/runs", async (req: Request, res: Response) => {
       newFindings: totalNewFindings,
     });
     if (prState === "merged" || prState === "closed") {
-      broadcast(`team-${repo.team_id}`, "pr_state_changed", {
+      broadcastPrStateChanged({
         teamId: repo.team_id,
         applicationId: repo.application_id,
         repositoryId: repo.id,

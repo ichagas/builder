@@ -9,9 +9,9 @@ import { Router, Request, Response } from "express";
 import { Errors } from "../middleware/errorHandler";
 import db from "../utils/database";
 import { logger } from "../utils/logger";
-import { broadcast } from "../websocket";
 import { checkApplicationAccess } from "../services/teams/authorization";
 import { openUpdatePr, RepoToUpdate, UpdatePrResult } from "../services/github/updatePrs";
+import { broadcastPrStateChanged, isNotReporting } from "../services/mesh/realtime";
 
 const router = Router();
 
@@ -58,6 +58,13 @@ router.get("/:appId", async (req: Request, res: Response) => {
     : 0;
   const adoption = totalRepos > 0 ? onLatest / totalRepos : null;
 
+  // "Not reporting" after 7 days (research D-10), surfaced the same way as
+  // the team portfolio (routes/teams.ts) — see services/mesh/realtime.ts.
+  const repositoriesWithStatus = repoRows.map((r: any) => ({
+    ...r,
+    not_reporting: isNotReporting(application.onboarded_at, r.last_report_at),
+  }));
+
   const { rows: exceptionRows } = await db.query(
     `SELECT me.id, me.repository_id, me.rule, me.reason, me.approved_by, me.expires_at, me.created_at
      FROM public.mesh_exceptions me
@@ -69,7 +76,7 @@ router.get("/:appId", async (req: Request, res: Response) => {
 
   res.json({
     ...application,
-    repositories: repoRows,
+    repositories: repositoriesWithStatus,
     adoption: {
       latestPackVersion,
       reposOnLatest: onLatest,
@@ -217,7 +224,7 @@ router.post("/:appId/update-prs", async (req: Request, res: Response) => {
   }
 
   if (access.teamId) {
-    broadcast(`team-${access.teamId}`, "pr_state_changed", {
+    broadcastPrStateChanged({
       teamId: access.teamId,
       applicationId: appId,
       results: results.map((r) => ({ repositoryId: r.repositoryId, opened: r.opened })),
