@@ -43,6 +43,8 @@ export interface StagedFileContent {
   operationType: StagingOpType;
   /** Previous path for rename operations; null for all other op types. */
   oldPath: string | null;
+  /** Real Git branch this staged change is routed to (D-9). */
+  branch: string;
 }
 
 /** Lightweight staging row metadata — no content bytes. */
@@ -55,6 +57,8 @@ export interface StagedFileMetadata {
   isBinary: boolean;
   contentLength: number | null;
   oldPath: string | null;
+  /** Real Git branch this staged change is routed to (D-9). Defaults to 'main'. */
+  branch: string;
   /** Always null post-blob-refactor; kept for API shape compatibility. */
   oldContent: null;
   /** Always null post-blob-refactor; content lives in blob storage. */
@@ -70,6 +74,12 @@ export interface PutStagedFileOptions {
   operationType: StagingOpType | string;
   /** Old file path for rename operations. */
   oldPath?: string | null;
+  /**
+   * Real Git branch this staged change belongs to (the staging `branch`
+   * dimension, D-9 / WP-BE2 T102). Defaults to `'main'`, identical to
+   * legacy (pre-branch-dimension) behaviour.
+   */
+  branch?: string | null;
 }
 
 // =============================================================================
@@ -108,6 +118,7 @@ function rowToMetadata(r: Record<string, unknown>): StagedFileMetadata {
     isBinary: (r.is_binary as boolean) ?? false,
     contentLength: (r.content_length as number | null) ?? null,
     oldPath: (r.old_path as string | null) ?? null,
+    branch: (r.branch as string | null) || "main",
     oldContent: null,
     newContent: null,
     createdAt: r.created_at as Date,
@@ -139,7 +150,7 @@ export async function getStagedContent(
   filePath: string,
 ): Promise<StagedFileContent | null> {
   const result = await db.query(
-    "SELECT operation_type, is_binary, old_path, project_id FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
+    "SELECT operation_type, is_binary, old_path, project_id, branch FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
     [repoId, filePath],
   );
 
@@ -163,6 +174,7 @@ export async function getStagedContent(
     contentLength: Buffer.byteLength(content),
     operationType: row.operation_type as StagingOpType,
     oldPath: (row.old_path as string | null) ?? null,
+    branch: (row.branch as string | null) || "main",
   };
 }
 
@@ -215,17 +227,18 @@ export async function putStagedFile(
   }
 
   const { isBinary, contentLength } = computeContentMeta(opType !== "delete" ? content : null);
+  const branch = options.branch || "main";
 
   const result = await db.query(
-    `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+    `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, branch, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
      ON CONFLICT (repo_id, file_path) DO UPDATE SET
        operation_type = CASE
          WHEN repo_staging.operation_type IN ('add', 'create') AND $4 IN ('modify', 'edit')
          THEN repo_staging.operation_type
          ELSE $4
        END,
-       old_path = $5, is_binary = $6, content_length = $7, created_at = NOW()
+       old_path = $5, is_binary = $6, content_length = $7, branch = $8, created_at = NOW()
      RETURNING *`,
     [
       repoId,
@@ -235,6 +248,7 @@ export async function putStagedFile(
       options.oldPath ?? null,
       isBinary,
       contentLength,
+      branch,
     ],
   );
 

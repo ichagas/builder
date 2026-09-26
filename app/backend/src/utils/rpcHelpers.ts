@@ -21,6 +21,8 @@ export interface BatchStageFileInput {
   operationType: string;
   newContent?: string | null;
   oldPath?: string | null;
+  /** Real Git branch this staged change is routed to (D-9). Defaults to 'main'. */
+  branch?: string | null;
 }
 
 /**
@@ -961,6 +963,12 @@ export async function stageFileChangeWithToken(
   oldContent?: string | null,
   newContent?: string | null,
   oldPath?: string | null,
+  /**
+   * Real Git branch this staged change is routed to (staging `branch`
+   * dimension, D-9 / WP-BE2 T102). Optional and trailing so existing
+   * call sites are unaffected; defaults to `'main'`.
+   */
+  branch?: string | null,
 ) {
   const startedAt = Date.now();
   // Get project_id from repo
@@ -975,6 +983,7 @@ export async function stageFileChangeWithToken(
     projectId: repo.rows[0].project_id,
     operationType,
     oldPath: oldPath || null,
+    branch: branch || null,
   });
 
   const stagingCount = await db.query(
@@ -1061,15 +1070,15 @@ export async function batchStageFiles(
       );
 
       await client.query(
-        `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, branch, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
          ON CONFLICT (repo_id, file_path) DO UPDATE SET
            operation_type = CASE
              WHEN repo_staging.operation_type IN ('add', 'create') AND $4 IN ('modify', 'edit')
              THEN repo_staging.operation_type
              ELSE $4
            END,
-           old_path = $5, is_binary = $6, content_length = $7, created_at = NOW()
+           old_path = $5, is_binary = $6, content_length = $7, branch = $8, created_at = NOW()
          RETURNING *`,
         [
           repoId,
@@ -1079,6 +1088,7 @@ export async function batchStageFiles(
           file.oldPath || null,
           isBinary,
           contentLength,
+          file.branch || "main",
         ],
       );
     }

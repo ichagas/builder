@@ -5107,6 +5107,10 @@ async function handleStagingOperations(
             oldContent ?? null,
             newContent ?? null,
             oldPath ?? null,
+            // Staging branch dimension (D-9 / WP-BE2 T102): routes this
+            // staged change to a work item's real Git branch when the
+            // caller names one; defaults to 'main' (legacy behaviour).
+            branch || null,
           );
           return { rows: [{ result: _r }] };
         })();

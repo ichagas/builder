@@ -47,7 +47,7 @@ interface WorkItemForBranch {
 }
 
 /** Minimal repo shape this module needs (project_repos row). */
-interface RepoForBranch {
+export interface RepoForBranch {
   id: string;
   organization: string;
   repo: string;
@@ -159,8 +159,12 @@ export const defaultBranchGitHubClient: BranchGitHubClient = {
 // Repo resolution
 // ============================================================================
 
-/** The project's default repo for branching: the `is_default` row, or the oldest linked repo. */
-async function resolveDefaultRepo(projectId: string): Promise<RepoForBranch | null> {
+/**
+ * The project's default repo for branching, merging, and tagging: the
+ * `is_default` row, or the oldest linked repo. Shared with
+ * `services/versions/releaseService.ts`.
+ */
+export async function resolveDefaultRepo(projectId: string): Promise<RepoForBranch | null> {
   const { rows } = await db.query(
     `SELECT id, organization, repo, branch FROM project_repos
      WHERE project_id = $1
