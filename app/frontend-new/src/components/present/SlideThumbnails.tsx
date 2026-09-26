@@ -234,11 +234,11 @@ export function SlideThumbnails({
                         className="w-full h-full object-cover"
                       />
                     ) : isGenerating ? (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                      <div className="w-full h-full flex items-center justify-center bg-surface-2">
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground bg-slate-800">
+                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground bg-surface-2">
                         {slide.title?.slice(0, 20) || "Slide"}
                       </div>
                     )}
