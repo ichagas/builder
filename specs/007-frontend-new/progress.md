@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** 1–2 (paused by the user on 2026-09-26 ~12:40; resume only on instruction)
+- **Wave:** 1–2 (resumed 2026-09-26 16:35 in a fresh cloud container; remote `origin` = ichagas/builder)
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -69,5 +69,7 @@ Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
 | BE2 | 910f589 T104, 74aefe9 T102 | Both done, 609 BE tests. Known limitation: commit isn't yet partitioned by staging branch | Tester + reviewer; merge |
 | BE4 | 3b9431c, 0e4d61a, 8f1ff15, a171714, 05b6c70 (+ merge of feature) | T122–T125 done. Tester PASS, reviewer APPROVE, security PASS. Fix round 1 partly done: 3abdca1 (route-scoped raw body for HMAC + report_url validation; 721 BE tests). Agent stopped at pause | Finish fix round: confirm markdown escaping in issue bodies; repo-scoped GitHub App tokens; wire Azure DevOps to BE8 `getAzureDevOpsClient`. Then merge |
 | BE5 | 242fec5 (migration 015 only) | T140 partial: migration done and verified; routes/service not started | Routes, service module, JobDispatcher interface, tests; then tester + reviewer + security |
+
+- **2026-09-26 16:35: RESUMED** (fresh container: dockerd + Postgres started, worktrees recreated at `/home/user/PRONGHORN-BLUE-wt/<WP>`, BE baseline re-verified 652 tests). Dispatched: F6 dev (PR-14, PR-16..21, axe baseline), F2 dev (T023), F2b dev (877 vs 412 reconciliation), BE2 tester + reviewer, BE4 fix round 1 (rest), BE5 dev (routes, service, JobDispatcher, tests).
 
 Not started: F3, F5, T031, T037, all of waves 3–5, BE6, polish, T170–T171.
