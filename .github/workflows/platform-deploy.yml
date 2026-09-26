@@ -1435,8 +1435,13 @@ jobs:
           mkdir -p .rollback
           FRONTEND_REVISION="$(az containerapp revision list --name ca-pronghorn-frontend --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
           API_REVISION="$(az containerapp revision list --name ca-pronghorn-api --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
+          # Frontend-new (redesigned frontend, spec 007) — `|| true` makes this
+          # a no-op (empty string) on an environment where ca-pronghorn-frontend-new
+          # doesn't exist yet (frontend_new Terraform module not applied).
+          FRONTEND_NEW_REVISION="$(az containerapp revision list --name ca-pronghorn-frontend-new --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
           printf 'frontend_revision=%s\n' "$FRONTEND_REVISION" >> "$GITHUB_OUTPUT"
           printf 'api_revision=%s\n' "$API_REVISION" >> "$GITHUB_OUTPUT"
+          printf 'frontend_new_revision=%s\n' "$FRONTEND_NEW_REVISION" >> "$GITHUB_OUTPUT"
 
       - name: capture-deployment-snapshot
         if: ${{ env.PLAN_ONLY != 'true' &&
@@ -1451,8 +1456,10 @@ jobs:
             -TerraformOutputsPath ".rollback/terraform-outputs.json" `
             -FrontendImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend:${{ env.IMAGE_TAG }}" `
             -ApiImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-api:${{ env.IMAGE_TAG }}" `
+            -FrontendNewImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${{ env.IMAGE_TAG }}" `
             -FrontendRevision "${{ steps.runtime_revisions.outputs.frontend_revision }}" `
             -ApiRevision "${{ steps.runtime_revisions.outputs.api_revision }}" `
+            -FrontendNewRevision "${{ steps.runtime_revisions.outputs.frontend_new_revision }}" `
             -OutputPath ".rollback/deployment-snapshot.json"
 
       - name: upload-deployment-snapshot
