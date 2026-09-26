@@ -2,6 +2,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { GlobalBar } from "@/components/shell/GlobalBar";
 import { StatusCenter } from "@/components/shell/StatusCenter";
 import { UndoBar } from "@/components/shell/UndoBar";
+import { ShellProvider } from "@/components/shell/ShellContext";
 import { usePublishCommandPaletteItems } from "@/components/shell/CommandPaletteItemsContext";
 import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { LIBRARY_ROUTES } from "@/app/routes/library";
@@ -29,10 +30,12 @@ export function RootLayout() {
   usePublishCommandPaletteItems(ROOT_PALETTE_ITEMS);
 
   return (
-    <AppShell
-      globalBar={<GlobalBar onSearch={openPalette} statusPill={<StatusCenter />} />}
-      undoBar={<UndoBar />}
-    />
+    <ShellProvider embedded>
+      <AppShell
+        globalBar={<GlobalBar onSearch={openPalette} statusPill={<StatusCenter />} />}
+        undoBar={<UndoBar />}
+      />
+    </ShellProvider>
   );
 }
 

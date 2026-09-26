@@ -7,6 +7,7 @@ import { TimelineStrip } from "@/components/shell/TimelineStrip";
 import { MobileTabBar } from "@/components/shell/MobileTabBar";
 import { StatusCenter } from "@/components/shell/StatusCenter";
 import { UndoBar } from "@/components/shell/UndoBar";
+import { ShellProvider } from "@/components/shell/ShellContext";
 import { usePublishCommandPaletteItems } from "@/components/shell/CommandPaletteItemsContext";
 import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { PHASE_ORDER, PROJECT_TOOL_ROUTES } from "@/app/routes/project";
@@ -49,32 +50,34 @@ export function ProjectLayout() {
   usePublishCommandPaletteItems(paletteItems);
 
   return (
-    <AppShell
-      globalBar={<GlobalBar onSearch={openPalette} mode={{ kind: "building", label: "Building" }} statusPill={<StatusCenter />} />}
-      rail={
-        <Rail
-          sections={[{ id: "versions", label: "All versions", href: `/p/${projectId}/versions` }]}
-          phases={phases}
-          versionCard={<span className="text-xs text-rail-muted">One building version — versions ship in a later milestone.</span>}
-        />
-      }
-      timeline={
-        <TimelineStrip
-          nodes={[{ id: "building", label: "Building", kind: "building" }]}
-          selectedId="building"
-          onSelect={() => {}}
-        />
-      }
-      mobileTabBar={
-        <MobileTabBar
-          items={[
-            { id: "versions", label: "Versions", href: `/p/${projectId}/versions` },
-            ...phases.map((phase) => ({ id: phase.id, label: phase.label, href: phase.href })),
-          ]}
-        />
-      }
-      undoBar={<UndoBar />}
-    />
+    <ShellProvider embedded>
+      <AppShell
+        globalBar={<GlobalBar onSearch={openPalette} mode={{ kind: "building", label: "Building" }} statusPill={<StatusCenter />} />}
+        rail={
+          <Rail
+            sections={[{ id: "versions", label: "All versions", href: `/p/${projectId}/versions` }]}
+            phases={phases}
+            versionCard={<span className="text-xs text-rail-muted">One building version — versions ship in a later milestone.</span>}
+          />
+        }
+        timeline={
+          <TimelineStrip
+            nodes={[{ id: "building", label: "Building", kind: "building" }]}
+            selectedId="building"
+            onSelect={() => {}}
+          />
+        }
+        mobileTabBar={
+          <MobileTabBar
+            items={[
+              { id: "versions", label: "Versions", href: `/p/${projectId}/versions` },
+              ...phases.map((phase) => ({ id: phase.id, label: phase.label, href: phase.href })),
+            ]}
+          />
+        }
+        undoBar={<UndoBar />}
+      />
+    </ShellProvider>
   );
 }
 
