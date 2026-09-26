@@ -32,6 +32,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T101 | done | 06bef20, 928c984 | WP-BE1. Fix round 1: non-UUID token → 403, atomic WI key (advisory lock), semver ordering. Release endpoints are a 501 stub until BE2 |
 | T103 | done | 06bef20 | WP-BE1. Extra events work_item_created/updated |
 | T142 | BLOCKED-EXTERNAL | 92578d7, 5880ecb, 7eedbf8 | WP-BE7. Content in external/goa-standards-assurance-mesh/. Human: create repo, move content, tag v3, replace placeholder mesh_scripts_ref SHA, run sample GitHub + Azure Repos PRs |
+| T122–T125 | done | 3b9431c, 0e4d61a, 8f1ff15, a171714, 05b6c70, 3abdca1, 3cf26ee, 411f02d, 9f5188d | WP-BE4. Fix round 1: route-scoped raw body (413 before parse), report_url validation, Markdown/HTML/@mention escaping in issues, repo-scoped GitHub App tokens, Azure DevOps via BE8 `getAzureDevOpsClient` |
 | T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
 
 ## Escalations to Opus 5.5
@@ -71,5 +72,7 @@ Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
 | BE5 | 242fec5 (migration 015 only) | T140 partial: migration done and verified; routes/service not started | Routes, service module, JobDispatcher interface, tests; then tester + reviewer + security |
 
 - **2026-09-26 16:35: RESUMED** (fresh container: dockerd + Postgres started, worktrees recreated at `/home/user/PRONGHORN-BLUE-wt/<WP>`, BE baseline re-verified 652 tests). Dispatched: F6 dev (PR-14, PR-16..21, axe baseline), F2 dev (T023), F2b dev (877 vs 412 reconciliation), BE2 tester + reviewer, BE4 fix round 1 (rest), BE5 dev (routes, service, JobDispatcher, tests).
+
+- **Merged WP-BE4** (fix round 1 finished; verified by orchestrator: BE build OK, 733 tests on feature/frontend-new). BE2 reviewer CHANGES REQUIRED (release() skips releaseChecks; no advisory lock; carry-over name collision; staging not keyed by branch) → fix round 1 dispatched; decided to fix staging partitioning now (migration 018). F2 T023 done (9 atoms incl. RepoRow per contract) → tester + reviewer. F2b T030 gap closed (a565881): 628 mapped + 295 unmapped = 923 tokens in 89 files; token lint rule has the same object-literal/interpolation blind spots → fix in T031.
 
 Not started: F3, F5, T031, T037, all of waves 3–5, BE6, polish, T170–T171.
