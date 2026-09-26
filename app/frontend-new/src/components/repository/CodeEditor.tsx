@@ -338,7 +338,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="h-2 w-2 rounded-full bg-yellow-500 shrink-0" />
+                  <span className="h-2 w-2 rounded-full bg-warn shrink-0" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Unsaved changes</p>
