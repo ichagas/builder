@@ -22,6 +22,9 @@ import rpcRouter from "../rpc";
 import functionsRouter from "../functions";
 import storageRouter from "../storage";
 import githubRouter from "../github";
+import teamsRouter from "../teams";
+import applicationsRouter from "../applications";
+import packsRouter from "../packs";
 
 const router = Router();
 
@@ -44,6 +47,9 @@ router.use("/database", authMiddleware, databaseRouter);
 router.use("/audit", authMiddleware, auditRouter);
 router.use("/collaboration", authMiddleware, collaborationRouter);
 router.use("/github", optionalAuthMiddleware, githubRouter);
+router.use("/teams", authMiddleware, teamsRouter);
+router.use("/applications", authMiddleware, applicationsRouter);
+router.use("/packs", authMiddleware, packsRouter);
 
 // - db is protected (require auth)
 // - rpc and functions use optional auth (some calls allow anonymous)
