@@ -55,6 +55,62 @@ describe("validateAzureDevOpsOrgUrl (SSRF guard)", () => {
   it("rejects a dev.azure.com URL with no organization segment", () => {
     expect(validateAzureDevOpsOrgUrl("https://dev.azure.com/").valid).toBe(false);
   });
+
+  // --- additional SSRF edge cases (spec 007, WP-BE8 verification) ---
+
+  it("rejects a lookalike subdomain host (dev.azure.com.evil.com)", () => {
+    expect(validateAzureDevOpsOrgUrl("https://dev.azure.com.evil.com/goa-standards").valid).toBe(false);
+  });
+
+  it("rejects a lookalike host with dev.azure.com as a path prefix, not the hostname", () => {
+    expect(validateAzureDevOpsOrgUrl("https://evil.com/dev.azure.com/goa-standards").valid).toBe(false);
+  });
+
+  it("rejects userinfo with no password (user@host)", () => {
+    expect(validateAzureDevOpsOrgUrl("https://admin@dev.azure.com/goa-standards").valid).toBe(false);
+  });
+
+  it("rejects an IPv4 literal host", () => {
+    expect(validateAzureDevOpsOrgUrl("https://169.254.169.254/goa-standards").valid).toBe(false);
+  });
+
+  it("rejects an IPv4 literal host disguised as a path (SSRF via cloud metadata address)", () => {
+    expect(validateAzureDevOpsOrgUrl("https://169.254.169.254/latest/meta-data").valid).toBe(false);
+  });
+
+  it("rejects an IPv6 literal host", () => {
+    expect(validateAzureDevOpsOrgUrl("https://[::1]/goa-standards").valid).toBe(false);
+  });
+
+  it("rejects localhost", () => {
+    expect(validateAzureDevOpsOrgUrl("https://localhost/goa-standards").valid).toBe(false);
+  });
+
+  it("rejects localhost with an explicit port", () => {
+    expect(validateAzureDevOpsOrgUrl("https://localhost:8080/goa-standards").valid).toBe(false);
+  });
+
+  // DEFECT (reported, not fixed here — test code only): `URL#hostname` strips
+  // the port, so `validateAzureDevOpsOrgUrl` currently ACCEPTS a non-default
+  // port on an otherwise-valid host (e.g. an internal service co-located on
+  // the same address listening on a different port). This test encodes the
+  // secure expectation and is expected to fail until the production code
+  // also checks `url.port`.
+  it("rejects a dev.azure.com URL with a non-default port [defect: currently accepted, see WP-BE8 test report]", () => {
+    expect(validateAzureDevOpsOrgUrl("https://dev.azure.com:8443/goa-standards").valid).toBe(false);
+  });
+
+  it("rejects a visualstudio.com host with an extra leading label used to smuggle a different org", () => {
+    expect(validateAzureDevOpsOrgUrl("https://evil.goa-standards.visualstudio.com").valid).toBe(false);
+  });
+
+  it("rejects a trailing-dot hostname (DNS root label bypass attempt)", () => {
+    expect(validateAzureDevOpsOrgUrl("https://dev.azure.com./goa-standards").valid).toBe(false);
+  });
+
+  it("rejects http:// even for an otherwise-valid dev.azure.com URL", () => {
+    expect(validateAzureDevOpsOrgUrl("http://dev.azure.com/goa-standards").valid).toBe(false);
+  });
 });
 
 describe("testAzureDevOpsConnection", () => {

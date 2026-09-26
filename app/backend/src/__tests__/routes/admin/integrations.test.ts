@@ -171,6 +171,25 @@ describe("GET /admin/integrations — authorization", () => {
     expect(res.body.azureDevOps).toEqual([]);
   });
 
+  it("lists the created connection with hasSecret=true but never a secret_ref/secretRef field or the secret value", async () => {
+    await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({
+        displayName: "Main Azure DevOps",
+        organizationUrl: "https://dev.azure.com/goa-standards",
+        authType: "pat",
+        patValue: "list-canary-secret-value",
+      });
+
+    const res = await request(createApp(ADMIN_USER_ID)).get("/admin/integrations");
+    expect(res.status).toBe(200);
+    expect(res.body.azureDevOps).toHaveLength(1);
+    expect(res.body.azureDevOps[0].hasSecret).toBe(true);
+    expect(res.body.azureDevOps[0].secretRef).toBeUndefined();
+    expect(res.body.azureDevOps[0].secret_ref).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain("list-canary-secret-value");
+  });
+
   it("only lists connections for the admin's own organization", async () => {
     await request(createApp(ADMIN_USER_ID))
       .post("/admin/integrations")
