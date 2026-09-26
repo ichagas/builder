@@ -417,4 +417,26 @@ describe("DELETE /admin/integrations/:id", () => {
     expect(res.status).toBe(204);
     expect(connections.find((c) => c.id === id)).toBeUndefined();
   });
+
+  it("deletes the Key Vault secret (via the secret store) and the secret is actually gone afterwards", async () => {
+    const { getSecretStore } = await import("../../../services/integrations/secretStore");
+    const store = getSecretStore();
+    const deleteSecretSpy = jest.spyOn(store, "deleteSecret");
+
+    const id = await seedConnection();
+    const secretRef = connections.find((c) => c.id === id)?.secret_ref;
+    expect(secretRef).toBeTruthy();
+
+    // Sanity: the secret exists in the store before delete.
+    await expect(store.getSecret(secretRef)).resolves.toBe("pat-value");
+
+    const res = await request(createApp(ADMIN_USER_ID)).delete(`/admin/integrations/${id}`);
+    expect(res.status).toBe(204);
+
+    expect(deleteSecretSpy).toHaveBeenCalledWith(secretRef);
+    // The secret store no longer has the secret after the connection is deleted.
+    await expect(store.getSecret(secretRef)).rejects.toThrow();
+
+    deleteSecretSpy.mockRestore();
+  });
 });

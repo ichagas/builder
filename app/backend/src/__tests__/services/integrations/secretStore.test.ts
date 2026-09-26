@@ -91,3 +91,75 @@ describe("secretStore selection", () => {
     await expect(store.getSecret(name)).resolves.toBe("value");
   });
 });
+
+describe("secretStore fail-closed behavior (production without Key Vault)", () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...ORIGINAL_ENV };
+    delete process.env.KEY_VAULT_URL;
+    delete process.env.AZURE_KEY_VAULT_URL;
+    delete process.env.INTEGRATIONS_SECRET_STORE;
+  });
+
+  afterAll(() => {
+    process.env = ORIGINAL_ENV;
+  });
+
+  it("logs an error at module load (startup) when misconfigured, without throwing", async () => {
+    process.env.NODE_ENV = "production";
+    const { logger: freshLogger } = await import("../../../utils/logger");
+    // Importing the module must not throw even though it's misconfigured —
+    // other, unrelated routes must keep working.
+    await expect(import("../../../services/integrations/secretStore")).resolves.toBeDefined();
+    expect(freshLogger.error).toHaveBeenCalledWith(expect.stringContaining("No secret store is configured"));
+  });
+
+  it("throws a 503 SecretStoreConfigurationError at first use (production, no vault URL, no override)", async () => {
+    process.env.NODE_ENV = "production";
+    const { getSecretStore, SecretStoreConfigurationError } = await import(
+      "../../../services/integrations/secretStore"
+    );
+
+    expect(() => getSecretStore()).toThrow(SecretStoreConfigurationError);
+    try {
+      getSecretStore();
+      throw new Error("expected getSecretStore() to throw");
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(SecretStoreConfigurationError);
+      expect(err.statusCode).toBe(503);
+    }
+  });
+
+  it("fails closed when NODE_ENV is unset (default env is treated as non-dev/test)", async () => {
+    delete process.env.NODE_ENV;
+    const { getSecretStore } = await import("../../../services/integrations/secretStore");
+    expect(() => getSecretStore()).toThrow();
+  });
+
+  it("allows the in-memory store in development, but logs a warning (used outside tests)", async () => {
+    process.env.NODE_ENV = "development";
+    const { logger: freshLogger } = await import("../../../utils/logger");
+    const { getSecretStore } = await import("../../../services/integrations/secretStore");
+    expect(() => getSecretStore()).not.toThrow();
+    expect(freshLogger.warn).toHaveBeenCalledWith(expect.stringContaining("in-memory secret store outside tests"));
+  });
+
+  it("does not warn when the in-memory store is used under NODE_ENV=test", async () => {
+    process.env.NODE_ENV = "test";
+    const { logger: freshLogger } = await import("../../../utils/logger");
+    const { getSecretStore } = await import("../../../services/integrations/secretStore");
+    getSecretStore();
+    expect(freshLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it("an explicit INTEGRATIONS_SECRET_STORE=memory override in production still logs a warning", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.INTEGRATIONS_SECRET_STORE = "memory";
+    const { logger: freshLogger } = await import("../../../utils/logger");
+    const { getSecretStore } = await import("../../../services/integrations/secretStore");
+    expect(() => getSecretStore()).not.toThrow();
+    expect(freshLogger.warn).toHaveBeenCalledWith(expect.stringContaining("in-memory secret store outside tests"));
+  });
+});

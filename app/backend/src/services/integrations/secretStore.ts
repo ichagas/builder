@@ -6,18 +6,29 @@
  * response. This module is the only place in the codebase allowed to read or
  * write the secret value.
  *
- * Two implementations, selected by environment:
+ * Two implementations, selected by environment — **fail closed**:
  *  - `KeyVaultSecretStore` — real Key Vault via `@azure/keyvault-secrets`,
  *    using the same credential chain as the rest of the backend
- *    ({@link getAzureCredential}).
- *  - `InMemorySecretStore` — used in tests and local dev when no Key Vault
- *    URL is configured. Values live only in process memory.
+ *    ({@link getAzureCredential}). Selected whenever `KEY_VAULT_URL` (or
+ *    `AZURE_KEY_VAULT_URL`) is set (and the in-memory store isn't forced).
+ *  - `InMemorySecretStore` — used in tests and local dev. Values live only
+ *    in process memory and are lost on restart. Selected only when
+ *    `NODE_ENV` is `test` or `development`, or when an operator explicitly
+ *    opts in with `INTEGRATIONS_SECRET_STORE=memory` (which also takes
+ *    priority over a configured vault URL, e.g. for integration tests that
+ *    stub the DB but don't want live Key Vault calls).
  *
- * Selection: `KEY_VAULT_URL` (or `AZURE_KEY_VAULT_URL`) set -> Key Vault.
- * Otherwise the in-memory store, which is the default for `npm test` and for
- * local dev without Azure configured. `INTEGRATIONS_SECRET_STORE=memory` can
- * force the in-memory store even when a vault URL is present (useful for
- * integration tests that stub the DB but don't want live Key Vault calls).
+ * Anything else — notably production (`NODE_ENV=production` or unset) with
+ * no vault URL and no explicit override — is a **misconfiguration**: the
+ * resolved mode is computed once at module load so the problem is logged at
+ * error level on startup (without crashing the process — other, unrelated
+ * routes must keep working), and {@link getSecretStore} throws a
+ * `SecretStoreConfigurationError` (503) the first time anything actually
+ * tries to use the store, which the integrations routes surface as a clear
+ * 503 rather than a generic 500.
+ *
+ * Using the in-memory store outside tests (development, or an explicit
+ * production override) logs a warning every time the store is selected.
  */
 import { randomUUID } from "crypto";
 import { SecretClient } from "@azure/keyvault-secrets";
@@ -31,6 +42,21 @@ export interface SecretStore {
   getSecret(name: string): Promise<string>;
   /** Delete a secret by name. No-op (does not throw) if it doesn't exist. */
   deleteSecret(name: string): Promise<void>;
+}
+
+/**
+ * Thrown when no secret store can be safely selected (production without a
+ * Key Vault URL configured and no explicit in-memory override). `statusCode`
+ * is read by `errorHandler` so routes surface a 503, not a generic 500.
+ */
+export class SecretStoreConfigurationError extends Error {
+  statusCode = 503;
+  code = "SECRET_STORE_NOT_CONFIGURED";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "SecretStoreConfigurationError";
+  }
 }
 
 /**
@@ -111,25 +137,89 @@ class InMemorySecretStore implements SecretStore {
 }
 
 // ---------------------------------------------------------------------------
-// Selection
+// Selection (fail closed)
 // ---------------------------------------------------------------------------
 
-let cachedStore: SecretStore | null = null;
+type Resolution =
+  | { kind: "keyvault"; vaultUrl: string }
+  | { kind: "memory" }
+  | { kind: "misconfigured"; error: SecretStoreConfigurationError };
 
-function buildStore(): SecretStore {
+let resolution: Resolution | null = null;
+
+/**
+ * Decide which store to use, exactly once (cached). Never throws — a
+ * misconfiguration is recorded in the returned `Resolution` and logged here,
+ * so the process can still boot and serve unrelated routes; only actually
+ * using the store (via {@link getSecretStore}) throws.
+ */
+function resolveSelection(): Resolution {
+  if (resolution) return resolution;
+
   const vaultUrl = process.env.KEY_VAULT_URL || process.env.AZURE_KEY_VAULT_URL;
   const forceMemory = process.env.INTEGRATIONS_SECRET_STORE === "memory";
+  // Deliberately NOT defaulted to "development" when unset: fail closed means
+  // an unset NODE_ENV (as a real production deploy might have, if it forgot
+  // to set it) is treated the same as production, not as a permissive dev
+  // default. Only an explicit "test" or "development" is permissive.
+  const nodeEnv = process.env.NODE_ENV;
+  const nodeEnvLabel = nodeEnv ?? "unset";
+  const memoryAllowedByEnv = nodeEnv === "test" || nodeEnv === "development";
 
   if (vaultUrl && !forceMemory) {
-    logger.info("[integrations/secretStore] Using Key Vault secret store");
-    return new KeyVaultSecretStore(vaultUrl);
+    resolution = { kind: "keyvault", vaultUrl };
+    return resolution;
   }
 
-  logger.info("[integrations/secretStore] Using in-memory secret store (no KEY_VAULT_URL, or forced)");
+  if (forceMemory || memoryAllowedByEnv) {
+    resolution = { kind: "memory" };
+    if (nodeEnv !== "test") {
+      logger.warn(
+        `[integrations/secretStore] Using the in-memory secret store outside tests (NODE_ENV=${nodeEnvLabel}` +
+          `${forceMemory ? ", INTEGRATIONS_SECRET_STORE=memory" : ", no KEY_VAULT_URL"}). ` +
+          "Secrets will NOT persist across restarts and this is not suitable for production."
+      );
+    }
+    return resolution;
+  }
+
+  const error = new SecretStoreConfigurationError(
+    `No secret store is configured for integrations (NODE_ENV=${nodeEnvLabel}, KEY_VAULT_URL/AZURE_KEY_VAULT_URL unset). ` +
+      "Set KEY_VAULT_URL to a Key Vault URI, or set INTEGRATIONS_SECRET_STORE=memory to explicitly opt into the " +
+      "in-memory store (development/testing only — never for production)."
+  );
+  logger.error(`[integrations/secretStore] ${error.message}`);
+  resolution = { kind: "misconfigured", error };
+  return resolution;
+}
+
+// Resolve once at module load so a misconfiguration is logged at error level
+// on startup, even before any request reaches the integrations routes.
+// This never throws — see resolveSelection's docstring.
+resolveSelection();
+
+function buildStore(): SecretStore {
+  const r = resolveSelection();
+
+  if (r.kind === "misconfigured") {
+    // Re-throw the same, already-logged error at first use.
+    throw r.error;
+  }
+  if (r.kind === "keyvault") {
+    logger.info("[integrations/secretStore] Using Key Vault secret store");
+    return new KeyVaultSecretStore(r.vaultUrl);
+  }
   return new InMemorySecretStore();
 }
 
-/** The process-wide secret store. Lazily built so imports have no side effects. */
+let cachedStore: SecretStore | null = null;
+
+/**
+ * The process-wide secret store. Lazily built (and cached) on first use, so
+ * a misconfiguration throws here rather than at import time — but see the
+ * module-load-time call to {@link resolveSelection} above, which already
+ * logged the same problem at error level on startup.
+ */
 export function getSecretStore(): SecretStore {
   if (!cachedStore) {
     cachedStore = buildStore();
@@ -137,7 +227,8 @@ export function getSecretStore(): SecretStore {
   return cachedStore;
 }
 
-/** Test-only: reset the cached store so tests can re-select it after changing env vars. */
+/** Test-only: reset the cached store/resolution so tests can re-select after changing env vars. */
 export function __resetSecretStoreForTests(): void {
   cachedStore = null;
+  resolution = null;
 }

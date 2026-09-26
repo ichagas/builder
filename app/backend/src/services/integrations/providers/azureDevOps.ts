@@ -39,6 +39,12 @@ export function validateAzureDevOpsOrgUrl(input: string): { valid: boolean; erro
   if (url.search || url.hash) {
     return { valid: false, error: "Organization URL must not contain a query string or fragment" };
   }
+  if (url.port) {
+    // `URL#hostname` strips the port, so the host checks below would
+    // otherwise accept e.g. https://dev.azure.com:8443/org — a different,
+    // potentially internal, service co-located on the same address.
+    return { valid: false, error: "Organization URL must not specify a port" };
+  }
 
   const path = url.pathname.replace(/\/+$/, "");
 

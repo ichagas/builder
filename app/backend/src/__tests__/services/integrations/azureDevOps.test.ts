@@ -90,13 +90,7 @@ describe("validateAzureDevOpsOrgUrl (SSRF guard)", () => {
     expect(validateAzureDevOpsOrgUrl("https://localhost:8080/goa-standards").valid).toBe(false);
   });
 
-  // DEFECT (reported, not fixed here — test code only): `URL#hostname` strips
-  // the port, so `validateAzureDevOpsOrgUrl` currently ACCEPTS a non-default
-  // port on an otherwise-valid host (e.g. an internal service co-located on
-  // the same address listening on a different port). This test encodes the
-  // secure expectation and is expected to fail until the production code
-  // also checks `url.port`.
-  it("rejects a dev.azure.com URL with a non-default port [defect: currently accepted, see WP-BE8 test report]", () => {
+  it("rejects a dev.azure.com URL with an explicit port (could target a co-located internal service)", () => {
     expect(validateAzureDevOpsOrgUrl("https://dev.azure.com:8443/goa-standards").valid).toBe(false);
   });
 
