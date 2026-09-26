@@ -22,9 +22,13 @@ jest.mock("../../websocket", () => ({
 }));
 
 const mockEnsureBranchForWorkItem = jest.fn();
-jest.mock("../../services/versions/branchService", () => ({
-  ensureBranchForWorkItem: (...args: unknown[]) => mockEnsureBranchForWorkItem(...args),
-}));
+jest.mock("../../services/versions/branchService", () => {
+  const actual = jest.requireActual("../../services/versions/branchService");
+  return {
+    ...actual,
+    ensureBranchForWorkItem: (...args: unknown[]) => mockEnsureBranchForWorkItem(...args),
+  };
+});
 
 jest.mock("../../utils/database", () => {
   const queryFn = jest.fn();
@@ -445,6 +449,80 @@ describe("PATCH /work-items/:id", () => {
       .send({ versionId: "v-9" });
 
     expect(res.status).toBe(200);
+  });
+
+  it("broadcasts work_item_updated with the branch already set (branch created before broadcasting)", async () => {
+    mockWorkItemLookup(baseWorkItem);
+    mockOwnerCheck(OWNER_ID);
+    const updated = { ...baseWorkItem, version_id: "v-9", branch: null };
+    mockDbQuery.mockResolvedValueOnce({ rows: [updated] });
+    mockEnsureBranchForWorkItem.mockResolvedValueOnce({
+      branch: "fix/wi-1-something-broke",
+      created: true,
+    });
+
+    const res = await request(createByIdApp(OWNER_ID))
+      .patch(`/work-items/${WORK_ITEM_ID}`)
+      .send({ versionId: "v-9" });
+
+    expect(res.status).toBe(200);
+    const updatedBroadcast = mockBroadcast.mock.calls.find(
+      ([channel, event]) => channel === `work-item-${WORK_ITEM_ID}` && event === "work_item_updated"
+    );
+    expect(updatedBroadcast?.[2]?.branch).toBe("fix/wi-1-something-broke");
+  });
+
+  it("rejects setting branch to anything other than the computed branch or null (422)", async () => {
+    mockWorkItemLookup(baseWorkItem);
+    mockOwnerCheck(OWNER_ID);
+
+    const res = await request(createByIdApp(OWNER_ID))
+      .patch(`/work-items/${WORK_ITEM_ID}`)
+      .send({ branch: "some/arbitrary-branch" });
+
+    expect(res.status).toBe(422);
+    expect(mockEnsureBranchForWorkItem).not.toHaveBeenCalled();
+  });
+
+  it("allows setting branch to the exact branch computed for this work item", async () => {
+    mockWorkItemLookup(baseWorkItem);
+    mockOwnerCheck(OWNER_ID);
+    const updated = { ...baseWorkItem, branch: "fix/wi-1-something-broke" };
+    mockDbQuery.mockResolvedValueOnce({ rows: [updated] });
+
+    const res = await request(createByIdApp(OWNER_ID))
+      .patch(`/work-items/${WORK_ITEM_ID}`)
+      .send({ branch: "fix/wi-1-something-broke" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.branch).toBe("fix/wi-1-something-broke");
+  });
+
+  it("allows clearing branch to null", async () => {
+    mockWorkItemLookup({ ...baseWorkItem, branch: "fix/wi-1-something-broke" });
+    mockOwnerCheck(OWNER_ID);
+    const updated = { ...baseWorkItem, branch: null };
+    mockDbQuery.mockResolvedValueOnce({ rows: [updated] });
+
+    const res = await request(createByIdApp(OWNER_ID))
+      .patch(`/work-items/${WORK_ITEM_ID}`)
+      .send({ branch: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.branch).toBeNull();
+  });
+
+  it("validates branch against the *new* title when both are patched together", async () => {
+    mockWorkItemLookup(baseWorkItem);
+    mockOwnerCheck(OWNER_ID);
+
+    // Still keyed off the old title's computed branch — must be rejected
+    // since the title is changing in the same request.
+    const res = await request(createByIdApp(OWNER_ID))
+      .patch(`/work-items/${WORK_ITEM_ID}`)
+      .send({ title: "A brand new title", branch: "fix/wi-1-something-broke" });
+
+    expect(res.status).toBe(422);
   });
 });
 

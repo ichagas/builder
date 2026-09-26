@@ -247,6 +247,11 @@ export const defaultDeployTrigger: DeployTrigger = {
       }
 
       let statusCode = 200;
+      // `actorId` is undefined for a token-only (share-link) release with no
+      // `req.user` — this is not an error: `fakeReq.user` is simply left
+      // unset, and any failure the deploy action hits for such a caller is
+      // reported back as `deploy-service-error*` below rather than
+      // attributed to a user.
       const fakeReq = { user: actorId ? { id: actorId } : undefined } as unknown as ExpressRequest;
       const fakeRes = {
         status(code: number) {
@@ -474,7 +479,14 @@ export class DefaultReleaseService implements ReleaseService {
       detail: deploymentConfigured ? undefined : "No deployment configured — release will skip deploy",
     });
 
-    const canRelease = checks.filter((c) => c.id !== "deployment-configured").every((c) => c.passed);
+    // "work-items-resolved" only gates the first release (before the first
+    // release, there is no next version to carry unfinished items into);
+    // for every release after that it is informational, matching its own
+    // detail text ("unfinished changes carry over automatically") and
+    // data-model.md §1's release rule.
+    const canRelease = checks
+      .filter((c) => c.id !== "deployment-configured" && !(c.id === "work-items-resolved" && !isFirstRelease))
+      .every((c) => c.passed);
 
     return { projectId, checks, canRelease };
   }
@@ -493,6 +505,24 @@ export class DefaultReleaseService implements ReleaseService {
     const earlier = await findOpenEarlierVersion(projectId, version);
     if (earlier) {
       throw Errors.conflict(`Release ${earlier.name} first — versions release in order`);
+    }
+
+    // Enforce every release check (branches-reviewed, repository-linked, ...)
+    // before touching GitHub — `firstRelease()` already does this; `release()`
+    // must too, so a change whose branch hasn't been reviewed can't be merged
+    // out from under the checklist UI.
+    const checks = await this.releaseChecks(projectId, versionId);
+    // Same exclusions releaseChecks() uses for its own `canRelease`:
+    // "deployment-configured" is best-effort/informational, and
+    // "work-items-resolved" doesn't gate a non-first release since unfinished
+    // items are carried over automatically below.
+    const failingChecks = checks.checks.filter(
+      (c) => c.id !== "deployment-configured" && c.id !== "work-items-resolved" && !c.passed
+    );
+    if (failingChecks.length > 0) {
+      throw Errors.validation({
+        checks: failingChecks.map((c) => ({ id: c.id, label: c.label, detail: c.detail })),
+      });
     }
 
     const workItems = await loadWorkItemsForVersion(version.id);
@@ -541,19 +571,69 @@ export class DefaultReleaseService implements ReleaseService {
     const releaseNotes = draftReleaseNotes(shipped);
 
     const { updatedVersion, nextVersion } = await db.transaction(async (client: any) => {
+      // Concurrency guard (same convention as routes/workItems.ts's
+      // createWorkItemWithKey): a transaction-scoped advisory lock keyed by
+      // the project id serializes concurrent release() calls for the same
+      // project. Two callers can both pass the checks above (plain,
+      // unlocked reads) and both merge/tag on GitHub before either writes
+      // here; only one of them proceeds past this point, the other blocks
+      // until it commits, then re-reads the now-released version under
+      // `FOR UPDATE` and fails cleanly instead of double-releasing.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [projectId]);
+
+      const { rows: lockedVersionRows } = await client.query(
+        `SELECT kind FROM versions WHERE id = $1 AND project_id = $2 FOR UPDATE`,
+        [version.id, projectId]
+      );
+      if (lockedVersionRows.length === 0) {
+        throw Errors.notFound("Version");
+      }
+      if (lockedVersionRows[0].kind === "released") {
+        throw Errors.conflict(`${version.name} is already released and read-only`);
+      }
+
+      const { rows: lockedProjectRows } = await client.query(
+        `SELECT stage FROM projects WHERE id = $1 FOR UPDATE`,
+        [projectId]
+      );
+      if (lockedProjectRows[0]?.stage !== "released") {
+        throw Errors.conflict("Run the first release before releasing subsequent versions");
+      }
+
       let next: VersionRow | null = null;
       if (carry.length > 0) {
+        const bumpedName = bumpMinor(version.name);
+        // Look up the bumped name regardless of kind: a version with that
+        // name may already exist (e.g. a "planned" version created by hand,
+        // or one a concurrent release() just carried over into) and must be
+        // reused rather than colliding with UNIQUE(project_id, name).
         const { rows: nextRows } = await client.query(
-          `SELECT * FROM versions WHERE project_id = $1 AND kind = 'next' ORDER BY created_at ASC LIMIT 1`,
-          [projectId]
+          `SELECT * FROM versions WHERE project_id = $1 AND name = $2`,
+          [projectId, bumpedName]
         );
         next = nextRows[0] ?? null;
         if (!next) {
-          const { rows: createdRows } = await client.query(
-            `INSERT INTO versions (project_id, name, kind) VALUES ($1, $2, 'next') RETURNING *`,
-            [projectId, bumpMinor(version.name)]
-          );
-          next = createdRows[0];
+          try {
+            const { rows: createdRows } = await client.query(
+              `INSERT INTO versions (project_id, name, kind) VALUES ($1, $2, 'next') RETURNING *`,
+              [projectId, bumpedName]
+            );
+            next = createdRows[0];
+          } catch (err: any) {
+            if (err?.code === "23505") {
+              // Lost the race to create it — reuse the row the winner made.
+              const { rows: raceRows } = await client.query(
+                `SELECT * FROM versions WHERE project_id = $1 AND name = $2`,
+                [projectId, bumpedName]
+              );
+              next = raceRows[0] ?? null;
+              if (!next) {
+                throw Errors.conflict(`Version "${bumpedName}" already exists for this project`);
+              }
+            } else {
+              throw err;
+            }
+          }
         }
         await client.query(`UPDATE work_items SET version_id = $2, updated_at = NOW() WHERE id = ANY($1)`, [
           carry.map((wi) => wi.id),
@@ -625,6 +705,19 @@ export class DefaultReleaseService implements ReleaseService {
     const releaseNotes = draftReleaseNotes(shipped);
 
     const { versionRow, projectRow } = await db.transaction(async (client: any) => {
+      // Concurrency guard: see release()'s identical lock for why — two
+      // concurrent first-release calls could otherwise both pass the
+      // `project.stage !== "released"` check above and both tag/flip stage.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [projectId]);
+
+      const { rows: lockedProjectRows } = await client.query(
+        `SELECT stage FROM projects WHERE id = $1 FOR UPDATE`,
+        [projectId]
+      );
+      if (lockedProjectRows[0]?.stage === "released") {
+        throw Errors.conflict("This project already had its first release");
+      }
+
       const { rows: buildingRows } = await client.query(
         `SELECT * FROM versions WHERE project_id = $1 AND kind = 'building' ORDER BY created_at ASC LIMIT 1`,
         [projectId]

@@ -284,6 +284,38 @@ describe("release / first-release / release-checks (delegate to WP-BE2 stub)", (
     );
     expect(res.status).toBe(403);
   });
+
+  it("forwards an optional ?versionId= query param to releaseChecks()", async () => {
+    const mockReleaseChecks = jest.fn().mockResolvedValue({ projectId: PROJECT_ID, checks: [], canRelease: false });
+    setReleaseService({
+      release: jest.fn(),
+      firstRelease: jest.fn(),
+      releaseChecks: mockReleaseChecks,
+    });
+    mockOwnerCheck(OWNER_ID);
+
+    const res = await request(createApp(OWNER_ID)).get(
+      `/projects/${PROJECT_ID}/release-checks?versionId=v-42`
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockReleaseChecks).toHaveBeenCalledWith(PROJECT_ID, "v-42");
+  });
+
+  it("calls releaseChecks() with no versionId when the query param is absent", async () => {
+    const mockReleaseChecks = jest.fn().mockResolvedValue({ projectId: PROJECT_ID, checks: [], canRelease: false });
+    setReleaseService({
+      release: jest.fn(),
+      firstRelease: jest.fn(),
+      releaseChecks: mockReleaseChecks,
+    });
+    mockOwnerCheck(OWNER_ID);
+
+    const res = await request(createApp(OWNER_ID)).get(`/projects/${PROJECT_ID}/release-checks`);
+
+    expect(res.status).toBe(200);
+    expect(mockReleaseChecks).toHaveBeenCalledWith(PROJECT_ID, undefined);
+  });
 });
 
 /**

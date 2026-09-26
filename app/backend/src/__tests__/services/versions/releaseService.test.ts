@@ -201,6 +201,10 @@ describe("release", () => {
     title: "Fix the thing",
     status: "shipped",
     branch: "fix/wi-1-fix-the-thing",
+    // Reviewed (matches the "branches-reviewed" release check release() now
+    // enforces up front) — a shipped item without this would fail that
+    // check before ever reaching the merge/tag/DB-write logic below.
+    phase_state: { build: "done" },
   };
   const carryItem = { id: "wi-2", key: "WI-2", type: "feature", title: "Not done yet", status: "active", branch: null };
 
@@ -217,7 +221,10 @@ describe("release", () => {
     mockResolveGitHubToken.mockResolvedValue({ token: "tok", source: "system_env" });
     mockTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => {
       const dispatch = makeQueryDispatcher({
-        "SELECT * FROM versions WHERE project_id = $1 AND kind = 'next'": () => ({ rows: [] }),
+        // Concurrency-guard re-reads under the advisory lock (see release()).
+        "SELECT kind FROM versions WHERE id": () => ({ rows: [{ kind: version.kind }] }),
+        "SELECT stage FROM projects WHERE id": () => ({ rows: [{ stage: "released" }] }),
+        "SELECT * FROM versions WHERE project_id = $1 AND name = $2": () => ({ rows: [] }),
         "INSERT INTO versions (project_id, name, kind) VALUES ($1, $2, 'next')": (params: any[]) => ({
           rows: [{ id: "v-next", project_id: PROJECT_ID, name: params[1], kind: "next" }],
         }),
@@ -327,6 +334,121 @@ describe("release", () => {
     expect(result.version.deployTriggered).toBe(false);
     expect(result.version.deployReason).toBe("no-deployment-configured");
   });
+
+  it("enforces releaseChecks() and refuses to merge an unreviewed shipped branch", async () => {
+    // Same fixtures as setUpHappyPath, except the shipped item hasn't
+    // finished the build phase yet — releaseChecks()'s "branches-reviewed"
+    // check must fail this before any merge is attempted.
+    const unreviewedShippedItem = { ...shippedItem, phase_state: { build: "active" } };
+    mockDbQuery.mockImplementation(
+      makeQueryDispatcher({
+        "SELECT * FROM projects": () => ({ rows: [{ id: PROJECT_ID, stage: "released" }] }),
+        "SELECT * FROM versions WHERE id": () => ({ rows: [version] }),
+        "SELECT * FROM versions WHERE project_id = $1 AND kind <> 'released' AND id <>": () => ({ rows: [] }),
+        "SELECT * FROM work_items WHERE version_id": () => ({ rows: [unreviewedShippedItem, carryItem] }),
+      })
+    );
+    mockResolveDefaultRepo.mockResolvedValue(REPO);
+
+    const githubClient = mockGitHubClient();
+    const service = new DefaultReleaseService(githubClient, mockDeployTrigger());
+
+    await expect(service.release(PROJECT_ID, version.id, USER_ID)).rejects.toMatchObject({
+      statusCode: 422,
+      code: "VALIDATION_ERROR",
+      details: { checks: [expect.objectContaining({ id: "branches-reviewed" })] },
+    });
+    expect(githubClient.mergeBranch).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("does not gate on unfinished (carried-over) work items — only branches-reviewed etc. block", async () => {
+    // carryItem (status "active") is present in every setUpHappyPath fixture
+    // and is exactly what "work-items-resolved" would flag; release() must
+    // still succeed and carry it over rather than treating it as blocking.
+    setUpHappyPath();
+    const service = new DefaultReleaseService(mockGitHubClient(), mockDeployTrigger());
+
+    const result = await service.release(PROJECT_ID, version.id, USER_ID);
+
+    expect(result.carriedOverWorkItemIds).toEqual(["wi-2"]);
+  });
+
+  it("serializes concurrent releases: the second call re-reads the now-released version under the lock and fails cleanly", async () => {
+    setUpHappyPath();
+    // Simulate a second, concurrent release() reaching the guarded
+    // transaction after the first one already committed: the re-read of
+    // the version's kind (normally still "building" in setUpHappyPath)
+    // instead reports "released".
+    mockTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => {
+      const dispatch = makeQueryDispatcher({
+        "SELECT kind FROM versions WHERE id": () => ({ rows: [{ kind: "released" }] }),
+      });
+      return callback({ query: dispatch });
+    });
+
+    const service = new DefaultReleaseService(mockGitHubClient(), mockDeployTrigger());
+    await expect(service.release(PROJECT_ID, version.id, USER_ID)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+  });
+
+  it("reuses an existing version with the bumped name (any kind) instead of colliding on UNIQUE(project_id, name)", async () => {
+    setUpHappyPath();
+    const existingPlanned = { id: "v-planned", project_id: PROJECT_ID, name: "v1.5.0", kind: "planned" };
+    mockTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => {
+      const insertNext = jest.fn();
+      const dispatch = makeQueryDispatcher({
+        "SELECT kind FROM versions WHERE id": () => ({ rows: [{ kind: version.kind }] }),
+        "SELECT stage FROM projects WHERE id": () => ({ rows: [{ stage: "released" }] }),
+        "SELECT * FROM versions WHERE project_id = $1 AND name = $2": () => ({ rows: [existingPlanned] }),
+        "INSERT INTO versions (project_id, name, kind) VALUES ($1, $2, 'next')": insertNext,
+        "UPDATE versions\n         SET kind = 'released'": () => ({
+          rows: [{ ...version, kind: "released", is_current: true, git_tag: version.name }],
+        }),
+      });
+      const result = await callback({ query: dispatch });
+      expect(insertNext).not.toHaveBeenCalled();
+      return result;
+    });
+
+    const service = new DefaultReleaseService(mockGitHubClient(), mockDeployTrigger());
+    const result = await service.release(PROJECT_ID, version.id, USER_ID);
+
+    expect(result.carriedOverWorkItemIds).toEqual(["wi-2"]);
+  });
+
+  it("maps a lost create-the-next-version race (unique violation) to a clean 409 instead of a raw 500", async () => {
+    setUpHappyPath();
+    const raceWinnerVersion = { id: "v-next", project_id: PROJECT_ID, name: "v1.5.0", kind: "next" };
+    mockTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => {
+      let nameLookupCount = 0;
+      const dispatch = makeQueryDispatcher({
+        "SELECT kind FROM versions WHERE id": () => ({ rows: [{ kind: version.kind }] }),
+        "SELECT stage FROM projects WHERE id": () => ({ rows: [{ stage: "released" }] }),
+        "SELECT * FROM versions WHERE project_id = $1 AND name = $2": () => {
+          nameLookupCount += 1;
+          // First lookup (before insert): nothing yet. Second lookup (after
+          // the unique-violation race): the concurrent winner's row.
+          return { rows: nameLookupCount === 1 ? [] : [raceWinnerVersion] };
+        },
+        "INSERT INTO versions (project_id, name, kind) VALUES ($1, $2, 'next')": () => {
+          const err: any = new Error('duplicate key value violates unique constraint "versions_project_id_name_key"');
+          err.code = "23505";
+          throw err;
+        },
+        "UPDATE versions\n         SET kind = 'released'": () => ({
+          rows: [{ ...version, kind: "released", is_current: true, git_tag: version.name }],
+        }),
+      });
+      return callback({ query: dispatch });
+    });
+
+    const service = new DefaultReleaseService(mockGitHubClient(), mockDeployTrigger());
+    const result = await service.release(PROJECT_ID, version.id, USER_ID);
+
+    expect(result.carriedOverWorkItemIds).toEqual(["wi-2"]);
+  });
 });
 
 describe("firstRelease", () => {
@@ -343,6 +465,8 @@ describe("firstRelease", () => {
     mockResolveGitHubToken.mockResolvedValue({ token: "tok", source: "system_env" });
     mockTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => {
       const dispatch = makeQueryDispatcher({
+        // Concurrency-guard re-read under the advisory lock (see firstRelease()).
+        "SELECT stage FROM projects WHERE id": () => ({ rows: [{ stage: "building" }] }),
         "SELECT * FROM versions WHERE project_id = $1 AND kind = 'building'": () => ({ rows: [] }),
         "INSERT INTO versions (project_id, name, kind) VALUES ($1, 'v1.0.0', 'building')": () => ({
           rows: [{ id: "v-1", project_id: PROJECT_ID, name: "v1.0.0", kind: "building" }],
@@ -385,5 +509,29 @@ describe("firstRelease", () => {
     const service = new DefaultReleaseService(mockGitHubClient(), mockDeployTrigger());
     await expect(service.firstRelease(PROJECT_ID, USER_ID)).rejects.toMatchObject({ statusCode: 422 });
     expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("serializes concurrent first-releases: a second caller re-reads the now-released project under the lock and fails cleanly", async () => {
+    mockDbQuery.mockImplementation(
+      makeQueryDispatcher({
+        "SELECT * FROM projects": () => ({ rows: [{ id: PROJECT_ID, stage: "building" }] }),
+        "SELECT wi.* FROM work_items": () => ({
+          rows: [{ id: "wi-1", key: "WI-1", type: "bug", title: "Bug", status: "shipped", branch: null, phase_state: {} }],
+        }),
+      })
+    );
+    mockResolveDefaultRepo.mockResolvedValue(REPO);
+    mockResolveGitHubToken.mockResolvedValue({ token: "tok", source: "system_env" });
+    mockTransaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => {
+      // A concurrent first-release already committed by the time this one
+      // acquires the advisory lock.
+      const dispatch = makeQueryDispatcher({
+        "SELECT stage FROM projects WHERE id": () => ({ rows: [{ stage: "released" }] }),
+      });
+      return callback({ query: dispatch });
+    });
+
+    const service = new DefaultReleaseService(mockGitHubClient(), mockDeployTrigger());
+    await expect(service.firstRelease(PROJECT_ID, USER_ID)).rejects.toMatchObject({ statusCode: 409 });
   });
 });
