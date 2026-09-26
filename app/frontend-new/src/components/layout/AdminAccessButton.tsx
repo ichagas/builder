@@ -15,7 +15,7 @@ export function AdminAccessButton() {
 
   if (isSuperAdmin) {
     return (
-      <Badge variant="default" className="gap-1 bg-purple-600 hover:bg-purple-700">
+      <Badge variant="default" className="gap-1 bg-define hover:bg-define">
         <Crown className="h-3 w-3" />
         Superadmin
       </Badge>
