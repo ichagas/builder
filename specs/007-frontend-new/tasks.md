@@ -21,7 +21,7 @@
 
 ## Phase 1: Fork and setup
 
-- [ ] T010 (WP-F1) **Fork:** copy `app/frontend/` → `app/frontend-new/` in one commit ("Fork app/frontend as app/frontend-new"), excluding `node_modules`/`dist`. Rename `package.json` name to `pronghorn-frontend-new`. No other change in this commit.
+- [X] T010 (WP-F1) **Fork:** copy `app/frontend/` → `app/frontend-new/` in one commit ("Fork app/frontend as app/frontend-new"), excluding `node_modules`/`dist`. Rename `package.json` name to `pronghorn-frontend-new`. No other change in this commit.
 - [ ] T011 (WP-F1) `FE/.env.example`: add `VITE_APP_CHANNEL=next`. Confirm the Entra redirect URI variable for the new host.
 - [ ] T012 [P] (WP-F1) `FE/Dockerfile` and `FE/nginx.conf` (from the fork) with `/health`, SPA fallback and legacy-path rewrites placeholder.
 - [ ] T013 (WP-F1) CI: `frontend-new` job in `.github/workflows/ci.yml` (path filter `app/frontend-new/**`: lint, typecheck, unit, build) added to `ci-gate`.
