@@ -1,3 +1,10 @@
+/* eslint-disable token-lint/no-raw-tailwind-colors -- this file is the D3/SVG
+ * fallback renderer for the same knowledge graph KnowledgeGraphWebGL.tsx
+ * renders on canvas, sharing the exact same node/edge-type palette so both
+ * renderers look identical when toggled. KnowledgeGraphWebGL.tsx's colors
+ * must stay literal hex (Canvas 2D doesn't resolve var()); kept identical
+ * here rather than tokenizing only one of the two renderers and producing a
+ * visible mismatch (T031, WP-F2b). */
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import * as d3 from "d3";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

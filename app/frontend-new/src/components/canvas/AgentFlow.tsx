@@ -29,20 +29,20 @@ interface AgentDefinition {
 function AgentNode({ data, id, selected }: { data: any; id: string; selected: boolean }) {
   // Color mapping from Tailwind classes to actual colors
   const colorMap: Record<string, string> = {
-    "bg-blue-500": "#3b82f6",
-    "bg-green-500": "#22c55e",
-    "bg-red-500": "#ef4444",
-    "bg-purple-500": "#a855f7",
-    "bg-orange-500": "#f97316",
-    "bg-cyan-500": "#06b6d4",
-    "bg-pink-500": "#ec4899",
-    "bg-yellow-500": "#eab308",
-    "bg-indigo-500": "#6366f1",
-    "bg-teal-500": "#14b8a6",
-    "bg-gray-600": "#4b5563",
+    "bg-blue-500": "var(--primary)",
+    "bg-green-500": "var(--ok)",
+    "bg-red-500": "var(--bad)",
+    "bg-purple-500": "var(--c-define)",
+    "bg-orange-500": "var(--warn)",
+    "bg-cyan-500": "var(--c-design)",
+    "bg-pink-500": "var(--bad)",
+    "bg-yellow-500": "var(--warn)",
+    "bg-indigo-500": "var(--primary)",
+    "bg-teal-500": "var(--c-design)",
+    "bg-gray-600": "var(--muted)",
   };
 
-  const bgColor = colorMap[data.color] || "#3b82f6";
+  const bgColor = colorMap[data.color] || "var(--primary)";
   const isExecuting = data.isExecuting || false;
 
   return (

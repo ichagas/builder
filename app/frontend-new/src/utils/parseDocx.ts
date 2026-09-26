@@ -612,6 +612,7 @@ export async function rasterizeDocx(
       // Capture the viewport with dynamic height
       const dataUrl = await toPng(viewport, {
         pixelRatio: scale,
+        // eslint-disable-next-line token-lint/no-raw-tailwind-colors -- PNG export must render on a fixed white background regardless of the current app theme (a portable snapshot, not an in-app view) (T031, WP-F2b)
         backgroundColor: "#ffffff",
         width: width,
         height: pageHeight,

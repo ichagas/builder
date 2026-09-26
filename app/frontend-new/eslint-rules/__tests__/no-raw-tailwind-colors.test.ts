@@ -174,6 +174,9 @@ describe("no-raw-tailwind-colors", () => {
 
     expect(tokenLintConfig).toBeDefined();
     expect(tokenLintConfig.ignores).toContain("src/design/**");
-    expect(tokenLintConfig.rules["token-lint/no-raw-tailwind-colors"]).toBe("warn");
+    // T031 (WP-F2b): switched from "warn" to "error" once the codemod
+    // (T030/T031) and this rule's blind-spot fixes closed every real
+    // violation.
+    expect(tokenLintConfig.rules["token-lint/no-raw-tailwind-colors"]).toBe("error");
   });
 });
