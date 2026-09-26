@@ -148,10 +148,11 @@ function rowToMetadata(r: Record<string, unknown>): StagedFileMetadata {
 export async function getStagedContent(
   repoId: string,
   filePath: string,
+  branch: string = "main",
 ): Promise<StagedFileContent | null> {
   const result = await db.query(
-    "SELECT operation_type, is_binary, old_path, project_id, branch FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
-    [repoId, filePath],
+    "SELECT operation_type, is_binary, old_path, project_id, branch FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3",
+    [repoId, filePath, branch || "main"],
   );
 
   if (result.rows.length === 0) {
@@ -229,16 +230,21 @@ export async function putStagedFile(
   const { isBinary, contentLength } = computeContentMeta(opType !== "delete" ? content : null);
   const branch = options.branch || "main";
 
+  // ON CONFLICT targets (repo_id, file_path, branch) — the staging branch
+  // dimension (D-9 / WP-BE2 T104, infra/migrations/018_staging_branch_unique.sql):
+  // the same file can be staged independently on more than one change's
+  // branch, so the conflict target (and re-stage/UPSERT below) is scoped to
+  // this specific branch rather than colliding across branches.
   const result = await db.query(
     `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, branch, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-     ON CONFLICT (repo_id, file_path) DO UPDATE SET
+     ON CONFLICT (repo_id, file_path, branch) DO UPDATE SET
        operation_type = CASE
          WHEN repo_staging.operation_type IN ('add', 'create') AND $4 IN ('modify', 'edit')
          THEN repo_staging.operation_type
          ELSE $4
        END,
-       old_path = $5, is_binary = $6, content_length = $7, branch = $8, created_at = NOW()
+       old_path = $5, is_binary = $6, content_length = $7, created_at = NOW()
      RETURNING *`,
     [
       repoId,

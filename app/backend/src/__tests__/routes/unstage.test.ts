@@ -59,9 +59,11 @@ describe("staging discard blob cleanup", () => {
             .send({ p_repo_id: "repo-1", p_file_path: "src/example.ts" });
 
         expect(response.status).toBe(200);
+        // Branch-scoped (D-9 / WP-BE2 T104): defaults to 'main' when the
+        // request names none, identical to legacy behaviour.
         expect(mockDbQuery).toHaveBeenCalledWith(
-            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 RETURNING id",
-            ["repo-1", "src/example.ts"],
+            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3 RETURNING id",
+            ["repo-1", "src/example.ts", "main"],
         );
         expect(mockDeleteContent).toHaveBeenCalledWith("project-1", "repo-1", "src/example.ts");
     });

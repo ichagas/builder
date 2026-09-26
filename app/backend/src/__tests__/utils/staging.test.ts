@@ -130,7 +130,13 @@ describe("staging utility behavior", () => {
         await stageFile();
 
         expect(mockWriteContent).toHaveBeenCalledTimes(1);
-        expect(mockQuery.mock.calls[1][0]).toContain("ON CONFLICT (repo_id, file_path) DO UPDATE SET");
+        // Conflict target includes `branch` (D-9 / WP-BE2 T104,
+        // infra/migrations/018_staging_branch_unique.sql): the same file can
+        // be staged independently on more than one change's branch, so a
+        // re-stage only UPSERTs the row for this specific branch (defaulting
+        // to 'main' here, as this call passes none — identical to legacy
+        // behaviour).
+        expect(mockQuery.mock.calls[1][0]).toContain("ON CONFLICT (repo_id, file_path, branch) DO UPDATE SET");
     });
 
     it("skips blob writes for delete staging operations", async () => {
@@ -410,13 +416,17 @@ describe("staging utility behavior", () => {
         const result = await commitStagedWithToken("repo-1", null, "Commit selected changes", "main", ["src/selected.ts"]);
 
         expect(result).toEqual(commitRow);
+        // Branch-scoped (D-9 / WP-BE2 T104): defaults to 'main' — the branch
+        // passed to commitStagedWithToken above — identical to legacy
+        // behaviour; a different branch's staged edit to the same path is
+        // untouched by either query.
         expect(mockClientQuery.mock.calls[2]).toEqual([
-            "SELECT * FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2)",
-            ["repo-1", ["src/selected.ts"]],
+            "SELECT * FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3",
+            ["repo-1", ["src/selected.ts"], "main"],
         ]);
         expect(mockClientQuery.mock.calls[5]).toEqual([
-            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2)",
-            ["repo-1", ["src/selected.ts"]],
+            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3",
+            ["repo-1", ["src/selected.ts"], "main"],
         ]);
         expect(mockClientRelease).toHaveBeenCalledTimes(1);
     });

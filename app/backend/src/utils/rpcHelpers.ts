@@ -1069,16 +1069,19 @@ export async function batchStageFiles(
         file.operationType !== "delete" ? (file.newContent ?? null) : null,
       );
 
+      // Conflict target includes `branch` (D-9 / WP-BE2 T104,
+      // infra/migrations/018_staging_branch_unique.sql): the same file can
+      // be staged independently on more than one change's branch.
       await client.query(
         `INSERT INTO repo_staging (repo_id, project_id, file_path, operation_type, old_path, is_binary, content_length, branch, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-         ON CONFLICT (repo_id, file_path) DO UPDATE SET
+         ON CONFLICT (repo_id, file_path, branch) DO UPDATE SET
            operation_type = CASE
              WHEN repo_staging.operation_type IN ('add', 'create') AND $4 IN ('modify', 'edit')
              THEN repo_staging.operation_type
              ELSE $4
            END,
-           old_path = $5, is_binary = $6, content_length = $7, branch = $8, created_at = NOW()
+           old_path = $5, is_binary = $6, content_length = $7, created_at = NOW()
          RETURNING *`,
         [
           repoId,
@@ -1190,6 +1193,10 @@ export async function commitStagedWithToken(
     throw new Error("Repo not found");
   }
   const projectId = repoLookup.rows[0].project_id;
+  // Staging branch dimension (D-9 / WP-BE2 T104): commit only the staged
+  // rows on the branch being committed — never another change's staged
+  // edits on a different branch, even to the same file path.
+  const commitBranch = branch || "main";
 
   try {
     await client.query("BEGIN");
@@ -1197,11 +1204,12 @@ export async function commitStagedWithToken(
     // Get staged changes
     const staged = hasFileFilter
       ? await client.query(
-          "SELECT * FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2)",
-          [repoId, filePaths],
+          "SELECT * FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3",
+          [repoId, filePaths, commitBranch],
         )
-      : await client.query("SELECT * FROM repo_staging WHERE repo_id = $1", [
+      : await client.query("SELECT * FROM repo_staging WHERE repo_id = $1 AND branch = $2", [
           repoId,
+          commitBranch,
         ]);
     if (staged.rows.length === 0)
       throw new Error("No staged changes to commit");
@@ -1349,15 +1357,17 @@ export async function commitStagedWithToken(
       }
     }
 
-    // Clear staging
+    // Clear staging — scoped to this branch only (D-9): another change's
+    // staged edit to the same path on a different branch must survive.
     if (hasFileFilter) {
       await client.query(
-        "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2)",
-        [repoId, filePaths],
+        "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3",
+        [repoId, filePaths, commitBranch],
       );
     } else {
-      await client.query("DELETE FROM repo_staging WHERE repo_id = $1", [
+      await client.query("DELETE FROM repo_staging WHERE repo_id = $1 AND branch = $2", [
         repoId,
+        commitBranch,
       ]);
     }
     await client.query("COMMIT");
