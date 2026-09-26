@@ -1,0 +1,23 @@
+{
+  "name": "@pronghorn/e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Playwright regression harness shared by app/frontend (legacy) and app/frontend-new (spec 007).",
+  "scripts": {
+    "test": "playwright test",
+    "test:legacy": "APP=legacy BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8140}} playwright test regression && node scripts/build-axe-baseline.mjs",
+    "test:new": "APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8140}} playwright test regression shell",
+    "test:shell": "APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8140}} playwright test shell",
+    "report": "playwright show-report",
+    "seed": "node --loader ts-node/esm scripts/seed.ts"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.14.0",
+    "pg": "^8.13.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  }
+}
