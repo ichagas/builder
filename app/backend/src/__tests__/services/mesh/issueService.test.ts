@@ -171,4 +171,57 @@ describe("escapeMarkdown", () => {
     // The literal text content is preserved, just backslash-escaped.
     expect(escaped.replace(/\\/g, "")).toBe(malicious);
   });
+
+  it("neutralizes @mentions so a report can't ping a user or team", () => {
+    const escaped = escapeMarkdown("cc @octocat and @my-org/security-team");
+    expect(escaped).not.toMatch(/(?<!\\)@/);
+    expect(escaped.replace(/\\/g, "")).toBe("cc @octocat and @my-org/security-team");
+  });
+
+  it("neutralizes raw HTML tags", () => {
+    const escaped = escapeMarkdown('<img src=x onerror=alert(1)> <a href="x">click</a>');
+    expect(escaped).not.toMatch(/(?<!\\)[<>]/);
+  });
+});
+
+describe("openIssueForNewFindings — Markdown injection via repository display name", () => {
+  it("escapes Markdown/mention syntax in the issue title without altering the API repo path", async () => {
+    // `full_name` normally can't contain characters like these, but the
+    // title-building code should not assume that — escape defensively.
+    mockDbQuery.mockResolvedValueOnce({
+      rows: [runRow({ full_name: "goa/permits-api" })],
+    });
+    mockIsGitHubAppConfigured.mockReturnValue(true);
+    mockGetInstallationToken.mockResolvedValue("installation-token");
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ number: 44, html_url: "https://github.com/goa/permits-api/issues/44" }),
+    });
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE mesh_runs
+
+    await openIssueForNewFindings("run-1");
+
+    // The repo path used to call the GitHub API is untouched...
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.github.com/repos/goa/permits-api/issues",
+      expect.anything(),
+    );
+    // ...and the title is built from the (here, harmless) escaped name.
+    const [, init] = mockFetch.mock.calls[0];
+    const sentBody = JSON.parse((init as RequestInit).body as string);
+    expect(sentBody.title).toBe(`Assurance Mesh: 1 new finding (${escapeMarkdown("goa/permits-api")})`);
+  });
+});
+
+describe("formatIssueBody (via a future per-finding wiring) — pack_version escaping", () => {
+  // `pack_version` comes straight from the ingested, HMAC-authenticated but
+  // otherwise unvalidated CI report (routes/mesh.ts only checks it's a
+  // non-empty string). `escapeMarkdown` is applied to it before it reaches
+  // an issue body so a malicious/compromised CI can't inject Markdown, raw
+  // HTML, links, or an @mention through that field.
+  it("escapeMarkdown neutralizes a malicious pack_version value", () => {
+    const malicious = "@everyone `rm -rf /` [pwned](http://evil.example) <img src=x onerror=alert(1)>";
+    const escaped = escapeMarkdown(malicious);
+    expect(escaped).not.toMatch(/(?<!\\)[@`[\]()<>]/);
+  });
 });

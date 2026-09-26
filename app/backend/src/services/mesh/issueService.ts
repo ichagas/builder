@@ -126,20 +126,27 @@ function groupByAgent(findings: MeshFinding[]): FindingsByAgent[] {
 }
 
 /**
- * Findings come from the CI report body — untrusted input as far as this
- * service is concerned (a compromised repository secret, or a bug on the CI
- * side, could put anything in `rule`/`file`/`location`/`message`). Escape
- * Markdown control characters and backticks before they go into an issue
- * body, so a finding can't break out of its list item, inject a fake
- * heading, or fence-escape a code block.
+ * Findings, and other fields taken from the ingested CI report (`pack_version`
+ * in particular — see `routes/mesh.ts`, only checked to be a non-empty
+ * string), are untrusted input as far as this service is concerned: a
+ * compromised repository secret, or a bug on the CI side, could put anything
+ * in `rule`/`file`/`location`/`message`/`pack_version`. Escape every ASCII
+ * punctuation character CommonMark treats as escapable (the same set GitHub
+ * Flavored Markdown honors) before such text goes into an issue title or
+ * body, so it can't:
+ *  - break out of a list item, heading, bold/italic span, or fenced/backtick
+ *    code (`` * _ ` # ~ ``),
+ *  - open a fake link/image or raw HTML tag (`[ ] ( ) < >`),
+ *  - or read as an `@user`/`@org/team` mention, which GitHub notifies on
+ *    even from an issue a bot filed (`@`).
  */
 export function escapeMarkdown(value: string): string {
-  return value.replace(/[\\`*_{}[\]()#+.!|>~-]/g, (ch) => `\\${ch}`);
+  return value.replace(/[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/g, (ch) => `\\${ch}`);
 }
 
 function formatIssueBody(runId: string, packVersion: string, reportUrl: string, groups: FindingsByAgent[]): string {
   const lines: string[] = [
-    `The Assurance Mesh found new findings on run \`${runId}\` (pack ${packVersion}).`,
+    `The Assurance Mesh found new findings on run \`${runId}\` (pack ${escapeMarkdown(packVersion)}).`,
     "",
     `Full evidence: ${reportUrl}`,
     "",
@@ -195,8 +202,15 @@ export async function openIssueForNewFindings(runId: string): Promise<OpenIssueR
   // Findings themselves are not persisted beyond mesh_baselines (only
   // fingerprints); the full finding detail lives in the report blob. This
   // service links out to it rather than re-fetching/parsing that blob here.
+  // Findings themselves are not persisted beyond mesh_baselines (only
+  // fingerprints); the full finding detail lives in the report blob. This
+  // service links out to it rather than re-fetching/parsing that blob here.
   const groups: FindingsByAgent[] = [];
-  const title = `Assurance Mesh: ${run.new_findings} new finding${run.new_findings === 1 ? "" : "s"} (${run.full_name})`;
+  // `run.full_name` is set by an org admin linking the repository, not by
+  // the ingested report, but it's escaped here too as defense in depth since
+  // it still ends up in Markdown text a viewer's client will render.
+  const displayName = escapeMarkdown(run.full_name);
+  const title = `Assurance Mesh: ${run.new_findings} new finding${run.new_findings === 1 ? "" : "s"} (${displayName})`;
   const body = groups.length
     ? formatIssueBody(runId, run.pack_version, run.report_url, groups)
     : `The Assurance Mesh found ${run.new_findings} new finding(s) on run \`${runId}\`.\n\nFull evidence: ${run.report_url}`;
