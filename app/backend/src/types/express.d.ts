@@ -8,6 +8,14 @@ declare global {
         name?: string;
         role?: string;
       };
+      /**
+       * Exact bytes of the request body, captured by the global
+       * `express.json()` `verify` hook in `index.ts`. Needed by
+       * `routes/mesh.ts` (spec 007, WP-BE4) to verify the
+       * `X-Pronghorn-Signature` HMAC over the same bytes the CI signed —
+       * re-serializing `req.body` would not reproduce the signed string.
+       */
+      rawBody?: Buffer;
     }
   }
 }

@@ -146,7 +146,19 @@ app.use(
 );
 
 // Body parsing
-app.use(express.json({ limit: "50mb" }));
+// `verify` stashes the exact request bytes on `req.rawBody` before they are
+// parsed into `req.body`. Almost every route only ever uses `req.body`; the
+// one exception is `routes/mesh.ts` (spec 007, WP-BE4), which must verify an
+// HMAC signature computed by the CI over the raw bytes it sent — re-encoding
+// the parsed JSON would not byte-for-byte match what was signed.
+app.use(
+  express.json({
+    limit: "50mb",
+    verify: (req: Request, _res: Response, buf: Buffer) => {
+      (req as Request).rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Request logging

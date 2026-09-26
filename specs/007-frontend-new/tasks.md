@@ -111,7 +111,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 - [X] T120 (WP-BE3) Migrations `013_teams_applications.sql`, `014_assurance_mesh.sql`. Team roles `owner`/`member`. All teams for organization admins (D-8).
 - [X] T121 (WP-BE3) `BE/routes/teams.ts`, `applications.ts`, `packs.ts` (portfolio aggregate in one query). Tests.
-- [ ] T122 (WP-BE4) `BE/routes/mesh.ts`: HMAC-verified ingest of PR runs to the default branch, baseline ratchet, evidence, exceptions, policy per check (`issue` default, `notify`, `block`, `off`; org admins set it, team owners only tighten) and the optional Cyber Risk sandbox flag per repository (D-15, D-17). Tests. **Security review.**
+- [X] T122 (WP-BE4) `BE/routes/mesh.ts`: HMAC-verified ingest of PR runs to the default branch, baseline ratchet, evidence, exceptions, policy per check (`issue` default, `notify`, `block`, `off`; org admins set it, team owners only tighten) and the optional Cyber Risk sandbox flag per repository (D-15, D-17). Tests. **Security review.**
 - [ ] T126 (WP-BE8) Integrations config (D-18): migration `016_integrations.sql` (`integration_connections`: provider `github_app`|`azure_devops`, auth type `service_connection`|`pat`, Key Vault secret ref, org scope), `BE/routes/admin/integrations.ts` (org admins only; test connection), used by the onboarding import, PR and issue services. Tests. **Security review.**
 - [ ] T125 (WP-BE4) `BE/services/mesh/issueService.ts`: open a GitHub issue or Azure DevOps work item for new findings when the policy is `issue` (D-15). Tests with mocked providers.
 - [ ] T123 (WP-BE4) `BE/services/github/updatePrs.ts` (GitHub App, bump the manifest, keep local edits). Tests.
