@@ -1,0 +1,55 @@
+# WP-F6 (T016) E2E compose profile.
+#
+# A separate file (not an edit to the root docker-compose.yml) so the
+# existing dev services stay byte-for-byte unchanged, per the WP-F6 owned
+# files rule ("docker-compose.yml (profile only, keep existing services
+# unchanged)"). This gives the same two Postgres services their own
+# profile-scoped, independently-ported instances for the regression suite.
+#
+# The API and the app under test are NOT containerized here — they run
+# directly on the host via e2e/scripts/stack.sh / serve-app.sh. That keeps
+# parallel agents cheap (no image build per run) and makes the "several
+# agents run E2E in parallel" requirement trivial: give each agent a
+# different COMPOSE_PROJECT_NAME and a different set of *_PORT env vars.
+#
+# Usage: see e2e/README.md and e2e/scripts/stack.sh.
+services:
+  db:
+    image: postgres:16-alpine
+    profiles: ["e2e"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pronghorn_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev123}
+      POSTGRES_DB: ${POSTGRES_DB:-pronghorn}
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      # postgres only globs *top-level* files under initdb.d (no recursion).
+      # Docker (at least under Docker Desktop's osxfs/virtiofs) refuses to
+      # bind-mount a single file *inside* a directory that is itself a bind
+      # mount, so stack.sh stages migrations + seed.sql together into
+      # E2E_INITDB_DIR and we mount that one directory here.
+      - ${E2E_INITDB_DIR:-../infra/migrations}:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pronghorn_admin} -d ${POSTGRES_DB:-pronghorn}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data # ephemeral: a fresh, reseeded DB every `stack.sh up`
+
+  db-generated-apps:
+    image: postgres:16-alpine
+    profiles: ["e2e"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_GENAPPS_USER:-pronghorn_genapps_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_GENAPPS_PASSWORD:-localdev123}
+    ports:
+      - "${POSTGRES_GENAPPS_PORT:-55433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_GENAPPS_USER:-pronghorn_genapps_admin}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data
