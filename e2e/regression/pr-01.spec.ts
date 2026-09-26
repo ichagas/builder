@@ -24,7 +24,7 @@ test("PR-01 projects home: loads, lists, creates, reloads", async ({ page }, tes
   // Creation always shows a share-link dialog; "Go to Project" lands on
   // the new project's settings page (see EnhancedCreateProjectDialog.tsx).
   await page.getByRole("button", { name: "Go to Project" }).click();
-  await expect(page).toHaveURL(/\/project\/[^/]+\/settings\/t\//);
+  await expect(page).toHaveURL(routes.project.settingsWithTokenUrlPattern());
   await expect(page.getByRole("heading", { name: "Project Settings" })).toBeVisible();
 
   // reload restores the page

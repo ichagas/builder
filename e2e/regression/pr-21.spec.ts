@@ -9,7 +9,7 @@
  * fired deterministically in a test -- see e2e/README.md coverage notes.
  */
 import { test, expect, recordAxeBaseline } from "../fixtures";
-import { routes } from "../routes";
+import { routes, urlPattern } from "../routes";
 
 test.use({ mockUser: null }); // the public pages are all unauthenticated
 
@@ -34,7 +34,7 @@ test("PR-21 landing: loads, theme toggle persists, login link goes to /auth", as
   await expect(page.locator("html")).toHaveClass(/dark/);
 
   await page.getByRole("button", { name: "Login" }).click();
-  await expect(page).toHaveURL(/\/auth$/);
+  await expect(page).toHaveURL(urlPattern(routes.auth()));
 
   await recordAxeBaseline(page, "pr-21-landing", testInfo);
 });

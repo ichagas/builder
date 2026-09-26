@@ -1,22 +1,22 @@
 {
-  "recordedAt": "2026-09-26T17:05:04.252Z",
+  "recordedAt": "2026-09-26T17:28:37.492Z",
   "note": "Baseline violation counts for app/frontend (legacy). Not a pass/fail gate -- WP-F6 records these so page-task agents can later assert app/frontend-new introduces no NEW serious/critical violations per page.",
   "pages": [
     {
       "pageId": "pr-01",
       "viewport": "desktop",
-      "serious": 67,
-      "critical": 128,
+      "serious": 6,
+      "critical": 6,
       "violations": [
         {
           "id": "button-name",
           "impact": "critical",
-          "nodes": 128
+          "nodes": 6
         },
         {
           "id": "color-contrast",
           "impact": "serious",
-          "nodes": 66
+          "nodes": 5
         },
         {
           "id": "heading-order",
@@ -33,18 +33,18 @@
     {
       "pageId": "pr-01",
       "viewport": "mobile",
-      "serious": 80,
-      "critical": 157,
+      "serious": 19,
+      "critical": 35,
       "violations": [
         {
           "id": "button-name",
           "impact": "critical",
-          "nodes": 157
+          "nodes": 35
         },
         {
           "id": "color-contrast",
           "impact": "serious",
-          "nodes": 80
+          "nodes": 19
         },
         {
           "id": "heading-order",
@@ -270,6 +270,34 @@
     {
       "pageId": "pr-06",
       "viewport": "desktop",
+      "serious": 4,
+      "critical": 2,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 2
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 3
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "link-name",
+          "impact": "serious",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-06",
+      "viewport": "mobile",
       "serious": 0,
       "critical": 0,
       "violations": [
@@ -281,24 +309,6 @@
         {
           "id": "page-has-heading-one",
           "impact": "moderate",
-          "nodes": 1
-        }
-      ]
-    },
-    {
-      "pageId": "pr-06",
-      "viewport": "mobile",
-      "serious": 1,
-      "critical": 5,
-      "violations": [
-        {
-          "id": "button-name",
-          "impact": "critical",
-          "nodes": 5
-        },
-        {
-          "id": "color-contrast",
-          "impact": "serious",
           "nodes": 1
         }
       ]
@@ -687,7 +697,7 @@
     {
       "pageId": "pr-13",
       "viewport": "desktop",
-      "serious": 5,
+      "serious": 4,
       "critical": 1,
       "violations": [
         {
@@ -698,7 +708,7 @@
         {
           "id": "color-contrast",
           "impact": "serious",
-          "nodes": 4
+          "nodes": 3
         },
         {
           "id": "heading-order",
@@ -819,7 +829,7 @@
     {
       "pageId": "pr-15",
       "viewport": "desktop",
-      "serious": 2,
+      "serious": 1,
       "critical": 1,
       "violations": [
         {
@@ -830,7 +840,7 @@
         {
           "id": "color-contrast",
           "impact": "serious",
-          "nodes": 2
+          "nodes": 1
         },
         {
           "id": "heading-order",
@@ -881,12 +891,12 @@
       "pageId": "pr-16",
       "viewport": "desktop",
       "serious": 2,
-      "critical": 22,
+      "critical": 4,
       "violations": [
         {
           "id": "button-name",
           "impact": "critical",
-          "nodes": 22
+          "nodes": 4
         },
         {
           "id": "color-contrast",
@@ -911,7 +921,7 @@
         {
           "id": "region",
           "impact": "moderate",
-          "nodes": 15
+          "nodes": 6
         }
       ]
     },
@@ -919,12 +929,12 @@
       "pageId": "pr-16",
       "viewport": "mobile",
       "serious": 1,
-      "critical": 37,
+      "critical": 10,
       "violations": [
         {
           "id": "button-name",
           "impact": "critical",
-          "nodes": 37
+          "nodes": 10
         },
         {
           "id": "color-contrast",
@@ -944,7 +954,7 @@
         {
           "id": "region",
           "impact": "moderate",
-          "nodes": 16
+          "nodes": 7
         }
       ]
     },
@@ -952,12 +962,12 @@
       "pageId": "pr-17",
       "viewport": "desktop",
       "serious": 2,
-      "critical": 20,
+      "critical": 4,
       "violations": [
         {
           "id": "button-name",
           "impact": "critical",
-          "nodes": 20
+          "nodes": 4
         },
         {
           "id": "color-contrast",
@@ -982,7 +992,7 @@
         {
           "id": "region",
           "impact": "moderate",
-          "nodes": 14
+          "nodes": 6
         }
       ]
     },
@@ -990,12 +1000,12 @@
       "pageId": "pr-17",
       "viewport": "mobile",
       "serious": 1,
-      "critical": 34,
+      "critical": 10,
       "violations": [
         {
           "id": "button-name",
           "impact": "critical",
-          "nodes": 34
+          "nodes": 10
         },
         {
           "id": "color-contrast",
@@ -1015,7 +1025,7 @@
         {
           "id": "region",
           "impact": "moderate",
-          "nodes": 15
+          "nodes": 7
         }
       ]
     },
@@ -1091,7 +1101,7 @@
     {
       "pageId": "pr-19",
       "viewport": "mobile",
-      "serious": 1,
+      "serious": 2,
       "critical": 2,
       "violations": [
         {
@@ -1102,7 +1112,7 @@
         {
           "id": "color-contrast",
           "impact": "serious",
-          "nodes": 1
+          "nodes": 2
         },
         {
           "id": "empty-heading",

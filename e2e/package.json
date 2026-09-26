@@ -6,9 +6,9 @@
   "description": "Playwright regression harness shared by app/frontend (legacy) and app/frontend-new (spec 007).",
   "scripts": {
     "test": "playwright test",
-    "test:legacy": "APP=legacy BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8140}} playwright test regression && node scripts/build-axe-baseline.mjs",
-    "test:new": "APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8140}} playwright test regression shell",
-    "test:shell": "APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8140}} playwright test shell",
+    "test:legacy": "rm -f baselines/axe-legacy.raw.jsonl && APP=legacy BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8140}} playwright test regression && node scripts/build-axe-baseline.mjs",
+    "test:new": "rm -f baselines/axe-legacy.raw.jsonl && APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8141}} playwright test regression shell",
+    "test:shell": "APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8141}} playwright test shell",
     "report": "playwright show-report",
     "seed": "node --loader ts-node/esm scripts/seed.ts"
   },

@@ -19,12 +19,21 @@ test("PR-07 chat: loads, creates a session, reloads", async ({ page }, testInfo)
 
   // Reload deselects the session (no session is "active" on a fresh load).
   // The sessions list panel is collapsed by default on mobile (a toggle
-  // button with no accessible name flips it -- see Chat.tsx isSidebarCollapsed),
-  // so open it there before re-selecting the session; this proves the
-  // session itself, not just in-memory UI state, survived the reload.
+  // button with no accessible name flips it -- see Chat.tsx isSidebarCollapsed
+  // -- a legacy accessibility gap, not fixed here since app/frontend is
+  // immutable), so open it there before re-selecting the session; this
+  // proves the session itself, not just in-memory UI state, survived the
+  // reload. Located by its chevron icon rather than the `ml-auto` Tailwind
+  // utility class: a layout class is an implementation detail of legacy's
+  // current markup and isn't guaranteed to survive the restyle, whereas the
+  // expand/collapse chevron is the semantic reason this button exists.
   await page.reload();
   if (testInfo.project.name === "mobile") {
-    await page.locator("button.ml-auto").first().click();
+    await page
+      .getByRole("button")
+      .filter({ has: page.locator("svg.lucide-chevron-right, svg.lucide-chevron-left") })
+      .first()
+      .click();
   }
   await page.getByText("New Chat", { exact: true }).first().click();
   await expect(page.getByPlaceholder(/type your message/i)).toBeVisible();

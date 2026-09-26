@@ -9,7 +9,7 @@
  * sign-in is SSO-only) -- see e2e/README.md coverage notes.
  */
 import { test, expect, recordAxeBaseline, defaultOwner } from "../fixtures";
-import { routes } from "../routes";
+import { routes, urlPattern } from "../routes";
 
 test.describe("signed in as admin", () => {
   test("PR-20 settings: admin user management loads, lists self, sets a role, reloads", async ({
@@ -52,7 +52,7 @@ test.describe("signed out", () => {
     await expect(page.getByRole("button", { name: "Sign in with Microsoft" })).toBeVisible();
 
     await page.getByRole("button", { name: "Continue without signing in" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(urlPattern(routes.projectsHome()));
 
     await recordAxeBaseline(page, "pr-20-auth", testInfo);
   });

@@ -6,7 +6,7 @@
  * child items so its row is a disabled category-only checkbox), Apply Build
  * Book -- see e2e/README.md coverage notes.
  */
-import { test, expect, recordAxeBaseline, api, defaultOwner, unique, seed } from "../fixtures";
+import { test, expect, recordAxeBaseline, api, defaultOwner, unique } from "../fixtures";
 import { routes } from "../routes";
 
 test("PR-05 project standards: loads, links a standard, saves, reloads", async ({ page }, testInfo) => {
@@ -19,16 +19,20 @@ test("PR-05 project standards: loads, links a standard, saves, reloads", async (
   // standard under it exists and links, without needing to expand the tree)
   await expect(page.getByText("E2E Category")).toBeVisible();
 
-  // main write: select the whole category (id is fixed by seed.sql) and save
-  const categoryCheckbox = page.locator(`#category-${seed.standardCategoryId}`);
+  // main write: select the whole category via its checkbox's accessible
+  // name (the category's own label, not a DOM id -- the `category-<id>`
+  // id/htmlFor pairing is legacy's own implementation detail and isn't
+  // guaranteed to survive the restyle, whereas the checkbox-labelled-by-its-
+  // category-name relationship is a plain accessibility requirement) and save
+  const categoryCheckbox = page.getByRole("checkbox", { name: "E2E Category" });
   await categoryCheckbox.click();
-  await expect(categoryCheckbox).toHaveAttribute("data-state", "checked");
+  await expect(categoryCheckbox).toBeChecked();
   await page.getByRole("button", { name: "Save Changes" }).click();
   await expect(page.getByText("Project standards saved successfully")).toBeVisible();
 
   // reload restores the selection
   await page.reload();
-  await expect(page.locator(`#category-${seed.standardCategoryId}`)).toHaveAttribute("data-state", "checked");
+  await expect(page.getByRole("checkbox", { name: "E2E Category" })).toBeChecked();
 
   await recordAxeBaseline(page, "pr-05", testInfo);
 });

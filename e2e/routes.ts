@@ -27,6 +27,21 @@ function withToken(legacyPath: string, newPath: string, token?: string): string 
   return app === "legacy" ? `${legacyPath}/t/${token}` : `${newPath}?t=${token}`;
 }
 
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * RegExp matching a plain (no dynamic segments) route helper's output,
+ * anchored to the end of the URL -- for `toHaveURL` assertions after an
+ * in-app navigation, so the assertion follows APP=legacy|new like every
+ * other route lookup instead of hardcoding one app's path.
+ */
+export function urlPattern(path: string): RegExp {
+  return new RegExp(`${escapeRegExp(path)}$`);
+}
+
+
 export const routes = {
   welcome: () => (currentApp() === "legacy" ? "/" : "/welcome"),
   auth: () => "/auth",
@@ -53,6 +68,16 @@ export const routes = {
   project: {
     settings: (id: string, token?: string) =>
       withToken(`/project/${id}/settings`, `/p/${id}/settings`, token),
+    /**
+     * Matches `project.settings(<any id>, <any token>)`'s shape, for a
+     * `toHaveURL` assertion right after the app itself navigates there and
+     * issues the token (e.g. straight after creating a project) -- so the
+     * id and token don't need to be known ahead of time.
+     */
+    settingsWithTokenUrlPattern: (): RegExp =>
+      currentApp() === "legacy"
+        ? /\/project\/[^/]+\/settings\/t\/[^/]+$/
+        : /\/p\/[^/]+\/settings\?t=[^&]+$/,
     requirements: (id: string, token?: string) =>
       withToken(`/project/${id}/requirements`, `/p/${id}/v/current/define/requirements`, token),
     standards: (id: string, token?: string) =>
