@@ -486,7 +486,7 @@ export function AuditConfigurationDialog({
                             <span className="text-xs text-muted-foreground">(new category)</span>
                           </label>
                         </div>
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                        <p className="text-xs text-warn">
                           ⚠️ This processes each element individually and may increase processing time.
                         </p>
                       </div>
