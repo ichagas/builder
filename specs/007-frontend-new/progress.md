@@ -19,6 +19,10 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T000–T002 | done | (pre-existing) | F0, done before this run |
 | T010 | done | 111538a | Fork copy only, done by the orchestrator (mechanical copy) |
 | T120 | done | 81cf4be | WP-BE3. mesh_policy.scope adds `repository` (needed by D-17) |
+| T100 | done | fe0b9d6 | WP-BE1 |
+| T101 | done | 06bef20, 928c984 | WP-BE1. Fix round 1: non-UUID token → 403, atomic WI key (advisory lock), semver ordering. Release endpoints are a 501 stub until BE2 |
+| T103 | done | 06bef20 | WP-BE1. Extra events work_item_created/updated |
+| T142 | BLOCKED-EXTERNAL | 92578d7, 5880ecb, 7eedbf8 | WP-BE7. Content in external/goa-standards-assurance-mesh/. Human: create repo, move content, tag v3, replace placeholder mesh_scripts_ref SHA, run sample GitHub + Azure Repos PRs |
 | T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
 
 ## Escalations to Opus 5.5
@@ -36,3 +40,4 @@ None yet.
 - **Wave 2 backend started early** (BE3 merged): BE4, BE8 developers dispatched.
 - **2026-09-25 ~23:30: monthly spend limit hit (HTTP 429)**; all running agents stopped mid-task (F6 dev at PR-03, BE1 fix round 1, BE4 dev, BE8 dev, F1 tester/reviewer, BE7 tester). Uncommitted work stays in each worktree. Resumed 2026-09-26 06:45.
 - Pending when interrupted: BE7 security fixes (pin mesh-scripts checkout + actions to SHA, don't swallow npm install errors); F1 fix (8 inherited TS errors make the CI typecheck step fail); BE1 fix round 1 (non-UUID token → 500; WI key race; semver ordering).
+- **Merged WP-BE1** (tester FAIL → fix round 1 → verified by orchestrator: BE 579 tests). **Merged WP-BE7** (security PASS w/ findings → fixed; tester PASS; reviewer APPROVE). BE2 dispatched.
