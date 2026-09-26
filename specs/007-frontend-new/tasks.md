@@ -40,7 +40,7 @@
 - [X] T022 [P] (WP-F2) Adjust the shadcn primitives in `FE/src/components/ui/` only where variables aren't enough (button heights 40/44px, tabs with an underline indicator, dialog radius, focus ring).
 - [X] T023 [P] (WP-F2) Domain atoms `FE/src/components/shell/atoms/` (TypeChip, DeltaChip, MeshDots, StackBadge, PrChip, VersionTag, RepoRow, AdoptionBar, EmptyState) with tests.
 - [X] T024 (WP-F3) `AppShell`, `GlobalBar`, `ModeBadge`, `StatusPill` — `FE/src/components/shell/`.
-- [ ] T025 [P] (WP-F3) `Rail`, `PhaseNode` (collapse pref).
+- [X] T025 [P] (WP-F3) `Rail`, `PhaseNode` (collapse pref).
 - [ ] T026 [P] (WP-F3) `TimelineStrip` (one "Building" version until B1).
 - [ ] T027 [P] (WP-F3) `PageHeader`, `PrimaryActionSlot`, `MobileTabBar`.
 - [ ] T028 [P] (WP-F3) `ActionButton`, `NextStepBanner`, `Disclosure`, `Stepper`, `Inspector`, `FilterChips`.
