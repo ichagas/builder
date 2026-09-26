@@ -195,6 +195,63 @@ const b = clsx(cond ? "bg-blue-600" : "bg-blue-700");
   assert.equal((output.match(/bg-primary/g) || []).length, 2);
 });
 
+test("className template literal interpolation holding a conditional class expression is rewritten", () => {
+  // Real-world shape (app/frontend-new/src/components/deploy/DeploymentLogsDialog.tsx):
+  // a ternary living inside a `${...}` interpolation, not inside cn()/clsx().
+  const src =
+    "const el = <div className={`p-3 rounded-md border ${\n" +
+    '  deploy.status === "live" ? "border-green-500/50 bg-green-500/10" : "bg-muted/50"\n' +
+    "}`} />;";
+  const { output, changed } = processFile(src);
+  assert.equal(changed, true);
+  assert.match(output, /border-ok\/50 bg-ok\/10/);
+  assert.match(output, /bg-muted\/50/); // untouched non-palette class stays as-is
+  assert.match(output, /deploy\.status === "live"/); // surrounding expression untouched
+});
+
+test("bare object-literal lookup tables (`key: \"classes\"`) used later via className={MAP[key]} are rewritten", () => {
+  // Real-world shape (app/frontend-new/src/components/requirements/RequirementsTree.tsx):
+  // a top-level status/type -> classes map, referenced later as
+  // className={typeColors[requirement.type]} — never a className value or a
+  // cn()/clsx() argument at the point the string literal appears.
+  const src = `
+const typeColors = {
+  EPIC: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  STORY: "bg-green-500/10 text-green-700 border-green-500/20",
+};
+const label = "Not a class at all";
+`;
+  const { output, changed, classRecords } = processFile(src);
+  assert.equal(changed, true);
+  assert.match(output, /EPIC: "bg-define\/10 text-define border-define\/20"/);
+  assert.match(output, /STORY: "bg-ok\/10 text-ok border-ok\/20"/);
+  assert.match(output, /label = "Not a class at all"/); // unrelated property left untouched
+  assert.ok(classRecords.some((r) => r.original === "bg-green-500/10"));
+});
+
+test("quoted-key object literal maps (`\"KEY\": \"classes\"`) are rewritten too", () => {
+  const src = `
+const TYPE_COLORS: Record<string, string> = {
+  "CREATE_TABLE": "bg-green-500/20 text-green-700 border-green-500/30",
+  "DROP_TABLE": "bg-red-500/20 text-red-700 border-red-500/30",
+};
+`;
+  const { output, changed } = processFile(src);
+  assert.equal(changed, true);
+  assert.match(output, /"CREATE_TABLE": "bg-ok\/20 text-ok border-ok\/30"/);
+  assert.match(output, /"DROP_TABLE": "bg-bad\/20 text-bad border-bad\/30"/);
+});
+
+test("object-literal map entries already inside a cn()/clsx() call are not double-processed", () => {
+  const src = `
+const el = cn({ "text-green-600": ok, active: ok });
+`;
+  const { classRecords } = processFile(src);
+  // Exactly one record for text-green-600 (from the helper-call step), not
+  // also picked up again by the bare object-literal-map step.
+  assert.equal(classRecords.filter((r) => r.original === "text-green-600").length, 1);
+});
+
 test("non-className strings are never touched", () => {
   const src = `
 const id = "bg-red-500-not-a-class"; // looks similar but not a class attr / helper call

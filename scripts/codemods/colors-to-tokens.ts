@@ -12,7 +12,16 @@
  * Examples:
  *   npx tsx scripts/codemods/colors-to-tokens.ts --dry-run \
  *     --report specs/007-frontend-new/codemod/colors-dry-run.md \
- *     app/frontend-new/src/components/** app/frontend-new/src/pages/**
+ *     app/frontend-new/src
+ *
+ * WP-F2b reconciliation note: the dry run must scan the *whole* `src` tree
+ * (`app/frontend-new/src`), not just `src/components/**` and
+ * `src/pages/**` — components/pages hold nearly all of the JSX, but raw
+ * palette classes and status/type -> class lookup tables (step 3b below) do
+ * turn up outside them too (e.g. `src/hooks/useNodeTypes.ts`). `src/design/`
+ * is excluded automatically (see `IGNORE_DIR_NAMES`) since it's the
+ * authoritative source of raw color values, mirroring the token lint rule's
+ * own `ignores: ["src/design/**"]`.
  *
  * Design notes (why regex/token scanning instead of a full AST transform):
  * - `app/frontend-new` is not installed in every worktree that needs to run
@@ -495,27 +504,61 @@ function collectHelperCallSpans(text: string): Array<{ start: number; end: numbe
  * over Literal/TemplateLiteral/Conditional/Logical/Array/Object nodes by
  * simply treating every quoted string as a class blob — sufficient because
  * outside of className/helper-call contexts we never look at this text at
- * all. */
+ * all.
+ *
+ * Template-literal interpolations (`${...}`) are not just skipped: many real
+ * className template literals hold a conditional expression inside the
+ * interpolation whose branches are themselves plain class strings, e.g.
+ * `` className={`p-3 ${cond ? "border-green-500/50 bg-green-500/10" : "bg-muted/50"}`} ``.
+ * The interpolation's inner text is found with brace balancing (so nested
+ * braces/strings/further template literals don't confuse the boundary) and
+ * recursively scanned the same way, so those inner quoted strings are found
+ * too. */
 function collectStringSpans(text: string): TokenSpan[] {
   const spans: TokenSpan[] = [];
-  const re = /(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text))) {
-    // For template literals, only the literal chunks matter; `${...}`
-    // interpolations are skipped by re-splitting on them.
-    const quote = m[1];
-    const bodyStart = m.index + 1;
-    const body = m[2];
-    if (quote === "`" && body.includes("${")) {
-      let cursor = bodyStart;
-      const parts = body.split(/\$\{[^}]*\}/g);
-      for (const part of parts) {
-        spans.push({ start: cursor, end: cursor + part.length, text: part });
-        cursor += part.length + "${...}".length; // approximate; interpolation content not touched
-      }
-    } else {
-      spans.push({ start: bodyStart, end: bodyStart + body.length, text: body });
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch !== '"' && ch !== "'" && ch !== "`") {
+      i++;
+      continue;
     }
+    const quote = ch;
+    let cursor = i + 1; // start of the current literal chunk
+    let j = i + 1;
+    let bodyEnd = -1;
+    while (j < text.length) {
+      const c = text[j];
+      if (c === "\\") {
+        j += 2;
+        continue;
+      }
+      if (c === quote) {
+        bodyEnd = j;
+        break;
+      }
+      if (quote === "`" && c === "$" && text[j + 1] === "{") {
+        // Flush the literal chunk seen so far, then recurse into the
+        // brace-balanced interpolation body for nested quoted spans.
+        spans.push({ start: cursor, end: j, text: text.slice(cursor, j) });
+        const closeIdx = findMatchingBrace(text, j + 1, "{", "}");
+        if (closeIdx === -1) {
+          j = text.length;
+          break;
+        }
+        const innerStart = j + 2;
+        for (const nested of collectStringSpans(text.slice(innerStart, closeIdx))) {
+          spans.push({ start: innerStart + nested.start, end: innerStart + nested.end, text: nested.text });
+        }
+        j = closeIdx + 1;
+        cursor = j;
+        continue;
+      }
+      j++;
+    }
+    if (bodyEnd === -1) break; // unterminated string literal; stop scanning
+    spans.push({ start: cursor, end: bodyEnd, text: text.slice(cursor, bodyEnd) });
+    i = bodyEnd + 1;
   }
   return spans;
 }
@@ -570,12 +613,46 @@ export function processFile(source: string): FileResult {
 
   // 3. Helper calls (cn/clsx/classnames/cx/twMerge/tv) anywhere in the file
   // (covers calls outside a className attribute, e.g. `const cls = cn(...)`).
-  for (const { start, end } of collectHelperCallSpans(source)) {
+  const helperCallSpans = collectHelperCallSpans(source);
+  for (const { start, end } of helperCallSpans) {
     const argText = source.slice(start, end);
     for (const span of collectStringSpans(argText)) {
       const { output, changed, records } = transformClassBlob(span.text);
       classRecords.push(...records);
       if (changed) edits.push({ start: start + span.start, end: start + span.end, text: output });
+    }
+  }
+
+  // 3b. Bare object-literal property values (`key: "classes"` or
+  // `"key": "classes"`) anywhere in the file, not only inside a className
+  // attribute or a class helper call. A common pattern in this codebase is a
+  // status/type -> classes lookup table used later as
+  // `className={STATUS_STYLES[status]}` (e.g.
+  // `const typeColors = { EPIC: "bg-purple-500/10 text-purple-700 ..." }`),
+  // which steps 1-3 never see because it is neither a className value nor a
+  // cn()/clsx() argument at the point where the string literal appears. We
+  // scan every `key: "value"` pair in the file (skipping spans already
+  // covered by steps 1-3 above, so nothing is double-counted) and let
+  // `transformClassBlob`'s own token grammar decide whether there is
+  // anything to map — an ordinary non-class string property (e.g.
+  // `label: "Send message"`) never matches the token regex and is left
+  // untouched.
+  {
+    const alreadyCovered = (start: number, end: number) =>
+      classAttrRegions.some((r) => start >= r.start && end <= r.end) ||
+      helperCallSpans.some((r) => start >= r.start && end <= r.end);
+
+    const propRe = /(?:"[^"]*"|'[^']*'|[A-Za-z_$][\w$]*)\s*:\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
+    let pm: RegExpExecArray | null;
+    while ((pm = propRe.exec(source))) {
+      const value = pm[2];
+      const matchEnd = pm.index + pm[0].length;
+      const valueEnd = matchEnd - 1; // last char of the match is the closing quote
+      const valueStart = valueEnd - value.length;
+      if (alreadyCovered(valueStart, valueEnd)) continue;
+      const { output, changed, records } = transformClassBlob(value);
+      classRecords.push(...records);
+      if (changed) edits.push({ start: valueStart, end: valueEnd, text: output });
     }
   }
 
@@ -679,7 +756,11 @@ function applyHexEdits(value: string, valueStart: number, source: string, hexRec
 // ---------------------------------------------------------------------------
 
 const SOURCE_EXT = new Set([".ts", ".tsx"]);
-const IGNORE_DIR_NAMES = new Set(["node_modules", "dist", "dev-dist", ".git"]);
+// `design` mirrors the token lint rule's `ignores: ["src/design/**"]`
+// (eslint.config.js): the design token layer itself (T020, `src/design/`) is
+// the authoritative source of raw color values and must never be rewritten
+// or reported as unmapped.
+const IGNORE_DIR_NAMES = new Set(["node_modules", "dist", "dev-dist", ".git", "design"]);
 
 function walk(dir: string, out: string[]) {
   let entries: fs.Dirent[];
@@ -765,6 +846,88 @@ function renderReport(totals: Totals, cwd: string): string {
   lines.push(`- Hex literals auto-mappable (distance <= ${HEX_DISTANCE_THRESHOLD}): ${totals.hexMapped.length}`);
   lines.push(`- Hex literals unmapped (needs manual token or new token): ${totals.hexUnmapped.length}`);
   lines.push(`- Hex literals flagged as possible brand/logo assets (excluded from auto-map): ${totals.hexFlagged.length}`);
+  lines.push("");
+
+  const classTotal = mappedTotal + totals.unmapped.length;
+  lines.push("## Reconciliation (WP-F2b)");
+  lines.push("");
+  lines.push(
+    `\`plan.md\` estimated **877 Tailwind palette classes in 91 files** (877 was a rough manual count; the classes ` +
+      "and files aren't the same unit — a class occurrence and a file that contains at least one are different " +
+      "denominators). This run accounts for every raw palette class-token occurrence the codemod's grammar can " +
+      `see: **${mappedTotal} mapped + ${totals.unmapped.length} unmapped = ${classTotal} class tokens**, across ` +
+      `**${totals.filesChanged} files that would change** (of ${totals.filesScanned} \`.ts\`/\`.tsx\` files ` +
+      "scanned under `app/frontend-new/src`, excluding `src/design/**`) — within a few percent of the plan's " +
+      "91-file estimate and the right order of magnitude for 877 classes once the two gaps below (T030 fix " +
+      "round 1) are closed. Hex literals are tracked separately (see the summary above): " +
+      `${totals.hexMapped.length} auto-mappable, ${totals.hexUnmapped.length} unmapped, ${totals.hexFlagged.length} ` +
+      "flagged brand/logo assets, against the plan's rough 388-hex-value estimate — hex literals are far rarer " +
+      "in this codebase than the plan guessed; nearly all color-bearing style is done with Tailwind utility " +
+      "classes, not inline hex.",
+  );
+  lines.push("");
+  lines.push("Two gaps in the original T030 dry run (412 mapped + 161 unmapped = 573 class tokens, 76 files) " +
+    "were found and fixed before T031:");
+  lines.push("");
+  lines.push(
+    "1. **Scan scope.** The original dry run only walked `src/components/**` and `src/pages/**` (282 files). " +
+      "The token lint rule (`no-raw-tailwind-colors.js`, T018) is scoped to the whole `src/**/*.{ts,tsx}` " +
+      "(minus `src/design/**`), so a raw class outside components/pages (e.g. " +
+      "`src/hooks/useNodeTypes.ts`) would fail lint in error mode (T031) without ever having been in the " +
+      "codemod's dry run. Fixed by scanning `app/frontend-new/src` directly; this alone only added a " +
+      "handful of tokens (the fork's color-bearing code is almost entirely under components/pages), so it " +
+      "was not the main source of the gap.",
+  );
+  lines.push(
+    "2. **Extraction blind spots (the real gap).** The codemod (and the lint rule it mirrors) only ever " +
+      "looked inside `className`/`class` JSX attribute values and `cn`/`clsx`/`classnames`/`cx`/`twMerge`/`tv` " +
+      "call arguments. Two real, common patterns in this codebase were invisible to both tools — not even " +
+      "reported as unmapped, just silently absent from every count:",
+  );
+  lines.push(
+    '   - **Status/type -> classes lookup objects** used later via `className={MAP[key]}`, e.g. ' +
+      "`const typeColors = { EPIC: \"bg-purple-500/10 text-purple-700 border-purple-500/20\", ... }` " +
+      "(`components/requirements/RequirementsTree.tsx`, and 14 more files: `components/deploy/{DatabaseCard," +
+      "ExternalDatabaseCard,import/SqlReviewPanel,import/DatabaseErdView}.tsx`, " +
+      "`components/audit/{PipelineActivityStream,AuditBlackboard,FindingsTable,AuditActivityStream}.tsx`, " +
+      "`components/build/LogViewer.tsx`, `components/canvas/{ZoneNode,CanvasNode}.tsx`, " +
+      "`components/resources/{ResourcesSection,ResourceManager}.tsx`, `components/dashboard/LinkedProjectCard.tsx`, " +
+      "`pages/Landing.tsx`). The object literal is neither a className value nor a class-helper-call " +
+      "argument at the point the string literal appears, so steps 1–3 of the extractor never saw it. Fixed " +
+      "with a new extraction step (3b) that scans every `key: \"value\"` / `\"key\": \"value\"` pair in the " +
+      "file and runs the same token grammar over the value — an ordinary non-class string property (e.g. " +
+      "`label: \"Send message\"`) never matches the token regex, so nothing unrelated is touched, and spans " +
+      "already covered by a className attribute or a helper call are skipped so nothing is double-counted.",
+  );
+  lines.push(
+    "   - **Conditional expressions inside a `className={\\`...${...}\\`}` template-literal interpolation**, " +
+      'e.g. `` className={`p-3 rounded-md border ${deploy.status === "live" ? "border-green-500/50 ' +
+      'bg-green-500/10" : "bg-muted/50"}`} `` (`components/deploy/DeploymentLogsDialog.tsx`). The extractor ' +
+      "used to split a template literal on `${...}` and discard the interpolation's contents outright, so a " +
+      "ternary/logical expression living inside the interpolation — a real, rendered class string — was never " +
+      "scanned. Fixed by finding each interpolation's brace-balanced span and recursing into it for further " +
+      "quoted spans, so nested conditional class expressions are found the same way a top-level cn() call's " +
+      "arguments are.",
+  );
+  lines.push("");
+  lines.push(
+    "Both fixes are covered by new unit tests in `scripts/codemods/__tests__/colors-to-tokens.test.ts` " +
+      "(object-literal maps with bare and quoted keys, non-double-counting when such a map sits inside a " +
+      "helper call, and the template-literal-interpolation ternary case), and the existing 28 tests — " +
+      'including "non-className strings are never touched" — still pass unchanged: the new step 3b only ' +
+      "matches an explicit `key:` / `\"key\":` shape, so a bare top-level string like `const id = " +
+      '"bg-red-500-not-a-class"` or `return "text-green-600"` (no colon) is still left alone.',
+  );
+  lines.push("");
+  lines.push(
+    "The token lint rule (T018, `app/frontend-new/eslint-rules/no-raw-tailwind-colors.js`) has the *same* " +
+      "object-literal-map and template-literal-interpolation blind spots as the original codemod did, since it " +
+      "was deliberately written to mirror the codemod's scope. It is not part of this WP's files (T018 is " +
+      "WP-F1's), but whoever switches it to error mode in T031 should be aware: the 15 lookup-table files " +
+      "above and `DeploymentLogsDialog.tsx` will keep passing lint even after `--write`, until the lint rule's " +
+      "`checkClassValueExpression` walk is extended to also visit bare `ObjectExpression` property *values* " +
+      "(not just keys) and to recurse into `TemplateLiteral` expression parts, not just `quasis`.",
+  );
   lines.push("");
 
   lines.push("## Counts per mapping rule");
