@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 /**
@@ -18,18 +19,23 @@ export interface StatusPillProps {
 }
 
 export function StatusPill({ runningCount, failedCount = 0, onClick, expanded, ...rest }: StatusPillProps) {
+  const { t } = useTranslation();
   const hasActivity = runningCount > 0 || failedCount > 0;
+  const ariaLabel = hasActivity
+    ? [
+        t("shell.status.runningAndRecent"),
+        ": ",
+        t("shell.status.runningCount", { count: runningCount }),
+        failedCount ? `, ${t("shell.status.failedCount", { count: failedCount })}` : "",
+      ].join("")
+    : `${t("shell.status.runningAndRecent")}: ${t("shell.status.nothingRunning").toLowerCase()}`;
   return (
     <button
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
       aria-haspopup="true"
-      aria-label={
-        hasActivity
-          ? `Running and recent: ${runningCount} running${failedCount ? `, ${failedCount} failed` : ""}`
-          : "Running and recent: nothing running"
-      }
+      aria-label={ariaLabel}
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 text-xs font-semibold",
         failedCount > 0 ? "text-bad" : runningCount > 0 ? "text-run" : "text-muted",

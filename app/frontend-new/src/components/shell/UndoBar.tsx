@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useUndo } from "@/lib/state/useUndo";
 
@@ -8,6 +9,7 @@ import { useUndo } from "@/lib/state/useUndo";
  * message at a time, 7s."
  */
 export function UndoBar({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const { current, trigger, dismiss } = useUndo();
   if (!current) return null;
 
@@ -23,9 +25,9 @@ export function UndoBar({ className }: { className?: string }) {
       <span className="text-sm text-ink">{current.text}</span>
       <div className="flex shrink-0 items-center gap-1">
         <button type="button" onClick={trigger} className="rounded-xs px-2 py-1 text-sm font-semibold text-primary">
-          Undo
+          {t("shell.undo.undo")}
         </button>
-        <button type="button" onClick={dismiss} aria-label="Dismiss" className="rounded-xs px-2 py-1 text-sm text-muted">
+        <button type="button" onClick={dismiss} aria-label={t("shell.undo.dismiss")} className="rounded-xs px-2 py-1 text-sm text-muted">
           ×
         </button>
       </div>

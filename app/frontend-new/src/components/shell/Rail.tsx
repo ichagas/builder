@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ChevronLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useBoolPref } from "@/lib/state/useUiPrefs";
 import { PhaseNode } from "./PhaseNode";
@@ -31,6 +32,7 @@ export interface RailProps {
 }
 
 export function Rail({ sections, phases, versionCard, ariaLabel = "Project" }: RailProps) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useBoolPref("rail.collapsed", false);
 
   return (
@@ -46,7 +48,7 @@ export function Rail({ sections, phases, versionCard, ariaLabel = "Project" }: R
           type="button"
           onClick={() => setCollapsed((c) => !c)}
           aria-pressed={collapsed}
-          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-label={collapsed ? t("shell.rail.expand") : t("shell.rail.collapse")}
           className="flex h-7 w-7 items-center justify-center rounded-xs text-rail-muted hover:bg-rail-hover hover:text-rail-ink"
         >
           <ChevronLeft aria-hidden="true" className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />

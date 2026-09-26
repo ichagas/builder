@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useLongTask } from "@/lib/state/useLongTask";
 import { StatusPill } from "./StatusPill";
@@ -22,6 +23,7 @@ const STATUS_ICON: Record<LongTask["status"], React.ReactNode> = {
 };
 
 export function StatusCenter({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const { tasks, runningCount, failedCount } = useLongTask();
   const [open, setOpen] = React.useState(false);
   const popoverId = "status-center-popover";
@@ -39,9 +41,9 @@ export function StatusCenter({ className }: { className?: string }) {
     <div className={cn("relative", className)}>
       <StatusPill runningCount={runningCount} failedCount={failedCount} expanded={open} aria-controls={popoverId} onClick={() => setOpen((o) => !o)} />
       {open ? (
-        <div id={popoverId} role="dialog" aria-label="Running and recent" className="absolute right-0 top-full z-40 mt-2 w-72 rounded-xs border border-line bg-surface p-2 shadow-lg">
+        <div id={popoverId} role="dialog" aria-label={t("shell.status.runningAndRecent")} className="absolute right-0 top-full z-40 mt-2 w-72 rounded-xs border border-line bg-surface p-2 shadow-lg">
           {tasks.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-muted">Nothing running</p>
+            <p className="px-1 py-2 text-sm text-muted">{t("shell.status.nothingRunning")}</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {tasks.map((task) => (

@@ -52,7 +52,7 @@
 - [ ] T034 (WP-F3) **Embedded mode (transitional):** `ShellContext` with `embedded=true` inside the new layouts. `components/layout/PrimaryNav`, `ProjectSidebar` and `ProjectPageHeader` render `null` when embedded, so every legacy page works in the shell from day one. Removed in T070.
 - [ ] T035 (WP-F5) Long-task bridge: register existing runs with `useLongTask`, using `useProjectAgent`, `useAuditPipeline`, `useRealtimeDeployments` and the agent session hooks, so they appear in the status pill and center. No page changes.
 - [ ] T036 [P] (WP-F3) ⌘K palette (projects, tools, library).
-- [ ] T038 [P] (WP-F3) Translation-ready setup (D-16): `react-i18next` with `FE/src/i18n/en.json`, used by the shell and all new-capability screens. English only. No extraction of existing pages.
+- [X] T038 [P] (WP-F3) Translation-ready setup (D-16): `react-i18next` with `FE/src/i18n/en.json`, used by the shell and all new-capability screens. English only. No extraction of existing pages.
 - [ ] T037 (WP-F6) Foundation E2E: `e2e/shell/remount.spec.ts`, `redirects.spec.ts` (every row of routes §1), `mobile-reach.spec.ts`, axe on the shell.
 
 ## Phase 3: US1 + US2, restyle the Builder pages (P1) 🎯 MVP

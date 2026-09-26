@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ModeBadge } from "./ModeBadge";
 import type { ModeBadgeInfo, ModeKind } from "./types";
@@ -33,6 +34,7 @@ export interface GlobalBarProps {
 }
 
 export function GlobalBar({ switcher, mode, onSearch, statusPill, accountMenu, logoHref = "/projects", className }: GlobalBarProps) {
+  const { t } = useTranslation();
   return (
     <header
       className={cn("relative flex h-14 shrink-0 items-center gap-3 border-b border-gbar-line bg-gbar px-3 text-gbar-ink", className)}
@@ -53,13 +55,13 @@ export function GlobalBar({ switcher, mode, onSearch, statusPill, accountMenu, l
         className="hidden h-8 min-w-56 items-center gap-2 rounded-xs border border-line bg-surface px-2.5 text-sm text-muted sm:flex"
       >
         <Search aria-hidden="true" className="h-4 w-4" />
-        <span className="flex-1 text-left">Search projects, tools, library</span>
-        <kbd className="rounded-xs border border-line bg-surface-2 px-1 font-mono text-[11px]">⌘K</kbd>
+        <span className="flex-1 text-left">{t("shell.search.placeholder")}</span>
+        <kbd className="rounded-xs border border-line bg-surface-2 px-1 font-mono text-[11px]">{t("shell.search.shortcut")}</kbd>
       </button>
       <button
         type="button"
         onClick={onSearch}
-        aria-label="Search"
+        aria-label={t("shell.search.ariaLabel")}
         className="flex h-8 w-8 items-center justify-center rounded-xs sm:hidden"
       >
         <Search aria-hidden="true" className="h-4 w-4" />

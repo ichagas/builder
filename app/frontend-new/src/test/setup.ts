@@ -1,4 +1,8 @@
 import "@testing-library/jest-dom/vitest";
+// Initializes i18next with the app's English resources (T038) so
+// components using useTranslation() render real copy in tests, not raw
+// translation keys.
+import "@/i18n";
 
 // jsdom 28 does not expose a usable Web Storage implementation in this Vitest
 // environment (`localStorage.clear` is missing), so provide a minimal,

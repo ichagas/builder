@@ -1,0 +1,46 @@
+{
+  "shell": {
+    "skipToContent": "Skip to content",
+    "search": {
+      "placeholder": "Search projects, tools, library",
+      "ariaLabel": "Search",
+      "shortcut": "⌘K"
+    },
+    "status": {
+      "runningAndRecent": "Running and recent",
+      "nothingRunning": "Nothing running",
+      "runningCount_one": "{{count}} running",
+      "runningCount_other": "{{count}} running",
+      "failedCount_one": "{{count}} failed",
+      "failedCount_other": "{{count}} failed"
+    },
+    "undo": {
+      "undo": "Undo",
+      "dismiss": "Dismiss"
+    },
+    "rail": {
+      "collapse": "Collapse navigation",
+      "expand": "Expand navigation"
+    },
+    "inspector": {
+      "close": "Close",
+      "resize": "Resize panel (currently {{detent}})"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "body": "The page you're looking for doesn't exist or may have moved.",
+      "searchPlaceholder": "Search projects and tools",
+      "projectsLink": "Go to Projects",
+      "assuranceLink": "Go to Assurance"
+    }
+  },
+  "commandPalette": {
+    "placeholder": "Search projects, tools, library…",
+    "empty": "No results found.",
+    "groups": {
+      "projects": "Projects",
+      "tools": "Tools",
+      "library": "Library"
+    }
+  }
+}

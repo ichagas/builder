@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ChevronDown, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,6 +35,7 @@ export interface InspectorProps {
 }
 
 export function Inspector({ title, onClose, children, detent = "half", onDetentChange, className }: InspectorProps) {
+  const { t } = useTranslation();
   return (
     <>
       {/* Desktop: right side panel */}
@@ -61,7 +63,7 @@ export function Inspector({ title, onClose, children, detent = "half", onDetentC
             <button
               type="button"
               onClick={() => onDetentChange?.(NEXT_DETENT[detent])}
-              aria-label={`Resize panel (currently ${detent})`}
+              aria-label={t("shell.inspector.resize", { detent })}
               className="flex h-8 w-8 items-center justify-center rounded-xs text-muted"
             >
               <ChevronDown aria-hidden="true" className={cn("h-4 w-4 transition-transform", detent === "full" && "rotate-180")} />
@@ -75,12 +77,13 @@ export function Inspector({ title, onClose, children, detent = "half", onDetentC
 }
 
 function InspectorHeader({ title, onClose, detentButton }: { title: string; onClose: () => void; detentButton?: React.ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between border-b border-line px-3 py-2">
       <h2 className="text-sm font-semibold text-ink">{title}</h2>
       <div className="flex items-center gap-1">
         {detentButton}
-        <button type="button" onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-xs text-muted">
+        <button type="button" onClick={onClose} aria-label={t("shell.inspector.close")} className="flex h-8 w-8 items-center justify-center rounded-xs text-muted">
           <X aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>

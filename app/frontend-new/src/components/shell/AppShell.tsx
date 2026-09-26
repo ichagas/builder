@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { PrimaryActionProvider } from "./PrimaryActionContext";
 import { PrimaryActionSlot } from "./PrimaryActionSlot";
@@ -44,6 +45,7 @@ export function AppShell({
   className,
   children,
 }: AppShellProps) {
+  const { t } = useTranslation();
   return (
     <PrimaryActionProvider>
       <div className={cn("flex min-h-dvh flex-col bg-bg text-ink", className)}>
@@ -51,7 +53,7 @@ export function AppShell({
           href="#page"
           className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-xs focus:bg-surface focus:px-3 focus:py-2 focus:text-ink focus:shadow"
         >
-          Skip to content
+          {t("shell.skipToContent")}
         </a>
         {globalBar}
         <div className="flex min-h-0 flex-1">
