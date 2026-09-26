@@ -31,6 +31,17 @@ describe("TypeChip", () => {
     expect(el.className).not.toMatch(/-(red|green|blue|amber|yellow)-\d/);
   });
 
+  // Fix round 1, item 2: base.css:183 `.type` has no font-family override
+  // (plain text, not mono) and sizes text 12px/700 with 5px/8px padding.
+  it("matches the prototype's plain (non-mono) 12px bold chip, not mono", () => {
+    render(<TypeChip type="bug" />);
+    const el = screen.getByText("Bug");
+    expect(el.className).toContain("text-xs");
+    expect(el.className).toContain("font-bold");
+    expect(el.className).toContain("py-[5px]");
+    expect(el.className).not.toContain("font-mono");
+  });
+
   it("merges an extra className without dropping token classes", () => {
     render(<TypeChip type="feature" className="ml-2" />);
     const el = screen.getByText("Feature");

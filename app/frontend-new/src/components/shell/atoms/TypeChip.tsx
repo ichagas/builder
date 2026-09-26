@@ -4,9 +4,11 @@ import { cn } from "@/lib/utils";
 /**
  * TypeChip (T023). Change-type indicator for work items / changes.
  * Contract: contracts/design-system.md §2 "Domain atoms".
- * Visual reference: docs/design/frontend-redesign/option-a-styles/shared/base.css
- * `.type` / `.type-bug` / `.type-feature` / `.type-enhancement` / `.type-base`
- * and `shared/kit.js` `TYPES` (labels), rendered in Blueprint mono type chips.
+ * Visual reference: docs/design/frontend-redesign/option-a-styles/shared/base.css:183
+ * `.type { font-size: 12px; font-weight: 700; padding: 5px 8px; }` /
+ * `.type-bug` / `.type-feature` / `.type-enhancement` / `.type-base`, and
+ * `shared/kit.js` `TYPES` (labels). Plain text, not mono — the prototype's
+ * `.type` rule carries no font-family override.
  */
 export type ChangeType = "bug" | "feature" | "enhancement" | "base";
 
@@ -34,7 +36,7 @@ export function TypeChip({ type, label, className, ...props }: TypeChipProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-xs px-2 py-[3px] font-mono text-[11px] font-bold leading-none whitespace-nowrap",
+        "inline-flex items-center rounded-xs px-2 py-[5px] text-xs font-bold leading-none whitespace-nowrap",
         CLASSES[type],
         className,
       )}
