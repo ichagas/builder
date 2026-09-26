@@ -537,8 +537,8 @@ export function EnhanceImageDialog({
 
           {/* Text-only response panel */}
           {textOnlyResponse && (
-            <div className="space-y-4 border rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+            <div className="space-y-4 border rounded-lg p-4 bg-warn-soft dark:bg-warn/20 border-warn-soft dark:border-warn">
+              <div className="flex items-center gap-2 text-warn">
                 <AlertTriangle className="h-5 w-5" />
                 <span className="font-medium">Model returned text instead of an image</span>
               </div>

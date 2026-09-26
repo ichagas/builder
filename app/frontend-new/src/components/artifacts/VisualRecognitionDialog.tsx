@@ -253,7 +253,7 @@ export function VisualRecognitionDialog({
       return null;
     }
     return result.success ? (
-      <CheckCircle2 className="h-4 w-4 text-green-500" />
+      <CheckCircle2 className="h-4 w-4 text-ok" />
     ) : (
       <XCircle className="h-4 w-4 text-destructive" />
     );
@@ -456,7 +456,7 @@ export function VisualRecognitionDialog({
                         <div key={result.id} className="border rounded-md p-3 space-y-2">
                           <div className="flex items-center gap-2">
                             {result.success ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                              <CheckCircle2 className="h-4 w-4 text-ok shrink-0" />
                             ) : (
                               <XCircle className="h-4 w-4 text-destructive shrink-0" />
                             )}

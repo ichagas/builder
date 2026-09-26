@@ -67,9 +67,9 @@ function FolderNode({ folder, level, selectedId, onSelect, disabledIds }: Folder
           <div className="w-4" />
         )}
         {isExpanded ? (
-          <FolderOpen className="h-4 w-4 flex-shrink-0 text-amber-500" />
+          <FolderOpen className="h-4 w-4 flex-shrink-0 text-warn" />
         ) : (
-          <Folder className="h-4 w-4 flex-shrink-0 text-amber-500" />
+          <Folder className="h-4 w-4 flex-shrink-0 text-warn" />
         )}
         <span className="text-sm truncate">{folder.ai_title || "Untitled Folder"}</span>
       </div>
