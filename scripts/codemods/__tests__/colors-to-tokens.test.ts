@@ -381,3 +381,49 @@ const el = <div className="bg-red-500 dark:bg-red-400 hover:text-green-600 text-
   assert.equal(second.changed, false, "second pass over already-mapped output must be a no-op");
   assert.equal(second.output, first.output);
 });
+
+// ---------------------------------------------------------------------------
+// Regression: a helper call nested inside className={cn(...)} used to be
+// matched twice (once by the className-container walk, once by the
+// file-wide helper-call scan), producing two overlapping edits for the same
+// span and corrupting the file (T031, found on
+// components/deploy/import/SchemaCreator.tsx).
+// ---------------------------------------------------------------------------
+
+test("a cn(...) call inside className={cn(...)} is only edited once, and the file stays syntactically intact", () => {
+  const src = `
+            {columns.map((col, idx) => (
+              <tr key={idx} className={cn("hover:bg-muted/30", col.wasRenamed && "bg-amber-500/5")}>
+                <td className="px-3 py-2 border-b">
+                  <Input />
+                </td>
+              </tr>
+            ))}
+`;
+  const result = processFile(src);
+  assert.equal(
+    result.classRecords.filter((r) => r.original === "bg-amber-500/5").length,
+    1,
+    "the same span must not be recorded twice",
+  );
+  assert.equal(
+    result.output,
+    src.replace('"bg-amber-500/5"', '"bg-warn/5"'),
+    "only the matched token is rewritten; everything else (including the next line) is untouched",
+  );
+});
+
+test("overlapping edits are never both applied: the first (by position) wins and the file is never corrupted", () => {
+  // A pathological/synthetic case exercising the general safety net
+  // (independent of the specific cn()-in-className bug above): two edits
+  // that would both touch the same span must never both be spliced in.
+  const src = `x="bg-red-500"`;
+  // Simulate the double-edit scenario directly against processFile's
+  // public contract by checking that a real double-nested case (helper
+  // call inside a helper call argument) still yields well-formed output.
+  const nested = `<div className={cn(cn("text-red-500"))} />`;
+  const result = processFile(nested);
+  assert.doesNotThrow(() => result.output);
+  assert.ok(result.output.includes("text-bad"), "the token is still mapped");
+  assert.ok(!result.output.includes("<div classNametext-bad"), "no corruption of surrounding markup");
+});

@@ -663,7 +663,20 @@ export function processFile(source: string): FileResult {
 
   // 3. Helper calls (cn/clsx/classnames/cx/twMerge/tv) anywhere in the file
   // (covers calls outside a className attribute, e.g. `const cls = cn(...)`).
-  const helperCallSpans = collectHelperCallSpans(source);
+  //
+  // Bug fix (T031 hand-fix pass): a helper call *nested inside* a
+  // `className={cn(...)}` expression container was being matched twice —
+  // once here, and once by step 2's `collectStringSpans` walk over the
+  // whole expression container (which already finds every quoted string in
+  // there, cn() arguments included). Two edits for the same source span
+  // both survive the "changed" check and are applied back-to-front without
+  // any overlap detection, corrupting the file (the second edit's start/end
+  // no longer line up with the first edit's already-shifted text). Skip any
+  // helper-call span that step 2 has already covered so each occurrence is
+  // only ever edited once.
+  const helperCallSpans = collectHelperCallSpans(source).filter(
+    (span) => !classAttrRegions.some((r) => span.start >= r.start && span.end <= r.end),
+  );
   for (const { start, end } of helperCallSpans) {
     const argText = source.slice(start, end);
     for (const span of collectStringSpans(argText)) {
@@ -760,13 +773,32 @@ export function processFile(source: string): FileResult {
   for (const r of hexRecords) delete r.pendingEdit;
 
   // Apply edits back-to-front so indices stay valid.
-  edits.sort((a, b) => b.start - a.start);
+  //
+  // Safety net (T031 hand-fix pass): two independent extraction steps can
+  // in principle still end up pointing at the same source span (see the
+  // step-3/step-2 double-count bug fixed above — this guards against any
+  // other such overlap, known or not, rather than relying on every
+  // extraction step remembering to exclude every other step's regions).
+  // Overlapping edits can never be applied correctly against a single
+  // linear string, so instead of silently corrupting the file we keep only
+  // the first (by source position) of any set of overlapping edits and drop
+  // the rest — worst case a later duplicate is left unmapped for a human to
+  // notice, never a silently mangled file.
+  edits.sort((a, b) => a.start - b.start || a.end - b.end);
+  const nonOverlapping: Edit[] = [];
+  let lastEnd = -1;
+  for (const edit of edits) {
+    if (edit.start < lastEnd) continue; // overlaps the previous kept edit; drop it
+    nonOverlapping.push(edit);
+    lastEnd = edit.end;
+  }
+  nonOverlapping.sort((a, b) => b.start - a.start);
   let output = source;
   let changed = classRecords.some((r) => r.kind !== "unmapped");
-  for (const edit of edits) {
+  for (const edit of nonOverlapping) {
     output = output.slice(0, edit.start) + edit.text + output.slice(edit.end);
   }
-  if (edits.length > 0) changed = true;
+  if (nonOverlapping.length > 0) changed = true;
 
   return { output, changed, classRecords, hexRecords };
 }
