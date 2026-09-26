@@ -17,6 +17,22 @@ export interface ProjectAccess {
 }
 
 /**
+ * `project_tokens.token` is a Postgres `uuid` column (see
+ * `infra/migrations/001_full_schema.sql`). Anything that isn't
+ * UUID-shaped is guaranteed not to match a stored token, so we reject it
+ * before it ever reaches the database — sending a non-UUID string to a
+ * `uuid` column raises `22P02 invalid_text_representation`, which has no
+ * HTTP `statusCode` and would otherwise fall through
+ * `middleware/errorHandler.ts` as a raw 500 that leaks the driver message.
+ */
+const UUID_SHAPE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Whether `token` is shaped like a Postgres `uuid` literal. */
+export function isValidTokenShape(token: string): boolean {
+  return UUID_SHAPE_RE.test(token);
+}
+
+/**
  * Look up whether `userId` and/or `token` grant access to `projectId`.
  * Does not throw — callers combine this with {@link requireAccess} once
  * they know whether the endpoint is read-only or mutating.
@@ -42,10 +58,27 @@ export async function checkProjectAccess(
     return { projectExists: true, role: null };
   }
 
-  const tokenResult = await db.query(
-    "SELECT role FROM project_tokens WHERE project_id = $1 AND token = $2 AND (expires_at IS NULL OR expires_at > NOW())",
-    [projectId, token]
-  );
+  // Malformed tokens can never match a stored (uuid) token: treat them as
+  // "no access" without touching the database (see UUID_SHAPE_RE above).
+  if (!isValidTokenShape(token)) {
+    return { projectExists: true, role: null };
+  }
+
+  let tokenResult;
+  try {
+    tokenResult = await db.query(
+      "SELECT role FROM project_tokens WHERE project_id = $1 AND token = $2 AND (expires_at IS NULL OR expires_at > NOW())",
+      [projectId, token]
+    );
+  } catch (err: any) {
+    // Defense in depth: even if a bad token slips past the shape check
+    // (or Postgres's uuid parsing is stricter/looser than our regex),
+    // never let the raw driver error escape as a 500.
+    if (err?.code === "22P02") {
+      return { projectExists: true, role: null };
+    }
+    throw err;
+  }
   if (tokenResult.rows.length === 0) {
     return { projectExists: true, role: null };
   }

@@ -26,6 +26,35 @@ const router = Router();
 
 const CREATABLE_VERSION_KINDS = ["hotfix", "planned"] as const;
 
+/** Matches an optional leading `v`, then up to three dot-separated numeric parts. */
+const SEMVER_RE = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/i;
+
+/**
+ * Parse `name` (e.g. `v1.4.3`, `1.4`, `v2`) into a `[major, minor, patch]`
+ * sort key. Anything that doesn't start with a recognizable numeric version
+ * (e.g. a free-form label) sorts as `[0, 0, 0]`, i.e. first/oldest.
+ */
+function semverSortKey(name: string | null | undefined): [number, number, number] {
+  const match = SEMVER_RE.exec(name ?? "");
+  if (!match) return [0, 0, 0];
+  return [Number(match[1] ?? 0), Number(match[2] ?? 0), Number(match[3] ?? 0)];
+}
+
+/**
+ * Releases go out in semver-ascending order (data-model.md §1 "Rules").
+ * `name` isn't guaranteed to be strictly numeric/well-formed, so we sort in
+ * application code by parsed `[major, minor, patch]`, falling back to
+ * `created_at` ascending as a stable tiebreak (equal or unparsable names).
+ */
+function compareVersionsBySemver(a: { name: string; created_at: string | Date }, b: { name: string; created_at: string | Date }): number {
+  const [aMajor, aMinor, aPatch] = semverSortKey(a.name);
+  const [bMajor, bMinor, bPatch] = semverSortKey(b.name);
+  if (aMajor !== bMajor) return aMajor - bMajor;
+  if (aMinor !== bMinor) return aMinor - bMinor;
+  if (aPatch !== bPatch) return aPatch - bPatch;
+  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+}
+
 /**
  * @swagger
  * /projects/{projectId}/versions:
@@ -62,7 +91,9 @@ router.get("/:projectId/versions", async (req: Request, res: Response) => {
      ORDER BY v.created_at ASC`,
     [projectId]
   );
-  res.json(rows);
+  // Releases go out in semver-ascending order (data-model.md §1); re-sort
+  // by parsed semver here since `name` isn't a SQL-sortable numeric type.
+  res.json([...rows].sort(compareVersionsBySemver));
 });
 
 /**

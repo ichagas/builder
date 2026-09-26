@@ -36,15 +36,94 @@ async function loadWorkItem(id: string): Promise<any> {
   return rows[0];
 }
 
-/** Compute the next sequential `WI-<n>` key for a project. */
-async function nextWorkItemKey(projectId: string): Promise<string> {
-  const { rows } = await db.query(
+/** Max attempts for the `INSERT` retry loop in {@link createWorkItemWithKey}. */
+const MAX_KEY_ALLOCATION_ATTEMPTS = 5;
+
+/** A `client`-like object exposing just the `query` method transactions use. */
+interface QueryableClient {
+  query(text: string, params?: unknown[]): Promise<{ rows: any[] }>;
+}
+
+/** Compute the next sequential `WI-<n>` key for a project, given a client/pool. */
+async function computeNextWorkItemKey(client: QueryableClient, projectId: string): Promise<string> {
+  const { rows } = await client.query(
     `SELECT COALESCE(MAX((regexp_match(key, '^WI-(\\d+)$'))[1]::int), 0) AS max_num
      FROM work_items WHERE project_id = $1`,
     [projectId]
   );
   const maxNum = Number(rows[0]?.max_num ?? 0);
   return `WI-${maxNum + 1}`;
+}
+
+/**
+ * Insert a new work item with an atomically-allocated, sequential `WI-<n>`
+ * key. Two mechanisms make concurrent creates for the same project safe:
+ *
+ *   1. Primary: the whole allocate-then-insert sequence runs inside a
+ *      single transaction that first takes a transaction-scoped advisory
+ *      lock keyed by the project id (`pg_advisory_xact_lock(hashtext($1))`).
+ *      Concurrent transactions for the *same* project queue up on this lock
+ *      and are fully serialized, so each one computes MAX(key) over a
+ *      distinct, already-committed state -- no two creates can compute the
+ *      same next key. The lock releases automatically at COMMIT/ROLLBACK.
+ *   2. Defense in depth: the `INSERT` is wrapped in a bounded retry loop
+ *      that recomputes the key and retries if it still hits the
+ *      `work_items_project_id_key_key` unique-constraint violation (23505)
+ *      -- e.g. if a caller ever bypasses the lock via a different code path.
+ *
+ * Before this fix, key computation and the `INSERT` were two independent,
+ * unserialized statements: 10 concurrent creates against a real database
+ * produced 7 raw 500s from unhandled 23505s.
+ */
+async function createWorkItemWithKey(
+  projectId: string,
+  fields: {
+    versionId: string | null;
+    type: string;
+    severity: string | null;
+    title: string;
+    source: string | null;
+    evidence: string | null;
+    components: string[];
+    bugReport: unknown;
+  }
+): Promise<any> {
+  return db.transaction(async (client: QueryableClient) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [projectId]);
+
+    let lastError: unknown;
+    for (let attempt = 0; attempt < MAX_KEY_ALLOCATION_ATTEMPTS; attempt++) {
+      const key = await computeNextWorkItemKey(client, projectId);
+      try {
+        const { rows } = await client.query(
+          `INSERT INTO work_items
+             (project_id, key, version_id, type, severity, title, source, evidence, status, components, bug_report)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'triage', $9, $10)
+           RETURNING *`,
+          [
+            projectId,
+            key,
+            fields.versionId,
+            fields.type,
+            fields.severity,
+            fields.title,
+            fields.source,
+            fields.evidence,
+            fields.components,
+            fields.bugReport,
+          ]
+        );
+        return rows[0];
+      } catch (err: any) {
+        if (err?.code === "23505" && attempt < MAX_KEY_ALLOCATION_ATTEMPTS - 1) {
+          lastError = err;
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  });
 }
 
 // ============================================================================
@@ -160,17 +239,17 @@ projectWorkItemsRouter.post("/:projectId/work-items", async (req: Request, res: 
     throw Errors.validation({ components: "components must be an array of node ids" });
   }
 
-  const key = await nextWorkItemKey(projectId);
+  const workItem = await createWorkItemWithKey(projectId, {
+    versionId,
+    type,
+    severity,
+    title: title.trim(),
+    source,
+    evidence,
+    components,
+    bugReport,
+  });
 
-  const { rows } = await db.query(
-    `INSERT INTO work_items
-       (project_id, key, version_id, type, severity, title, source, evidence, status, components, bug_report)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'triage', $9, $10)
-     RETURNING *`,
-    [projectId, key, versionId, type, severity, title.trim(), source, evidence, components, bugReport]
-  );
-
-  const workItem = rows[0];
   broadcast(`versions-${projectId}`, "work_item_created", workItem);
   res.status(201).json(workItem);
 });

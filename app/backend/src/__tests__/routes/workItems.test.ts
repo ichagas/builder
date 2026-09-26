@@ -23,10 +23,17 @@ jest.mock("../../websocket", () => ({
 
 jest.mock("../../utils/database", () => {
   const queryFn = jest.fn();
+  // Key allocation runs inside db.transaction(); the fake client just
+  // funnels client.query() through the same queryFn mock so tests can
+  // assert against a single, linear call sequence.
+  const transactionFn = jest.fn((callback: (client: { query: jest.Mock }) => Promise<unknown>) =>
+    callback({ query: queryFn })
+  );
   return {
     __esModule: true,
     default: {
       query: queryFn,
+      transaction: transactionFn,
       healthCheck: jest.fn(),
       getActiveDbPort: jest.fn(),
     },
@@ -35,6 +42,7 @@ jest.mock("../../utils/database", () => {
 
 import db from "../../utils/database";
 const mockDbQuery = db.query as jest.Mock;
+const mockTransaction = db.transaction as jest.Mock;
 
 const PROJECT_ID = "11111111-1111-1111-1111-111111111111";
 const OWNER_ID = "owner-user";
@@ -97,6 +105,7 @@ const baseWorkItem = {
 beforeEach(() => {
   mockDbQuery.mockReset();
   mockBroadcast.mockReset();
+  mockTransaction.mockClear();
 });
 
 describe("GET /projects/:projectId/work-items", () => {
@@ -127,6 +136,7 @@ describe("GET /projects/:projectId/work-items", () => {
 describe("POST /projects/:projectId/work-items", () => {
   it("creates a work item with the next sequential key and broadcasts", async () => {
     mockOwnerCheck(OWNER_ID);
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // pg_advisory_xact_lock
     mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 2 }] }); // key sequencing query
     const created = { ...baseWorkItem, id: "new-id", key: "WI-3" };
     mockDbQuery.mockResolvedValueOnce({ rows: [created] });
@@ -146,6 +156,7 @@ describe("POST /projects/:projectId/work-items", () => {
 
   it("computes WI-1 as the first key when the project has no work items", async () => {
     mockOwnerCheck(OWNER_ID);
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // pg_advisory_xact_lock
     mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 0 }] });
     const created = { ...baseWorkItem, key: "WI-1" };
     mockDbQuery.mockResolvedValueOnce({ rows: [created] });
@@ -163,7 +174,7 @@ describe("POST /projects/:projectId/work-items", () => {
     mockTokenRoleCheck("viewer");
 
     const res = await request(createProjectApp())
-      .post(`/projects/${PROJECT_ID}/work-items?token=viewer-token`)
+      .post(`/projects/${PROJECT_ID}/work-items?token=22222222-0000-0000-0000-000000000001`)
       .send({ type: "bug", title: "New bug" });
 
     expect(res.status).toBe(403);
@@ -172,12 +183,13 @@ describe("POST /projects/:projectId/work-items", () => {
   it("allows an editor token to create a work item", async () => {
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck("editor");
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // pg_advisory_xact_lock
     mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 0 }] });
     const created = { ...baseWorkItem, key: "WI-1" };
     mockDbQuery.mockResolvedValueOnce({ rows: [created] });
 
     const res = await request(createProjectApp())
-      .post(`/projects/${PROJECT_ID}/work-items?token=editor-token`)
+      .post(`/projects/${PROJECT_ID}/work-items?token=22222222-0000-0000-0000-000000000002`)
       .send({ type: "enhancement", title: "Improve it" });
 
     expect(res.status).toBe(201);
@@ -186,12 +198,13 @@ describe("POST /projects/:projectId/work-items", () => {
   it("allows an owner-role token (not just an authenticated owner user) to create a work item", async () => {
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck("owner");
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // pg_advisory_xact_lock
     mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 0 }] });
     const created = { ...baseWorkItem, key: "WI-1" };
     mockDbQuery.mockResolvedValueOnce({ rows: [created] });
 
     const res = await request(createProjectApp())
-      .post(`/projects/${PROJECT_ID}/work-items?token=owner-token`)
+      .post(`/projects/${PROJECT_ID}/work-items?token=22222222-0000-0000-0000-000000000003`)
       .send({ type: "bug", title: "Reported via share link" });
 
     expect(res.status).toBe(201);
@@ -200,13 +213,14 @@ describe("POST /projects/:projectId/work-items", () => {
   it("works with only ?token= and no user session at all (no Authorization header, no req.user)", async () => {
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck("editor");
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // pg_advisory_xact_lock
     mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 0 }] });
     mockDbQuery.mockResolvedValueOnce({ rows: [{ ...baseWorkItem, key: "WI-1" }] });
 
     // createProjectApp() with no userId never sets req.user, matching an
     // anonymous request through optionalAuthMiddleware with a share token.
     const res = await request(createProjectApp())
-      .post(`/projects/${PROJECT_ID}/work-items?token=editor-token`)
+      .post(`/projects/${PROJECT_ID}/work-items?token=22222222-0000-0000-0000-000000000002`)
       .send({ type: "bug", title: "Anonymous via token" });
 
     expect(res.status).toBe(201);
@@ -228,48 +242,66 @@ describe("POST /projects/:projectId/work-items", () => {
     expect(res.status).toBe(422);
   });
 
-  it("KNOWN DEFECT: a malformed ?token= (not UUID-shaped) surfaces as a raw 500, not 403", async () => {
+  it("FIXED: a malformed ?token= (not UUID-shaped) resolves to 403, not a raw 500", async () => {
     // `project_tokens.token` is `uuid` in infra/migrations/001_full_schema.sql.
-    // Verified against a real postgres:16-alpine container: a non-UUID token
-    // fails the role lookup with `22P02 invalid input syntax for type uuid`,
-    // which has no `statusCode` and falls through errorHandler.ts as 500,
-    // leaking the raw Postgres message. Per contracts/api.md, every B1 route
-    // "authorizes through authorize_project_access, like the RPCs" and should
-    // reject bad tokens with 403, the same as an unknown-but-valid-format one.
+    // A non-UUID token is now rejected up front by
+    // services/versions/access.ts's isValidTokenShape, before ever reaching
+    // Postgres, instead of raising `22P02` and falling through
+    // errorHandler.ts as a raw 500.
     mockOwnerCheck("someone-else");
-    const pgError: any = new Error('invalid input syntax for type uuid: "not-a-real-token"');
-    pgError.code = "22P02";
-    mockDbQuery.mockRejectedValueOnce(pgError);
 
     const res = await request(createProjectApp())
       .post(`/projects/${PROJECT_ID}/work-items?token=not-a-real-token`)
       .send({ type: "bug", title: "x" });
 
-    expect(res.status).toBe(500); // documents current behavior; should be 403
+    expect(res.status).toBe(403);
+    expect(mockDbQuery).toHaveBeenCalledTimes(1); // only the owner check
   });
 
-  it("KNOWN DEFECT: a WI-<n> key collision under concurrent creates surfaces as an unhandled 500, not a retry or 409", async () => {
-    // `nextWorkItemKey` reads MAX(key) then a separate INSERT computes the
-    // same next key for two concurrent requests targeting the same project
-    // (confirmed empirically: 7/10 concurrent inserts failed this way
-    // against a real database). Unlike POST /versions (which catches 23505
-    // and returns 409, see routes/versions.ts), this route's INSERT has no
-    // catch for the `work_items_project_id_key_key` unique-constraint
-    // violation, so the loser of the race gets a raw 500 instead of a clean
-    // conflict response or a transparent retry.
+  it("FIXED: a WI-<n> key collision on the INSERT retries and succeeds with a fresh key", async () => {
+    // Key allocation now happens inside db.transaction(), serialized per
+    // project by `pg_advisory_xact_lock(hashtext(projectId))` -- see
+    // createWorkItemWithKey in routes/workItems.ts. As defense in depth, the
+    // INSERT is also wrapped in a bounded retry loop that recomputes the key
+    // and retries on `work_items_project_id_key_key` (23505) instead of
+    // letting it surface as a raw 500. This test drives that retry path
+    // directly: the mocked client raises 23505 once (simulating a
+    // still-possible race, e.g. two pool connections bypassing the lock),
+    // then succeeds with a recomputed key on the second attempt.
     mockOwnerCheck(OWNER_ID);
-    mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 5 }] }); // key sequencing query
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // pg_advisory_xact_lock
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 5 }] }); // first key computation -> WI-6
     const raceError: any = new Error(
       'duplicate key value violates unique constraint "work_items_project_id_key_key"'
     );
     raceError.code = "23505";
-    mockDbQuery.mockRejectedValueOnce(raceError); // the INSERT loses the race
+    mockDbQuery.mockRejectedValueOnce(raceError); // first INSERT (WI-6) loses the race
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 6 }] }); // retry: recompute -> WI-7
+    const created = { ...baseWorkItem, key: "WI-7" };
+    mockDbQuery.mockResolvedValueOnce({ rows: [created] }); // retry INSERT succeeds
 
     const res = await request(createProjectApp(OWNER_ID))
       .post(`/projects/${PROJECT_ID}/work-items`)
       .send({ type: "bug", title: "Racing create" });
 
-    expect(res.status).toBe(500); // documents current behavior; should be 409 (or a retry)
+    expect(res.status).toBe(201);
+    expect(res.body.key).toBe("WI-7");
+  });
+
+  it("serializes key allocation per project with pg_advisory_xact_lock before computing the key", async () => {
+    mockOwnerCheck(OWNER_ID);
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // advisory lock
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 0 }] });
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ ...baseWorkItem, key: "WI-1" }] });
+
+    await request(createProjectApp(OWNER_ID))
+      .post(`/projects/${PROJECT_ID}/work-items`)
+      .send({ type: "bug", title: "x" });
+
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    const [lockSql, lockParams] = mockDbQuery.mock.calls[1];
+    expect(lockSql).toMatch(/pg_advisory_xact_lock/);
+    expect(lockParams).toEqual([PROJECT_ID]);
   });
 });
 
@@ -320,7 +352,7 @@ describe("PATCH /work-items/:id", () => {
     mockTokenRoleCheck("viewer");
 
     const res = await request(createByIdApp())
-      .patch(`/work-items/${WORK_ITEM_ID}?token=viewer-token`)
+      .patch(`/work-items/${WORK_ITEM_ID}?token=22222222-0000-0000-0000-000000000001`)
       .send({ title: "Nope" });
 
     expect(res.status).toBe(403);
@@ -375,7 +407,7 @@ describe("POST /work-items/:id/steps/:step/complete", () => {
     mockTokenRoleCheck("viewer");
 
     const res = await request(createByIdApp()).post(
-      `/work-items/${WORK_ITEM_ID}/steps/define/complete?token=viewer-token`
+      `/work-items/${WORK_ITEM_ID}/steps/define/complete?token=22222222-0000-0000-0000-000000000001`
     );
     expect(res.status).toBe(403);
   });
@@ -452,7 +484,7 @@ describe("GET/POST /work-items/:id/requirement-changes", () => {
     mockTokenRoleCheck("viewer");
 
     const res = await request(createByIdApp())
-      .post(`/work-items/${WORK_ITEM_ID}/requirement-changes?token=viewer-token`)
+      .post(`/work-items/${WORK_ITEM_ID}/requirement-changes?token=22222222-0000-0000-0000-000000000001`)
       .send({ kind: "new", title: "x" });
 
     expect(res.status).toBe(403);

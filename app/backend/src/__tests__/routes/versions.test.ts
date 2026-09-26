@@ -103,8 +103,40 @@ describe("GET /projects/:projectId/versions", () => {
     mockTokenRoleCheck("viewer");
     mockDbQuery.mockResolvedValueOnce({ rows: [] });
 
-    const res = await request(createApp()).get(`/projects/${PROJECT_ID}/versions?token=viewer-token`);
+    const res = await request(createApp()).get(`/projects/${PROJECT_ID}/versions?token=22222222-0000-0000-0000-000000000001`);
     expect(res.status).toBe(200);
+  });
+
+  it("FIXED: orders versions by semver ascending, not insertion/created_at order", async () => {
+    // data-model.md §1 "Rules": releases go out in order (name semver
+    // ascending). The DB query alone can't sort a text `name` column
+    // numerically, so the route re-sorts the fetched rows by parsed
+    // [major, minor, patch]. Rows below are returned out of semver order
+    // (as if ordered by created_at) to prove the route itself re-sorts them.
+    mockOwnerCheck(OWNER_ID);
+    mockDbQuery.mockResolvedValueOnce({
+      rows: [
+        { id: "v-2-0-0", name: "v2.0.0", created_at: "2026-01-04T00:00:00Z" },
+        { id: "v1-2-0", name: "v1.2.0", created_at: "2026-01-01T00:00:00Z" },
+        { id: "v1-10-0", name: "v1.10.0", created_at: "2026-01-03T00:00:00Z" },
+        { id: "v1-2-0-second", name: "v1.2.0", created_at: "2026-01-05T00:00:00Z" }, // tiebreak on created_at
+        { id: "v1-9-5", name: "v1.9.5", created_at: "2026-01-02T00:00:00Z" },
+        { id: "no-leading-v", name: "3.0.0", created_at: "2026-01-06T00:00:00Z" },
+        { id: "unparsable", name: "next", created_at: "2026-01-07T00:00:00Z" },
+      ],
+    });
+
+    const res = await request(createApp(OWNER_ID)).get(`/projects/${PROJECT_ID}/versions`);
+    expect(res.status).toBe(200);
+    expect(res.body.map((v: { id: string }) => v.id)).toEqual([
+      "unparsable", // unparsable name sorts as [0,0,0] -> first
+      "v1-2-0", // v1.2.0, older of the two ties
+      "v1-2-0-second", // v1.2.0, tiebreak by created_at
+      "v1-9-5", // v1.9.5
+      "v1-10-0", // v1.10.0 (numeric compare, not lexicographic: 10 > 9)
+      "v-2-0-0", // v2.0.0
+      "no-leading-v", // 3.0.0 (no leading v, still parsed)
+    ]);
   });
 });
 
@@ -133,7 +165,7 @@ describe("POST /projects/:projectId/versions", () => {
     mockTokenRoleCheck("viewer");
 
     const res = await request(createApp())
-      .post(`/projects/${PROJECT_ID}/versions?token=viewer-token`)
+      .post(`/projects/${PROJECT_ID}/versions?token=22222222-0000-0000-0000-000000000001`)
       .send({ name: "v1.1.0", kind: "planned" });
 
     expect(res.status).toBe(403);
@@ -147,7 +179,7 @@ describe("POST /projects/:projectId/versions", () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [created] });
 
     const res = await request(createApp())
-      .post(`/projects/${PROJECT_ID}/versions?token=editor-token`)
+      .post(`/projects/${PROJECT_ID}/versions?token=22222222-0000-0000-0000-000000000002`)
       .send({ name: "v1.2.0", kind: "planned" });
 
     expect(res.status).toBe(201);
@@ -161,25 +193,24 @@ describe("POST /projects/:projectId/versions", () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [created] });
 
     const res = await request(createApp()) // no userId => no Authorization header, no req.user
-      .post(`/projects/${PROJECT_ID}/versions?token=owner-token`)
+      .post(`/projects/${PROJECT_ID}/versions?token=22222222-0000-0000-0000-000000000003`)
       .send({ name: "v1.3.0", kind: "hotfix" });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual(created);
   });
 
-  it("KNOWN DEFECT: a malformed ?token= surfaces as a raw 500, not 403", async () => {
-    // See the matching test in workItems.test.ts and services/versions/access.test.ts:
-    // `project_tokens.token` is a `uuid` column, so a non-UUID-shaped token
-    // fails the SQL with `22P02` (no `statusCode`), and errorHandler.ts falls
-    // back to 500 for any error without one.
+  it("FIXED: a malformed ?token= resolves to 403, not a raw 500", async () => {
+    // `project_tokens.token` is a `uuid` column. A non-UUID-shaped token
+    // is rejected up front in services/versions/access.ts (isValidTokenShape)
+    // instead of being sent to Postgres, where it used to raise `22P02` and
+    // fall through errorHandler.ts as an unhandled 500.
     mockOwnerCheck("someone-else");
-    const pgError: any = new Error('invalid input syntax for type uuid: "garbage"');
-    pgError.code = "22P02";
-    mockDbQuery.mockRejectedValueOnce(pgError);
 
     const res = await request(createApp()).get(`/projects/${PROJECT_ID}/versions?token=garbage`);
-    expect(res.status).toBe(500); // documents current behavior; should be 403
+    expect(res.status).toBe(403);
+    // Only the owner check ran; no query.query("...project_tokens...") was attempted.
+    expect(mockDbQuery).toHaveBeenCalledTimes(1);
   });
 
   it("validates name is required", async () => {
@@ -245,7 +276,7 @@ describe("release / first-release / release-checks (delegate to WP-BE2 stub)", (
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck("viewer");
     const res = await request(createApp()).post(
-      `/projects/${PROJECT_ID}/versions/some-version/release?token=viewer-token`
+      `/projects/${PROJECT_ID}/versions/some-version/release?token=22222222-0000-0000-0000-000000000001`
     );
     expect(res.status).toBe(403);
   });

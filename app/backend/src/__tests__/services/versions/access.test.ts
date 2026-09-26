@@ -11,6 +11,7 @@ import {
   requireAccess,
   authorizeProject,
   tokenFromQuery,
+  isValidTokenShape,
 } from "../../../services/versions/access";
 
 jest.mock("../../../utils/database", () => {
@@ -68,7 +69,7 @@ describe("checkProjectAccess", () => {
     async (role) => {
       mockOwnerCheck("someone-else");
       mockTokenRoleCheck(role);
-      const access = await checkProjectAccess(PROJECT_ID, undefined, "some-token");
+      const access = await checkProjectAccess(PROJECT_ID, undefined, "22222222-0000-0000-0000-000000000004");
       expect(access).toEqual({ projectExists: true, role });
     }
   );
@@ -76,38 +77,72 @@ describe("checkProjectAccess", () => {
   it("treats an unknown or expired token as no access (role: null)", async () => {
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck(null); // the SQL predicate excludes expired rows, so the lookup returns nothing
-    const access = await checkProjectAccess(PROJECT_ID, undefined, "expired-or-unknown-token");
+    const access = await checkProjectAccess(PROJECT_ID, undefined, "22222222-0000-0000-0000-000000000005");
     expect(access).toEqual({ projectExists: true, role: null });
   });
 
   it("queries project_tokens with the project id, token, and an expiry predicate", async () => {
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck("editor");
-    await checkProjectAccess(PROJECT_ID, undefined, "editor-token");
+    await checkProjectAccess(PROJECT_ID, undefined, "22222222-0000-0000-0000-000000000002");
 
     const [sql, params] = mockDbQuery.mock.calls[1];
     expect(sql).toMatch(/project_tokens/);
     expect(sql).toMatch(/expires_at/);
-    expect(params).toEqual([PROJECT_ID, "editor-token"]);
+    expect(params).toEqual([PROJECT_ID, "22222222-0000-0000-0000-000000000002"]);
   });
 
-  it("KNOWN DEFECT: a malformed (non-UUID) token propagates the raw Postgres error instead of resolving to no access", async () => {
-    // `project_tokens.token` is a `uuid` column. In the real database (see
-    // manual verification against postgres:16-alpine for T100/T101), a
-    // `?token=` value that isn't UUID-shaped fails the query with
-    // `22P02 invalid input syntax for type uuid`, not a 0-row result. That
-    // raw driver error has no `statusCode`, so `middleware/errorHandler`
-    // falls back to 500 instead of the 403 a caller would expect for bad
-    // credentials. This test pins the current (buggy) propagation so a fix
-    // is visible as a test change rather than a silent behavior shift.
+  it("FIXED: a malformed (non-UUID) token resolves to no access, without ever querying project_tokens", async () => {
+    // `project_tokens.token` is a `uuid` column. A `?token=` value that
+    // isn't UUID-shaped can never match a stored token, so it's rejected
+    // up front (see `isValidTokenShape`) instead of being sent to Postgres,
+    // where it would previously raise `22P02 invalid input syntax for type
+    // uuid` and propagate as a raw, unhandled driver error.
     mockOwnerCheck("someone-else");
-    const pgError: any = new Error('invalid input syntax for type uuid: "not-a-uuid"');
+
+    const access = await checkProjectAccess(PROJECT_ID, undefined, "not-a-uuid");
+
+    expect(access).toEqual({ projectExists: true, role: null });
+    expect(mockDbQuery).toHaveBeenCalledTimes(1); // only the owner check; no project_tokens query
+  });
+
+  it("FIXED: a 22P02 from project_tokens (defense in depth) still resolves to no access, not a thrown error", async () => {
+    // Belt-and-braces: even if a token slips past the shape check, a
+    // 22P02 from the database must not propagate as a raw error.
+    mockOwnerCheck("someone-else");
+    const pgError: any = new Error('invalid input syntax for type uuid: "weird"');
     pgError.code = "22P02";
     mockDbQuery.mockRejectedValueOnce(pgError);
 
-    await expect(checkProjectAccess(PROJECT_ID, undefined, "not-a-uuid")).rejects.toMatchObject({
-      code: "22P02",
-    });
+    // A syntactically-valid-looking UUID that we still want to defend
+    // against at the query layer.
+    const access = await checkProjectAccess(PROJECT_ID, undefined, "11111111-1111-1111-1111-111111111111");
+    expect(access).toEqual({ projectExists: true, role: null });
+  });
+
+  it("re-throws non-22P02 database errors from the token lookup", async () => {
+    mockOwnerCheck("someone-else");
+    const dbError: any = new Error("connection terminated");
+    dbError.code = "57P01";
+    mockDbQuery.mockRejectedValueOnce(dbError);
+
+    await expect(
+      checkProjectAccess(PROJECT_ID, undefined, "11111111-1111-1111-1111-111111111111")
+    ).rejects.toMatchObject({ code: "57P01" });
+  });
+});
+
+describe("isValidTokenShape", () => {
+  it("accepts a UUID-shaped token", () => {
+    expect(isValidTokenShape("11111111-1111-1111-1111-111111111111")).toBe(true);
+    expect(isValidTokenShape("ABCDEF12-ABCD-ABCD-ABCD-ABCDEF123456")).toBe(true);
+  });
+
+  it("rejects non-UUID-shaped tokens", () => {
+    expect(isValidTokenShape("not-a-uuid")).toBe(false);
+    expect(isValidTokenShape("")).toBe(false);
+    expect(isValidTokenShape("11111111111111111111111111111111")).toBe(false);
+    expect(isValidTokenShape("garbage; DROP TABLE project_tokens;--")).toBe(false);
   });
 });
 
@@ -139,7 +174,7 @@ describe("authorizeProject", () => {
   it("resolves the role for a valid owner-role token (mutating allowed)", async () => {
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck("owner");
-    const role = await authorizeProject(PROJECT_ID, undefined, "owner-token", { mutating: true });
+    const role = await authorizeProject(PROJECT_ID, undefined, "22222222-0000-0000-0000-000000000003", { mutating: true });
     expect(role).toBe("owner");
   });
 
@@ -147,13 +182,13 @@ describe("authorizeProject", () => {
     mockOwnerCheck("someone-else");
     mockTokenRoleCheck("viewer");
     await expect(
-      authorizeProject(PROJECT_ID, undefined, "viewer-token", { mutating: true })
+      authorizeProject(PROJECT_ID, undefined, "22222222-0000-0000-0000-000000000001", { mutating: true })
     ).rejects.toMatchObject({ statusCode: 403 });
   });
 
   it("rejects with 404 before ever checking mutating rules when the project is missing", async () => {
     mockOwnerCheck(null);
-    await expect(authorizeProject(PROJECT_ID, undefined, "any-token")).rejects.toMatchObject({
+    await expect(authorizeProject(PROJECT_ID, undefined, "22222222-0000-0000-0000-000000000006")).rejects.toMatchObject({
       statusCode: 404,
     });
   });
