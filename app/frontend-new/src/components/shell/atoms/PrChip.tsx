@@ -30,7 +30,7 @@ export function PrChip({ number, state, children, className, ...props }: PrChipP
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-s border px-2 py-[3px] font-mono text-xs font-semibold",
+        "inline-flex items-center whitespace-nowrap rounded-xs border px-2 py-[3px] font-mono text-xs font-semibold",
         state ? STATE_CLASSES[state] : "border-line-2 text-ink",
         className,
       )}

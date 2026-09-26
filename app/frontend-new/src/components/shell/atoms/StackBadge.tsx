@@ -29,7 +29,7 @@ export function StackBadge({ profile, label, className, ...props }: StackBadgePr
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-s border border-line bg-surface-2 px-[7px] py-[3px] font-mono text-[11.5px] font-semibold text-ink",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-xs border border-line bg-surface-2 px-[7px] py-[3px] font-mono text-[11.5px] font-semibold text-ink",
         className,
       )}
       {...props}

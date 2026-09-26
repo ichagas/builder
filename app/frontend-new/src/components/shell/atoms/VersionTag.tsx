@@ -18,7 +18,7 @@ export function VersionTag({ version, locked, className, ...props }: VersionTagP
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-s border border-line bg-surface-2 px-2 py-[3px] font-mono text-[13px] font-semibold text-primary",
+        "inline-flex items-center gap-1 rounded-xs border border-line bg-surface-2 px-2 py-[3px] font-mono text-[13px] font-semibold text-primary",
         className,
       )}
       {...props}

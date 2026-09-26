@@ -131,7 +131,13 @@ export const designSystemPreset = {
 
       borderRadius: {
         DEFAULT: "var(--radius)",
-        s: "var(--radius-s)",
+        // Named "xs", not "s": Tailwind core (v3.3+) already reserves
+        // `rounded-s`/`-e`/`-ss`/`-se`/`-es`/`-ee`/`-tl`/`-tr`/`-bl`/`-br` for
+        // logical/physical corner utilities. A same-named preset key doesn't
+        // override those — both get emitted, and whichever wins in the
+        // generated CSS renders only the *start* corners at this radius. See
+        // `__tests__/no-reserved-radius-key.test.ts` for a build-output check.
+        xs: "var(--radius-s)",
         pill: "var(--radius-pill)",
       },
 

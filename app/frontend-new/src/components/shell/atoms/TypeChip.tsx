@@ -34,7 +34,7 @@ export function TypeChip({ type, label, className, ...props }: TypeChipProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-s px-2 py-[3px] font-mono text-[11px] font-bold leading-none whitespace-nowrap",
+        "inline-flex items-center rounded-xs px-2 py-[3px] font-mono text-[11px] font-bold leading-none whitespace-nowrap",
         CLASSES[type],
         className,
       )}

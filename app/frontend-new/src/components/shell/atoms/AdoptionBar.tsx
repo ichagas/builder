@@ -27,7 +27,7 @@ export function AdoptionBar({ segments, className, ...props }: AdoptionBarProps)
     <div
       role="img"
       aria-label={label}
-      className={cn("my-[14px] flex h-[30px] gap-0.5 overflow-hidden rounded-s", className)}
+      className={cn("my-[14px] flex h-[30px] gap-0.5 overflow-hidden rounded-xs", className)}
       {...props}
     >
       {segments.map((s) => (

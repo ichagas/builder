@@ -61,7 +61,7 @@ export function MeshDots({ statuses, className, ...props }: MeshDotsProps) {
             key={a.id}
             title={`${a.name}: ${STATUS_WORD[status]}`}
             className={cn(
-              "grid h-[22px] w-[22px] place-items-center rounded-s font-mono text-[11px] font-bold text-primary-foreground",
+              "grid h-[22px] w-[22px] place-items-center rounded-xs font-mono text-[11px] font-bold text-primary-foreground",
               status === "none" ? "" : AGENT_BG[a.id],
               STATUS_CLASSES[status],
             )}
