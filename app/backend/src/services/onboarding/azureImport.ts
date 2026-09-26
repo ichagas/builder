@@ -9,17 +9,21 @@
  * is itself org-scoped — a caller can never reach another organization's
  * Azure DevOps connection through this.
  *
- * `fullName` follows the same "<project>/<repo>" convention documented for
- * `application_repositories.full_name` (data-model.md §2) and consumed by
+ * `fullName` is `"<adoOrg>/<project>/<repo>"` (fix round 2, item 1 —
+ * `<project>/<repo>` alone isn't globally unique across different Azure
+ * DevOps organizations, and `application_repositories.full_name` is),
+ * documented in data-model.md §2 and consumed by
  * `pullRequests.ts#openAzureDevOpsPullRequest`.
  */
 import { logger } from "../../utils/logger";
 import { getAzureDevOpsClient } from "../integrations";
+import { extractAzureDevOpsOrgLogin } from "../integrations/providers/azureDevOps";
 
 const AZURE_DEVOPS_API_VERSION = "7.1";
 
 export interface ImportableAzureRepository {
   fullName: string;
+  adoOrg: string;
   project: string;
   defaultBranch: string;
   disabled: boolean;
@@ -36,6 +40,18 @@ interface AzureRepository {
 }
 
 /**
+ * Fix round 1, item 9's pattern applied here (fix round 2, item 9): never
+ * hand a raw Azure DevOps error body to the client — it can contain
+ * tenant-internal detail. The real error is logged; callers get a fixed,
+ * generic message.
+ */
+function sanitizeUpstreamError(): Error {
+  return Object.assign(new Error("Could not list Azure DevOps repositories (see server logs for details)"), {
+    code: "AZURE_DEVOPS_API_ERROR",
+  });
+}
+
+/**
  * Repositories visible to the organization's configured Azure DevOps
  * connection, across every project it can see. Azure DevOps has no single
  * "all repositories in the organization" endpoint, so this lists projects
@@ -49,12 +65,18 @@ export async function listAzureDevOpsRepositories(
   query?: string
 ): Promise<ImportableAzureRepository[]> {
   const client = await getAzureDevOpsClient(organizationId, connectionId);
+  const adoOrg = extractAzureDevOpsOrgLogin(client.organizationUrl);
+  if (!adoOrg) {
+    logger.error(
+      `[onboarding/azureImport] could not derive an organization login from "${client.organizationUrl}"`
+    );
+    throw sanitizeUpstreamError();
+  }
 
   const projectsRes = await client.request(`/_apis/projects?api-version=${AZURE_DEVOPS_API_VERSION}`);
   if (!projectsRes.ok) {
-    throw Object.assign(new Error(`Azure DevOps returned ${projectsRes.status} listing projects`), {
-      code: "AZURE_DEVOPS_API_ERROR",
-    });
+    logger.error(`[onboarding/azureImport] listing projects failed: ${projectsRes.status}`);
+    throw sanitizeUpstreamError();
   }
   const projectsData = (await projectsRes.json()) as { value: AzureProject[] };
 
@@ -74,7 +96,8 @@ export async function listAzureDevOpsRepositories(
 
     for (const repo of reposData.value ?? []) {
       results.push({
-        fullName: `${project.name}/${repo.name}`,
+        fullName: `${adoOrg}/${project.name}/${repo.name}`,
+        adoOrg,
         project: project.name,
         defaultBranch: (repo.defaultBranch || "refs/heads/main").replace(/^refs\/heads\//, ""),
         disabled: Boolean(repo.isDisabled),

@@ -87,7 +87,7 @@ Roles follow GitHub: `owner` or `member` per team. Organization admins (the exis
 |---|---|---|
 | application_id | uuid FK → applications ON DELETE CASCADE | |
 | provider | text check in (`github`,`azure_devops`) | |
-| full_name | text | `goa/permits-api`, unique. For `provider = azure_devops`, `<project>/<repo>` (fix round 1, item 11) — Azure Repos has no single global name, so onboarding and the mesh services use the project name in place of a GitHub owner/org |
+| full_name | text | `goa/permits-api`, unique. For `provider = azure_devops`, `<adoOrg>/<project>/<repo>` (fix round 2, item 1 — superseding fix round 1's `<project>/<repo>`: that collided across different Azure DevOps organizations since this column is globally unique, not per-provider-unique; `adoOrg` is the Azure DevOps organization login, derived from the connection's validated organization URL) |
 | default_branch | text default 'main' | main, master, develop… the mesh runs on PRs targeting it |
 | ci_provider | text check in (`github_actions`,`azure_pipelines`) | where the mesh CI was generated (D-12) |
 | profile | text check in (`dotnet`,`node`,`java`,`python`) | stack profile |

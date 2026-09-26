@@ -20,6 +20,7 @@
 import { logger } from "../../utils/logger";
 import { getInstallationTokenForRepo } from "../../utils/githubAppAuth";
 import { getAzureDevOpsClient } from "../integrations";
+import { extractAzureDevOpsOrgLogin } from "../integrations/providers/azureDevOps";
 import { GeneratedFile } from "./jobDispatcher";
 
 export interface OpenPullRequestInput {
@@ -133,13 +134,29 @@ async function openGitHubPullRequest(input: OpenPullRequestInput): Promise<OpenP
 }
 
 async function openAzureDevOpsPullRequest(input: OpenPullRequestInput): Promise<OpenPullRequestResult> {
-  // Convention: an Azure DevOps repository's full_name is `project/repo`.
-  const [project, repoName] = input.fullName.split("/");
-  if (!project || !repoName) {
-    throw new Error(`Invalid Azure DevOps repository full name: "${input.fullName}" (expected "project/repo")`);
+  // Convention (fix round 2, item 1): an Azure DevOps repository's full_name
+  // is `<adoOrg>/<project>/<repo>` — `<project>/<repo>` alone isn't globally
+  // unique across different Azure DevOps organizations, and
+  // `application_repositories.full_name` is (see data-model.md §2).
+  const [adoOrg, project, repoName] = input.fullName.split("/");
+  if (!adoOrg || !project || !repoName) {
+    throw new Error(
+      `Invalid Azure DevOps repository full name: "${input.fullName}" (expected "adoOrg/project/repo")`
+    );
   }
 
   const client = await getAzureDevOpsClient(input.organizationId, input.connectionId ?? undefined);
+
+  // Defense in depth: the connection resolved for this organization must
+  // actually be for the Azure DevOps organization the repository's
+  // full_name says it belongs to — catches stale full_names left over from
+  // a connection that was reconfigured to point at a different ADO org.
+  const clientOrg = extractAzureDevOpsOrgLogin(client.organizationUrl);
+  if (clientOrg && clientOrg.toLowerCase() !== adoOrg.toLowerCase()) {
+    throw new Error(
+      `Repository "${input.fullName}" belongs to Azure DevOps organization "${adoOrg}", but the resolved connection is for "${clientOrg}"`
+    );
+  }
 
   const repoRes = await client.request(`/${encodeURIComponent(project)}/_apis/git/repositories/${encodeURIComponent(repoName)}?api-version=7.1`);
   if (!repoRes.ok) throw new Error(`Could not read Azure Repos repository ${input.fullName}: ${repoRes.status}`);

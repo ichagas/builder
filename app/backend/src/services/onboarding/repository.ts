@@ -27,6 +27,13 @@ export interface OnboardingRunRow {
   log_blob: string | null;
   connection_id: string | null;
   started_by: string;
+  /**
+   * Set (a few minutes in the future) while a POST .../pull-requests call is
+   * in flight for this run (fix round 2, item 4); a second, concurrent call
+   * sees a still-future value and 409s instead of racing the first. See
+   * {@link claimPrLease}/{@link releasePrLease}.
+   */
+  pr_lease_until: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +59,7 @@ export interface OnboardingRunRepositoryRow {
 
 const RUN_COLUMNS = `
   id, team_id, application_name, application_id, pack_version, status, step,
-  job_execution_id, log_blob, connection_id, started_by, created_at, updated_at
+  job_execution_id, log_blob, connection_id, started_by, pr_lease_until, created_at, updated_at
 `;
 
 const REPO_COLUMNS = `
@@ -172,6 +179,44 @@ export async function claimRunTransition(
     values
   );
   return rows[0] ?? null;
+}
+
+const PR_LEASE_DURATION = "10 minutes";
+
+/**
+ * Atomically claim the short-lived "PR opening in progress" lease for a run
+ * (fix round 2, item 4): a single `UPDATE ... WHERE ... RETURNING`, matched
+ * only when the run's status is eligible AND its lease is unset or already
+ * expired. Two concurrent confirms for the same run race here — only one
+ * `UPDATE` can match, the other gets `null` back (the caller 409s: "PR
+ * opening already in progress"). Unlike a transaction-held advisory lock,
+ * this claims and releases in independent, short statements, so the pool
+ * connection is never held across the external GitHub/Azure DevOps HTTP
+ * calls `openPullRequests` makes while "holding" the lease — only the lease
+ * *row itself* is held, as data, not as a database connection/transaction.
+ * Callers must call {@link releasePrLease} in a `finally` so a lease is
+ * never stuck for its full duration after a request that already finished
+ * (successfully or not).
+ */
+export async function claimPrLease(runId: string): Promise<OnboardingRunRow | null> {
+  const { rows } = await db.query(
+    `UPDATE public.onboarding_runs
+     SET pr_lease_until = now() + interval '${PR_LEASE_DURATION}', updated_at = now()
+     WHERE id = $1
+       AND status IN ('ready', 'prs_open')
+       AND (pr_lease_until IS NULL OR pr_lease_until < now())
+     RETURNING ${RUN_COLUMNS}`,
+    [runId]
+  );
+  return rows[0] ?? null;
+}
+
+/** Release a run's PR-opening lease (idempotent — a no-op if already clear). */
+export async function releasePrLease(runId: string): Promise<void> {
+  await db.query(
+    `UPDATE public.onboarding_runs SET pr_lease_until = NULL, updated_at = now() WHERE id = $1`,
+    [runId]
+  );
 }
 
 export interface RepositorySelectionInput {

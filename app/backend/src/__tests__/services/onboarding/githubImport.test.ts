@@ -80,6 +80,40 @@ describe("listGitHubRepositories", () => {
     expect(byQuery.map((r) => r.fullName).sort()).toEqual(["goa/permits-api", "other-org/permits-clone"]);
   });
 
+  it("filters by multiple owners in a single pagination pass (fix round 2, item 8)", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockResolvedValue("installation-token");
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositories: [
+          repo("goa/permits-api", "goa"),
+          repo("goa-labs/experiment", "goa-labs"),
+          repo("other-org/unrelated", "other-org"),
+        ],
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const repos = await listGitHubRepositories({ owners: ["goa", "GOA-Labs"] });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(repos.map((r) => r.fullName).sort()).toEqual(["goa-labs/experiment", "goa/permits-api"]);
+  });
+
+  it("owners takes precedence over org when both are given", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockResolvedValue("installation-token");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ repositories: [repo("goa/permits-api", "goa"), repo("goa-labs/experiment", "goa-labs")] }),
+    }) as unknown as typeof fetch;
+
+    const repos = await listGitHubRepositories({ org: "goa", owners: ["goa-labs"] });
+
+    expect(repos.map((r) => r.fullName)).toEqual(["goa-labs/experiment"]);
+  });
+
   it("matches org case-insensitively and combines org + query filters", async () => {
     mockIsConfigured.mockReturnValue(true);
     mockGetToken.mockResolvedValue("installation-token");

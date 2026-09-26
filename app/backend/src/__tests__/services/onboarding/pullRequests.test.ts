@@ -172,7 +172,7 @@ describe("openRepositoryPullRequest — azure_devops", () => {
 
     const result = await openRepositoryPullRequest({
       provider: "azure_devops",
-      fullName: "MyProject/permits-api",
+      fullName: "goa/MyProject/permits-api",
       organizationId: "org-1",
       connectionId: "conn-1",
       branchName: "pronghorn-onboarding/abc123",
@@ -208,7 +208,7 @@ describe("openRepositoryPullRequest — azure_devops", () => {
 
     const result = await openRepositoryPullRequest({
       provider: "azure_devops",
-      fullName: "MyProject/permits-api",
+      fullName: "goa/MyProject/permits-api",
       organizationId: "org-1",
       connectionId: "conn-1",
       branchName: "pronghorn-onboarding/abc123",
@@ -220,17 +220,36 @@ describe("openRepositoryPullRequest — azure_devops", () => {
     expect(result).toEqual({ prNumber: 55, prState: "open", defaultBranch: "main" });
   });
 
-  it("rejects a full_name without a project segment", async () => {
+  it("rejects a full_name missing a segment (fix round 2: expects adoOrg/project/repo)", async () => {
     await expect(
       openRepositoryPullRequest({
         provider: "azure_devops",
-        fullName: "permits-api",
+        fullName: "MyProject/permits-api",
         organizationId: "org-1",
         branchName: "b",
         title: "t",
         body: "b",
         files,
       })
-    ).rejects.toThrow(/expected "project\/repo"/i);
+    ).rejects.toThrow(/expected "adoOrg\/project\/repo"/i);
+  });
+
+  it("rejects when the full_name's adoOrg doesn't match the resolved connection's organization (fix round 2, item 1)", async () => {
+    const request = jest.fn();
+    mockGetAzureDevOpsClient.mockResolvedValue({ organizationUrl: "https://dev.azure.com/goa", request });
+
+    await expect(
+      openRepositoryPullRequest({
+        provider: "azure_devops",
+        fullName: "some-other-org/MyProject/permits-api",
+        organizationId: "org-1",
+        connectionId: "conn-1",
+        branchName: "b",
+        title: "t",
+        body: "b",
+        files,
+      })
+    ).rejects.toThrow(/belongs to Azure DevOps organization "some-other-org"/i);
+    expect(request).not.toHaveBeenCalled();
   });
 });

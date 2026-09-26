@@ -30,14 +30,23 @@ interface GitHubInstallationRepo {
 export interface ListGitHubRepositoriesOptions {
   /** Filter to repos owned by this org/login (defaults to all installation repos). */
   org?: string;
+  /**
+   * Filter to repos owned by any of these owners (fix round 2, item 8) — the
+   * installation is paginated exactly once regardless of how many owners are
+   * given, then filtered in memory. Takes precedence over `org` if both are
+   * given.
+   */
+  owners?: string[];
   /** Case-insensitive substring match against `full_name`. */
   query?: string;
 }
 
 /**
  * Repositories visible to the platform's GitHub App installation. Paginates
- * through GitHub's `/installation/repositories` (max 100/page) and applies
- * `org`/`query` filtering server-side so the frontend gets a plain list.
+ * through GitHub's `/installation/repositories` (max 100/page, once — fix
+ * round 2, item 8: a multi-owner scope filters this single pass rather than
+ * re-paginating per owner) and applies `owners`/`org`/`query` filtering
+ * server-side so the frontend gets a plain list.
  */
 export async function listGitHubRepositories(
   options: ListGitHubRepositoriesOptions = {}
@@ -76,11 +85,16 @@ export async function listGitHubRepositories(
     if (!data.repositories || data.repositories.length < 100) break;
   }
 
+  const owners = options.owners?.map((o) => o.trim().toLowerCase()).filter(Boolean);
   const org = options.org?.trim().toLowerCase();
   const query = options.query?.trim().toLowerCase();
 
   return repos
-    .filter((r) => !org || r.owner?.login?.toLowerCase() === org)
+    .filter((r) => {
+      const login = r.owner?.login?.toLowerCase();
+      if (owners && owners.length > 0) return login !== undefined && owners.includes(login);
+      return !org || login === org;
+    })
     .filter((r) => !query || r.full_name.toLowerCase().includes(query))
     .map((r) => ({
       fullName: r.full_name,

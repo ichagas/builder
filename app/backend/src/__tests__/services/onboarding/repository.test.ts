@@ -8,7 +8,7 @@ jest.mock("../../../utils/database", () => ({
 }));
 
 import db from "../../../utils/database";
-import { claimRunTransition, updateRun } from "../../../services/onboarding/repository";
+import { claimRunTransition, updateRun, claimPrLease, releasePrLease } from "../../../services/onboarding/repository";
 
 const mockDbQuery = db.query as jest.Mock;
 
@@ -55,5 +55,61 @@ describe("claimRunTransition", () => {
 
     const [sql] = mockDbQuery.mock.calls[0];
     expect(sql).not.toMatch(/AND status = /);
+  });
+});
+
+describe("claimPrLease / releasePrLease (fix round 2, item 4)", () => {
+  afterEach(() => jest.resetAllMocks());
+
+  it("issues a single UPDATE ... WHERE status IN (...) AND (lease unset or expired) ... RETURNING statement", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ id: "run-1", status: "ready" }] });
+
+    await claimPrLease("run-1");
+
+    expect(mockDbQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockDbQuery.mock.calls[0];
+    expect(sql).toMatch(/UPDATE public\.onboarding_runs/);
+    expect(sql).toMatch(/SET pr_lease_until = now\(\) \+ interval/);
+    expect(sql).toMatch(/WHERE id = \$1/);
+    expect(sql).toMatch(/status IN \('ready', 'prs_open'\)/);
+    expect(sql).toMatch(/pr_lease_until IS NULL OR pr_lease_until < now\(\)/);
+    expect(sql).toMatch(/RETURNING/);
+    expect(params).toEqual(["run-1"]);
+  });
+
+  it("returns the claimed row on success", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ id: "run-1", status: "ready" }] });
+
+    const result = await claimPrLease("run-1");
+
+    expect(result).toEqual({ id: "run-1", status: "ready" });
+  });
+
+  it("returns null when the claim finds 0 rows (wrong status, or another confirm already holds the lease)", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [] });
+
+    const result = await claimPrLease("run-1");
+
+    expect(result).toBeNull();
+  });
+
+  it("does not open (or hold) a transaction — a single statement via the plain query path", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ id: "run-1" }] });
+
+    await claimPrLease("run-1");
+
+    // db.query, not db.transaction/getClient — no pooled connection is held
+    // across this call or anything after it.
+    expect(mockDbQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("releasePrLease clears the lease unconditionally", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [] });
+
+    await releasePrLease("run-1");
+
+    const [sql, params] = mockDbQuery.mock.calls[0];
+    expect(sql).toMatch(/UPDATE public\.onboarding_runs SET pr_lease_until = NULL/);
+    expect(params).toEqual(["run-1"]);
   });
 });

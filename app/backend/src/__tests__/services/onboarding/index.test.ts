@@ -40,6 +40,8 @@ jest.mock("../../../services/onboarding/repository", () => {
     updateRun: jest.fn(),
     updateRunRepositoryByFullName: jest.fn(),
     claimRunTransition: jest.fn(),
+    claimPrLease: jest.fn(),
+    releasePrLease: jest.fn(),
   };
 });
 
@@ -53,11 +55,16 @@ jest.mock("../../../services/onboarding/azureImport", () => ({
 
 jest.mock("../../../services/integrations", () => {
   const actual = jest.requireActual("../../../services/integrations");
-  return { ...actual, getDefaultConnectionForProvider: jest.fn() };
+  return { ...actual, getDefaultConnectionForProvider: jest.fn(), getConnectionForOrg: jest.fn() };
 });
 
 jest.mock("../../../services/onboarding/pullRequests", () => ({
   openRepositoryPullRequest: jest.fn(),
+}));
+
+jest.mock("../../../services/onboarding/realtime", () => ({
+  broadcastOnboardingProgress: jest.fn(),
+  onboardingChannel: jest.fn((runId: string) => `onboarding-${runId}`),
 }));
 
 import db from "../../../utils/database";
@@ -67,7 +74,8 @@ import { openRepositoryPullRequest } from "../../../services/onboarding/pullRequ
 import { setJobDispatcher, resetJobDispatcher, JobDispatcher, JobResult } from "../../../services/onboarding/jobDispatcher";
 import { listGitHubRepositories } from "../../../services/onboarding/githubImport";
 import { listAzureDevOpsRepositories } from "../../../services/onboarding/azureImport";
-import { getDefaultConnectionForProvider } from "../../../services/integrations";
+import { getDefaultConnectionForProvider, getConnectionForOrg } from "../../../services/integrations";
+import { broadcastOnboardingProgress } from "../../../services/onboarding/realtime";
 import * as onboarding from "../../../services/onboarding";
 
 const mockCheckTeamAccess = checkTeamAccess as jest.Mock;
@@ -80,12 +88,16 @@ const mockReplaceRepos = repo.replaceRunRepositories as jest.Mock;
 const mockUpdateRun = repo.updateRun as jest.Mock;
 const mockUpdateRepo = repo.updateRunRepositoryByFullName as jest.Mock;
 const mockClaimRunTransition = repo.claimRunTransition as jest.Mock;
+const mockClaimPrLease = repo.claimPrLease as jest.Mock;
+const mockReleasePrLease = repo.releasePrLease as jest.Mock;
 const mockOpenPr = openRepositoryPullRequest as jest.Mock;
 const mockDbQuery = db.query as jest.Mock;
 const mockDbTransaction = db.transaction as jest.Mock;
 const mockListGitHubRepositories = listGitHubRepositories as jest.Mock;
 const mockListAzureDevOpsRepositories = listAzureDevOpsRepositories as jest.Mock;
 const mockGetDefaultConnectionForProvider = getDefaultConnectionForProvider as jest.Mock;
+const mockGetConnectionForOrg = getConnectionForOrg as jest.Mock;
+const mockBroadcastOnboardingProgress = broadcastOnboardingProgress as jest.Mock;
 
 const USER_ID = "user-1";
 const TEAM_ID = "team-1";
@@ -132,7 +144,15 @@ function controlledDispatcher(): JobDispatcher & { complete: (result: JobResult)
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockDbQuery.mockResolvedValue({ rows: [{ version: "2026.3" }] });
+  // SQL-aware default: pack version lookups get a version row; anything
+  // else (notably getExistingRegistration's cross-tenant lookup, fix round
+  // 2 item 1) gets no rows, i.e. "nothing registered yet" — never a bogus
+  // truthy row that would make every repository look already-registered.
+  mockDbQuery.mockImplementation(async (sql: string) => {
+    if (sql.includes("SELECT version FROM public.standards_packs")) return { rows: [{ version: "2026.3" }] };
+    if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
+    return { rows: [] };
+  });
 });
 
 afterEach(() => {
@@ -202,6 +222,39 @@ describe("startDraftRun", () => {
     await onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: name });
 
     expect(mockCreateRun).toHaveBeenCalledWith(expect.objectContaining({ applicationName: name }));
+  });
+
+  it("422s a non-string/empty connectionId (fix round 2, item 10)", async () => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+
+    await expect(
+      onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: "Permits API", connectionId: "" as any })
+    ).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockCreateRun).not.toHaveBeenCalled();
+  });
+
+  it("404s when connectionId doesn't belong to the team's organization (fix round 2, item 10)", async () => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockGetConnectionForOrg.mockResolvedValue(null);
+
+    await expect(
+      onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: "Permits API", connectionId: "conn-other-org" })
+    ).rejects.toMatchObject({ statusCode: 404 });
+
+    expect(mockGetConnectionForOrg).toHaveBeenCalledWith("conn-other-org", "org-1");
+    expect(mockCreateRun).not.toHaveBeenCalled();
+  });
+
+  it("accepts a connectionId that belongs to the team's own organization", async () => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockGetConnectionForOrg.mockResolvedValue({ id: "conn-1", organization_id: "org-1" });
+    mockGetProfileId.mockResolvedValue("profile-1");
+    mockCreateRun.mockResolvedValue(baseRun({ connection_id: "conn-1" }));
+    mockListRepos.mockResolvedValue([]);
+
+    await onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: "Permits API", connectionId: "conn-1" });
+
+    expect(mockCreateRun).toHaveBeenCalledWith(expect.objectContaining({ connectionId: "conn-1" }));
   });
 
   it("creates a draft run for an authorized team member", async () => {
@@ -305,15 +358,20 @@ describe("listImportableGitHubRepositories — fix round 1, item 6 (cross-org is
       query: "permits",
     } as any);
 
-    expect(mockListGitHubRepositories).toHaveBeenCalledWith({ org: "goa", query: "permits" });
+    expect(mockListGitHubRepositories).toHaveBeenCalledWith({ owners: ["goa"], query: "permits" });
     expect(repos).toEqual([{ fullName: "goa/permits-api" }]);
   });
 
-  it("queries every configured owner when the scope lists more than one", async () => {
+  it("queries every configured owner in a single call (fix round 2, item 8: one pagination pass, not one per owner)", async () => {
     mockGetDefaultConnectionForProvider.mockResolvedValue({ scope: { owners: ["goa", "goa-labs"] } });
-    mockListGitHubRepositories.mockImplementation(async ({ org }: { org: string }) => [{ fullName: `${org}/repo` }]);
+    mockListGitHubRepositories.mockImplementation(async ({ owners }: { owners: string[] }) =>
+      owners.map((org) => ({ fullName: `${org}/repo` }))
+    );
 
     const repos = await onboarding.listImportableGitHubRepositories(USER_ID, { teamId: TEAM_ID });
+
+    expect(mockListGitHubRepositories).toHaveBeenCalledTimes(1);
+    expect(mockListGitHubRepositories).toHaveBeenCalledWith({ owners: ["goa", "goa-labs"], query: undefined });
 
     expect(repos.map((r) => r.fullName).sort()).toEqual(["goa-labs/repo", "goa/repo"]);
   });
@@ -473,6 +531,29 @@ describe("startRun", () => {
     expect(view.status).toBe("running");
   });
 
+  it("wires the dispatcher's onProgress to broadcast on the run's realtime channel (fix round 2, item 6)", async () => {
+    const dispatcher = controlledDispatcher();
+    setJobDispatcher(dispatcher);
+
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    mockClaimRunTransition.mockResolvedValue(baseRun({ status: "running", step: "sandbox" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
+
+    await onboarding.startRun(USER_ID, RUN_ID);
+
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.any(Function));
+    const onProgress = (dispatcher.dispatch as jest.Mock).mock.calls[0][2];
+
+    onProgress({ type: "step", step: "sandbox", message: "Running" });
+
+    expect(mockBroadcastOnboardingProgress).toHaveBeenCalledWith(RUN_ID, {
+      type: "step",
+      step: "sandbox",
+      message: "Running",
+    });
+  });
+
   it("applies a completed sandbox result: fills repositories and moves the run to ready/output", async () => {
     const dispatcher = controlledDispatcher();
     setJobDispatcher(dispatcher);
@@ -530,6 +611,13 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   beforeEach(() => {
     mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
     mockGetTeamOrgId.mockResolvedValue("org-1");
+    // Fix round 2, item 4: claimPrLease replaces the old transaction-held
+    // advisory lock. Its return value is the authoritative run for the rest
+    // of the call (mirrors whatever mockGetRunById returns for the
+    // pre-check, unless a test overrides one or the other). releasePrLease
+    // resolves fine by default; tests can still assert it was called.
+    mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready" }));
+    mockReleasePrLease.mockResolvedValue(undefined);
   });
 
   it("never opens a PR without confirm: true, even when the run is ready (400/422)", async () => {
@@ -560,9 +648,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("opens one PR per selected repository once confirmed and ready", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" })) // pre-lock auth check
-      .mockResolvedValueOnce(baseRun({ status: "ready" })); // authoritative, fresh under the lock
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" })); // pre-check
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -586,6 +672,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
   it("is idempotent: confirming again after prs_open does not reopen PRs for repos that already have one", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "prs_open" }));
+    mockClaimPrLease.mockResolvedValue(baseRun({ status: "prs_open" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -605,9 +692,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("creates the application and registers the repository once a PR is open", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready", application_id: null })) // pre-lock auth check
-      .mockResolvedValueOnce(baseRun({ status: "ready", application_id: null })); // authoritative, under the lock
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: null }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -621,7 +706,8 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
     mockDbQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
-      return { rows: [{ version: "2026.3" }] };
+      if (sql.includes("ar.report_secret_ref")) return { rows: [] };
+      return { rows: [] };
     });
     mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", application_id: "app-1" }));
 
@@ -648,8 +734,8 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open", defaultBranch: "trunk" });
     mockDbQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
-      if (sql.includes("SELECT report_secret_ref FROM public.application_repositories")) return { rows: [] };
-      return { rows: [{ version: "2026.3" }] };
+      if (sql.includes("ar.report_secret_ref")) return { rows: [] };
+      return { rows: [] };
     });
     mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", application_id: "app-1" }));
 
@@ -672,7 +758,11 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("reuses an existing report_secret_ref instead of minting a new one on retry (fix round 1, item 2)", async () => {
-    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    // application_id already set (a retry within the same, already-linked
+    // application) so the existing registration's applicationId matches and
+    // this repository isn't blocked by the fix round 2, item 1 guard.
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: "app-1" }));
+    mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready", application_id: "app-1" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -684,13 +774,21 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     ]);
     mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open", defaultBranch: "main" });
     mockDbQuery.mockImplementation(async (sql: string) => {
-      if (sql.includes("SELECT report_secret_ref FROM public.application_repositories")) {
-        return { rows: [{ report_secret_ref: "integration-onboarding-mesh-existing" }] };
+      if (sql.includes("ar.report_secret_ref")) {
+        return {
+          rows: [
+            {
+              application_id: "app-1",
+              report_secret_ref: "integration-onboarding-mesh-existing",
+              default_branch: "main",
+              organization_id: "org-1",
+            },
+          ],
+        };
       }
-      if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
-      return { rows: [{ version: "2026.3" }] };
+      return { rows: [] };
     });
-    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", application_id: "app-1" }));
 
     await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
 
@@ -721,9 +819,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("rejects only the repository with a disallowed path, still opening the PR for the other (partial success)", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" }))
-      .mockResolvedValueOnce(baseRun({ status: "ready" }));
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/ok-repo",
@@ -752,6 +848,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
   it("does not recreate the application once the run already has one", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: "existing-app" }));
+    mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready", application_id: "existing-app" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -772,9 +869,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("skips a selected repository with no generated files and still succeeds for the rest (partial success)", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" }))
-      .mockResolvedValueOnce(baseRun({ status: "ready" }));
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -805,9 +900,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("partial failure: one repo's PR call throws, the other succeeds — run still advances (207-style partial success)", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" }))
-      .mockResolvedValueOnce(baseRun({ status: "ready" }));
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/ok-repo",
@@ -867,12 +960,10 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("never echoes the raw upstream error to the client on a partial failure, and surfaces a generic warning in the view (fix round 1, items 9/10)", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" }))
-      .mockResolvedValueOnce(baseRun({ status: "ready" }));
-    // Call #1 (inside the lock, drives the PR-opening loop): pre-failure
-    // state. Call #2 (the final `toView` read for the response): reflects
-    // what this call itself just persisted for the broken repo.
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    // Call #1 (drives the PR-opening loop): pre-failure state. Call #2 (the
+    // final `toView` read for the response): reflects what this call itself
+    // just persisted for the broken repo.
     mockListRepos
       .mockResolvedValueOnce([
         {
@@ -952,6 +1043,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
   it("routes azure_pipelines repos to the azure_devops provider", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "ready", connection_id: "conn-1" }));
+    mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready", connection_id: "conn-1" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "MyProject/permits-api",
@@ -971,10 +1063,8 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     );
   });
 
-  it("serializes the whole confirm under a per-run advisory lock, re-reading the run inside it", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" })) // pre-lock auth check
-      .mockResolvedValueOnce(baseRun({ status: "ready" })); // authoritative, fresh under the lock
+  it("claims an atomic PR-opening lease rather than holding a transaction/connection open (fix round 2, item 4)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -989,15 +1079,44 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
     await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
 
-    expect(mockDbTransaction).toHaveBeenCalledTimes(1);
-    // The advisory lock query runs first, inside the transaction, before any
-    // repository read/write for this call.
-    const lockCallIndex = mockDbQuery.mock.calls.findIndex(([sql]: [string]) => sql.includes("pg_advisory_xact_lock"));
-    expect(lockCallIndex).toBeGreaterThanOrEqual(0);
-    expect(mockDbQuery.mock.calls[lockCallIndex][1]).toEqual([RUN_ID]);
-    // getRunById is called once for the pre-lock auth check and once again
-    // (the authoritative read) only after the lock is held.
-    expect(mockGetRunById).toHaveBeenCalledTimes(2);
+    expect(mockClaimPrLease).toHaveBeenCalledWith(RUN_ID);
+    expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID);
+    // No transaction-held advisory lock — claimPrLease/releasePrLease are
+    // independent, short statements, not a `db.transaction()` wrapping the
+    // whole PR-opening call.
+    expect(mockDbTransaction).not.toHaveBeenCalled();
+  });
+
+  it("409s with 'PR opening already in progress' when the lease claim finds 0 rows (another confirm is in flight)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockClaimPrLease.mockResolvedValue(null);
+
+    await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true })).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining("already in progress"),
+    });
+    expect(mockOpenPr).not.toHaveBeenCalled();
+    expect(mockReleasePrLease).not.toHaveBeenCalled(); // never claimed, nothing to release
+  });
+
+  it("releases the lease even when opening every PR fails (finally, not just on success)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/broken-repo",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockRejectedValue(new Error("GitHub API returned 500"));
+
+    await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true })).rejects.toMatchObject({
+      statusCode: 500,
+    });
+
+    expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID);
   });
 });
 

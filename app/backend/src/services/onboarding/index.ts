@@ -13,7 +13,7 @@ import { Errors } from "../../middleware/errorHandler";
 import { logger } from "../../utils/logger";
 import db from "../../utils/database";
 import { escapeMarkdown } from "../mesh/issueService";
-import { getSecretStore, getDefaultConnectionForProvider } from "../integrations";
+import { getSecretStore, getDefaultConnectionForProvider, getConnectionForOrg } from "../integrations";
 import {
   checkTeamAccess,
   getProfileId,
@@ -27,13 +27,16 @@ import {
   updateRun,
   updateRunRepositoryByFullName,
   claimRunTransition,
+  claimPrLease,
+  releasePrLease,
   OnboardingRunRow,
   OnboardingRunRepositoryRow,
   RepositorySelectionInput,
 } from "./repository";
 import { canTransition, describeInvalidTransition, isTerminal } from "./stateMachine";
 import { getJobDispatcher } from "./jobDispatcher";
-import type { JobResult } from "./jobDispatcher";
+import type { JobResult, JobProgressEvent } from "./jobDispatcher";
+import { broadcastOnboardingProgress } from "./realtime";
 import { listGitHubRepositories, ImportableRepository } from "./githubImport";
 import { listAzureDevOpsRepositories, ImportableAzureRepository } from "./azureImport";
 import { openRepositoryPullRequest } from "./pullRequests";
@@ -73,8 +76,9 @@ async function requireRunAccess(userId: string, runId: string): Promise<Onboardi
 }
 
 function repositoryWarning(repo: OnboardingRunRepositoryRow): string | null {
-  const prError = (repo.review as { prError?: string } | null)?.prError;
-  return typeof prError === "string" && prError.length > 0 ? `${repo.full_name}: ${prError}` : null;
+  const review = (repo.review ?? {}) as { prError?: string; applicationLinkWarning?: string };
+  const message = review.prError || review.applicationLinkWarning;
+  return typeof message === "string" && message.length > 0 ? `${repo.full_name}: ${message}` : null;
 }
 
 async function toView(run: OnboardingRunRow): Promise<OnboardingRunView> {
@@ -110,25 +114,6 @@ async function getLatestPackVersion(): Promise<string | null> {
   return rows[0]?.version ?? null;
 }
 
-/**
- * Serializes the whole critical section for one onboarding run behind a
- * Postgres advisory transaction lock keyed by the run id (fix round 1,
- * item 1): two concurrent calls for the *same* run (e.g. a doubled-click
- * confirm, or a retry racing the original request) block on this lock
- * rather than both proceeding, so `openPullRequests` can safely re-read the
- * run's authoritative state once inside and never create two `applications`
- * rows for the same run. The lock is released automatically when the
- * transaction ends (commit or rollback), including on an unhandled
- * exception thrown by `fn`. `hashtext(...)::bigint` folds the run's uuid
- * into the bigint key `pg_advisory_xact_lock` requires.
- */
-async function withRunLock<T>(runId: string, fn: () => Promise<T>): Promise<T> {
-  return db.transaction(async (client) => {
-    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`, [runId]);
-    return fn();
-  });
-}
-
 // ---------------------------------------------------------------------------
 // POST /onboarding/runs
 // ---------------------------------------------------------------------------
@@ -153,7 +138,19 @@ export async function startDraftRun(userId: string, params: CreateRunParams): Pr
     });
   }
 
-  await requireTeamAccess(userId, params.teamId);
+  const teamAccess = await requireTeamAccess(userId, params.teamId);
+
+  if (params.connectionId !== undefined) {
+    if (typeof params.connectionId !== "string" || !params.connectionId) {
+      throw Errors.validation({ connectionId: "must be a non-empty string" });
+    }
+    // Fix round 2, item 10: a connectionId is only ever accepted when it
+    // belongs to this team's own organization — never another
+    // organization's integration connection.
+    if (!teamAccess.organizationId) throw Errors.notFound("Team");
+    const connection = await getConnectionForOrg(params.connectionId, teamAccess.organizationId);
+    if (!connection) throw Errors.notFound("Integration connection");
+  }
 
   const profileId = await getProfileId(userId);
   if (!profileId) throw Errors.forbidden("No profile for this account");
@@ -231,8 +228,9 @@ export async function listImportableGitHubRepositories(
     return [];
   }
 
-  const perOwner = await Promise.all(owners.map((org) => listGitHubRepositories({ org, query: options.query })));
-  return perOwner.flat();
+  // Fix round 2, item 8: one pagination pass over the installation,
+  // filtered by every configured owner at once — not one pass per owner.
+  return listGitHubRepositories({ owners, query: options.query });
 }
 
 // ---------------------------------------------------------------------------
@@ -374,9 +372,14 @@ export async function startRun(userId: string, runId: string): Promise<Onboardin
   }
 
   const dispatcher = getJobDispatcher();
+  // Fix round 2, item 6: forward the dispatcher's progress onto this run's
+  // `onboarding-{runId}` realtime channel (contracts/api.md), so the wizard
+  // sees log/step/done events as the sandbox job runs, not just the final
+  // ready/failed state.
   const { jobExecutionId } = await dispatcher.dispatch(
     { runId, teamId: run.team_id, packVersion: run.pack_version, repositories: selected.map((r) => ({ fullName: r.full_name })) },
-    applySandboxResult
+    applySandboxResult,
+    (event: JobProgressEvent) => broadcastOnboardingProgress(runId, event)
   );
 
   const updated = await updateRun(runId, { jobExecutionId });
@@ -427,30 +430,66 @@ function buildOnboardingPrBody(run: OnboardingRunRow, reportSecretRef: string): 
   );
 }
 
+interface ExistingRegistration {
+  applicationId: string;
+  organizationId: string;
+  reportSecretRef: string | null;
+  defaultBranch: string | null;
+}
+
 /**
- * Resolve the HMAC report secret for a repository (fix round 1, item 2):
- * reuses `application_repositories.report_secret_ref` if a row for this
- * repository already exists (a retried confirm, or re-onboarding), so a
- * repeated call never mints a second secret for the same repository. A
- * brand-new repository gets a fresh 256-bit random value, written to the
+ * The `application_repositories` row already registered for `fullName`, if
+ * any, plus which organization owns it (via `applications.team_id ->
+ * teams.organization_id`). Shared by {@link resolveReportSecretRef} (must
+ * never reuse a secret across organizations — fix round 2, item 1) and
+ * {@link linkApplicationForRun} (must never silently reassign a repository
+ * to a different application — same item).
+ */
+async function getExistingRegistration(fullName: string): Promise<ExistingRegistration | null> {
+  const { rows } = await db.query(
+    `SELECT ar.application_id, ar.report_secret_ref, ar.default_branch, t.organization_id
+     FROM public.application_repositories ar
+     JOIN public.applications a ON a.id = ar.application_id
+     JOIN public.teams t ON t.id = a.team_id
+     WHERE ar.full_name = $1`,
+    [fullName]
+  );
+  if (!rows[0]) return null;
+  return {
+    applicationId: rows[0].application_id,
+    organizationId: rows[0].organization_id,
+    reportSecretRef: rows[0].report_secret_ref ?? null,
+    defaultBranch: rows[0].default_branch ?? null,
+  };
+}
+
+async function mintReportSecret(): Promise<string> {
+  const secretValue = crypto.randomBytes(32).toString("hex");
+  return getSecretStore().createSecret("onboarding-mesh", secretValue);
+}
+
+/**
+ * Resolve the HMAC report secret for a repository (fix round 1, item 2;
+ * scoped to the caller's organization in fix round 2, item 1): reuses
+ * `application_repositories.report_secret_ref` only when the existing row
+ * belongs to `organizationId` — the caller's own organization, never
+ * another tenant's. A row registered to a *different* organization (or no
+ * row at all) gets a brand-new 256-bit random value, written to the
  * platform's secret store (`services/integrations/secretStore` — the same
  * Key Vault-backed store WP-BE8 uses, so `report_secret_ref` is a Key Vault
  * secret name in production, matching the format
  * `services/mesh/secretResolver.ts` expects when it later reads it back to
  * verify a mesh report's signature). Only the reference is ever persisted or
  * logged — the secret value returned by `createSecret` is used once, here,
- * and discarded.
+ * and discarded. Reusing another organization's reference would let this
+ * organization forge/verify mesh reports for a repository it does not own.
  */
-async function resolveReportSecretRef(fullName: string): Promise<string> {
-  const { rows } = await db.query(
-    `SELECT report_secret_ref FROM public.application_repositories WHERE full_name = $1`,
-    [fullName]
-  );
-  const existing = rows[0]?.report_secret_ref;
-  if (existing) return existing;
-
-  const secretValue = crypto.randomBytes(32).toString("hex");
-  return getSecretStore().createSecret("onboarding-mesh", secretValue);
+async function resolveReportSecretRef(fullName: string, organizationId: string): Promise<string> {
+  const existing = await getExistingRegistration(fullName);
+  if (existing?.reportSecretRef && existing.organizationId === organizationId) {
+    return existing.reportSecretRef;
+  }
+  return mintReportSecret();
 }
 
 /**
@@ -459,37 +498,74 @@ async function resolveReportSecretRef(fullName: string): Promise<string> {
  * repository that got a PR is registered in `application_repositories` so
  * it immediately shows up in the team portfolio (WP-BE3). Reuses an
  * existing `applications` row if this run already has one (a retried
- * confirm call). `full_name` is globally unique, so re-onboarding a
- * repository that was already registered (e.g. to a different application)
- * reassigns it rather than erroring.
+ * confirm call).
+ *
+ * Fix round 2, item 1: `full_name` is globally unique, but a repository
+ * already registered to a *different* application (whether in this
+ * organization or another one — e.g. someone else onboarded the same
+ * GitHub repo first) is never silently reassigned here. Such a repository
+ * is returned in `blocked` so the caller can surface a generic warning; its
+ * `application_repositories` row (and whichever application it already
+ * belongs to) is left untouched. The `ON CONFLICT ... WHERE` guard is
+ * defense in depth against the same race a plain pre-check can't fully
+ * close (two callers registering the same brand-new repository at once).
  *
  * `defaultBranchByRepo`/`secretRefByRepo` carry the values already resolved
  * for repositories opened *in this call* (fix round 1, items 2/3) — a
  * repository whose PR was opened on an earlier, partial confirm won't be in
- * either map, so its existing `report_secret_ref`/`default_branch` is
- * looked up fresh (never re-minted; see {@link resolveReportSecretRef}).
+ * either map, so its existing `default_branch` (fix round 2, item 2: never
+ * defaulted back to "main" just because this call didn't just open its PR)
+ * is looked up fresh, same as its `report_secret_ref` (never re-minted; see
+ * {@link resolveReportSecretRef}).
  */
 async function linkApplicationForRun(
   run: OnboardingRunRow,
+  organizationId: string,
   repositoriesWithPr: OnboardingRunRepositoryRow[],
   defaultBranchByRepo: Map<string, string>,
   secretRefByRepo: Map<string, string>
-): Promise<string> {
-  let applicationId = run.application_id;
+): Promise<{ applicationId: string | null; blocked: string[] }> {
+  const existingByRepo = new Map<string, ExistingRegistration | null>();
+  for (const repo of repositoriesWithPr) {
+    existingByRepo.set(repo.full_name, await getExistingRegistration(repo.full_name));
+  }
 
-  if (!applicationId) {
+  const applicationId = run.application_id;
+  const blocked: string[] = [];
+  const toLink: OnboardingRunRepositoryRow[] = [];
+
+  for (const repo of repositoriesWithPr) {
+    const existing = existingByRepo.get(repo.full_name);
+    if (existing && (!applicationId || existing.applicationId !== applicationId)) {
+      logger.warn(
+        `[onboarding] not reassigning ${repo.full_name}: already registered to application ${existing.applicationId} (org=${existing.organizationId})`
+      );
+      blocked.push(repo.full_name);
+      continue;
+    }
+    toLink.push(repo);
+  }
+
+  if (toLink.length === 0) {
+    return { applicationId, blocked };
+  }
+
+  let resolvedApplicationId = applicationId;
+  if (!resolvedApplicationId) {
     const { rows } = await db.query(
       `INSERT INTO public.applications (team_id, name, onboarded_at)
        VALUES ($1, $2, now())
        RETURNING id`,
       [run.team_id, run.application_name]
     );
-    applicationId = rows[0].id;
+    resolvedApplicationId = rows[0].id;
   }
 
-  for (const repo of repositoriesWithPr) {
-    const defaultBranch = defaultBranchByRepo.get(repo.full_name) ?? "main";
-    const reportSecretRef = secretRefByRepo.get(repo.full_name) ?? (await resolveReportSecretRef(repo.full_name));
+  for (const repo of toLink) {
+    const existing = existingByRepo.get(repo.full_name);
+    const defaultBranch = defaultBranchByRepo.get(repo.full_name) ?? existing?.defaultBranch ?? "main";
+    const reportSecretRef =
+      secretRefByRepo.get(repo.full_name) ?? existing?.reportSecretRef ?? (await resolveReportSecretRef(repo.full_name, organizationId));
 
     await db.query(
       `INSERT INTO public.application_repositories
@@ -507,9 +583,10 @@ async function linkApplicationForRun(
          pinned_pack = EXCLUDED.pinned_pack,
          connection_id = EXCLUDED.connection_id,
          report_secret_ref = EXCLUDED.report_secret_ref,
-         updated_at = now()`,
+         updated_at = now()
+       WHERE application_repositories.application_id = EXCLUDED.application_id`,
       [
-        applicationId,
+        resolvedApplicationId,
         providerForCi(repo.detected_ci),
         repo.full_name,
         defaultBranch,
@@ -525,7 +602,7 @@ async function linkApplicationForRun(
     );
   }
 
-  return applicationId as string;
+  return { applicationId: resolvedApplicationId, blocked };
 }
 
 /**
@@ -546,26 +623,25 @@ export async function openPullRequests(
     throw Errors.validation({ confirm: "must be explicitly set to true to open pull requests" });
   }
 
-  // Authorization only here — the authoritative status/application_id read
-  // happens fresh once the run lock is held, below, never from this object.
-  await requireRunAccess(userId, runId);
+  const preCheck = await requireRunAccess(userId, runId);
+  if (!PR_ELIGIBLE_STATUSES.includes(preCheck.status)) {
+    throw Errors.conflict(`Pull requests can only be opened once the run is "ready" (currently "${preCheck.status}")`);
+  }
 
-  // Fix round 1, item 1: serialize the whole PR-opening + application-link
-  // critical section per run. Without this, two concurrent confirms (a
-  // doubled click, or a client retry racing the original request) could
-  // both read `application_id: null` and each create their own
-  // `applications` row for the same run. Everything below re-reads the run
-  // fresh, under the lock, so a second caller that was blocked here sees
-  // whatever the first one committed (e.g. `application_id` already set,
-  // or repositories that already have a `pr_number`) instead of stale data
-  // captured before the lock was acquired.
-  return withRunLock(runId, async () => {
-    const run = await loadRunOrThrow(runId);
+  // Fix round 2, item 4: an atomic lease claim, not a transaction-held
+  // advisory lock — the WHERE clause below re-validates eligibility AND
+  // exclusivity in one statement, closing the same race the pre-check alone
+  // couldn't (two concurrent confirms both passing it above). Unlike
+  // holding a pooled connection open for this whole function's external
+  // GitHub/Azure DevOps HTTP calls, this claims a lease as *data* on the row
+  // and releases it in `finally` — the pool connection for each individual
+  // statement is returned immediately, never held across network I/O.
+  const run = await claimPrLease(runId);
+  if (!run) {
+    throw Errors.conflict("PR opening already in progress");
+  }
 
-    if (!PR_ELIGIBLE_STATUSES.includes(run.status)) {
-      throw Errors.conflict(`Pull requests can only be opened once the run is "ready" (currently "${run.status}")`);
-    }
-
+  try {
     const organizationId = await getTeamOrgId(run.team_id);
     if (!organizationId) throw Errors.notFound("Team");
 
@@ -614,11 +690,12 @@ export async function openPullRequests(
       }
 
       try {
-        // Fix round 1, item 2: mint (or reuse) this repository's HMAC report
-        // secret before opening the PR, so its reference can be named in
-        // the PR body — the value itself never appears there or anywhere
-        // else outside the secret store.
-        const secretRef = await resolveReportSecretRef(repo.full_name);
+        // Fix round 1, item 2 (org-scoped in fix round 2, item 1): mint (or
+        // reuse this organization's own) HMAC report secret before opening
+        // the PR, so its reference can be named in the PR body — the value
+        // itself never appears there or anywhere else outside the secret
+        // store.
+        const secretRef = await resolveReportSecretRef(repo.full_name, organizationId);
         secretRefByRepo.set(repo.full_name, secretRef);
 
         const result = await openRepositoryPullRequest({
@@ -634,10 +711,10 @@ export async function openPullRequests(
 
         defaultBranchByRepo.set(repo.full_name, result.defaultBranch);
 
-        // Success: clear any prError a previous failed attempt left behind.
-        const { prError: _clearedPrError, ...clearedReview } = (repo.review ?? {}) as Record<string, unknown> & {
-          prError?: string;
-        };
+        // Success: clear any prError/applicationLinkWarning a previous
+        // attempt left behind.
+        const { prError: _clearedPrError, applicationLinkWarning: _clearedLinkWarning, ...clearedReview } =
+          (repo.review ?? {}) as Record<string, unknown> & { prError?: string; applicationLinkWarning?: string };
         await updateRunRepositoryByFullName(runId, repo.full_name, {
           prNumber: result.prNumber,
           prState: result.prState,
@@ -665,21 +742,36 @@ export async function openPullRequests(
       .map((r) => openedNow.find((o) => o.full_name === r.full_name) ?? r)
       .filter((r) => r.pr_number);
 
-    // Built up from the authoritative `run` read under the lock — never
-    // re-read afterward, so the returned view reflects exactly what this
-    // call itself committed (no extra read that a concurrent writer,
-    // blocked on the same lock until we're done, could never actually race).
+    // Built up from `run` (the authoritative row the lease claim returned)
+    // — never re-read afterward, so the returned view reflects exactly what
+    // this call itself committed.
     let updated: OnboardingRunRow = run;
 
     if (reposWithPr.length > 0) {
-      const applicationId = await linkApplicationForRun(run, reposWithPr, defaultBranchByRepo, secretRefByRepo);
-      if (!run.application_id) {
+      const { applicationId, blocked } = await linkApplicationForRun(
+        run,
+        organizationId,
+        reposWithPr,
+        defaultBranchByRepo,
+        secretRefByRepo
+      );
+      if (!run.application_id && applicationId) {
         updated = await updateRun(runId, { applicationId });
+      }
+
+      // Fix round 2, item 1: a repository whose PR opened successfully but
+      // that already belongs to a different application is not reassigned
+      // — surface that as a warning rather than silently dropping it.
+      for (const fullName of blocked) {
+        const repo = reposWithPr.find((r) => r.full_name === fullName);
+        await updateRunRepositoryByFullName(runId, fullName, {
+          review: { ...(repo?.review ?? {}), applicationLinkWarning: "already onboarded elsewhere" },
+        });
       }
     }
 
-    // Checked against `run` (the authoritative snapshot from under the
-    // lock), not `updated` — this call and the applicationId one above are
+    // Checked against `run` (the authoritative snapshot from the lease
+    // claim), not `updated` — this call and the applicationId one above are
     // independent writes; a real `UPDATE ... RETURNING` always reflects
     // both once committed, but nothing here should depend on that.
     if (run.status !== "prs_open") {
@@ -693,7 +785,9 @@ export async function openPullRequests(
     }
 
     return view;
-  });
+  } finally {
+    await releasePrLease(runId);
+  }
 }
 
 // ---------------------------------------------------------------------------
