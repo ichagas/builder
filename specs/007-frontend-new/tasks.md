@@ -36,7 +36,7 @@
 **Checkpoint to exit:** every legacy page opens inside the new shell at its new URL, even if not restyled yet (embedded mode, T034). Redirects work. The shell remount test passes.
 
 - [X] T020 (WP-F2) `FE/src/design/tokens.css` (Blueprint light and dark), and **re-point** the variables in `FE/src/index.css` per `contracts/design-system.md` §1.1.
-- [ ] T021 (WP-F2) `FE/src/design/tailwind-preset.ts` wired into `FE/tailwind.config.ts`: new color groups (`ok`, `warn`, `bad`, `define`, `design`, `build`, `ship`, `mesh-*`, `rail-*`, `*-soft`), IBM Plex fonts, radius 4px, density.
+- [X] T021 (WP-F2) `FE/src/design/tailwind-preset.ts` wired into `FE/tailwind.config.ts`: new color groups (`ok`, `warn`, `bad`, `define`, `design`, `build`, `ship`, `mesh-*`, `rail-*`, `*-soft`), IBM Plex fonts, radius 4px, density.
 - [ ] T022 [P] (WP-F2) Adjust the shadcn primitives in `FE/src/components/ui/` only where variables aren't enough (button heights 40/44px, tabs with an underline indicator, dialog radius, focus ring).
 - [ ] T023 [P] (WP-F2) Domain atoms `FE/src/components/shell/atoms/` (TypeChip, DeltaChip, MeshDots, StackBadge, PrChip, VersionTag, EmptyState, AdoptionBar) with tests.
 - [ ] T024 (WP-F3) `AppShell`, `GlobalBar`, `ModeBadge`, `StatusPill` — `FE/src/components/shell/`.
