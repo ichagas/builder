@@ -33,6 +33,11 @@ jest.mock("../../../utils/githubAppAuth", () => ({
   getInstallationTokenForRepo: (...args: unknown[]) => mockGetInstallationTokenForRepo(...args),
 }));
 
+const mockGetAzureDevOpsClient = jest.fn();
+jest.mock("../../../services/integrations", () => ({
+  getAzureDevOpsClient: (...args: unknown[]) => mockGetAzureDevOpsClient(...args),
+}));
+
 const mockFetch = jest.fn();
 (global as any).fetch = mockFetch;
 
@@ -46,6 +51,7 @@ function runRow(overrides: Partial<Record<string, any>> = {}) {
     issue_opened_at: null,
     full_name: "goa/permits-api",
     provider: "github",
+    connection_id: null,
     team_id: "team-1",
     organization_id: "org-1",
     ...overrides,
@@ -56,6 +62,7 @@ beforeEach(() => {
   mockDbQuery.mockReset();
   mockIsGitHubAppConfigured.mockReset();
   mockGetInstallationTokenForRepo.mockReset();
+  mockGetAzureDevOpsClient.mockReset();
   mockFetch.mockReset();
   resetAzureDevOpsClientProviderForTests();
 });
@@ -170,14 +177,70 @@ describe("openIssueForNewFindings", () => {
     );
   });
 
-  it("no-ops for azure_devops when no provider is configured yet (WP-BE8 TODO)", async () => {
+  it("no-ops for azure_devops when no connection is configured for the organization", async () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [runRow({ provider: "azure_devops", full_name: "MyProject" })] });
-    // Default (unconfigured) provider is in effect — no setAzureDevOpsClientProvider call.
+    // Default provider in effect (no setAzureDevOpsClientProvider call) — it
+    // asks services/integrations for a client, which throws when nothing is
+    // configured for the organization.
+    mockGetAzureDevOpsClient.mockRejectedValue(new Error("No azure_devops integration is configured for this organization"));
 
     const result = await openIssueForNewFindings("run-1");
 
     expect(result.created).toBe(false);
     expect(result.issueRef).toBeNull();
+  });
+});
+
+describe("openIssueForNewFindings — default Azure DevOps provider (services/integrations, WP-BE8)", () => {
+  it("resolves the connection via getAzureDevOpsClient(organizationId, connectionId) and creates a work item", async () => {
+    mockDbQuery.mockResolvedValueOnce({
+      rows: [
+        runRow({
+          provider: "azure_devops",
+          full_name: "MyProject/my-repo",
+          organization_id: "org-1",
+          connection_id: "conn-1",
+        }),
+      ],
+    });
+    const mockRequest = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 789, url: "https://dev.azure.com/x/_apis/wit/workItems/789", _links: { html: { href: "https://dev.azure.com/x/_workitems/edit/789" } } }),
+    });
+    mockGetAzureDevOpsClient.mockResolvedValue({ organizationUrl: "https://dev.azure.com/x", request: mockRequest });
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE mesh_runs
+
+    const result = await openIssueForNewFindings("run-1");
+
+    expect(mockGetAzureDevOpsClient).toHaveBeenCalledWith("org-1", "conn-1");
+    expect(result.created).toBe(true);
+    expect(result.issueRef).toBe("azure_devops:MyProject/my-repo#789");
+
+    // Filed against the Azure DevOps project (the full_name's first segment)
+    // using the "add" work-item API with a minimal JSON Patch body.
+    const [path, init] = mockRequest.mock.calls[0];
+    expect(path).toContain("/MyProject/_apis/wit/workitems/$Task");
+    expect((init as RequestInit).method).toBe("POST");
+    const patch = JSON.parse((init as RequestInit).body as string);
+    expect(patch).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "/fields/System.Title" }),
+        expect.objectContaining({ path: "/fields/System.Description" }),
+      ]),
+    );
+  });
+
+  it("returns a failure result (not a throw) when Azure DevOps rejects the work item creation", async () => {
+    mockDbQuery.mockResolvedValueOnce({
+      rows: [runRow({ provider: "azure_devops", full_name: "MyProject/my-repo", organization_id: "org-1" })],
+    });
+    const mockRequest = jest.fn().mockResolvedValue({ ok: false, status: 401, text: async () => "unauthorized" });
+    mockGetAzureDevOpsClient.mockResolvedValue({ organizationUrl: "https://dev.azure.com/x", request: mockRequest });
+
+    const result = await openIssueForNewFindings("run-1");
+
+    expect(result.created).toBe(false);
+    expect(result.message).toEqual(expect.stringContaining("401"));
   });
 });
 
