@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Reviews code changes against constitution principles, layer conventions, and UI/UX immutability requirements. Runs build and lint validation per affected layer.
+description: Reviews code changes against constitution principles, layer conventions, and the UI/UX layout contract (app/frontend-new) or immutability (legacy app/frontend). Runs build and lint validation per affected layer.
 model: Claude Opus 4.6 (copilot)
 user-invokable: true
 tools:
@@ -33,16 +33,28 @@ The user will provide a description of changes to review, a PR number, or a set 
 
 ### 2. Classify by Layer
 Determine which layers are affected based on file paths:
-- `app/frontend/src/**` → Frontend (Web App)
+- `app/frontend-new/**` → Frontend (Web App, new)
+- `app/frontend/src/**` → Frontend (Web App, legacy until switch-over)
 - `api/**` → API
 - `infra/**` → Infrastructure
 - `.github/workflows/**` → CI/CD
 
-### 3. UI/UX Immutability Check (NON-NEGOTIABLE)
-For any changes in `app/frontend/src/**`:
-- **REJECT** changes that modify page layouts, sidebar/header/footer structure, navigation flows, modal/dialog patterns, component positioning, or responsive breakpoints.
-- **ALLOW** styling changes (colors, fonts, spacing) within the existing layout structure.
-- If layout changes are detected, flag them with: "⚠️ UI/UX LAYOUT CHANGE DETECTED — This violates the client's immutability requirement. Layout changes require explicit written client approval."
+### 3. UI/UX Layout Check (NON-NEGOTIABLE)
+
+**For changes in `app/frontend-new/**`: layout contract check.** The contract is `specs/007-frontend-new/contracts/design-system.md` plus the prototypes in `docs/design/frontend-redesign/`.
+- **ALLOW** new layouts, navigation, page structure and shell changes **that follow the contract**. This includes redesign work from spec 007 (the move-and-restyle recipe, the new shell, new-capability screens).
+- **REJECT** deviations from the contract, for example:
+  - a page rendering its own navigation instead of the shell
+  - more than one primary action, or a primary action outside `PageHeader`
+  - raw colors instead of design tokens
+  - a toast where the change has a place on screen (new screens)
+  - a restyle PR that changes page behavior (logic, data calls)
+- **REQUIRE** an updated contract and prototype, plus a recorded client approval in the spec, for changes to the contract itself (shell structure, information architecture, tokens, interaction patterns). Flag with: "⚠️ LAYOUT CONTRACT CHANGE — update the contract and the prototypes and attach client approval."
+
+**For changes in `app/frontend/src/**` (legacy): immutability check.**
+- **REJECT** feature work and any layout change. This app is reference only until switch-over.
+- **ALLOW** only changes spec 007 explicitly requires (for example, test hooks for the regression suite).
+- Flag violations with: "⚠️ LEGACY UI CHANGE — app/frontend is frozen as the regression reference. Make the change in app/frontend-new."
 
 ### 4. Constitution Compliance
 Check against the Pronghorn constitution principles:
@@ -51,10 +63,11 @@ Check against the Pronghorn constitution principles:
 - **III. Verification Before Merge**: Are tests included or documented?
 - **IV. Security & Compliance**: Are secrets handled properly? Auth patterns maintained?
 - **V. Operability**: Are deployment/monitoring impacts documented?
-- **VI. UI/UX Layout Immutability**: See step 3 above.
+- **VI. UI/UX Layout Contract**: See step 3 above.
 
 ### 5. Layer-Specific Validation
-- **Frontend**: Run `npm run lint` + `npm run build` in `app/frontend/`.
+- **Frontend (new)**: Run `npm run lint` + `npm run build` + `npm test` in `app/frontend-new/`, plus the spec 007 E2E for touched routes.
+- **Frontend (legacy)**: Run `npm run lint` + `npm run build` in `app/frontend/`.
 - **API**: Run `npm run build` in `app/backend/`.
 - **Infrastructure**: Review terraform plan output.
 - **Cross-cutting**: Validate both layers.

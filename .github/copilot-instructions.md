@@ -9,13 +9,10 @@
 	- Swagger UI at `/api-docs`
 	- WebSocket endpoint at `/ws`
 
-## UI/UX Layout Immutability (NON-NEGOTIABLE)
-**The existing user interface layout MUST NOT be modified.** This is an explicit client requirement.
-- DO NOT change page layouts, sidebar/header/footer structure, navigation flows, modal/dialog patterns, component positioning, or responsive breakpoints.
-- DO NOT alter visual hierarchy or page structure.
-- Styling changes (colors, fonts, spacing) within the existing layout ARE permitted when they don't alter structural layout.
-- Any layout change requires explicit written approval from the client.
-- This applies to all files under `app/frontend/src/`.
+## UI/UX Layout Contract (NON-NEGOTIABLE)
+The client-approved redesign is the layout contract (Constitution Principle VI, v2.0.0):
+- **`app/frontend-new/`** (the new frontend, spec `specs/007-frontend-new/`): follow `specs/007-frontend-new/contracts/design-system.md` and the prototypes in `docs/design/frontend-redesign/`. New layouts, navigation and page structure that follow the contract ARE permitted. Changes to the contract itself need an updated contract and prototypes, plus client approval recorded in the spec.
+- **`app/frontend/`** (legacy, until switch-over): the existing layout MUST NOT be modified. It receives no feature work and is the regression reference only.
 
 ## Repository Layout (Authoritative)
 - Frontend app: `app/frontend/src/`
@@ -27,7 +24,8 @@
 
 ## Layer-Scoped Development
 This repository uses layer-scoped instruction files (`.github/instructions/`) that auto-attach based on which files you're editing:
-- **`frontend.instructions.md`** → `app/frontend/src/**` — React/Vite/Tailwind, UI/UX immutability (mapped to `app/frontend/src/**` after restructure)
+- **`frontend-new.instructions.md`** → `app/frontend-new/**` — new frontend (redesign): layout contract, move-and-restyle recipe, tokens only
+- **`frontend.instructions.md`** → `app/frontend/src/**` — legacy frontend, reference only until switch-over, layout immutable
 - **`api.instructions.md`** → `api/**` — Express/PostgreSQL/JWT, versioned routes (mapped to `app/backend/**` after restructure)
 - **`infra.instructions.md`** → `infra/**` — Terraform/Azure modules
 - **`cicd.instructions.md`** → `.github/workflows/**` — GitHub Actions
@@ -41,7 +39,7 @@ This repository uses layer-scoped instruction files (`.github/instructions/`) th
 
 ## Agents Available
 - **speckit.*** — Spec-driven development workflow (specify, plan, tasks, implement, analyze, clarify, constitution, checklist)
-- **code-review** — Reviews changes against constitution, layer conventions, UI/UX immutability
+- **code-review** — Reviews changes against constitution, layer conventions, the UI/UX layout contract (new app) and immutability (legacy app)
 - **testing** — Generates and runs tests (Vitest for frontend, Jest for API)
 - **security** — Security review: dependency audit, secret scanning, auth patterns, Azure compliance
 - **deployment** — Deployment orchestration: plan → deploy → verify → rollback
@@ -217,7 +215,7 @@ user-invokable: true
 ## What to Avoid (examples of anti-patterns)
 - Do not bypass existing auth/authorization checks in API handlers.
 - Do not hardcode environment-specific URLs in source unless already patterned that way for local dev defaults.
-- Do not modify UI/UX layout without explicit written client approval.
+- Do not deviate from the UI/UX layout contract in `app/frontend-new/`, and do not change the legacy `app/frontend/` layout. Contract changes need client approval recorded in the spec.
 
 ### Related Resources
 - Refer to this URL for more details for instructions and guidance using and creating skills: [VS Code Copilot Skills Documentation](https://code.visualstudio.com/docs/copilot/customization/agent-skills)

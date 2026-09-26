@@ -1,35 +1,29 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 -> 1.1.0
+Version change: 1.1.0 -> 2.0.0 (MAJOR: Principle VI redefined)
 Modified principles:
-- I. Contract Preservation and Compatibility (unchanged)
-- II. Spec-Driven Traceability (unchanged)
-- III. Verification Before Merge (NON-NEGOTIABLE) (unchanged)
-- IV. Security and Compliance by Default (unchanged)
-- V. Operability and Reproducible Delivery (unchanged)
+- I–V (unchanged)
+- VI. UI/UX Layout Immutability -> VI. UI/UX Layout Contract (NON-NEGOTIABLE):
+  the approved redesign (spec 007) becomes the layout contract for
+  app/frontend-new/; the legacy app/frontend/ keeps the immutability rule
+  until switch-over and receives no feature work.
 Added sections:
-- VI. UI/UX Layout Immutability (NON-NEGOTIABLE) — new principle
-- Layer-Aware Development — new subsection under Platform Constraints
-- Tooling Resources — new section documenting MCP servers and external skills
+- Web App (new) row in Layer-Aware Development
 Removed sections:
 - None
 Templates requiring updates:
-- ✅ .specify/templates/plan-template.md (verified; Constitution Check
-  already lists principles generically — new principle VI is covered by the
-  existing "Contract Preservation" and "Verification" checkboxes; plan
-  authors MUST additionally confirm UI/UX immutability for frontend work)
-- ✅ .specify/templates/spec-template.md (verified; no structural update
-  required — specs touching src/** MUST note UI/UX impact per Principle VI)
-- ✅ .specify/templates/tasks-template.md (verified; no structural update
-  required — task validation includes layer identification per new subsection)
-- ✅ .github/instructions/frontend.instructions.md (verified; already
-  contains UI/UX immutability mandate)
-- ✅ .github/agents/code-review.agent.md (verified; already enforces
-  UI/UX immutability check)
-- ✅ .github/copilot-instructions.md (verified; already contains UI/UX
-  Layout Immutability section and layer-scoped development docs)
+- ✅ .specify/templates/plan-template.md (UI/UX check now references the
+  layout contract for app/frontend-new and immutability for app/frontend)
+- ✅ .github/instructions/frontend.instructions.md (legacy scope, reference only)
+- ✅ .github/instructions/frontend-new.instructions.md (new; contract rules)
+- ✅ .github/agents/code-review.agent.md (contract check for app/frontend-new,
+  immutability check for app/frontend)
+- ✅ .github/copilot-instructions.md (section, layer list, anti-patterns)
 Follow-up TODOs:
-- None
+- Complete the client approval record in
+  specs/007-frontend-new/approvals/client-approval.md before switch-over.
+- At switch-over (spec 007, T074): remove the legacy clause and the Web App
+  (legacy) layer row; the contract becomes the only rule (PATCH or MINOR).
 -->
 
 # Pronghorn Constitution
@@ -95,23 +89,32 @@ Rationale: The repository includes Terraform, GitHub Actions, and Azure
 delivery paths; undocumented operational changes are production risks even when
 the code compiles.
 
-### VI. UI/UX Layout Immutability (NON-NEGOTIABLE)
+### VI. UI/UX Layout Contract (NON-NEGOTIABLE)
 
-The existing user interface layout, visual hierarchy, page structure,
-navigation patterns, and component arrangement MUST NOT be modified unless
-explicitly approved in writing by the client. This includes but is not limited
-to: page layouts, sidebar/header/footer structure, navigation flows,
-modal/dialog patterns, component positioning, and responsive breakpoints.
+The client-approved layout contract is
+`specs/007-frontend-new/contracts/design-system.md` together with the approved
+prototypes in `docs/design/frontend-redesign/`. The client approval is recorded
+in `specs/007-frontend-new/approvals/client-approval.md`.
 
-Styling changes (colors, fonts, spacing) within the existing layout structure
-ARE permitted when they do not alter structural layout. Any proposed layout
-change MUST be flagged in the feature spec and plan, and MUST NOT proceed
-without documented client approval attached to the spec artifacts.
+- **`app/frontend-new/**`**: pages, navigation, the application shell,
+  information architecture, and interaction patterns MUST follow the layout
+  contract. Changes that follow the contract ARE permitted, including new
+  layouts, navigation, and page structure defined by it. Changes to the
+  contract itself (shell structure, information architecture, design tokens,
+  interaction patterns) MUST update the contract and the prototypes in the same
+  change and MUST record client approval in the feature spec.
+- **`app/frontend/**` (legacy, until switch-over)**: the existing layout,
+  visual hierarchy, page structure, navigation, and component arrangement MUST
+  NOT be modified. The legacy app receives no feature work and is kept only as
+  the regression reference for spec 007 until it is removed.
 
-Rationale: The UI/UX layout is an explicit client requirement reflecting
-approved user research and stakeholder sign-off. Unauthorized layout changes
-risk client relationship damage and require re-approval cycles that delay
-delivery.
+Styling and content changes within the contract are permitted. Any proposed
+change to the contract MUST be flagged in the feature spec and plan, and MUST
+NOT proceed without documented client approval attached to the spec artifacts.
+
+Rationale: The UI/UX layout is an explicit client requirement. The redesign was
+reviewed and approved as a whole, so the contract replaces the previous freeze
+for the new application instead of adding case-by-case exceptions to it.
 
 ## Platform Constraints
 
@@ -135,7 +138,8 @@ tooling, validation requirements, and auto-attached instruction files:
 
 | Layer          | Directory            | Instruction File           | Validation                                       |
 | -------------- | -------------------- | -------------------------- | ------------------------------------------------ |
-| Web App        | `app/frontend/src/`  | `frontend.instructions.md` | `npm run lint` + `npm run build` (app/frontend/) |
+| Web App (new)  | `app/frontend-new/`  | `frontend-new.instructions.md` | `npm run lint` + `npm run build` + `npm test` (app/frontend-new/) |
+| Web App (legacy, until switch-over) | `app/frontend/src/` | `frontend.instructions.md` | `npm run lint` + `npm run build` (app/frontend/) |
 | API            | `app/backend/`       | `api.instructions.md`      | `npm run build` (app/backend/)                   |
 | Infrastructure | `infra/`             | `infra.instructions.md`    | `terraform plan`                                 |
 | CI/CD          | `.github/workflows/` | `cicd.instructions.md`     | Workflow syntax check                            |
@@ -200,4 +204,4 @@ that do not change expected behavior. Compliance review happens during
 planning, before merge, and whenever deployment or migration risk changes
 materially.
 
-**Version**: 1.1.0 | **Ratified**: 2026-03-27 | **Last Amended**: 2026-05-01
+**Version**: 2.0.0 | **Ratified**: 2026-03-27 | **Last Amended**: 2026-09-25

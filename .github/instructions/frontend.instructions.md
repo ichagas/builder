@@ -2,7 +2,9 @@
 applyTo: "app/frontend/src/**"
 ---
 
-# Frontend Layer — Pronghorn Web App
+# Frontend Layer (legacy) — Pronghorn Web App
+
+> **Legacy until switch-over.** New frontend work happens in `app/frontend-new/` (see `frontend-new.instructions.md` and `specs/007-frontend-new/`). This app receives no feature work. It's kept only as the regression reference and is removed at switch-over.
 
 ## Stack
 - React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, React Query, React Router
@@ -14,8 +16,8 @@ applyTo: "app/frontend/src/**"
 - Use the `@/` import alias (`@/* → src/*`) for all imports.
 - Reuse existing components from `app/frontend/src/components/`, hooks from `app/frontend/src/hooks/`, utilities from `app/frontend/src/lib/` and `app/frontend/src/utils/` before creating new ones.
 
-## UI/UX Layout Immutability (NON-NEGOTIABLE)
-**The existing UI/UX layout MUST NOT be modified.** This is an explicit client requirement.
+## UI/UX Layout Immutability (NON-NEGOTIABLE, legacy app)
+**The existing UI/UX layout of this legacy app MUST NOT be modified** (Constitution Principle VI). The approved redesign lives in `app/frontend-new/`.
 - DO NOT change page layouts, sidebar/header/footer structure, or navigation flows.
 - DO NOT rearrange component positioning, modal/dialog patterns, or responsive breakpoints.
 - DO NOT alter visual hierarchy or page structure.

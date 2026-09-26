@@ -42,7 +42,7 @@ Full rewrites of large pages are an optional **Phase R** after cutover.
 | III. Verification Before Merge | ✅ | Per-page Playwright smoke, remount, mobile reach, axe, token lint, existing unit tests |
 | IV. Security by Default | ✅ | No new client secrets. B2 webhook signed (HMAC). B3 sandbox read-only with egress restricted. Security reviews on those WPs |
 | V. Operability | ✅ | Own container and host. Independent rollback. Regression gate before cutover |
-| **VI. UI/UX Layout Immutability** | ⚠️ **Blocked until amended (T000)** | Needs written client approval. Scope VI to the legacy app until cutover and name the design-system contract for `app/frontend-new/` |
+| **VI. UI/UX Layout Contract** (v2.0.0) | ✅ Amended 2026-09-25 · ⏳ signature pending | `contracts/design-system.md` + prototypes are the contract for `app/frontend-new/`. Legacy immutable until switch-over. The client signature in `approvals/client-approval.md` is required before switch-over (T073) |
 
 ## Affected Layers
 
@@ -114,7 +114,7 @@ Same as the prototypes. The full table is in `contracts/routes.md`.
 
 | Milestone | Content | Exit criteria |
 |---|---|---|
-| **M0 Governance** | T000–T002: amendment and approval, instructions, clarifications (done 2026-09-25) | Amendment merged |
+| **M0 Governance** | T000–T003: amendment (v2.0.0), instructions, clarifications, legacy note. Done 2026-09-25 except the client signature | Amendment merged. Signature before M3 |
 | **M1 Fork and foundation** | Fork, CI, host, tokens, color codemod, shell, router with redirects, smoke harness | Every legacy page opens in the new shell (not yet restyled). Redirects work. Smoke green |
 | **M2 Pages restyled** | Recipe applied to all pages (Builder, library, settings, public) | Regression checklist 100%. Token lint 0. Mobile-reach green |
 | **M3 Cutover** | Host switch, redirects for internal links, legacy removal (no transition period: not live yet) | SC-001…SC-005 |

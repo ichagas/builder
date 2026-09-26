@@ -40,7 +40,7 @@ Size: **S** ≈ 1 agent-day, **M** ≈ 2–3, **L** ≈ 4–5.
 
 | WP | Title | Tasks | Size | Depends | Acceptance |
 |---|---|---|---|---|---|
-| F0 | Governance and instructions | T000–T003 | S | — | Amendment merged with client approval. Clarifications recorded (done 2026-09-25) |
+| F0 | Governance and instructions | T000–T003 | S | — | ✅ Constitution v2.0.0, instructions and clarifications done 2026-09-25. ⏳ Client signature pending (needed before X2) |
 | F1 | Fork, CI, container, host | T010–T015, T018 | M | F0 | `next.<dev>` serves the fork. CI job green. Token lint in warn mode |
 | F6 | Test harness + **legacy smoke suite** | T016, T017, T037 | M | F1 | PR-01…PR-21 smoke green **on legacy**. Shell E2E ready |
 | F2 | Tokens, preset, UI tweaks, atoms | T020–T023 | M | F1 | Variables re-pointed. The whole fork already looks like Blueprint. Contrast OK in light and dark |

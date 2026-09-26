@@ -133,7 +133,7 @@ When the regression gate passes, the new app takes the primary host and `app/fro
 - **CR-001** `app/frontend/` keeps running unchanged as the reference for the regression suite until US7. It receives no feature work (pre-go-live pivot).
 - **CR-002** No existing `/api/v1` contract changes. New endpoints are additive.
 - **CR-003** All legacy routes and share-token links resolve in the new app.
-- **CR-004** **Constitution Principle VI** must be amended (with written client approval) before implementation: scope it to `app/frontend/src/**` until cutover, and name `contracts/design-system.md` as the layout contract for `app/frontend-new/`.
+- **CR-004** **Constitution Principle VI (v2.0.0, UI/UX Layout Contract)**: `contracts/design-system.md` + the prototypes are the layout contract for `app/frontend-new/`, and `app/frontend/` stays immutable until switch-over. The written client approval MUST be recorded in `approvals/client-approval.md` before switch-over.
 - **CR-005** Own container, CI job and host (`next.<domain>`) for independent deploy and rollback.
 - **CR-006** New tables in numbered migrations from `012_`.
 

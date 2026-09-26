@@ -43,9 +43,10 @@
   external connectivity changes, and compliance-sensitive data handling.
 - **Operability**: Describe deployment, monitoring, rollback, migration, and
   post-deploy validation expectations for the change.
-- **UI/UX Layout Immutability**: Confirm no page layouts, navigation flows,
-  component positioning, or visual hierarchy changes are introduced. If layout
-  changes are proposed, attach written client approval to the spec artifacts.
+- **UI/UX Layout Contract**: For `app/frontend-new/`, confirm the change follows
+  `specs/007-frontend-new/contracts/design-system.md`. Changes to the contract
+  itself need an updated contract and prototypes, plus client approval attached
+  to the spec. For the legacy `app/frontend/`, confirm no layout changes.
 
 ## Affected Layers
 
