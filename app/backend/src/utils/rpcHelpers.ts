@@ -307,16 +307,26 @@ export async function getRepoFilesWithToken(
 }
 
 /**
- * Get staged changes for a repo
+ * Get staged changes for a repo.
+ *
+ * `branch` is optional (D-9 / WP-BE2 T104): omitted, this lists every
+ * staged row for the repo across all branches, identical to legacy
+ * (pre-branch-dimension) behaviour; given, it's scoped to that one branch.
  */
 export async function getStagedChangesWithToken(
   repoId: string,
   _token?: string | null,
+  branch?: string | null,
 ) {
-  const result = await db.query(
-    "SELECT * FROM repo_staging WHERE repo_id = $1 ORDER BY created_at",
-    [repoId],
-  );
+  const result = branch
+    ? await db.query(
+        "SELECT * FROM repo_staging WHERE repo_id = $1 AND branch = $2 ORDER BY created_at",
+        [repoId, branch],
+      )
+    : await db.query(
+        "SELECT * FROM repo_staging WHERE repo_id = $1 ORDER BY created_at",
+        [repoId],
+      );
   return result.rows;
 }
 
@@ -1123,45 +1133,70 @@ export async function batchStageFiles(
 }
 
 /**
- * Unstage a single file
+ * Unstage a single file.
+ *
+ * `branch` is optional (D-9 / WP-BE2 T104): omitted, this deletes the
+ * staged row for `filePath` across every branch, identical to legacy
+ * (pre-branch-dimension) behaviour; given, it only deletes that file's row
+ * on that one branch, leaving another change's staged edit to the same
+ * path on a different branch untouched.
  */
 export async function unstageFileWithToken(
   repoId: string,
   filePath: string,
   _token?: string | null,
+  branch?: string | null,
 ) {
-  const result = await db.query(
-    "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 RETURNING id",
-    [repoId, filePath],
-  );
+  const result = branch
+    ? await db.query(
+        "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3 RETURNING id",
+        [repoId, filePath, branch],
+      )
+    : await db.query(
+        "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 RETURNING id",
+        [repoId, filePath],
+      );
   return result.rowCount || 0;
 }
 
 /**
- * Unstage multiple files
+ * Unstage multiple files. `branch` is optional (D-9) — see
+ * `unstageFileWithToken`'s doc for the omitted-vs-given behaviour.
  */
 export async function unstageFilesWithToken(
   repoId: string,
   filePaths: string[],
   _token?: string | null,
+  branch?: string | null,
 ) {
-  const result = await db.query(
-    "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) RETURNING id",
-    [repoId, filePaths],
-  );
+  const result = branch
+    ? await db.query(
+        "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3 RETURNING id",
+        [repoId, filePaths, branch],
+      )
+    : await db.query(
+        "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) RETURNING id",
+        [repoId, filePaths],
+      );
   return result.rowCount || 0;
 }
 
 /**
- * Discard all staged changes for a repo
+ * Discard all staged changes for a repo. `branch` is optional (D-9) —
+ * omitted, this discards every branch's staged rows for the repo, identical
+ * to legacy (pre-branch-dimension) behaviour; given, only that branch's.
  */
 export async function discardStagedWithToken(
   repoId: string,
   _token?: string | null,
+  branch?: string | null,
 ) {
-  const result = await db.query("DELETE FROM repo_staging WHERE repo_id = $1", [
-    repoId,
-  ]);
+  const result = branch
+    ? await db.query("DELETE FROM repo_staging WHERE repo_id = $1 AND branch = $2", [
+        repoId,
+        branch,
+      ])
+    : await db.query("DELETE FROM repo_staging WHERE repo_id = $1", [repoId]);
   return result.rowCount || 0;
 }
 

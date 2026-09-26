@@ -265,13 +265,20 @@ export async function putStagedFile(
  * Remove a staged file: deletes both the blob and the metadata row.
  * The blob deletion is best-effort — a missing blob does not cause an error.
  *
+ * `branch` is optional (D-9 / WP-BE2 T104): omitted, this deletes the
+ * staged row for `filePath` across every branch, identical to legacy
+ * (pre-branch-dimension) behaviour; given, it only deletes that file's row
+ * on that one branch, leaving another change's staged edit to the same
+ * path on a different branch untouched.
+ *
  * @param repoId   - Repo UUID.
  * @param filePath - Repository-relative file path.
+ * @param branch   - Optional branch to scope the delete to.
  *
  * @example
  * await removeStagedFile('repo-1', 'src/old-file.ts');
  */
-export async function removeStagedFile(repoId: string, filePath: string): Promise<void> {
+export async function removeStagedFile(repoId: string, filePath: string, branch?: string | null): Promise<void> {
   // Look up project_id before deleting the staging row (needed for blob container name)
   const repoLookup = await db.query(
     "SELECT project_id FROM project_repos WHERE id = $1",
@@ -279,10 +286,17 @@ export async function removeStagedFile(repoId: string, filePath: string): Promis
   );
   const projectId = repoLookup.rows[0]?.project_id;
 
-  await db.query(
-    "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
-    [repoId, filePath],
-  );
+  if (branch) {
+    await db.query(
+      "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3",
+      [repoId, filePath, branch],
+    );
+  } else {
+    await db.query(
+      "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
+      [repoId, filePath],
+    );
+  }
   if (projectId) {
     try {
       await getRepoBlobStore().deleteStaged(projectId, repoId, filePath);

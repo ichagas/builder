@@ -4018,6 +4018,7 @@ async function handleCodingAgentOrchestrator(
               const _r = await rpc.getStagedChangesWithToken(
                 repoId,
                 shareToken || null,
+                workItemStagingBranch || null,
               );
               return { rows: _r };
             })();
@@ -4035,6 +4036,7 @@ async function handleCodingAgentOrchestrator(
               repoId,
               op.params.file_path,
               shareToken || null,
+              workItemStagingBranch || null,
             );
             if (sessionFileRegistry.has(op.params.file_path))
               sessionFileRegistry.delete(op.params.file_path);
@@ -4043,7 +4045,7 @@ async function handleCodingAgentOrchestrator(
             break;
           }
           case "discard_all_staged": {
-            await rpc.discardStagedWithToken(repoId, shareToken || null);
+            await rpc.discardStagedWithToken(repoId, shareToken || null, workItemStagingBranch || null);
             sessionFileRegistry.clear();
             result = { data: [] };
             filesChanged = true;
@@ -5154,6 +5156,7 @@ async function handleStagingOperations(
             repoId,
             filePath,
             shareToken || null,
+            resolvedBranch || null,
           );
           return { rows: [{ result: _r }] };
         })();
@@ -5173,6 +5176,7 @@ async function handleStagingOperations(
             repoId,
             filePaths,
             shareToken || null,
+            resolvedBranch || null,
           );
           return { rows: [{ result: _r }] };
         })();
@@ -5184,6 +5188,7 @@ async function handleStagingOperations(
           const _r = await rpc.discardStagedWithToken(
             repoId,
             shareToken || null,
+            resolvedBranch || null,
           );
           return { rows: [{ result: _r }] };
         })();
