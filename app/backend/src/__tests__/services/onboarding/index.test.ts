@@ -161,6 +161,34 @@ describe("startDraftRun", () => {
     expect(mockCreateRun).not.toHaveBeenCalled();
   });
 
+  it("422s an applicationName over 200 characters (fix round 1, item 7)", async () => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    await expect(
+      onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: "x".repeat(201) })
+    ).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockCreateRun).not.toHaveBeenCalled();
+  });
+
+  it("422s an applicationName containing control characters (fix round 1, item 7)", async () => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    await expect(
+      onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: "Permits\x00API" })
+    ).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockCreateRun).not.toHaveBeenCalled();
+  });
+
+  it("accepts an applicationName at exactly the 200-character limit", async () => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockGetProfileId.mockResolvedValue("profile-1");
+    mockCreateRun.mockResolvedValue(baseRun());
+    mockListRepos.mockResolvedValue([]);
+
+    const name = "x".repeat(200);
+    await onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: name });
+
+    expect(mockCreateRun).toHaveBeenCalledWith(expect.objectContaining({ applicationName: name }));
+  });
+
   it("creates a draft run for an authorized team member", async () => {
     mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
     mockGetProfileId.mockResolvedValue("profile-1");
@@ -208,6 +236,13 @@ describe("setRunRepositories", () => {
   it("400/422s an empty selection", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
     await expect(onboarding.setRunRepositories(USER_ID, RUN_ID, [])).rejects.toMatchObject({ statusCode: 422 });
+  });
+
+  it("422s more than 200 repositories (fix round 1, item 7)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    const repos = Array.from({ length: 201 }, (_, i) => ({ fullName: `goa/repo-${i}` }));
+    await expect(onboarding.setRunRepositories(USER_ID, RUN_ID, repos)).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockReplaceRepos).not.toHaveBeenCalled();
   });
 
   it("409s once the run is no longer draft", async () => {
@@ -402,7 +437,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: null,
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
@@ -425,7 +460,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: 42, // already opened
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
 
@@ -448,7 +483,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         pr_number: null,
         detected_ci: "github_actions",
         detected_profile: "node",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
@@ -467,6 +502,122 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { applicationId: "app-1" });
   });
 
+  it("persists the resolved default_branch and a minted report_secret_ref for a newly opened PR (fix round 1, items 2/3)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: null }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open", defaultBranch: "trunk" });
+    mockDbQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
+      if (sql.includes("SELECT report_secret_ref FROM public.application_repositories")) return { rows: [] };
+      return { rows: [{ version: "2026.3" }] };
+    });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", application_id: "app-1" }));
+
+    await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    const insertRepoCall = mockDbQuery.mock.calls.find(([sql]: [string]) => sql.includes("INSERT INTO public.application_repositories"));
+    expect(insertRepoCall).toBeDefined();
+    const [, params] = insertRepoCall as [string, any[]];
+    // application_id, provider, full_name, default_branch, ci_provider, ...
+    expect(params[3]).toBe("trunk");
+    const reportSecretRef = params[params.length - 1];
+    expect(typeof reportSecretRef).toBe("string");
+    expect(reportSecretRef.length).toBeGreaterThan(0);
+
+    // The same reference is what the PR body should have named — never a
+    // secret VALUE, only the reference.
+    const prCall = mockOpenPr.mock.calls[0][0];
+    expect(prCall.body).toContain(reportSecretRef);
+    expect(prCall.body).not.toMatch(/[0-9a-f]{64}/); // no raw 256-bit hex secret value
+  });
+
+  it("reuses an existing report_secret_ref instead of minting a new one on retry (fix round 1, item 2)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open", defaultBranch: "main" });
+    mockDbQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("SELECT report_secret_ref FROM public.application_repositories")) {
+        return { rows: [{ report_secret_ref: "integration-onboarding-mesh-existing" }] };
+      }
+      if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
+      return { rows: [{ version: "2026.3" }] };
+    });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open" }));
+
+    await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    const prCall = mockOpenPr.mock.calls[0][0];
+    expect(prCall.body).toContain("integration-onboarding-mesh-existing");
+
+    const insertRepoCall = mockDbQuery.mock.calls.find(([sql]: [string]) => sql.includes("INSERT INTO public.application_repositories"));
+    const [, params] = insertRepoCall as [string, any[]];
+    expect(params[params.length - 1]).toBe("integration-onboarding-mesh-existing");
+  });
+
+  it("rejects a repository whose generated manifest has a disallowed path, without calling openRepositoryPullRequest for it (fix round 1, item 8)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "../../etc/passwd", content: "evil" }],
+      },
+    ]);
+
+    await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true })).rejects.toMatchObject({
+      statusCode: 500,
+    });
+    expect(mockOpenPr).not.toHaveBeenCalled();
+  });
+
+  it("rejects only the repository with a disallowed path, still opening the PR for the other (partial success)", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "ready" }))
+      .mockResolvedValueOnce(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/ok-repo",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      },
+      {
+        full_name: "goa/evil-repo",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "/etc/passwd", content: "evil" }],
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open", defaultBranch: "main" });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    expect(mockOpenPr).toHaveBeenCalledTimes(1);
+    expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ fullName: "goa/ok-repo" }));
+    expect(view.status).toBe("prs_open");
+  });
+
   it("does not recreate the application once the run already has one", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: "existing-app" }));
     mockListRepos.mockResolvedValue([
@@ -475,7 +626,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: null,
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
@@ -498,7 +649,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: null,
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
       {
         full_name: "goa/no-manifest",
@@ -531,14 +682,14 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: null,
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
       {
         full_name: "goa/broken-repo",
         selected: true,
         pr_number: null,
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockImplementation(async ({ fullName }: any) => {
@@ -565,7 +716,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: null,
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockRejectedValue(new Error("GitHub API returned 500"));
@@ -584,14 +735,14 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: 7, // opened on a previous confirm
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
       {
         full_name: "goa/previously-failed",
         selected: true,
         pr_number: null, // failed last time, still missing a PR
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockResolvedValue({ prNumber: 8, prState: "open" });
@@ -612,7 +763,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: null,
         detected_ci: "azure_pipelines",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockResolvedValue({ prNumber: 5, prState: "open" });
@@ -635,7 +786,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         selected: true,
         pr_number: null,
         detected_ci: "github_actions",
-        generated_manifest: [{ path: "x", content: "y" }],
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
     mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });

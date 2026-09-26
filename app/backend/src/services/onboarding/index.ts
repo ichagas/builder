@@ -8,9 +8,12 @@
  * `JobDispatcher`), and opening pull requests **only after an explicit,
  * server-enforced confirm step**.
  */
+import crypto from "crypto";
 import { Errors } from "../../middleware/errorHandler";
 import { logger } from "../../utils/logger";
 import db from "../../utils/database";
+import { escapeMarkdown } from "../mesh/issueService";
+import { getSecretStore } from "../integrations";
 import {
   checkTeamAccess,
   getProfileId,
@@ -33,6 +36,7 @@ import { getJobDispatcher } from "./jobDispatcher";
 import type { JobResult } from "./jobDispatcher";
 import { listGitHubRepositories, ImportableRepository } from "./githubImport";
 import { openRepositoryPullRequest } from "./pullRequests";
+import { findDisallowedPath } from "./pathValidation";
 
 export interface OnboardingRunView extends OnboardingRunRow {
   repositories: OnboardingRunRepositoryRow[];
@@ -61,6 +65,17 @@ async function requireRunAccess(userId: string, runId: string): Promise<Onboardi
 async function toView(run: OnboardingRunRow): Promise<OnboardingRunView> {
   const repositories = await listRepositoriesForRun(run.id);
   return { ...run, repositories };
+}
+
+// Fix round 1, item 7: bound and sanitize user-controlled input that later
+// flows into DB rows, GitHub/Azure API calls and PR titles/bodies.
+const MAX_APPLICATION_NAME_LENGTH = 200;
+const MAX_REPOSITORIES_PER_RUN = 200;
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+
+function isValidApplicationName(name: string): boolean {
+  return name.length > 0 && name.length <= MAX_APPLICATION_NAME_LENGTH && !CONTROL_CHARS.test(name);
 }
 
 async function getLatestPackVersion(): Promise<string | null> {
@@ -104,6 +119,12 @@ export async function startDraftRun(userId: string, params: CreateRunParams): Pr
   if (!params.applicationName || typeof params.applicationName !== "string" || !params.applicationName.trim()) {
     throw Errors.validation({ applicationName: "required" });
   }
+  const applicationName = params.applicationName.trim();
+  if (!isValidApplicationName(applicationName)) {
+    throw Errors.validation({
+      applicationName: `must be 1-${MAX_APPLICATION_NAME_LENGTH} characters with no control characters`,
+    });
+  }
 
   await requireTeamAccess(userId, params.teamId);
 
@@ -114,7 +135,7 @@ export async function startDraftRun(userId: string, params: CreateRunParams): Pr
 
   const run = await createRun({
     teamId: params.teamId,
-    applicationName: params.applicationName.trim(),
+    applicationName,
     startedBy: profileId,
     packVersion,
     connectionId: params.connectionId ?? null,
@@ -170,6 +191,9 @@ export async function setRunRepositories(
 
   if (!Array.isArray(repositories) || repositories.length === 0) {
     throw Errors.validation({ repositories: "at least one repository is required" });
+  }
+  if (repositories.length > MAX_REPOSITORIES_PER_RUN) {
+    throw Errors.validation({ repositories: `at most ${MAX_REPOSITORIES_PER_RUN} repositories are allowed per run` });
   }
   for (const repo of repositories) {
     if (!repo || typeof repo.fullName !== "string" || !repo.fullName.includes("/")) {
@@ -290,6 +314,51 @@ function providerForCi(detectedCi: string | null): "github" | "azure_devops" {
 }
 
 /**
+ * The onboarding PR's body (fix round 1, item 2): tells the repository
+ * owner how the mesh CI authenticates its report submissions — by name only,
+ * matching the pack's own setup docs (research D-10, WP-BE7's templates) —
+ * and never includes the secret's actual value. `applicationName` and
+ * `packVersion` are user/pack-controlled strings, so both are Markdown-escaped
+ * (fix round 1, item 7) before going into the PR body.
+ */
+function buildOnboardingPrBody(run: OnboardingRunRow, reportSecretRef: string): string {
+  return (
+    `Opened automatically by Pronghorn onboarding for **${escapeMarkdown(run.application_name)}**` +
+    ` (pack ${escapeMarkdown(run.pack_version ?? "latest")}).\n\n` +
+    "This adds the standards pack's CI workflow so pull requests to the default branch run the mesh.\n\n" +
+    `Before merging, add the repository secret referenced as \`${reportSecretRef}\` ` +
+    "(see the pack's CI setup docs for the exact secret/variable name your CI needs) so the mesh run " +
+    "can sign its report submissions. Do not commit the secret value anywhere in this repository."
+  );
+}
+
+/**
+ * Resolve the HMAC report secret for a repository (fix round 1, item 2):
+ * reuses `application_repositories.report_secret_ref` if a row for this
+ * repository already exists (a retried confirm, or re-onboarding), so a
+ * repeated call never mints a second secret for the same repository. A
+ * brand-new repository gets a fresh 256-bit random value, written to the
+ * platform's secret store (`services/integrations/secretStore` — the same
+ * Key Vault-backed store WP-BE8 uses, so `report_secret_ref` is a Key Vault
+ * secret name in production, matching the format
+ * `services/mesh/secretResolver.ts` expects when it later reads it back to
+ * verify a mesh report's signature). Only the reference is ever persisted or
+ * logged — the secret value returned by `createSecret` is used once, here,
+ * and discarded.
+ */
+async function resolveReportSecretRef(fullName: string): Promise<string> {
+  const { rows } = await db.query(
+    `SELECT report_secret_ref FROM public.application_repositories WHERE full_name = $1`,
+    [fullName]
+  );
+  const existing = rows[0]?.report_secret_ref;
+  if (existing) return existing;
+
+  const secretValue = crypto.randomBytes(32).toString("hex");
+  return getSecretStore().createSecret("onboarding-mesh", secretValue);
+}
+
+/**
  * Materializes the onboarded application (data-model.md §2/§3):
  * `onboarding_runs.application_id` is set once PRs are opened, and each
  * repository that got a PR is registered in `application_repositories` so
@@ -298,10 +367,18 @@ function providerForCi(detectedCi: string | null): "github" | "azure_devops" {
  * confirm call). `full_name` is globally unique, so re-onboarding a
  * repository that was already registered (e.g. to a different application)
  * reassigns it rather than erroring.
+ *
+ * `defaultBranchByRepo`/`secretRefByRepo` carry the values already resolved
+ * for repositories opened *in this call* (fix round 1, items 2/3) — a
+ * repository whose PR was opened on an earlier, partial confirm won't be in
+ * either map, so its existing `report_secret_ref`/`default_branch` is
+ * looked up fresh (never re-minted; see {@link resolveReportSecretRef}).
  */
 async function linkApplicationForRun(
   run: OnboardingRunRow,
-  repositoriesWithPr: OnboardingRunRepositoryRow[]
+  repositoriesWithPr: OnboardingRunRepositoryRow[],
+  defaultBranchByRepo: Map<string, string>,
+  secretRefByRepo: Map<string, string>
 ): Promise<string> {
   let applicationId = run.application_id;
 
@@ -316,13 +393,17 @@ async function linkApplicationForRun(
   }
 
   for (const repo of repositoriesWithPr) {
+    const defaultBranch = defaultBranchByRepo.get(repo.full_name) ?? "main";
+    const reportSecretRef = secretRefByRepo.get(repo.full_name) ?? (await resolveReportSecretRef(repo.full_name));
+
     await db.query(
       `INSERT INTO public.application_repositories
-         (application_id, provider, full_name, ci_provider, profile, stack_label, part, build_command, pinned_pack, connection_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         (application_id, provider, full_name, default_branch, ci_provider, profile, stack_label, part, build_command, pinned_pack, connection_id, report_secret_ref)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        ON CONFLICT (full_name) DO UPDATE SET
          application_id = EXCLUDED.application_id,
          provider = EXCLUDED.provider,
+         default_branch = EXCLUDED.default_branch,
          ci_provider = EXCLUDED.ci_provider,
          profile = EXCLUDED.profile,
          stack_label = EXCLUDED.stack_label,
@@ -330,11 +411,13 @@ async function linkApplicationForRun(
          build_command = EXCLUDED.build_command,
          pinned_pack = EXCLUDED.pinned_pack,
          connection_id = EXCLUDED.connection_id,
+         report_secret_ref = EXCLUDED.report_secret_ref,
          updated_at = now()`,
       [
         applicationId,
         providerForCi(repo.detected_ci),
         repo.full_name,
+        defaultBranch,
         repo.detected_ci,
         repo.detected_profile,
         repo.detected_stack,
@@ -342,6 +425,7 @@ async function linkApplicationForRun(
         repo.detected_build,
         run.pack_version,
         run.connection_id,
+        reportSecretRef,
       ]
     );
   }
@@ -395,6 +479,8 @@ export async function openPullRequests(
 
     const errors: string[] = [];
     const openedNow: OnboardingRunRepositoryRow[] = [];
+    const defaultBranchByRepo = new Map<string, string>();
+    const secretRefByRepo = new Map<string, string>();
 
     for (const repo of selected) {
       if (repo.pr_number) {
@@ -409,19 +495,38 @@ export async function openPullRequests(
         continue;
       }
 
+      // Fix round 1, item 8: never write a generated file outside the mesh
+      // CI's documented roots into a customer repository. One bad path
+      // rejects the whole PR for that repository, not just that one file.
+      const disallowedPath = findDisallowedPath(files);
+      if (disallowedPath !== null) {
+        logger.error(
+          `[onboarding] rejected PR for ${repo.full_name} (run=${runId}): disallowed generated file path "${disallowedPath}"`
+        );
+        errors.push(`${repo.full_name}: generated manifest contains a disallowed path`);
+        continue;
+      }
+
       try {
+        // Fix round 1, item 2: mint (or reuse) this repository's HMAC report
+        // secret before opening the PR, so its reference can be named in
+        // the PR body — the value itself never appears there or anywhere
+        // else outside the secret store.
+        const secretRef = await resolveReportSecretRef(repo.full_name);
+        secretRefByRepo.set(repo.full_name, secretRef);
+
         const result = await openRepositoryPullRequest({
           provider,
           fullName: repo.full_name,
           organizationId,
           connectionId: run.connection_id,
           branchName: `pronghorn-onboarding/${runId.slice(0, 8)}`,
-          title: `Add the Assurance Mesh CI (${run.pack_version ?? "latest pack"})`,
-          body:
-            `Opened automatically by Pronghorn onboarding for **${run.application_name}**.\n\n` +
-            "This adds the standards pack's CI workflow so pull requests to the default branch run the mesh.",
+          title: `Add the Assurance Mesh CI (${escapeMarkdown(run.pack_version ?? "latest pack")})`,
+          body: buildOnboardingPrBody(run, secretRef),
           files,
         });
+
+        defaultBranchByRepo.set(repo.full_name, result.defaultBranch);
 
         await updateRunRepositoryByFullName(runId, repo.full_name, {
           prNumber: result.prNumber,
@@ -453,7 +558,7 @@ export async function openPullRequests(
     let updated: OnboardingRunRow = run;
 
     if (reposWithPr.length > 0) {
-      const applicationId = await linkApplicationForRun(run, reposWithPr);
+      const applicationId = await linkApplicationForRun(run, reposWithPr, defaultBranchByRepo, secretRefByRepo);
       if (!run.application_id) {
         updated = await updateRun(runId, { applicationId });
       }

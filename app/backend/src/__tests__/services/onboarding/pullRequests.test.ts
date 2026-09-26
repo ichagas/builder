@@ -97,7 +97,7 @@ describe("openRepositoryPullRequest — github", () => {
       files,
     });
 
-    expect(result).toEqual({ prNumber: 42, prState: "open" });
+    expect(result).toEqual({ prNumber: 42, prState: "open", defaultBranch: "main" });
   });
 
   it("is idempotent: reuses an already-open PR from the same branch instead of opening a duplicate", async () => {
@@ -115,7 +115,7 @@ describe("openRepositoryPullRequest — github", () => {
       files,
     });
 
-    expect(result).toEqual({ prNumber: 7, prState: "open" });
+    expect(result).toEqual({ prNumber: 7, prState: "open", defaultBranch: "main" });
     const createCalls = fetchMock.mock.calls.filter(
       (call: any) => call[0].endsWith("/pulls") && call[1]?.method === "POST"
     );
@@ -135,7 +135,7 @@ describe("openRepositoryPullRequest — github", () => {
         body: "body",
         files,
       })
-    ).resolves.toEqual({ prNumber: 42, prState: "open" });
+    ).resolves.toEqual({ prNumber: 42, prState: "open", defaultBranch: "main" });
   });
 
   it("surfaces a clear error when opening the PR fails", async () => {
@@ -181,7 +181,7 @@ describe("openRepositoryPullRequest — azure_devops", () => {
       files,
     });
 
-    expect(result).toEqual({ prNumber: 99, prState: "open" });
+    expect(result).toEqual({ prNumber: 99, prState: "open", defaultBranch: "main" });
     expect(request).not.toHaveBeenCalledWith(expect.stringContaining("/pushes"), expect.anything());
   });
 
@@ -217,7 +217,7 @@ describe("openRepositoryPullRequest — azure_devops", () => {
       files,
     });
 
-    expect(result).toEqual({ prNumber: 55, prState: "open" });
+    expect(result).toEqual({ prNumber: 55, prState: "open", defaultBranch: "main" });
   });
 
   it("rejects a full_name without a project segment", async () => {

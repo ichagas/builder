@@ -36,6 +36,8 @@ export interface OpenPullRequestInput {
 export interface OpenPullRequestResult {
   prNumber: number;
   prState: "open";
+  /** The repository's default branch, as read from the provider (fix round 1, item 3). */
+  defaultBranch: string;
 }
 
 async function githubRequest(token: string, path: string, init: RequestInit = {}): Promise<Response> {
@@ -109,7 +111,7 @@ async function openGitHubPullRequest(input: OpenPullRequestInput): Promise<OpenP
   if (existingPrRes.ok) {
     const existingPrs = (await existingPrRes.json()) as Array<{ number: number }>;
     if (existingPrs.length > 0) {
-      return { prNumber: existingPrs[0].number, prState: "open" };
+      return { prNumber: existingPrs[0].number, prState: "open", defaultBranch };
     }
   }
 
@@ -127,7 +129,7 @@ async function openGitHubPullRequest(input: OpenPullRequestInput): Promise<OpenP
     throw new Error(`Could not open PR for ${owner}/${repo}: ${prRes.status} ${text.slice(0, 200)}`);
   }
   const prData = (await prRes.json()) as { number: number };
-  return { prNumber: prData.number, prState: "open" };
+  return { prNumber: prData.number, prState: "open", defaultBranch };
 }
 
 async function openAzureDevOpsPullRequest(input: OpenPullRequestInput): Promise<OpenPullRequestResult> {
@@ -154,7 +156,7 @@ async function openAzureDevOpsPullRequest(input: OpenPullRequestInput): Promise<
   if (existingRes.ok) {
     const existing = (await existingRes.json()) as { value: Array<{ pullRequestId: number }> };
     if (existing.value?.length > 0) {
-      return { prNumber: existing.value[0].pullRequestId, prState: "open" };
+      return { prNumber: existing.value[0].pullRequestId, prState: "open", defaultBranch: defaultBranch.replace(/^refs\/heads\//, "") };
     }
   }
 
@@ -206,7 +208,7 @@ async function openAzureDevOpsPullRequest(input: OpenPullRequestInput): Promise<
     throw new Error(`Could not open PR for ${input.fullName}: ${prRes.status} ${text.slice(0, 200)}`);
   }
   const prData = (await prRes.json()) as { pullRequestId: number };
-  return { prNumber: prData.pullRequestId, prState: "open" };
+  return { prNumber: prData.pullRequestId, prState: "open", defaultBranch: defaultBranch.replace(/^refs\/heads\//, "") };
 }
 
 /** Open (or reuse an already-open) pull request for one onboarding repository. */
