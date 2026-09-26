@@ -6,7 +6,11 @@ import "express-async-errors";
 import request from "supertest";
 import versionsRouter from "../../routes/versions";
 import { errorHandler } from "../../middleware/errorHandler";
-import { setReleaseService, NotImplementedReleaseService } from "../../services/versions/releaseService";
+import {
+  setReleaseService,
+  NotImplementedReleaseService,
+  DefaultReleaseService,
+} from "../../services/versions/releaseService";
 
 jest.mock("../../utils/logger", () => ({
   logger: {
@@ -279,5 +283,84 @@ describe("release / first-release / release-checks (delegate to WP-BE2 stub)", (
       `/projects/${PROJECT_ID}/versions/some-version/release?token=22222222-0000-0000-0000-000000000001`
     );
     expect(res.status).toBe(403);
+  });
+});
+
+/**
+ * HTTP-level integration with the real `DefaultReleaseService` (WP-BE2,
+ * T102): confirms `routes/versions.ts` and `errorHandler` propagate the
+ * service's `Errors.*` (notFound/conflict/validation) as the right status
+ * codes end to end, not just that the service throws the right shape in
+ * isolation (see `__tests__/services/versions/releaseService.test.ts`).
+ * Every scenario here short-circuits before any GitHub/deploy call, so
+ * `defaultReleaseGitHubClient`/`defaultDeployTrigger` are never exercised.
+ */
+describe("release / first-release / release-checks (real service, HTTP error paths)", () => {
+  afterEach(() => {
+    // Restore the stub so it doesn't leak into other describe blocks in
+    // this file (the singleton is module-level, shared across tests).
+    setReleaseService(new NotImplementedReleaseService());
+  });
+
+  /** Minimal SQL-text dispatcher, same shape as releaseService.test.ts's. */
+  function dispatch(overrides: Record<string, (params: any[]) => any>) {
+    mockDbQuery.mockImplementation(async (sql: string, params: any[] = []) => {
+      for (const [needle, handler] of Object.entries(overrides)) {
+        if (sql.includes(needle)) return handler(params);
+      }
+      return { rows: [] };
+    });
+  }
+
+  it("POST release returns 404 for a version that doesn't exist on an otherwise-accessible project", async () => {
+    setReleaseService(new DefaultReleaseService());
+    dispatch({
+      "SELECT created_by FROM projects": () => ({ rows: [{ created_by: OWNER_ID }] }),
+      "SELECT * FROM projects WHERE id": () => ({ rows: [{ id: PROJECT_ID, stage: "released" }] }),
+      "SELECT * FROM versions WHERE id": () => ({ rows: [] }),
+    });
+
+    const res = await request(createApp(OWNER_ID)).post(
+      `/projects/${PROJECT_ID}/versions/does-not-exist/release`
+    );
+
+    expect(res.status).toBe(404);
+  });
+
+  it("POST release returns 409 when the first release hasn't happened yet", async () => {
+    setReleaseService(new DefaultReleaseService());
+    dispatch({
+      "SELECT created_by FROM projects": () => ({ rows: [{ created_by: OWNER_ID }] }),
+      "SELECT * FROM projects WHERE id": () => ({ rows: [{ id: PROJECT_ID, stage: "building" }] }),
+    });
+
+    const res = await request(createApp(OWNER_ID)).post(`/projects/${PROJECT_ID}/versions/v-1/release`);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("POST first-release returns 422 when checks fail (an unresolved change)", async () => {
+    setReleaseService(new DefaultReleaseService());
+    dispatch({
+      "SELECT created_by FROM projects": () => ({ rows: [{ created_by: OWNER_ID }] }),
+      "SELECT * FROM projects WHERE id": () => ({ rows: [{ id: PROJECT_ID, stage: "building" }] }),
+      "SELECT wi.* FROM work_items": () => ({
+        rows: [
+          {
+            id: "wi-1",
+            key: "WI-1",
+            type: "bug",
+            title: "Bug",
+            status: "active",
+            branch: null,
+            phase_state: {},
+          },
+        ],
+      }),
+    });
+
+    const res = await request(createApp(OWNER_ID)).post(`/projects/${PROJECT_ID}/first-release`);
+
+    expect(res.status).toBe(422);
   });
 });
