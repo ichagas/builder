@@ -146,6 +146,39 @@ app.use(
 );
 
 // Body parsing
+//
+// `POST /api/v1/mesh/runs` (spec 007, WP-BE4) is the one route that must see
+// the EXACT bytes the CI sent, before any parsing: it authenticates the
+// request by HMAC-signing those raw bytes, and re-encoding a parsed-then-
+// reserialized JSON body would not byte-for-byte match what the CI signed.
+// It also gets its own, much tighter, size limit — a mesh report is small
+// JSON with a blob URL, not an upload — so an oversized report is rejected
+// at the parsing stage itself (413), before any handler runs.
+//
+// This is scoped to that exact path+method (not a global `verify` hook, and
+// not a path-prefix mount, which would also swallow sibling routes like
+// `GET /mesh/runs/:runId`) so every other route is completely unaffected.
+// `routes/mesh.ts` parses the JSON itself, after verifying the signature.
+function meshIngestRawBody(req: Request, res: Response, next: NextFunction): void {
+  express.raw({ type: "application/json", limit: "2mb" })(req, res, (err: any) => {
+    if (err) {
+      // body-parser errors carry `.status`, not the `.statusCode` this app's
+      // errorHandler reads.
+      err.statusCode = err.statusCode || err.status || 500;
+      next(err);
+      return;
+    }
+    next();
+  });
+}
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.method === "POST" && req.path === "/api/v1/mesh/runs") {
+    meshIngestRawBody(req, res, next);
+    return;
+  }
+  next();
+});
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
