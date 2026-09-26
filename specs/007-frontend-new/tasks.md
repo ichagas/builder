@@ -94,10 +94,10 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 ## Phase 6: Backend B1, versions and changes (parallel from M0)
 
 - [X] T100 (WP-BE1) Migration `infra/migrations/012_versions_work_items.sql` per `data-model.md` §1.
-- [ ] T101 (WP-BE1) `BE/routes/versions.ts`, `BE/routes/workItems.ts`, mounted in `BE/routes/v1/index.ts`, with token auth. Tests.
+- [X] T101 (WP-BE1) `BE/routes/versions.ts`, `BE/routes/workItems.ts`, mounted in `BE/routes/v1/index.ts`, with token auth. Tests.
 - [ ] T102 (WP-BE2) `BE/services/versions/releaseService.ts` (in order, carry-over, merge reviewed branches into the default branch, notes, tag, deploy, first release) + staging `branch` dimension in `BE/utils/staging.ts` with legacy tests unchanged.
 - [ ] T104 (WP-BE2) `BE/services/versions/branchService.ts`: create the **real Git branch** for a change when it is scheduled or accepted, and route its commits there (D-9). Tests with a mocked GitHub API.
-- [ ] T103 [P] (WP-BE1) Realtime `versions-{projectId}`, `work-item-{id}`.
+- [X] T103 [P] (WP-BE1) Realtime `versions-{projectId}`, `work-item-{id}`.
 
 ## Phase 7: US4, versions and changes UI (P2, built new)
 

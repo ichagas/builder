@@ -22,6 +22,8 @@ import rpcRouter from "../rpc";
 import functionsRouter from "../functions";
 import storageRouter from "../storage";
 import githubRouter from "../github";
+import versionsRouter from "../versions";
+import workItemsRouter, { workItemByIdRouter } from "../workItems";
 
 const router = Router();
 
@@ -37,6 +39,14 @@ router.use("/auth", authRateLimiter, authRouter);
 // ============================================================================
 
 router.use("/chat", authMiddleware, chatRouter);
+// versions/work-items (B1) accept BOTH user auth and `?token=` share-token
+// access (authorized against `authorize_project_access`), so they use
+// optionalAuthMiddleware and are mounted ahead of the authMiddleware-gated
+// /projects router below to avoid its 401 short-circuit for anonymous,
+// token-only requests.
+router.use("/projects", optionalAuthMiddleware, versionsRouter);
+router.use("/projects", optionalAuthMiddleware, workItemsRouter);
+router.use("/work-items", optionalAuthMiddleware, workItemByIdRouter);
 router.use("/projects", authMiddleware, projectsRouter);
 router.use("/artifacts", authMiddleware, artifactsRouter);
 router.use("/canvas", authMiddleware, canvasRouter);
