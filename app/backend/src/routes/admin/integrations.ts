@@ -35,6 +35,7 @@ import { isOrgAdmin, getUserOrgId } from "../../services/teams/authorization";
 import {
   listConnections,
   getConnectionForOrg,
+  getDefaultConnectionForProvider,
   createConnection,
   updateConnectionFields,
   updateConnectionTestResult,
@@ -168,6 +169,19 @@ router.post("/", async (req: Request, res: Response) => {
   }
 
   if (body.provider === "github_app") {
+    // Fix round 2, item 7: at most one github_app connection per
+    // organization — it's the sole source of the onboarding import scope
+    // (services/onboarding#listImportableGitHubRepositories reads "the"
+    // organization's connection via getDefaultConnectionForProvider), so a
+    // second one would just be confusing dead configuration. Update the
+    // existing one (PATCH) instead of creating another.
+    const existing = await getDefaultConnectionForProvider(orgId, "github_app");
+    if (existing) {
+      throw Errors.conflict(
+        "This organization already has a GitHub connection configured; update it instead of creating another"
+      );
+    }
+
     const owners = normalizeAndValidateOwners(body.owners);
 
     const connection = await createConnection({

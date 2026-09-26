@@ -159,6 +159,16 @@ function installFixtureDb() {
       const row = connections.find((c) => c.id === params[0] && c.organization_id === params[1]);
       return { rows: row ? [row] : [] };
     }
+    if (
+      sql.includes("FROM public.integration_connections") &&
+      sql.includes("WHERE organization_id = $1 AND provider = $2")
+    ) {
+      // getDefaultConnectionForProvider: also filter by provider, and only
+      // the first (oldest) match, matching its `ORDER BY created_at ASC
+      // LIMIT 1`.
+      const matches = connections.filter((c) => c.organization_id === params[0] && c.provider === params[1]);
+      return { rows: matches.slice(0, 1) };
+    }
     if (sql.includes("FROM public.integration_connections") && sql.includes("WHERE organization_id = $1")) {
       return { rows: connections.filter((c) => c.organization_id === params[0]) };
     }
@@ -539,6 +549,51 @@ describe("POST /admin/integrations — github_app connections (fix round 1 follo
     expect(res.body.githubAppConnections).toHaveLength(1);
     expect(res.body.githubAppConnections[0].provider).toBe("github_app");
     expect(res.body.azureDevOps).toEqual([]);
+  });
+
+  it("409s creating a second github_app connection for the same organization (fix round 2, item 7)", async () => {
+    const first = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa"] });
+    expect(first.status).toBe(201);
+
+    const second = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "Another one", owners: ["goa-labs"] });
+
+    expect(second.status).toBe(409);
+    expect(connections.filter((c) => c.provider === "github_app")).toHaveLength(1);
+  });
+
+  it("does not 409 when the organization has an Azure DevOps connection but no github_app one yet", async () => {
+    const azureRes = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({
+        displayName: "Azure conn",
+        organizationUrl: "https://dev.azure.com/goa-standards",
+        authType: "pat",
+        patValue: "pat-value",
+      });
+    expect(azureRes.status).toBe(201);
+
+    const githubRes = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa"] });
+
+    expect(githubRes.status).toBe(201);
+  });
+
+  it("a different organization can still create its own github_app connection", async () => {
+    const first = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa"] });
+    expect(first.status).toBe(201);
+
+    const other = await request(createApp(OTHER_ORG_ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope (org 2)", owners: ["other-org"] });
+
+    expect(other.status).toBe(201);
   });
 });
 
