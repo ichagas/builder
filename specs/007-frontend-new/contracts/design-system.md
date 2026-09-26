@@ -17,7 +17,7 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Surface | `--bg #E8EDF4`, `--surface #FFFFFF`, `--surface-2 #F2F5F9`, `--line #D3DBE6`, `--line-2 #AFBCCE` |
 | Text | `--ink #0F1D35`, `--muted #4F5F78` |
 | Brand | `--primary #2451D6`, `--primary-soft #E3EAFC`, `--focus #2451D6` |
-| Status | `--ok #13803D`, `--warn #B45309`, `--bad #C0262D`, `--run #D97706` + `-soft` variants |
+| Status | `--ok #127B3B`, `--warn #B05109`, `--bad #C0262D`, `--run #D97706` + `-soft` variants |
 | Phases | `--c-define #7C3AED`, `--c-design #0891B2`, `--c-build #D97706`, `--c-ship #16A34A` |
 | Change types | `--t-bug`, `--t-feat`, `--t-enh`, `--t-base` + `-soft` |
 | Mesh agents | `--m-green #16A34A`, `--m-yellow #CA8A04`, `--m-red #DC2626`, `--m-blue #2563EB` |
@@ -30,6 +30,8 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Elevation | `--shadow none`, `--shadow-pop 0 10px 28px rgba(11,24,48,.28)` |
 
 Dark theme: invert surfaces (`--bg #0E1626`, `--surface #142036`…) while keeping status and phase hues, with contrast ≥ 4.5:1. The rail and global bar stay navy in both themes.
+
+Note (WP-F2 fix round 1): light `--ok` and `--warn` were darkened minimally from the original Blueprint values (`#13803D` → `#127B3B`, `#B45309` → `#B05109`) so that the DeltaChip/TypeChip `-soft`-background pairing (`ok` on `ok-soft`, `warn` on `warn-soft`) clears WCAG AA (was 4.28:1 / 4.40:1, now ≥ 4.5:1); both still clear AA against `--surface` with margin.
 
 ### 1.1 Mapping the existing shadcn variables (redesign route, research D-3)
 

@@ -1,0 +1,197 @@
+/*
+ * Design tokens (T020). Source of truth: specs/007-frontend-new/contracts/design-system.md §1.
+ * Values match docs/design/frontend-redesign/option-a-styles/{shared/blueprint.css,
+ * shared/lifecycle.css, shared/onboarding.css, shared/base.css} ("Style 2 · Blueprint").
+ *
+ * Each token is exposed twice:
+ *  - as a plain hex/length custom property (`--ok: #127B3B;`) for raw `var(--x)` use
+ *    in CSS and inline styles/SVG (chart strokes, etc.);
+ *  - color tokens additionally get an `-rgb` channel triple (`--ok-rgb: 19 128 61;`)
+ *    consumed by `tailwind-preset.ts` via `rgb(var(--x-rgb) / <alpha-value>)`, which is
+ *    what makes opacity modifiers (`bg-ok/10`) work with CSS-variable-backed colors.
+ *
+ * Light values live on :root. Dark values apply under BOTH `.dark` (the existing
+ * next-themes class toggle — untouched) and `[data-theme="dark"]` (kept for parity
+ * with the contract's selector and any future non-class based theming). The rail and
+ * global bar stay navy in both themes, per the contract.
+ *
+ * Contrast: light and dark pairs (ink/bg, muted/surface, primary-foreground/primary,
+ * ok/warn/bad on surface) are verified ≥ 4.5:1 by
+ * src/design/__tests__/contrast.test.ts.
+ */
+
+:root {
+  /* Surface */
+  --bg: #E8EDF4; --bg-rgb: 232 237 244;
+  --surface: #FFFFFF; --surface-rgb: 255 255 255;
+  --surface-2: #F2F5F9; --surface-2-rgb: 242 245 249;
+  --line: #D3DBE6; --line-rgb: 211 219 230;
+  --line-2: #AFBCCE; --line-2-rgb: 175 188 206;
+
+  /* Text */
+  --ink: #0F1D35; --ink-rgb: 15 29 53;
+  --muted: #4F5F78; --muted-rgb: 79 95 120;
+
+  /* Brand */
+  --primary: #2451D6; --primary-rgb: 36 81 214;
+  --primary-soft: #E3EAFC; --primary-soft-rgb: 227 234 252;
+  --primary-foreground: #FFFFFF; --primary-foreground-rgb: 255 255 255;
+  --focus: #2451D6; --focus-rgb: 36 81 214;
+
+  /* Status */
+  /* Fix round 1, item 4: #13803D on --ok-soft measured 4.28:1 and #B45309 on
+   * --warn-soft measured 4.40:1 — both below WCAG AA (4.5:1), per
+   * src/design/__tests__/contrast.test.ts's "domain-atom token pairs" (added
+   * to cover DeltaChip's `bg-ok-soft text-ok` / `bg-warn-soft text-warn`,
+   * not just "on a plain surface"). Darkened both minimally — old → new:
+   * --ok #13803D → #127B3B (4.57:1 on --ok-soft), --warn #B45309 → #B05109
+   * (4.57:1 on --warn-soft). Both still clear AA on --surface with margin
+   * to spare (5.35:1 / 5.21:1). See contracts/design-system.md §1.
+   */
+  --ok: #127B3B; --ok-rgb: 18 123 59;
+  --ok-soft: #DDF2E5; --ok-soft-rgb: 221 242 229;
+  --warn: #B05109; --warn-rgb: 176 81 9;
+  --warn-soft: #FCEEDB; --warn-soft-rgb: 252 238 219;
+  --bad: #C0262D; --bad-rgb: 192 38 45;
+  --bad-soft: #FBE4E5; --bad-soft-rgb: 251 228 229;
+  --run: #D97706; --run-rgb: 217 119 6;
+  --run-soft: #FCE8D2; --run-soft-rgb: 252 232 210;
+
+  /* Phases */
+  --c-define: #7C3AED; --c-define-rgb: 124 58 237;
+  --c-design: #0891B2; --c-design-rgb: 8 145 178;
+  --c-build: #D97706; --c-build-rgb: 217 119 6;
+  --c-ship: #16A34A; --c-ship-rgb: 22 163 74;
+
+  /* Change types */
+  --t-bug: #C0262D; --t-bug-rgb: 192 38 45;
+  --t-bug-soft: #FBE4E5; --t-bug-soft-rgb: 251 228 229;
+  --t-feat: #2451D6; --t-feat-rgb: 36 81 214;
+  --t-feat-soft: #E3EAFC; --t-feat-soft-rgb: 227 234 252;
+  --t-enh: #0E7490; --t-enh-rgb: 14 116 144;
+  --t-enh-soft: #DDF3F7; --t-enh-soft-rgb: 221 243 247;
+  --t-base: #475467; --t-base-rgb: 71 84 103;
+  --t-base-soft: #EEF1F5; --t-base-soft-rgb: 238 241 245;
+
+  /* Mesh agents (Assurance Mesh: Green/Yellow/Red/Blue) */
+  --m-green: #16A34A; --m-green-rgb: 22 163 74;
+  --m-yellow: #CA8A04; --m-yellow-rgb: 202 138 4;
+  --m-red: #DC2626; --m-red-rgb: 220 38 38;
+  --m-blue: #2563EB; --m-blue-rgb: 37 99 235;
+
+  /* Mode band */
+  --mode-building: #4C8DFF; --mode-building-rgb: 76 141 255;
+  --mode-released: #2FBF71; --mode-released-rgb: 47 191 113;
+  --mode-connected: #A78BFA; --mode-connected-rgb: 167 139 250;
+
+  /* Chrome (rail + global bar stay navy in both themes) */
+  --rail-bg: #102040; --rail-bg-rgb: 16 32 64;
+  --rail-ink: #EAF0FA; --rail-ink-rgb: 234 240 250;
+  --rail-muted: #93A4C3; --rail-muted-rgb: 147 164 195;
+  --rail-hover: #182C54; --rail-hover-rgb: 24 44 84;
+  --rail-line: #22365F; --rail-line-rgb: 34 54 95;
+  --rail-active: #1D3566; --rail-active-rgb: 29 53 102;
+  --gbar-bg: #0B1830; --gbar-bg-rgb: 11 24 48;
+  --gbar-ink: #EAF0FA; --gbar-ink-rgb: 234 240 250;
+  --gbar-line: #22365F; --gbar-line-rgb: 34 54 95;
+
+  /* Charts (derived from the phase/status palette, for the T031 hex codemod) */
+  --chart-1: var(--primary); --chart-1-rgb: var(--primary-rgb);
+  --chart-2: var(--ok); --chart-2-rgb: var(--ok-rgb);
+  --chart-3: var(--warn); --chart-3-rgb: var(--warn-rgb);
+  --chart-4: var(--bad); --chart-4-rgb: var(--bad-rgb);
+  --chart-5: var(--c-define); --chart-5-rgb: var(--c-define-rgb);
+  --chart-6: var(--c-design); --chart-6-rgb: var(--c-design-rgb);
+
+  /* Type (identifiers only use --mono: WI-42, branches, versions, repo names) */
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --fs: 14px;
+  --h1: 26px; --h1-weight: 600;
+  --h2: 14px; --h2-weight: 600;
+
+  /* Shape */
+  --radius: 4px; --radius-s: 3px; --radius-pill: 3px;
+
+  /* Density (row: 48px, min target: 44px) */
+  --row: 48px; --row-min: 44px; --pad: 14px; --gap: 14px;
+
+  /* Layout */
+  --rail-w: 248px; --rail-w-collapsed: 76px;
+  --bar-h: 52px; --timeline-h: 76px; --tabbar-h: 62px;
+
+  /* Elevation */
+  --shadow: none;
+  --shadow-pop: 0 10px 28px rgba(11, 24, 48, .28);
+}
+
+.dark,
+[data-theme="dark"] {
+  /* Surface */
+  --bg: #0E1626; --bg-rgb: 14 22 38;
+  --surface: #142036; --surface-rgb: 20 32 54;
+  --surface-2: #182842; --surface-2-rgb: 24 40 66;
+  --line: #2A3B5C; --line-rgb: 42 59 92;
+  --line-2: #3B4F75; --line-2-rgb: 59 79 117;
+
+  /* Text */
+  --ink: #E9EEF7; --ink-rgb: 233 238 247;
+  --muted: #9FB0CC; --muted-rgb: 159 176 204;
+
+  /* Brand (a lighter blue reads as an accent on dark surfaces; its foreground
+     stays a dark ink rather than white — see the contrast test for the ratios) */
+  --primary: #6C93FF; --primary-rgb: 108 147 255;
+  --primary-soft: #1B2C55; --primary-soft-rgb: 27 44 85;
+  --primary-foreground: #0B1830; --primary-foreground-rgb: 11 24 48;
+  --focus: #6C93FF; --focus-rgb: 108 147 255;
+
+  /* Status */
+  --ok: #3DDC84; --ok-rgb: 61 220 132;
+  --ok-soft: #123626; --ok-soft-rgb: 18 54 38;
+  --warn: #F2A93B; --warn-rgb: 242 169 59;
+  --warn-soft: #3A2B12; --warn-soft-rgb: 58 43 18;
+  --bad: #F2807C; --bad-rgb: 242 128 124;
+  --bad-soft: #3A1720; --bad-soft-rgb: 58 23 32;
+  --run: #F2A93B; --run-rgb: 242 169 59;
+  --run-soft: #3A2B12; --run-soft-rgb: 58 43 18;
+
+  /* Phases */
+  --c-define: #A78BFA; --c-define-rgb: 167 139 250;
+  --c-design: #22C3DE; --c-design-rgb: 34 195 222;
+  --c-build: #F2A93B; --c-build-rgb: 242 169 59;
+  --c-ship: #3DDC84; --c-ship-rgb: 61 220 132;
+
+  /* Change types */
+  --t-bug: #F2807C; --t-bug-rgb: 242 128 124;
+  --t-bug-soft: #3A1720; --t-bug-soft-rgb: 58 23 32;
+  --t-feat: #6C93FF; --t-feat-rgb: 108 147 255;
+  --t-feat-soft: #1B2C55; --t-feat-soft-rgb: 27 44 85;
+  --t-enh: #22C3DE; --t-enh-rgb: 34 195 222;
+  --t-enh-soft: #123240; --t-enh-soft-rgb: 18 50 64;
+  --t-base: #9FB0CC; --t-base-rgb: 159 176 204;
+  --t-base-soft: #1A2438; --t-base-soft-rgb: 26 36 56;
+
+  /* Mesh agents */
+  --m-green: #22C55E; --m-green-rgb: 34 197 94;
+  --m-yellow: #EAB308; --m-yellow-rgb: 234 179 8;
+  --m-red: #EF4444; --m-red-rgb: 239 68 68;
+  --m-blue: #3B82F6; --m-blue-rgb: 59 130 246;
+
+  /* Mode band */
+  --mode-building: #6C9BFF; --mode-building-rgb: 108 155 255;
+  --mode-released: #3DDC84; --mode-released-rgb: 61 220 132;
+  --mode-connected: #B39DFB; --mode-connected-rgb: 179 157 251;
+
+  /* Chrome stays navy in both themes */
+  --rail-bg: #102040; --rail-bg-rgb: 16 32 64;
+  --rail-ink: #EAF0FA; --rail-ink-rgb: 234 240 250;
+  --rail-muted: #93A4C3; --rail-muted-rgb: 147 164 195;
+  --rail-hover: #182C54; --rail-hover-rgb: 24 44 84;
+  --rail-line: #22365F; --rail-line-rgb: 34 54 95;
+  --rail-active: #1D3566; --rail-active-rgb: 29 53 102;
+  --gbar-bg: #0B1830; --gbar-bg-rgb: 11 24 48;
+  --gbar-ink: #EAF0FA; --gbar-ink-rgb: 234 240 250;
+  --gbar-line: #22365F; --gbar-line-rgb: 34 54 95;
+
+  --shadow-pop: 0 10px 28px rgba(0, 0, 0, .5);
+}

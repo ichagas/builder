@@ -173,9 +173,11 @@ describe("commit_staged_with_token blob-backed content", () => {
         expect(response.status).toBe(200);
         expect(mockDeleteContent).toHaveBeenCalledTimes(1);
         expect(mockDeleteContent).toHaveBeenCalledWith("project-1", "repo-1", "src/selected.ts");
+        // Branch-scoped (D-9 / WP-BE2 T104): defaults to 'main' when the
+        // request names none, identical to legacy behaviour.
         expect(mockClientQuery.mock.calls[5]).toEqual([
-            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2)",
-            ["repo-1", ["src/selected.ts"]],
+            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3",
+            ["repo-1", ["src/selected.ts"], "main"],
         ]);
     });
 

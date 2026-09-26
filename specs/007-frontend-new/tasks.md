@@ -27,18 +27,18 @@
 - [X] T013 (WP-F1) CI: `frontend-new` job in `.github/workflows/ci.yml` (path filter `app/frontend-new/**`: lint, typecheck, unit, build) added to `ci-gate`. UPDATE (fix round 1): the 8 inherited type errors that initially failed the typecheck step have been fixed with minimal, type-only casts (no runtime behavior change) — see the "T013 (WP-F1): fix inherited type errors so the typecheck gate passes" commit for the file-by-file list and the `NOTE(spec-007 Phase R)` comments left at each call site (several reveal pre-existing runtime bugs — dead code, always-undefined values — that were deliberately left as-is per orchestrator decision). `npx tsc -p tsconfig.app.json --noEmit` now exits 0.
 - [X] T014 (WP-F1) Build and push the `frontend-new` image in `.github/workflows/platform-deploy.yml`. UPDATE (fix round 1, non-blocking follow-up): `ca-pronghorn-frontend-new` / `module.frontend_new` now also included in `infra/config/rollback-component-sets.json` (application-runtime set) and the rollback snapshot path (`capture-runtime-revisions` + `get-deployment-snapshot.ps1` in `platform-deploy.yml`), mirroring the legacy frontend and no-op'ing (empty revision/image strings) on an environment where the app doesn't exist yet.
 - [~] T015 (WP-F1) Terraform `module "frontend_new"` (reuse `infra/modules/frontend`) at `next.<domain>`. API CORS and APIM origins. Entra redirect URI. (BLOCKED-EXTERNAL: terraform apply in each environment, DNS for next.<domain>, Entra redirect URI registration) — code is complete: `module "frontend_new"` (infra/main.tf) reuses `./modules/frontend` with its own UAMI/AcrPull role assignment; `cors_allowed_origins` (API Management module call) and the Entra `redirect_uris` list both include `module.frontend_new.app_url` / `var.frontend_new_app_url_override`; new vars `frontend_new_app_url_override`, `frontend_new_build_vars`, `frontend_new_container_*` (infra/variables.tf); new outputs `frontend_new_uami_id`, `frontend_new_url`, `frontend_new_fqdn`, `frontend_new_build_env_vars` (infra/outputs.tf). Validated with `terraform fmt -check -recursive`, `init -backend=false`, and `validate` via `hashicorp/terraform:1.11` in Docker (all pass; 1.9/1.10 fail on unrelated AVM submodule `required_version` floors, unrelated to this change).
-- [ ] T016 [P] (WP-F6) Playwright harness shared by both apps: `e2e/` at repo root or `FE/e2e/` with `BASE_URL` switch, `fixtures.ts` (mock auth, share tokens), `seed.sql`, and a docker compose profile `e2e`.
-- [ ] T017 (WP-F6) **Legacy smoke suite**, written and passing **against `app/frontend`**: one spec per regression row PR-01…PR-21 (page loads, main read, main write, reload). Files `e2e/regression/pr-xx.spec.ts`. This is the regression gate.
+- [X] T016 [P] (WP-F6) Playwright harness shared by both apps: `e2e/` at repo root or `FE/e2e/` with `BASE_URL` switch, `fixtures.ts` (mock auth, share tokens), `seed.sql`, and a docker compose profile `e2e`.
+- [X] T017 (WP-F6) **Legacy smoke suite**, written and passing **against `app/frontend`**: one spec per regression row PR-01…PR-21 (page loads, main read, main write, reload). Files `e2e/regression/pr-xx.spec.ts`. This is the regression gate.
 - [X] T018 [P] (WP-F1) Token lint (`FE/eslint.config.js` custom rule): report raw Tailwind palette classes and hex outside `src/design/**`. Warn mode now, error mode after T031.
 
 ## Phase 2: Foundation, design system and shell (blocks page work)
 
 **Checkpoint to exit:** every legacy page opens inside the new shell at its new URL, even if not restyled yet (embedded mode, T034). Redirects work. The shell remount test passes.
 
-- [ ] T020 (WP-F2) `FE/src/design/tokens.css` (Blueprint light and dark), and **re-point** the variables in `FE/src/index.css` per `contracts/design-system.md` §1.1.
-- [ ] T021 (WP-F2) `FE/src/design/tailwind-preset.ts` wired into `FE/tailwind.config.ts`: new color groups (`ok`, `warn`, `bad`, `define`, `design`, `build`, `ship`, `mesh-*`, `rail-*`, `*-soft`), IBM Plex fonts, radius 4px, density.
-- [ ] T022 [P] (WP-F2) Adjust the shadcn primitives in `FE/src/components/ui/` only where variables aren't enough (button heights 40/44px, tabs with an underline indicator, dialog radius, focus ring).
-- [ ] T023 [P] (WP-F2) Domain atoms `FE/src/components/shell/atoms/` (TypeChip, DeltaChip, MeshDots, StackBadge, PrChip, VersionTag, EmptyState, AdoptionBar) with tests.
+- [X] T020 (WP-F2) `FE/src/design/tokens.css` (Blueprint light and dark), and **re-point** the variables in `FE/src/index.css` per `contracts/design-system.md` §1.1.
+- [X] T021 (WP-F2) `FE/src/design/tailwind-preset.ts` wired into `FE/tailwind.config.ts`: new color groups (`ok`, `warn`, `bad`, `define`, `design`, `build`, `ship`, `mesh-*`, `rail-*`, `*-soft`), IBM Plex fonts, radius 4px, density.
+- [X] T022 [P] (WP-F2) Adjust the shadcn primitives in `FE/src/components/ui/` only where variables aren't enough (button heights 40/44px, tabs with an underline indicator, dialog radius, focus ring).
+- [X] T023 [P] (WP-F2) Domain atoms `FE/src/components/shell/atoms/` (TypeChip, DeltaChip, MeshDots, StackBadge, PrChip, VersionTag, RepoRow, AdoptionBar, EmptyState) with tests.
 - [ ] T024 (WP-F3) `AppShell`, `GlobalBar`, `ModeBadge`, `StatusPill` — `FE/src/components/shell/`.
 - [ ] T025 [P] (WP-F3) `Rail`, `PhaseNode` (collapse pref).
 - [ ] T026 [P] (WP-F3) `TimelineStrip` (one "Building" version until B1).
@@ -95,8 +95,8 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 - [X] T100 (WP-BE1) Migration `infra/migrations/012_versions_work_items.sql` per `data-model.md` §1.
 - [X] T101 (WP-BE1) `BE/routes/versions.ts`, `BE/routes/workItems.ts`, mounted in `BE/routes/v1/index.ts`, with token auth. Tests.
-- [ ] T102 (WP-BE2) `BE/services/versions/releaseService.ts` (in order, carry-over, merge reviewed branches into the default branch, notes, tag, deploy, first release) + staging `branch` dimension in `BE/utils/staging.ts` with legacy tests unchanged.
-- [ ] T104 (WP-BE2) `BE/services/versions/branchService.ts`: create the **real Git branch** for a change when it is scheduled or accepted, and route its commits there (D-9). Tests with a mocked GitHub API.
+- [X] T102 (WP-BE2) `BE/services/versions/releaseService.ts` (in order, carry-over, merge reviewed branches into the default branch, notes, tag, deploy, first release) + staging `branch` dimension in `BE/utils/staging.ts` with legacy tests unchanged.
+- [X] T104 (WP-BE2) `BE/services/versions/branchService.ts`: create the **real Git branch** for a change when it is scheduled or accepted, and route its commits there (D-9). Tests with a mocked GitHub API.
 - [X] T103 [P] (WP-BE1) Realtime `versions-{projectId}`, `work-item-{id}`.
 
 ## Phase 7: US4, versions and changes UI (P2, built new)

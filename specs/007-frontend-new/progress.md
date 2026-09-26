@@ -33,6 +33,9 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T103 | done | 06bef20 | WP-BE1. Extra events work_item_created/updated |
 | T142 | BLOCKED-EXTERNAL | 92578d7, 5880ecb, 7eedbf8 | WP-BE7. Content in external/goa-standards-assurance-mesh/. Human: create repo, move content, tag v3, replace placeholder mesh_scripts_ref SHA, run sample GitHub + Azure Repos PRs |
 | T122–T125 | done | 3b9431c, 0e4d61a, 8f1ff15, a171714, 05b6c70, 3abdca1, 3cf26ee, 411f02d, 9f5188d | WP-BE4. Fix round 1: route-scoped raw body (413 before parse), report_url validation, Markdown/HTML/@mention escaping in issues, repo-scoped GitHub App tokens, Azure DevOps via BE8 `getAzureDevOpsClient` |
+| T020–T023 | done | 4fdb817, 7b4345d, d93a5b6, 3da919f, 35d4fa9, d8a7ff8, 65ffc24, b0fd31c, c5da929, 7ac7f14 | WP-F2. 9 atoms (RepoRow added per contract). Fix round 1: radius key s→xs (Tailwind `rounded-s` collision), TypeChip font, RepoRow ≤900px collapse, light contrast (ok #13803D→#127B3B, warn #B45309→#B05109, dark ink on mesh green/yellow), D-19 fonts via Google Fonts |
+| T102, T104 | done | 910f589, 74aefe9, ad830f7, 968742d, 6779f30, 7533733 | WP-BE2. Fix round 1: release() gated by releaseChecks, advisory lock + FOR UPDATE, carry-over reuses version by name, staging partitioned by branch (migration 018), branch-scoped unstage/discard. Follow-up (low): release and WI-key advisory locks share the hashtext(projectId) key space |
+| T016, T017 | done | ef1b586, 98e9221, 83759f7, 4efeb81, 96282a1 | WP-F6. PR-01..PR-21 54/54 green on legacy (1440 + 390), twice on a fresh stack; axe-legacy.json baseline (46 rows; 2 rows ±1 node run to run). Specs are app-agnostic (routes.ts urlPattern helpers). T037 still open (after F3) |
 | T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
 
 ## Escalations to Opus 5.5
@@ -40,6 +43,10 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 None yet.
 
 ## Deviations from the spec
+
+- WP-F2: light-theme `--ok` and `--warn` darkened slightly to meet AA on their -soft backgrounds; contracts/design-system.md §1 updated.
+- WP-F2: T023 includes RepoRow (listed in the contract, missing from tasks.md).
+- WP-BE2: two SQL-text assertions in the legacy `utils/staging.test.ts` updated for the (repo_id, file_path, branch) unique key (migration 018); other legacy staging tests unchanged.
 
 - T010: the package rename is in the commit after the copy (per the orchestrate prompt), not in the copy commit.
 
@@ -74,5 +81,11 @@ Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
 - **2026-09-26 16:35: RESUMED** (fresh container: dockerd + Postgres started, worktrees recreated at `/home/user/PRONGHORN-BLUE-wt/<WP>`, BE baseline re-verified 652 tests). Dispatched: F6 dev (PR-14, PR-16..21, axe baseline), F2 dev (T023), F2b dev (877 vs 412 reconciliation), BE2 tester + reviewer, BE4 fix round 1 (rest), BE5 dev (routes, service, JobDispatcher, tests).
 
 - **Merged WP-BE4** (fix round 1 finished; verified by orchestrator: BE build OK, 733 tests on feature/frontend-new). BE2 reviewer CHANGES REQUIRED (release() skips releaseChecks; no advisory lock; carry-over name collision; staging not keyed by branch) → fix round 1 dispatched; decided to fix staging partitioning now (migration 018). F2 T023 done (9 atoms incl. RepoRow per contract) → tester + reviewer. F2b T030 gap closed (a565881): 628 mapped + 295 unmapped = 923 tokens in 89 files; token lint rule has the same object-literal/interpolation blind spots → fix in T031.
+- **Merged WP-F2** (tester FAIL: 4 light contrast pairs; reviewer CHANGES REQUIRED → fix round 1 → verified by orchestrator: FE lint 0 errors, tsc OK, 405 tests, build OK). F2b T031 and F3 dispatched (parallel; F3 keeps legacy file edits minimal).
+- BE5: tester PASS (826 tests), reviewer CHANGES REQUIRED (no transition locking, report_secret_ref null, default_branch, duplicated token minting, Azure import missing), security FAIL (high: cross-org repo enumeration on /onboarding/github/repos → decided: require teamId, filter by the org's configured GitHub scope) → fix round 1 dispatched.
+- F6: T017 done (4efeb81): PR-01..PR-21 54/54 green twice on legacy, axe-legacy.json baseline. Reviewer APPROVE. Legacy bugs recorded in e2e/README.md (restyles keep them; Phase R): BuildBook create never inserts (QueryBuilder.select after insert), Gallery clone param mismatch + missing toaster, Gallery titles blank (project_name alias), ProjectSettings name clobber.
+- BE2 fix round 1 done (968742d, 6779f30, 7533733; 652 BE tests; migration 018) → re-review.
+- **Merged WP-BE2** (re-review APPROVE; verified by orchestrator: BE build OK, 806 tests on feature/frontend-new).
+- **Merged WP-F6** (tester PASS, reviewer APPROVE; tasks.md conflict resolved: kept feature ticks, ticked T016/T017). **T017 gate for restyles is met.**
 
-Not started: F3, F5, T031, T037, all of waves 3–5, BE6, polish, T170–T171.
+Not started: F5, T037, T037, all of waves 3–5, BE6, polish, T170–T171.
