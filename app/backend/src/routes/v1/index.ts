@@ -25,8 +25,10 @@ import githubRouter from "../github";
 import teamsRouter from "../teams";
 import applicationsRouter from "../applications";
 import packsRouter from "../packs";
+import meshRouter from "../mesh";
 import versionsRouter from "../versions";
 import workItemsRouter, { workItemByIdRouter } from "../workItems";
+import adminIntegrationsRouter from "../admin/integrations";
 
 const router = Router();
 
@@ -56,6 +58,11 @@ router.use("/github", optionalAuthMiddleware, githubRouter);
 router.use("/teams", authMiddleware, teamsRouter);
 router.use("/applications", authMiddleware, applicationsRouter);
 router.use("/packs", authMiddleware, packsRouter);
+// Mixed auth: POST /mesh/runs authenticates via the X-Pronghorn-Signature
+// HMAC (no user session), every other /mesh route requires req.user — see
+// routes/mesh.ts.
+router.use("/mesh", optionalAuthMiddleware, meshRouter);
+router.use("/admin/integrations", authMiddleware, adminIntegrationsRouter);
 
 // - db is protected (require auth)
 // - rpc and functions use optional auth (some calls allow anonymous)
