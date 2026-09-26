@@ -18,6 +18,8 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 |---|---|---|---|
 | T000–T002 | done | (pre-existing) | F0, done before this run |
 | T010 | done | 111538a | Fork copy only, done by the orchestrator (mechanical copy) |
+| T120 | done | 81cf4be | WP-BE3. mesh_policy.scope adds `repository` (needed by D-17) |
+| T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
 
 ## Escalations to Opus 5.5
 
@@ -30,3 +32,4 @@ None yet.
 ## Wave log
 
 - **Wave 1 dispatched** (developers, Sonnet 5, worktrees under `../PRONGHORN-BLUE-wt/`): F1, F6 (T016–T017 only; T037 after F3), BE1, BE3, BE7. T003 (F0 leftover) assigned to F1.
+- **Merged WP-BE3** (tester PASS, reviewer APPROVE). BE build OK, 510 tests.
