@@ -87,5 +87,7 @@ Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
 - BE2 fix round 1 done (968742d, 6779f30, 7533733; 652 BE tests; migration 018) → re-review.
 - **Merged WP-BE2** (re-review APPROVE; verified by orchestrator: BE build OK, 806 tests on feature/frontend-new).
 - **Merged WP-F6** (tester PASS, reviewer APPROVE; tasks.md conflict resolved: kept feature ticks, ticked T016/T017). **T017 gate for restyles is met.**
+- F2b T031 done (23 commits to d71b15d): 840 mapped / 0 unmapped, token lint → error, 410 FE tests; new `--ide-*` token group; categorical legends collapsed to tokens → tester + reviewer. BE5 re-review CHANGES REQUIRED (Azure full_name cross-tenant collision, default_branch reset on re-confirm, secret store/resolver env split; + lease instead of held connection, namespaced advisory locks) → fix round 2; security re-check PASS (2 low). F3 committed through T034 (c7606bf).
+- **2026-09-26: spend limit hit a third time (HTTP 429)**; stopped BE5 dev (round 2, uncommitted), F3 dev (T036 in progress), F2b tester, F2b reviewer. Container restarted (dockerd + Postgres restarted; worktrees intact; all wp/* branches pushed to origin as backup). Resumed all four via SendMessage.
 
 Not started: F5, T037, T037, all of waves 3–5, BE6, polish, T170–T171.
