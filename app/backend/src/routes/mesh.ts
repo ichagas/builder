@@ -71,6 +71,23 @@ function rejectIngestAuth(res: Response): void {
 }
 
 /**
+ * `report_url` is stored and later rendered as a link on the evidence page
+ * (T122/T132) — reject anything but an `https://` URL so a malicious CI
+ * (or a compromised repository secret) can't smuggle a `javascript:`/`data:`
+ * URL into a field a browser might later navigate to, or an `http://` URL
+ * that would leak the evidence blob's SAS token over plaintext.
+ */
+function isValidReportUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return url.protocol === "https:";
+}
+
+/**
  * POST /mesh/runs
  * Ingest a signed evidence report from the generated CI (GitHub Actions or
  * Azure Pipelines) for a PR targeting the repository's default branch
@@ -79,17 +96,30 @@ function rejectIngestAuth(res: Response): void {
  * the repository's `report_secret_ref` secret.
  */
 router.post("/runs", async (req: Request, res: Response) => {
-  const rawBody = req.rawBody;
-  if (!rawBody) {
-    // Should not happen behind express.json()'s verify hook; fail closed.
+  // index.ts mounts a route-scoped express.raw() ahead of the global
+  // express.json() for this exact path+method, so req.body is the exact
+  // bytes the CI sent (a Buffer) — required to HMAC-verify them, and to
+  // reject an oversized report before it is ever parsed. That parser also
+  // enforces the 2 MiB limit itself (413), but the length check below is
+  // kept as defense in depth for any caller that reaches this handler with
+  // the body already read some other way (e.g. a unit test of the router in
+  // isolation).
+  if (!Buffer.isBuffer(req.body)) {
     throw Errors.badRequest("Missing request body");
   }
+  const rawBody = req.body;
   if (rawBody.length > MAX_INGEST_BODY_BYTES) {
     res.status(413).json({ error: "PayloadTooLarge", message: "Report body exceeds the size limit" });
     return;
   }
 
-  const body = req.body || {};
+  let body: any;
+  try {
+    body = JSON.parse(rawBody.toString("utf8"));
+  } catch {
+    throw Errors.badRequest("Body is not valid JSON");
+  }
+
   const repositoryFullName: string | undefined = body.repository;
   if (!repositoryFullName || typeof repositoryFullName !== "string") {
     return rejectIngestAuth(res);
@@ -154,6 +184,9 @@ router.post("/runs", async (req: Request, res: Response) => {
     }
   }
   if (!Array.isArray(findings)) errors.push("findings must be an array");
+  if (reportUrl && typeof reportUrl === "string" && !isValidReportUrl(reportUrl)) {
+    errors.push("report_url must be an https:// URL");
+  }
   if (errors.length) throw Errors.validation(errors);
 
   if (baseBranch !== repo.default_branch) {

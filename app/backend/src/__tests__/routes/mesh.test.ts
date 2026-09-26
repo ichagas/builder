@@ -60,15 +60,28 @@ function fakeAuth(userId?: string) {
   };
 }
 
+// Mirrors index.ts's production wiring: POST /mesh/runs gets a route-scoped
+// raw-body parser (2 MiB limit) ahead of the global JSON parser, so
+// req.body is the exact bytes for HMAC verification and an oversized report
+// is rejected at the parsing stage (413) before the handler ever runs.
+// Every other route parses JSON normally.
 function createApp(userId?: string) {
   const app = express();
-  app.use(
-    express.json({
-      verify: (req: any, _res, buf: Buffer) => {
-        req.rawBody = buf;
-      },
-    }),
-  );
+  app.use((req, res, next) => {
+    if (req.method === "POST" && req.path === "/mesh/runs") {
+      express.raw({ type: "application/json", limit: "2mb" })(req, res, (err: any) => {
+        if (err) {
+          err.statusCode = err.statusCode || err.status || 500;
+          next(err);
+          return;
+        }
+        next();
+      });
+      return;
+    }
+    next();
+  });
+  app.use(express.json());
   app.use(fakeAuth(userId));
   app.use("/mesh", meshRouter);
   app.use(errorHandler);
@@ -262,6 +275,44 @@ describe("POST /mesh/runs", () => {
       .send(body);
 
     expect(res.status).toBe(422);
+  });
+
+  it("422s a report_url that isn't https (rejects javascript:/data:/http:)", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [repoRow()] });
+
+    const body = JSON.stringify(reportBody({ report_url: "javascript:alert(1)" }));
+    const res = await request(createApp())
+      .post("/mesh/runs")
+      .set("Content-Type", "application/json")
+      .set("X-Pronghorn-Signature", sign(body))
+      .send(body);
+
+    expect(res.status).toBe(422);
+  });
+
+  it("422s a plain http:// report_url", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [repoRow()] });
+
+    const body = JSON.stringify(reportBody({ report_url: "http://example.blob.core.windows.net/report.json" }));
+    const res = await request(createApp())
+      .post("/mesh/runs")
+      .set("Content-Type", "application/json")
+      .set("X-Pronghorn-Signature", sign(body))
+      .send(body);
+
+    expect(res.status).toBe(422);
+  });
+
+  it("413s an oversized body before the handler ever runs (no repo lookup, no signature check)", async () => {
+    const res = await request(createApp())
+      .post("/mesh/runs")
+      .set("Content-Type", "application/json")
+      .set("X-Pronghorn-Signature", "sha256=" + "0".repeat(64))
+      .send({ repository: "goa/permits-api", padding: "x".repeat(3 * 1024 * 1024) });
+
+    expect(res.status).toBe(413);
+    // The route-scoped raw parser rejects it before any DB call.
+    expect(mockDbQuery).not.toHaveBeenCalled();
   });
 
   it("accepts a valid signed report, ratchets against the baseline, and returns new_findings_by_agent", async () => {

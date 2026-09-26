@@ -6,6 +6,7 @@ import {
   setAzureDevOpsClientProvider,
   resetAzureDevOpsClientProviderForTests,
   AzureDevOpsClientProvider,
+  escapeMarkdown,
 } from "../../../services/mesh/issueService";
 
 jest.mock("../../../utils/logger", () => ({
@@ -158,5 +159,16 @@ describe("openIssueForNewFindings", () => {
 
     expect(result.created).toBe(false);
     expect(result.issueRef).toBeNull();
+  });
+});
+
+describe("escapeMarkdown", () => {
+  it("escapes Markdown control characters and backticks from untrusted finding fields", () => {
+    const malicious = "`rm -rf /` **bold** _em_ [link](javascript:alert(1)) # heading";
+    const escaped = escapeMarkdown(malicious);
+    // No unescaped Markdown-significant character remains.
+    expect(escaped).not.toMatch(/(?<!\\)[`*_[\]()#]/);
+    // The literal text content is preserved, just backslash-escaped.
+    expect(escaped.replace(/\\/g, "")).toBe(malicious);
   });
 });

@@ -125,6 +125,18 @@ function groupByAgent(findings: MeshFinding[]): FindingsByAgent[] {
   return [...map.entries()].map(([agent, list]) => ({ agent, findings: list }));
 }
 
+/**
+ * Findings come from the CI report body — untrusted input as far as this
+ * service is concerned (a compromised repository secret, or a bug on the CI
+ * side, could put anything in `rule`/`file`/`location`/`message`). Escape
+ * Markdown control characters and backticks before they go into an issue
+ * body, so a finding can't break out of its list item, inject a fake
+ * heading, or fence-escape a code block.
+ */
+export function escapeMarkdown(value: string): string {
+  return value.replace(/[\\`*_{}[\]()#+.!|>~-]/g, (ch) => `\\${ch}`);
+}
+
 function formatIssueBody(runId: string, packVersion: string, reportUrl: string, groups: FindingsByAgent[]): string {
   const lines: string[] = [
     `The Assurance Mesh found new findings on run \`${runId}\` (pack ${packVersion}).`,
@@ -133,10 +145,12 @@ function formatIssueBody(runId: string, packVersion: string, reportUrl: string, 
     "",
   ];
   for (const group of groups) {
-    lines.push(`### ${group.agent}`, "");
+    lines.push(`### ${escapeMarkdown(group.agent)}`, "");
     for (const finding of group.findings) {
       const location = [finding.file, finding.location].filter(Boolean).join(":");
-      lines.push(`- **${finding.rule}**${location ? ` (${location})` : ""}: ${finding.message || "see report"}`);
+      const rule = escapeMarkdown(finding.rule || "");
+      const message = escapeMarkdown(finding.message || "see report");
+      lines.push(`- **${rule}**${location ? ` (${escapeMarkdown(location)})` : ""}: ${message}`);
     }
     lines.push("");
   }
