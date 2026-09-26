@@ -10,7 +10,7 @@ jest.mock("../../../utils/database", () => {
 });
 
 import db from "../../../utils/database";
-import { isConnectionInUse } from "../../../services/integrations/connectionRepository";
+import { isConnectionInUse, updateConnectionFields } from "../../../services/integrations/connectionRepository";
 
 const mockDbQuery = db.query as jest.Mock;
 
@@ -58,5 +58,40 @@ describe("isConnectionInUse", () => {
     const result = await isConnectionInUse("conn-1");
 
     expect(result).toBe(false);
+  });
+});
+
+describe("updateConnectionFields", () => {
+  beforeEach(() => mockDbQuery.mockReset());
+
+  it("updates only displayName when scope isn't given", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ id: "conn-1", display_name: "New name" }] });
+
+    await updateConnectionFields("conn-1", { displayName: "New name" });
+
+    const [sql, params] = mockDbQuery.mock.calls[0];
+    expect(sql).toContain("display_name = $1");
+    expect(sql).not.toContain("scope = $");
+    expect(params).toEqual(["New name", "conn-1"]);
+  });
+
+  it("updates only scope when displayName isn't given", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ id: "conn-1", scope: { owners: ["goa"] } }] });
+
+    await updateConnectionFields("conn-1", { scope: { owners: ["goa"] } });
+
+    const [sql, params] = mockDbQuery.mock.calls[0];
+    expect(sql).not.toContain("display_name = $");
+    expect(sql).toContain("scope = $1");
+    expect(params).toEqual([JSON.stringify({ owners: ["goa"] }), "conn-1"]);
+  });
+
+  it("updates both fields together, id last", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ id: "conn-1" }] });
+
+    await updateConnectionFields("conn-1", { displayName: "New name", scope: { owners: ["goa"] } });
+
+    const [, params] = mockDbQuery.mock.calls[0];
+    expect(params).toEqual(["New name", JSON.stringify({ owners: ["goa"] }), "conn-1"]);
   });
 });

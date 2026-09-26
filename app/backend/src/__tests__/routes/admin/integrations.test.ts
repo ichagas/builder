@@ -21,15 +21,23 @@ jest.mock("../../../utils/logger", () => ({
 process.env.INTEGRATIONS_SECRET_STORE = "memory";
 process.env.KEY_VAULT_URL = "";
 
-jest.mock("../../../services/integrations/providers/githubApp", () => ({
-  getGitHubAppStatus: jest.fn(async () => ({
-    configured: true,
-    installationId: "12345",
-    accountLogin: "goa-standards",
-    permissions: { pull_requests: "write", issues: "write" },
-    ok: true,
-  })),
-}));
+jest.mock("../../../services/integrations/providers/githubApp", () => {
+  // isValidGitHubLogin is kept real (it's pure, no network/DB) so validation
+  // tests exercise the actual GitHub login regex; only the two calls that
+  // hit GitHub are mocked.
+  const actual = jest.requireActual("../../../services/integrations/providers/githubApp");
+  return {
+    ...actual,
+    getGitHubAppStatus: jest.fn(async () => ({
+      configured: true,
+      installationId: "12345",
+      accountLogin: "goa-standards",
+      permissions: { pull_requests: "write", issues: "write" },
+      ok: true,
+    })),
+    verifyGitHubOwnersHaveRepositories: jest.fn(),
+  };
+});
 
 jest.mock("../../../utils/database", () => {
   const queryFn = jest.fn();
@@ -41,7 +49,9 @@ jest.mock("../../../utils/database", () => {
 
 import db from "../../../utils/database";
 import { logger } from "../../../utils/logger";
+import { verifyGitHubOwnersHaveRepositories } from "../../../services/integrations/providers/githubApp";
 const mockDbQuery = db.query as jest.Mock;
+const mockVerifyGitHubOwners = verifyGitHubOwnersHaveRepositories as jest.Mock;
 
 function fakeAuth(userId?: string) {
   return (req: express.Request, _res: express.Response, next: express.NextFunction) => {
@@ -110,12 +120,25 @@ function installFixtureDb() {
       connections.push(row);
       return { rows: [row] };
     }
-    if (sql.includes("UPDATE public.integration_connections")) {
+    if (sql.includes("UPDATE public.integration_connections") && sql.includes("SET status = ")) {
+      // updateConnectionTestResult: params = [id, status]
       const [id, status] = params;
       const row = connections.find((c) => c.id === id);
       if (row) {
         row.status = status;
         row.last_tested_at = new Date().toISOString();
+      }
+      return { rows: row ? [row] : [] };
+    }
+    if (sql.includes("UPDATE public.integration_connections")) {
+      // updateConnectionFields: params = [displayName?, scope?, id] (id always last)
+      const id = params[params.length - 1];
+      const row = connections.find((c) => c.id === id);
+      if (row) {
+        let idx = 0;
+        if (sql.includes("display_name = $")) row.display_name = params[idx++];
+        if (sql.includes("scope = $")) row.scope = JSON.parse(params[idx++]);
+        row.updated_at = new Date().toISOString();
       }
       return { rows: row ? [row] : [] };
     }
@@ -438,5 +461,198 @@ describe("DELETE /admin/integrations/:id", () => {
     await expect(store.getSecret(secretRef)).rejects.toThrow();
 
     deleteSecretSpy.mockRestore();
+  });
+});
+
+describe("POST /admin/integrations — github_app connections (fix round 1 follow-up)", () => {
+  it("403s for a non-admin", async () => {
+    const res = await request(createApp(NON_ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa-standards"] });
+    expect(res.status).toBe(403);
+  });
+
+  it("creates a connection with no secret, normalized (lowercased) owners", async () => {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["GOA-Standards", "goa-labs"] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.provider).toBe("github_app");
+    expect(res.body.authType).toBe("app_installation");
+    expect(res.body.hasSecret).toBe(false);
+    expect(res.body.scope).toEqual({ owners: ["goa-standards", "goa-labs"] });
+    expect(res.body.secretRef).toBeUndefined();
+  });
+
+  it("requires displayName", async () => {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", owners: ["goa-standards"] });
+    expect(res.status).toBe(422);
+  });
+
+  it("requires at least one owner", async () => {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "x", owners: [] });
+    expect(res.status).toBe(422);
+  });
+
+  it("rejects more than 50 owners", async () => {
+    const owners = Array.from({ length: 51 }, (_, i) => `owner-${i}`);
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "x", owners });
+    expect(res.status).toBe(422);
+  });
+
+  it("rejects a syntactically invalid GitHub login", async () => {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "x", owners: ["-leading-hyphen"] });
+    expect(res.status).toBe(422);
+  });
+
+  it("rejects a login with consecutive hyphens", async () => {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "x", owners: ["goa--standards"] });
+    expect(res.status).toBe(422);
+  });
+
+  it("de-duplicates owners that differ only by case", async () => {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "x", owners: ["goa", "GOA", " goa "] });
+    expect(res.status).toBe(201);
+    expect(res.body.scope.owners).toEqual(["goa"]);
+  });
+
+  it("lists github_app connections under githubAppConnections in GET /admin/integrations", async () => {
+    await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa"] });
+
+    const res = await request(createApp(ADMIN_USER_ID)).get("/admin/integrations");
+    expect(res.status).toBe(200);
+    expect(res.body.githubAppConnections).toHaveLength(1);
+    expect(res.body.githubAppConnections[0].provider).toBe("github_app");
+    expect(res.body.azureDevOps).toEqual([]);
+  });
+});
+
+describe("PATCH /admin/integrations/:id — github_app owners", () => {
+  async function seedGitHubAppConnection(owners: string[] = ["goa"]) {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners });
+    return res.body.id as string;
+  }
+
+  it("403s for a non-admin", async () => {
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(NON_ADMIN_USER_ID)).patch(`/admin/integrations/${id}`).send({ owners: ["goa2"] });
+    expect(res.status).toBe(403);
+  });
+
+  it("404s for a connection belonging to another organization", async () => {
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(OTHER_ORG_ADMIN_USER_ID)).patch(`/admin/integrations/${id}`).send({ owners: ["goa2"] });
+    expect(res.status).toBe(404);
+  });
+
+  it("422s when body is empty", async () => {
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(ADMIN_USER_ID)).patch(`/admin/integrations/${id}`).send({});
+    expect(res.status).toBe(422);
+  });
+
+  it("updates the owners list, normalized", async () => {
+    const id = await seedGitHubAppConnection(["goa"]);
+    const res = await request(createApp(ADMIN_USER_ID))
+      .patch(`/admin/integrations/${id}`)
+      .send({ owners: ["Goa-Labs", "goa-standards"] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.scope.owners).toEqual(["goa-labs", "goa-standards"]);
+  });
+
+  it("422s an invalid owner login on update", async () => {
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(ADMIN_USER_ID)).patch(`/admin/integrations/${id}`).send({ owners: ["bad_login!"] });
+    expect(res.status).toBe(422);
+  });
+
+  it("updates displayName", async () => {
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(ADMIN_USER_ID)).patch(`/admin/integrations/${id}`).send({ displayName: "Renamed" });
+    expect(res.status).toBe(200);
+    expect(res.body.displayName).toBe("Renamed");
+  });
+
+  it("400s when setting owners on an azure_devops connection", async () => {
+    const azureRes = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({
+        displayName: "Azure conn",
+        organizationUrl: "https://dev.azure.com/goa-standards",
+        authType: "pat",
+        patValue: "pat-value",
+      });
+
+    const res = await request(createApp(ADMIN_USER_ID))
+      .patch(`/admin/integrations/${azureRes.body.id}`)
+      .send({ owners: ["goa"] });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /admin/integrations/:id/test — github_app connections", () => {
+  async function seedGitHubAppConnection(owners: string[] = ["goa", "goa-labs"]) {
+    const res = await request(createApp(ADMIN_USER_ID))
+      .post("/admin/integrations")
+      .send({ provider: "github_app", displayName: "GitHub import scope", owners });
+    return res.body.id as string;
+  }
+
+  it("403s for a non-admin", async () => {
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(NON_ADMIN_USER_ID)).post(`/admin/integrations/${id}/test`);
+    expect(res.status).toBe(403);
+  });
+
+  it("404s for a connection belonging to another organization", async () => {
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(OTHER_ORG_ADMIN_USER_ID)).post(`/admin/integrations/${id}/test`);
+    expect(res.status).toBe(404);
+  });
+
+  it("marks the connection 'ok' when every owner has at least one visible repository", async () => {
+    mockVerifyGitHubOwners.mockResolvedValue([
+      { owner: "goa", ok: true },
+      { owner: "goa-labs", ok: true },
+    ]);
+
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(ADMIN_USER_ID)).post(`/admin/integrations/${id}/test`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(mockVerifyGitHubOwners).toHaveBeenCalledWith(["goa", "goa-labs"]);
+  });
+
+  it("marks the connection 'failing' when any owner has no visible repository", async () => {
+    mockVerifyGitHubOwners.mockResolvedValue([
+      { owner: "goa", ok: true },
+      { owner: "goa-labs", ok: false, error: "No repositories visible to the installation under this owner" },
+    ]);
+
+    const id = await seedGitHubAppConnection();
+    const res = await request(createApp(ADMIN_USER_ID)).post(`/admin/integrations/${id}/test`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("failing");
+    expect(res.body.testError).toContain("goa-labs");
   });
 });

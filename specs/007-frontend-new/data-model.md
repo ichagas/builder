@@ -197,7 +197,7 @@ Migration `016_integrations.sql`
 | auth_type | text check in (`app_installation`,`service_connection`,`pat`) | Azure DevOps choice left to admins |
 | display_name | text | |
 | secret_ref | text | Key Vault secret name. **Never** the secret itself |
-| scope | jsonb | org URL, projects or installation id |
+| scope | jsonb | org URL, projects or installation id. For `provider = github_app`: `{owners: string[]}`, the GitHub user/organization logins this organization's onboarding import may draw from (fix round 1 follow-up — `auth_type = app_installation`, `secret_ref` always null: the App's credentials are platform-wide, not per-connection) |
 | last_tested_at | timestamptz null | |
 | status | text check in (`ok`,`failing`,`untested`) | |
 

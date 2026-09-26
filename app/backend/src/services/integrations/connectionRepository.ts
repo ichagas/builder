@@ -116,6 +116,38 @@ export async function createConnection(input: CreateConnectionInput): Promise<In
   return rows[0];
 }
 
+export interface UpdateConnectionFieldsInput {
+  displayName?: string;
+  scope?: Record<string, unknown>;
+}
+
+/** Update a connection's editable, non-secret fields (display name and/or scope). */
+export async function updateConnectionFields(
+  id: string,
+  fields: UpdateConnectionFieldsInput
+): Promise<IntegrationConnectionRow> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  let i = 1;
+
+  if (fields.displayName !== undefined) {
+    sets.push(`display_name = $${i++}`);
+    values.push(fields.displayName);
+  }
+  if (fields.scope !== undefined) {
+    sets.push(`scope = $${i++}`);
+    values.push(JSON.stringify(fields.scope));
+  }
+  sets.push(`updated_at = now()`);
+
+  values.push(id);
+  const { rows } = await db.query(
+    `UPDATE public.integration_connections SET ${sets.join(", ")} WHERE id = $${i} RETURNING ${SELECT_COLUMNS}`,
+    values
+  );
+  return rows[0];
+}
+
 export async function updateConnectionTestResult(
   id: string,
   status: IntegrationStatus
