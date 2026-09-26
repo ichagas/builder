@@ -625,7 +625,7 @@ export function ConnectDatabaseDialog({
                     </span>
                   )}
                   {(certMode !== "none" && (caCertificateUrl || caCertificateContent)) && (
-                    <span className="text-xs bg-green-500/10 text-green-600 px-2 py-0.5 rounded">
+                    <span className="text-xs bg-ok/10 text-ok px-2 py-0.5 rounded">
                       New
                     </span>
                   )}
@@ -742,7 +742,7 @@ export function ConnectDatabaseDialog({
                 )}
               </Button>
               {testResult === "success" && (
-                <CheckCircle className="h-5 w-5 text-green-500" />
+                <CheckCircle className="h-5 w-5 text-ok" />
               )}
               {testResult === "failed" && (
                 <XCircle className="h-5 w-5 text-destructive" />

@@ -393,7 +393,7 @@ export function DatabaseSchemaTree({
             <TreeItem
               label="Saved Queries"
               type="category"
-              icon={<Bookmark className="h-4 w-4 text-amber-500" />}
+              icon={<Bookmark className="h-4 w-4 text-warn" />}
               level={0}
               count={savedQueries.length}
               isOpen={openStates["saved_queries"] ?? true}
@@ -404,7 +404,7 @@ export function DatabaseSchemaTree({
                   key={query.id}
                   label={query.name}
                   type="saved_query"
-                  icon={<FileCode className="h-4 w-4 text-amber-400" />}
+                  icon={<FileCode className="h-4 w-4 text-warn" />}
                   level={1}
                   schema=""
                   name={query.name}
@@ -420,7 +420,7 @@ export function DatabaseSchemaTree({
           <TreeItem
             label="Migrations"
             type="category_migrations"
-            icon={<GitBranch className="h-4 w-4 text-emerald-500" />}
+            icon={<GitBranch className="h-4 w-4 text-ok" />}
             level={0}
             count={migrations.length}
             isOpen={openStates["migrations"] ?? false}
@@ -453,7 +453,7 @@ export function DatabaseSchemaTree({
                     key={migration.id}
                     label={`${migration.sequence_number}. ${migration.name || `${migration.statement_type} ${migration.object_type}`}`}
                     type="migration"
-                    icon={<GitBranch className="h-4 w-4 text-emerald-400" />}
+                    icon={<GitBranch className="h-4 w-4 text-ok" />}
                     level={1}
                     schema={migration.object_schema || ""}
                     name={migration.name || ""}
@@ -474,7 +474,7 @@ export function DatabaseSchemaTree({
                 key={schema.name}
                 label={schema.name}
                 type="schema"
-                icon={<FolderClosed className="h-4 w-4 text-yellow-500" />}
+                icon={<FolderClosed className="h-4 w-4 text-warn" />}
                 level={0}
                 isOpen={openStates[schemaKey] ?? schema.name === "public"}
                 onToggle={(v) => toggleOpen(schemaKey, v)}
@@ -501,7 +501,7 @@ export function DatabaseSchemaTree({
                         key={table}
                         label={table}
                         type="table"
-                        icon={<Table2 className="h-4 w-4 text-blue-500" />}
+                        icon={<Table2 className="h-4 w-4 text-primary" />}
                         level={2}
                         schema={schema.name}
                         name={table}
@@ -534,7 +534,7 @@ export function DatabaseSchemaTree({
                         key={view}
                         label={view}
                         type="view"
-                        icon={<Eye className="h-4 w-4 text-purple-500" />}
+                        icon={<Eye className="h-4 w-4 text-define" />}
                         level={2}
                         schema={schema.name}
                         name={view}
@@ -567,7 +567,7 @@ export function DatabaseSchemaTree({
                         key={func}
                         label={func}
                         type="function"
-                        icon={<Zap className="h-4 w-4 text-orange-500" />}
+                        icon={<Zap className="h-4 w-4 text-warn" />}
                         level={2}
                         schema={schema.name}
                         name={func}
@@ -600,7 +600,7 @@ export function DatabaseSchemaTree({
                         key={trigger.name}
                         label={`${trigger.name} (${trigger.table})`}
                         type="trigger"
-                        icon={<Clock className="h-4 w-4 text-green-500" />}
+                        icon={<Clock className="h-4 w-4 text-ok" />}
                         level={2}
                         schema={schema.name}
                         name={trigger.name}
@@ -634,7 +634,7 @@ export function DatabaseSchemaTree({
                         key={index.name}
                         label={`${index.name} (${index.table})`}
                         type="index"
-                        icon={<Search className="h-4 w-4 text-cyan-500" />}
+                        icon={<Search className="h-4 w-4 text-design" />}
                         level={2}
                         schema={schema.name}
                         name={index.name}
@@ -668,7 +668,7 @@ export function DatabaseSchemaTree({
                         key={seq}
                         label={seq}
                         type="sequence"
-                        icon={<Hash className="h-4 w-4 text-pink-500" />}
+                        icon={<Hash className="h-4 w-4 text-bad" />}
                         level={2}
                         schema={schema.name}
                         name={seq}
@@ -701,7 +701,7 @@ export function DatabaseSchemaTree({
                         key={type.name}
                         label={`${type.name} (${type.type})`}
                         type="type"
-                        icon={<Type className="h-4 w-4 text-indigo-500" />}
+                        icon={<Type className="h-4 w-4 text-primary" />}
                         level={2}
                         schema={schema.name}
                         name={type.name}
@@ -735,7 +735,7 @@ export function DatabaseSchemaTree({
                         key={constraint.name}
                         label={`${constraint.name} (${constraint.type})`}
                         type="constraint"
-                        icon={<KeyRound className="h-4 w-4 text-red-500" />}
+                        icon={<KeyRound className="h-4 w-4 text-bad" />}
                         level={2}
                         schema={schema.name}
                         name={constraint.name}

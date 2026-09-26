@@ -275,8 +275,8 @@ export default function SchemaCreator({
 
       {/* Warning if source has 'id' column and auto-ID is enabled */}
       {addAutoId && sourceHasIdColumn && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-2 bg-warn/10 border border-warn/20 rounded-lg">
+          <AlertTriangle className="h-4 w-4 text-warn shrink-0" />
           <p className="text-sm text-muted-foreground">
             Your data has an "id" column which conflicts with the auto-generated primary key. 
             It has been renamed to "original_id" to avoid duplication.
@@ -335,7 +335,7 @@ export default function SchemaCreator({
               </tr>
             )}
             {columns.map((col, idx) => (
-              <tr key={idx} className={cn("hover:bg-muted/30", col.wasRenamed && "bg-amber-500/5")}>
+              <tr key={idx} className={cn("hover:bg-muted/30", col.wasRenamed && "bg-warn/5")}>
                 <td className="px-3 py-2 border-b">
                   <Input
                     value={col.name}
@@ -348,7 +348,7 @@ export default function SchemaCreator({
                         from: {col.originalName}
                       </span>
                       {col.wasRenamed && (
-                        <Badge variant="outline" className="text-xs text-amber-600">renamed</Badge>
+                        <Badge variant="outline" className="text-xs text-warn">renamed</Badge>
                       )}
                     </div>
                   )}
@@ -371,7 +371,7 @@ export default function SchemaCreator({
                   </Select>
                   {col.type !== col.inferredInfo.inferredType && (
                     <div className="flex items-center gap-1 mt-1">
-                      <Sparkles className="h-3 w-3 text-amber-500" />
+                      <Sparkles className="h-3 w-3 text-warn" />
                       <span className="text-xs text-muted-foreground">
                         AI suggested: {col.inferredInfo.inferredType}
                       </span>
@@ -436,7 +436,7 @@ export default function SchemaCreator({
         {columns.length} columns • {addAutoId ? 1 : columns.filter(c => c.isPrimaryKey).length} primary key • 
         {columns.filter(c => c.hasIndex).length} indexes
         {renamedColumnsCount > 0 && (
-          <span className="text-amber-600"> • {renamedColumnsCount} column(s) renamed</span>
+          <span className="text-warn"> • {renamedColumnsCount} column(s) renamed</span>
         )}
       </div>
     </div>

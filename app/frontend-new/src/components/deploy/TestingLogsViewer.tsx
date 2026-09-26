@@ -108,9 +108,9 @@ const TestingLogsViewer = ({ deploymentId, projectId, shareToken }: TestingLogsV
       case "error":
         return <AlertCircle className="h-4 w-4 text-destructive" />;
       case "warning":
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-warn" />;
       case "info":
-        return <Info className="h-4 w-4 text-blue-500" />;
+        return <Info className="h-4 w-4 text-primary" />;
       case "stdout":
       case "stderr":
         return <Terminal className="h-4 w-4 text-muted-foreground" />;
@@ -208,7 +208,7 @@ const TestingLogsViewer = ({ deploymentId, projectId, shareToken }: TestingLogsV
                             </span>
                           )}
                           {log.is_resolved && (
-                            <Badge variant="outline" className="text-[10px] text-green-600">
+                            <Badge variant="outline" className="text-[10px] text-ok">
                               <Check className="h-3 w-3 mr-1" />
                               Resolved
                             </Badge>

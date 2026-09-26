@@ -181,7 +181,7 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
             </Badge>
           )}
           {queryType === "write" && (
-            <Badge variant="secondary" className="gap-1 h-5 text-[10px] bg-amber-500/20 text-amber-600 border-amber-500/30">
+            <Badge variant="secondary" className="gap-1 h-5 text-[10px] bg-warn/20 text-warn border-warn/30">
               <AlertTriangle className="h-3 w-3" />
               Write
             </Badge>

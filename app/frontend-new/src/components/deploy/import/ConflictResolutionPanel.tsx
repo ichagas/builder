@@ -32,7 +32,7 @@ export const ConflictResolutionPanel: React.FC<ConflictResolutionPanelProps> = (
   if (tablesWithMatches.length === 0) {
     return (
       <div className="p-4 border rounded-lg bg-muted/30 text-center text-muted-foreground">
-        <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
+        <Check className="h-8 w-8 mx-auto mb-2 text-ok" />
         <p className="text-sm">All tables will be created fresh. No conflicts detected.</p>
       </div>
     );
@@ -41,14 +41,14 @@ export const ConflictResolutionPanel: React.FC<ConflictResolutionPanelProps> = (
   return (
     <div className="h-full flex flex-col">
       {/* Summary header */}
-      <div className="flex items-center gap-2 p-3 border rounded-lg bg-amber-500/10 border-amber-500/30 shrink-0">
-        <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+      <div className="flex items-center gap-2 p-3 border rounded-lg bg-warn/10 border-warn/30 shrink-0">
+        <AlertTriangle className="h-5 w-5 text-warn shrink-0" />
         <div className="text-sm">
           <span className="font-medium">
             {tablesWithMatches.length} table{tablesWithMatches.length > 1 ? "s" : ""} found with potential matches
           </span>
           {tablesWithConflicts.length > 0 && (
-            <span className="text-amber-600 dark:text-amber-400 ml-2">
+            <span className="text-warn ml-2">
               ({tablesWithConflicts.length} with type conflicts)
             </span>
           )}
@@ -69,10 +69,10 @@ export const ConflictResolutionPanel: React.FC<ConflictResolutionPanelProps> = (
                     variant="outline" 
                     className={cn(
                       "text-xs",
-                      match.status === "conflict" && "border-amber-500 text-amber-600 dark:text-amber-400",
-                      match.status === "insert" && "border-blue-500 text-blue-600 dark:text-blue-400",
-                      match.status === "augment" && "border-purple-500 text-purple-600 dark:text-purple-400",
-                      match.status === "new" && "border-green-500 text-green-600 dark:text-green-400",
+                      match.status === "conflict" && "border-warn text-warn",
+                      match.status === "insert" && "border-primary text-primary",
+                      match.status === "augment" && "border-define text-define",
+                      match.status === "new" && "border-ok text-ok",
                       match.status === "skip" && "border-muted-foreground text-muted-foreground"
                     )}
                   >
@@ -220,7 +220,7 @@ export const ConflictResolutionPanel: React.FC<ConflictResolutionPanelProps> = (
                           .filter(cm => cm.existingColumn && cm.typeMatch)
                           .slice(0, 8)
                           .map((cm) => (
-                            <Badge key={cm.importColumn} variant="outline" className="text-xs text-green-600 dark:text-green-400 border-green-500/30">
+                            <Badge key={cm.importColumn} variant="outline" className="text-xs text-ok border-ok/30">
                               <Check className="h-3 w-3 mr-1" />
                               {cm.importColumn}
                             </Badge>
