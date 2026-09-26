@@ -40,7 +40,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Escalations to Opus 5.5
 
-None yet.
+- **WP-BE5 (T140), fix round 3** — reason: two Sonnet fix rounds, reviewer still CHANGES REQUIRED. Blocking: mesh issueService still parses Azure full_name as 2 segments after round 2 moved it to `<adoOrg>/<project>/<repo>`. Also: PR lease not renewed during long runs, silent ON CONFLICT no-op in the race, missing blocked-path tests, one-github_app-per-org without a DB constraint. Asked for one shared full_name parser used everywhere (incl. BE7 templates) and migration 020.
 
 ## Deviations from the spec
 
@@ -89,5 +89,7 @@ Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
 - **Merged WP-F6** (tester PASS, reviewer APPROVE; tasks.md conflict resolved: kept feature ticks, ticked T016/T017). **T017 gate for restyles is met.**
 - F2b T031 done (23 commits to d71b15d): 840 mapped / 0 unmapped, token lint → error, 410 FE tests; new `--ide-*` token group; categorical legends collapsed to tokens → tester + reviewer. BE5 re-review CHANGES REQUIRED (Azure full_name cross-tenant collision, default_branch reset on re-confirm, secret store/resolver env split; + lease instead of held connection, namespaced advisory locks) → fix round 2; security re-check PASS (2 low). F3 committed through T034 (c7606bf).
 - **2026-09-26: spend limit hit a third time (HTTP 429)**; stopped BE5 dev (round 2, uncommitted), F3 dev (T036 in progress), F2b tester, F2b reviewer. Container restarted (dockerd + Postgres restarted; worktrees intact; all wp/* branches pushed to origin as backup). Resumed all four via SendMessage.
+- BE5 round 2 (b5b45f6, b865655, 205a524, 83bb5ea; migration 019 PR lease; 1028 tests; migrations 001–019 apply on PG16) → review CHANGES REQUIRED → **escalated to Opus 5.5** (round 3).
+- F3 done (T024–T029, T032–T034, T036, T038; 524 FE tests): reviewer APPROVE (follow-ups: focus on route change, usePageRoute() registry helper, NotFound dead /assurance/all link); tester running (APP=new regression + redirects). F2b reviewer CHANGES REQUIRED (document --ide-* in contract; categorical legends must use --chart-* not ok/warn/bad; MiniMap hex; flattened gradients); tester running.
 
 Not started: F5, T037, T037, all of waves 3–5, BE6, polish, T170–T171.
