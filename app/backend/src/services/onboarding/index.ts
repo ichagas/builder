@@ -13,7 +13,7 @@ import { Errors } from "../../middleware/errorHandler";
 import { logger } from "../../utils/logger";
 import db from "../../utils/database";
 import { escapeMarkdown } from "../mesh/issueService";
-import { getSecretStore } from "../integrations";
+import { getSecretStore, getDefaultConnectionForProvider } from "../integrations";
 import {
   checkTeamAccess,
   getProfileId,
@@ -35,11 +35,21 @@ import { canTransition, describeInvalidTransition, isTerminal } from "./stateMac
 import { getJobDispatcher } from "./jobDispatcher";
 import type { JobResult } from "./jobDispatcher";
 import { listGitHubRepositories, ImportableRepository } from "./githubImport";
+import { listAzureDevOpsRepositories, ImportableAzureRepository } from "./azureImport";
 import { openRepositoryPullRequest } from "./pullRequests";
 import { findDisallowedPath } from "./pathValidation";
 
 export interface OnboardingRunView extends OnboardingRunRow {
   repositories: OnboardingRunRepositoryRow[];
+  /**
+   * Fix round 1, item 10: generic, per-repository messages for a PR that
+   * could not be opened on the most recent confirm (e.g. "no generated
+   * files", an upstream API failure) — never the raw upstream error (see
+   * item 9's {@link sanitizeUpstreamError}). Empty once every selected
+   * repository has an open PR. Sourced from each repository's
+   * `review.prError` (cleared there on a later, successful open).
+   */
+  warnings: string[];
 }
 
 async function requireTeamAccess(userId: string, teamId: string) {
@@ -62,9 +72,26 @@ async function requireRunAccess(userId: string, runId: string): Promise<Onboardi
   return run;
 }
 
+function repositoryWarning(repo: OnboardingRunRepositoryRow): string | null {
+  const prError = (repo.review as { prError?: string } | null)?.prError;
+  return typeof prError === "string" && prError.length > 0 ? `${repo.full_name}: ${prError}` : null;
+}
+
 async function toView(run: OnboardingRunRow): Promise<OnboardingRunView> {
   const repositories = await listRepositoriesForRun(run.id);
-  return { ...run, repositories };
+  const warnings = repositories.map(repositoryWarning).filter((w): w is string => w !== null);
+  return { ...run, repositories, warnings };
+}
+
+/**
+ * Fix round 1, item 9: never echo a raw upstream (GitHub/Azure DevOps) error
+ * body back to the client — it can contain provider-internal detail that
+ * isn't ours to expose, and unbounded text from a third party. The full
+ * `err.message` (which `pullRequests.ts` already truncates before throwing)
+ * is logged for operators; callers only ever see this fixed, generic string.
+ */
+function sanitizeUpstreamError(_err: unknown): string {
+  return "could not open the pull request (see server logs for details)";
 }
 
 // Fix round 1, item 7: bound and sanitize user-controlled input that later
@@ -158,15 +185,83 @@ export async function getRun(userId: string, runId: string): Promise<OnboardingR
 // GET /onboarding/github/repos
 // ---------------------------------------------------------------------------
 
+interface GitHubConnectionScope {
+  owner?: string;
+  owners?: string[];
+}
+
+/**
+ * The GitHub org(s) an organization's `github_app` integration connection is
+ * scoped to, or `[]` if none is configured — never derived from anything the
+ * caller supplies. See {@link listImportableGitHubRepositories}.
+ */
+async function getAllowedGitHubOwners(organizationId: string): Promise<string[]> {
+  const connection = await getDefaultConnectionForProvider(organizationId, "github_app");
+  const scope = (connection?.scope ?? {}) as GitHubConnectionScope;
+  if (Array.isArray(scope.owners) && scope.owners.length > 0) return scope.owners;
+  if (scope.owner) return [scope.owner];
+  return [];
+}
+
+/**
+ * Fix round 1, item 6: repositories are scoped to the caller's own
+ * organization, never to an arbitrary `org` the caller could otherwise pass
+ * in — that would let one organization enumerate another's repository names
+ * through the platform's single, shared GitHub App installation. `teamId` is
+ * required so the organization is derived server-side (same authorization
+ * as every other run-scoped route), and only repositories owned by a GitHub
+ * login in that organization's configured `github_app` integration
+ * connection scope are ever returned. An organization with no such
+ * connection configured gets an empty list, not every installation repo.
+ */
 export async function listImportableGitHubRepositories(
-  _userId: string,
-  options: { org?: string; query?: string }
+  userId: string,
+  options: { teamId: string; query?: string }
 ): Promise<ImportableRepository[]> {
-  // Any authenticated user may browse the platform's installation repos —
-  // there is no run/team context at this point in the wizard yet (the run
-  // isn't created until the user names an app). Authentication itself is
-  // enforced by the route's middleware.
-  return listGitHubRepositories({ org: options.org, query: options.query });
+  if (!options.teamId || typeof options.teamId !== "string") {
+    throw Errors.validation({ teamId: "required" });
+  }
+  await requireTeamAccess(userId, options.teamId);
+  const organizationId = await getTeamOrgId(options.teamId);
+  if (!organizationId) throw Errors.notFound("Team");
+
+  const owners = await getAllowedGitHubOwners(organizationId);
+  if (owners.length === 0) {
+    logger.info(`[onboarding] no GitHub scope configured for organization ${organizationId}; returning no repositories`);
+    return [];
+  }
+
+  const perOwner = await Promise.all(owners.map((org) => listGitHubRepositories({ org, query: options.query })));
+  return perOwner.flat();
+}
+
+// ---------------------------------------------------------------------------
+// GET /onboarding/azure/repos
+// ---------------------------------------------------------------------------
+
+/**
+ * Same authorization shape as the GitHub import above: `teamId` is
+ * required, the organization is derived server-side, and
+ * `getAzureDevOpsClient` (WP-BE8) itself only resolves a connection scoped
+ * to that organization — an unconfigured or cross-organization
+ * `connectionId` surfaces as a 400, never another organization's data.
+ */
+export async function listImportableAzureRepositories(
+  userId: string,
+  options: { teamId: string; connectionId?: string; query?: string }
+): Promise<ImportableAzureRepository[]> {
+  if (!options.teamId || typeof options.teamId !== "string") {
+    throw Errors.validation({ teamId: "required" });
+  }
+  await requireTeamAccess(userId, options.teamId);
+  const organizationId = await getTeamOrgId(options.teamId);
+  if (!organizationId) throw Errors.notFound("Team");
+
+  try {
+    return await listAzureDevOpsRepositories(organizationId, options.connectionId, options.query);
+  } catch (err: any) {
+    throw Errors.badRequest(err.message ?? "Could not list Azure DevOps repositories");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -482,6 +577,17 @@ export async function openPullRequests(
     const defaultBranchByRepo = new Map<string, string>();
     const secretRefByRepo = new Map<string, string>();
 
+    // Fix round 1, item 10: persist a generic per-repository failure reason
+    // (never the raw upstream error — item 9) into `review.prError`, merged
+    // with whatever `review` the sandbox job already wrote, so it survives
+    // for `toView` to surface as a warning. Cleared on a later success.
+    const markRepoError = async (repo: OnboardingRunRepositoryRow, message: string) => {
+      errors.push(`${repo.full_name}: ${message}`);
+      await updateRunRepositoryByFullName(runId, repo.full_name, {
+        review: { ...(repo.review ?? {}), prError: message },
+      });
+    };
+
     for (const repo of selected) {
       if (repo.pr_number) {
         // Already opened — idempotent no-op for this repository.
@@ -491,7 +597,7 @@ export async function openPullRequests(
       const provider = providerForCi(repo.detected_ci);
       const files = (repo.generated_manifest ?? []) as Array<{ path: string; content: string }>;
       if (files.length === 0) {
-        errors.push(`${repo.full_name}: no generated files to open a PR from`);
+        await markRepoError(repo, "no generated files to open a PR from");
         continue;
       }
 
@@ -503,7 +609,7 @@ export async function openPullRequests(
         logger.error(
           `[onboarding] rejected PR for ${repo.full_name} (run=${runId}): disallowed generated file path "${disallowedPath}"`
         );
-        errors.push(`${repo.full_name}: generated manifest contains a disallowed path`);
+        await markRepoError(repo, "generated manifest contains a disallowed path");
         continue;
       }
 
@@ -528,14 +634,22 @@ export async function openPullRequests(
 
         defaultBranchByRepo.set(repo.full_name, result.defaultBranch);
 
+        // Success: clear any prError a previous failed attempt left behind.
+        const { prError: _clearedPrError, ...clearedReview } = (repo.review ?? {}) as Record<string, unknown> & {
+          prError?: string;
+        };
         await updateRunRepositoryByFullName(runId, repo.full_name, {
           prNumber: result.prNumber,
           prState: result.prState,
+          review: clearedReview,
         });
-        openedNow.push({ ...repo, pr_number: result.prNumber, pr_state: result.prState });
+        openedNow.push({ ...repo, pr_number: result.prNumber, pr_state: result.prState, review: clearedReview });
       } catch (err: any) {
+        // Item 9: log the real error (which may include upstream response
+        // detail); the client and the persisted warning only ever see a
+        // fixed, generic message.
         logger.error(`[onboarding] failed to open PR for ${repo.full_name} (run=${runId}): ${err.message}`);
-        errors.push(`${repo.full_name}: ${err.message}`);
+        await markRepoError(repo, sanitizeUpstreamError(err));
       }
     }
 

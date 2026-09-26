@@ -68,11 +68,31 @@ Token access: every route accepts `?token=` and authorizes through `authorize_pr
 |---|---|---|
 | POST | `/onboarding/runs` | Create a draft (team, app name) |
 | GET | `/onboarding/runs/:id` | Wizard state |
-| GET | `/onboarding/github/repos?org=&q=` | Import list (GitHub App installation) |
+| GET | `/onboarding/github/repos?teamId=&q=` | Import list (GitHub App installation, scoped to `teamId`'s organization — see below) |
+| GET | `/onboarding/azure/repos?teamId=&connectionId=&q=` | Import list (Azure Repos, via the organization's configured connection) |
 | PUT | `/onboarding/runs/:id/repositories` | Selected repos |
 | POST | `/onboarding/runs/:id/start` | Start the sandbox job (Container Apps Job) |
 | GET | `/onboarding/runs/:id/output` | Review, generated files, baselines per repo |
 | POST | `/onboarding/runs/:id/pull-requests` | Open one PR per repo: GitHub (GitHub App) or Azure Repos, with the generated CI for that platform |
 | POST | `/onboarding/runs/:id/cancel` | Cancel |
+
+`GET /onboarding/github/repos` takes `teamId`, not a client-supplied `org`
+(fix round 1, item 6): the organization is derived from the team
+server-side, and only repositories owned by a GitHub login in that
+organization's configured `github_app` integration connection scope
+(`integration_connections.scope.owner`/`.owners`) are returned — an
+organization with no such connection configured gets an empty list, never
+every repository the platform's single, shared GitHub App installation can
+see. `GET /onboarding/azure/repos` is scoped the same way through
+`connectionId` (defaulting to the organization's sole Azure DevOps
+connection), which is itself always resolved within the caller's own
+organization (WP-BE8).
+
+The run object returned by every B3 endpoint above carries a `warnings:
+string[]` field (fix round 1, item 10): one generic message per repository
+whose most recent `pull-requests` confirm could not open a PR for it (no
+generated files, a disallowed generated path, or an upstream GitHub/Azure
+DevOps failure — never the raw upstream error text, which is logged
+server-side only). Empty once every selected repository has an open PR.
 
 Realtime: `onboarding-{runId}` streams `{type:"log"|"step"|"done", ...}`.

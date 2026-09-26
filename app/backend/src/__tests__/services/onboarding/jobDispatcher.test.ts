@@ -41,6 +41,37 @@ describe("InMemoryJobDispatcher", () => {
     const dispatcher = new InMemoryJobDispatcher();
     await expect(dispatcher.cancel("inmemory-run-1")).resolves.toBeUndefined();
   });
+
+  it("reports progress via the optional onProgress hook before completing (fix round 1, item 12)", async () => {
+    const dispatcher = new InMemoryJobDispatcher();
+    const events: any[] = [];
+    const onProgress = jest.fn((event) => events.push(event));
+    const onComplete = jest.fn(async () => {});
+
+    await dispatcher.dispatch(
+      { runId: "run-1", teamId: "team-1", packVersion: "2026.3", repositories: [{ fullName: "goa/permits-api" }] },
+      onComplete,
+      onProgress
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(events.some((e) => e.type === "step")).toBe(true);
+    expect(events.some((e) => e.type === "done")).toBe(true);
+  });
+
+  it("works with no onProgress at all (it's optional)", async () => {
+    const dispatcher = new InMemoryJobDispatcher();
+    const onComplete = jest.fn(async () => {});
+
+    await expect(
+      dispatcher.dispatch(
+        { runId: "run-1", teamId: "team-1", packVersion: null, repositories: [{ fullName: "goa/permits-api" }] },
+        onComplete
+      )
+    ).resolves.toEqual({ jobExecutionId: "inmemory-run-1" });
+  });
 });
 
 describe("dispatcher injection point", () => {

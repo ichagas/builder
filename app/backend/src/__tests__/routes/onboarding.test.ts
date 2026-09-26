@@ -20,6 +20,7 @@ jest.mock("../../services/onboarding", () => ({
   startDraftRun: jest.fn(),
   getRun: jest.fn(),
   listImportableGitHubRepositories: jest.fn(),
+  listImportableAzureRepositories: jest.fn(),
   setRunRepositories: jest.fn(),
   startRun: jest.fn(),
   getRunOutput: jest.fn(),
@@ -106,14 +107,63 @@ describe("GET /onboarding/github/repos", () => {
     expect(res.status).toBe(401);
   });
 
-  it("passes org and q query params through", async () => {
+  it("passes teamId (not a client-supplied org) and q query params through", async () => {
     mocked.listImportableGitHubRepositories.mockResolvedValue([{ fullName: "goa/permits-api" }] as any);
 
-    const res = await request(createApp(USER_ID)).get("/onboarding/github/repos?org=goa&q=permits");
+    const res = await request(createApp(USER_ID)).get("/onboarding/github/repos?teamId=team-1&q=permits");
 
     expect(res.status).toBe(200);
     expect(res.body.repositories).toHaveLength(1);
-    expect(mocked.listImportableGitHubRepositories).toHaveBeenCalledWith(USER_ID, { org: "goa", query: "permits" });
+    expect(mocked.listImportableGitHubRepositories).toHaveBeenCalledWith(USER_ID, { teamId: "team-1", query: "permits" });
+  });
+
+  it("422s (via the service) when teamId is missing — the route never accepts a client org instead", async () => {
+    mocked.listImportableGitHubRepositories.mockRejectedValue(Errors.validation({ teamId: "required" }));
+
+    const res = await request(createApp(USER_ID)).get("/onboarding/github/repos?org=some-other-org&q=permits");
+
+    expect(res.status).toBe(422);
+    expect(mocked.listImportableGitHubRepositories).toHaveBeenCalledWith(USER_ID, { teamId: "", query: "permits" });
+  });
+
+  it("returns an empty list for a team whose organization has no GitHub scope configured (cross-org isolation)", async () => {
+    mocked.listImportableGitHubRepositories.mockResolvedValue([]);
+
+    const res = await request(createApp(USER_ID)).get("/onboarding/github/repos?teamId=team-2");
+
+    expect(res.status).toBe(200);
+    expect(res.body.repositories).toEqual([]);
+  });
+});
+
+describe("GET /onboarding/azure/repos", () => {
+  it("401s without auth", async () => {
+    const res = await request(createApp()).get("/onboarding/azure/repos");
+    expect(res.status).toBe(401);
+  });
+
+  it("passes teamId, connectionId and q query params through", async () => {
+    mocked.listImportableAzureRepositories.mockResolvedValue([{ fullName: "MyProject/permits-api" }] as any);
+
+    const res = await request(createApp(USER_ID)).get(
+      "/onboarding/azure/repos?teamId=team-1&connectionId=conn-1&q=permits"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.repositories).toHaveLength(1);
+    expect(mocked.listImportableAzureRepositories).toHaveBeenCalledWith(USER_ID, {
+      teamId: "team-1",
+      connectionId: "conn-1",
+      query: "permits",
+    });
+  });
+
+  it("propagates a 400 when no Azure DevOps connection is configured", async () => {
+    mocked.listImportableAzureRepositories.mockRejectedValue(Errors.badRequest("No azure_devops integration is configured"));
+
+    const res = await request(createApp(USER_ID)).get("/onboarding/azure/repos?teamId=team-1");
+
+    expect(res.status).toBe(400);
   });
 });
 

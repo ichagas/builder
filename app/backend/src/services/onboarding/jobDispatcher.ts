@@ -63,12 +63,37 @@ export interface DispatchJobOutput {
  */
 export type JobResultCallback = (result: JobResult) => Promise<void>;
 
+/** One line of the `onboarding-{runId}` realtime channel (contracts/api.md). */
+export interface JobProgressEvent {
+  type: "log" | "step" | "done";
+  message?: string;
+  step?: string;
+  at?: string;
+}
+
+/**
+ * Optional progress hook (fix round 1, item 12): a real dispatcher (WP-BE6)
+ * can call this as the sandbox job runs, so onboarding can forward each
+ * event onto the `onboarding-{runId}` realtime channel without the
+ * dispatcher needing to know anything about realtime/WebSocket plumbing
+ * itself. Not required — a dispatcher that never calls it (like
+ * {@link InMemoryJobDispatcher}) simply reports no progress before its
+ * `onComplete`.
+ */
+export type JobProgressCallback = (event: JobProgressEvent) => void;
+
 export interface JobDispatcher {
   /**
    * Start the sandbox job for a run. Must be safe to call once per run
    * (callers are responsible for only dispatching from `draft` status).
+   * `onProgress`, when given, may be called any number of times before
+   * `onComplete` resolves the run.
    */
-  dispatch(input: DispatchJobInput, onComplete: JobResultCallback): Promise<DispatchJobOutput>;
+  dispatch(
+    input: DispatchJobInput,
+    onComplete: JobResultCallback,
+    onProgress?: JobProgressCallback
+  ): Promise<DispatchJobOutput>;
   /** Best-effort cancellation of an in-flight job execution. */
   cancel(jobExecutionId: string): Promise<void>;
 }
@@ -79,7 +104,11 @@ export interface JobDispatcher {
  * developed and tested end-to-end before WP-BE6's real sandbox exists.
  */
 export class InMemoryJobDispatcher implements JobDispatcher {
-  async dispatch(input: DispatchJobInput, onComplete: JobResultCallback): Promise<DispatchJobOutput> {
+  async dispatch(
+    input: DispatchJobInput,
+    onComplete: JobResultCallback,
+    onProgress?: JobProgressCallback
+  ): Promise<DispatchJobOutput> {
     const jobExecutionId = `inmemory-${input.runId}`;
 
     const result: JobResult = {
@@ -108,9 +137,12 @@ export class InMemoryJobDispatcher implements JobDispatcher {
     // dispatcher would: the caller gets a job execution id back before the
     // job finishes.
     queueMicrotask(() => {
-      onComplete(result).catch(() => {
-        /* onboarding service logs failures internally */
-      });
+      onProgress?.({ type: "step", step: "sandbox", message: "Running in the sandbox (in-memory placeholder)" });
+      onComplete(result)
+        .then(() => onProgress?.({ type: "done" }))
+        .catch(() => {
+          /* onboarding service logs failures internally */
+        });
     });
 
     return { jobExecutionId };

@@ -47,6 +47,15 @@ jest.mock("../../../services/onboarding/githubImport", () => ({
   listGitHubRepositories: jest.fn(),
 }));
 
+jest.mock("../../../services/onboarding/azureImport", () => ({
+  listAzureDevOpsRepositories: jest.fn(),
+}));
+
+jest.mock("../../../services/integrations", () => {
+  const actual = jest.requireActual("../../../services/integrations");
+  return { ...actual, getDefaultConnectionForProvider: jest.fn() };
+});
+
 jest.mock("../../../services/onboarding/pullRequests", () => ({
   openRepositoryPullRequest: jest.fn(),
 }));
@@ -56,6 +65,9 @@ import { checkTeamAccess, getProfileId, getTeamOrgId } from "../../../services/t
 import * as repo from "../../../services/onboarding/repository";
 import { openRepositoryPullRequest } from "../../../services/onboarding/pullRequests";
 import { setJobDispatcher, resetJobDispatcher, JobDispatcher, JobResult } from "../../../services/onboarding/jobDispatcher";
+import { listGitHubRepositories } from "../../../services/onboarding/githubImport";
+import { listAzureDevOpsRepositories } from "../../../services/onboarding/azureImport";
+import { getDefaultConnectionForProvider } from "../../../services/integrations";
 import * as onboarding from "../../../services/onboarding";
 
 const mockCheckTeamAccess = checkTeamAccess as jest.Mock;
@@ -71,6 +83,9 @@ const mockClaimRunTransition = repo.claimRunTransition as jest.Mock;
 const mockOpenPr = openRepositoryPullRequest as jest.Mock;
 const mockDbQuery = db.query as jest.Mock;
 const mockDbTransaction = db.transaction as jest.Mock;
+const mockListGitHubRepositories = listGitHubRepositories as jest.Mock;
+const mockListAzureDevOpsRepositories = listAzureDevOpsRepositories as jest.Mock;
+const mockGetDefaultConnectionForProvider = getDefaultConnectionForProvider as jest.Mock;
 
 const USER_ID = "user-1";
 const TEAM_ID = "team-1";
@@ -221,10 +236,127 @@ describe("getRun / access control", () => {
   it("returns the run with its repositories for an authorized caller", async () => {
     mockGetRunById.mockResolvedValue(baseRun());
     mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
-    mockListRepos.mockResolvedValue([{ id: "r1", full_name: "goa/permits-api" }]);
+    mockListRepos.mockResolvedValue([{ id: "r1", full_name: "goa/permits-api", review: {} }]);
 
     const view = await onboarding.getRun(USER_ID, RUN_ID);
     expect(view.repositories).toHaveLength(1);
+    expect(view.warnings).toEqual([]);
+  });
+
+  it("surfaces a persisted per-repository prError as a warning (fix round 1, item 10)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun());
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockListRepos.mockResolvedValue([
+      { id: "r1", full_name: "goa/permits-api", review: { prError: "could not open the pull request (see server logs for details)" } },
+      { id: "r2", full_name: "goa/health-portal", review: {} },
+    ]);
+
+    const view = await onboarding.getRun(USER_ID, RUN_ID);
+    expect(view.warnings).toEqual(["goa/permits-api: could not open the pull request (see server logs for details)"]);
+  });
+});
+
+describe("listImportableGitHubRepositories — fix round 1, item 6 (cross-org isolation)", () => {
+  beforeEach(() => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockGetTeamOrgId.mockResolvedValue("org-1");
+  });
+
+  it("422s when teamId is missing", async () => {
+    await expect(onboarding.listImportableGitHubRepositories(USER_ID, { teamId: "" } as any)).rejects.toMatchObject({
+      statusCode: 422,
+    });
+    expect(mockListGitHubRepositories).not.toHaveBeenCalled();
+  });
+
+  it("403s for a caller who isn't a member of the team", async () => {
+    mockCheckTeamAccess.mockResolvedValue({ found: true, authorized: false, role: null, isOrgAdmin: false, organizationId: "org-1" });
+    await expect(
+      onboarding.listImportableGitHubRepositories(USER_ID, { teamId: TEAM_ID })
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("returns an empty list when the organization has no github_app connection configured, without ever calling GitHub", async () => {
+    mockGetDefaultConnectionForProvider.mockResolvedValue(null);
+
+    const repos = await onboarding.listImportableGitHubRepositories(USER_ID, { teamId: TEAM_ID });
+
+    expect(repos).toEqual([]);
+    expect(mockListGitHubRepositories).not.toHaveBeenCalled();
+  });
+
+  it("returns an empty list when the connection's scope names no owner", async () => {
+    mockGetDefaultConnectionForProvider.mockResolvedValue({ scope: {} });
+
+    const repos = await onboarding.listImportableGitHubRepositories(USER_ID, { teamId: TEAM_ID });
+
+    expect(repos).toEqual([]);
+    expect(mockListGitHubRepositories).not.toHaveBeenCalled();
+  });
+
+  it("only lists repositories for the organization's configured owner — a client-supplied org is never honored", async () => {
+    mockGetDefaultConnectionForProvider.mockResolvedValue({ scope: { owner: "goa" } });
+    mockListGitHubRepositories.mockResolvedValue([{ fullName: "goa/permits-api" }]);
+
+    const repos = await onboarding.listImportableGitHubRepositories(USER_ID, {
+      teamId: TEAM_ID,
+      // Even if a caller's raw query included another org, nothing here
+      // accepts it — only `teamId` is ever read by the route/service.
+      query: "permits",
+    } as any);
+
+    expect(mockListGitHubRepositories).toHaveBeenCalledWith({ org: "goa", query: "permits" });
+    expect(repos).toEqual([{ fullName: "goa/permits-api" }]);
+  });
+
+  it("queries every configured owner when the scope lists more than one", async () => {
+    mockGetDefaultConnectionForProvider.mockResolvedValue({ scope: { owners: ["goa", "goa-labs"] } });
+    mockListGitHubRepositories.mockImplementation(async ({ org }: { org: string }) => [{ fullName: `${org}/repo` }]);
+
+    const repos = await onboarding.listImportableGitHubRepositories(USER_ID, { teamId: TEAM_ID });
+
+    expect(repos.map((r) => r.fullName).sort()).toEqual(["goa-labs/repo", "goa/repo"]);
+  });
+});
+
+describe("listImportableAzureRepositories", () => {
+  beforeEach(() => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockGetTeamOrgId.mockResolvedValue("org-1");
+  });
+
+  it("422s when teamId is missing", async () => {
+    await expect(onboarding.listImportableAzureRepositories(USER_ID, { teamId: "" } as any)).rejects.toMatchObject({
+      statusCode: 422,
+    });
+  });
+
+  it("403s for a caller who isn't a member of the team", async () => {
+    mockCheckTeamAccess.mockResolvedValue({ found: true, authorized: false, role: null, isOrgAdmin: false, organizationId: "org-1" });
+    await expect(
+      onboarding.listImportableAzureRepositories(USER_ID, { teamId: TEAM_ID })
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("derives the organization from teamId, never a client-supplied value, and forwards connectionId/query", async () => {
+    mockListAzureDevOpsRepositories.mockResolvedValue([{ fullName: "MyProject/permits-api" }]);
+
+    const repos = await onboarding.listImportableAzureRepositories(USER_ID, {
+      teamId: TEAM_ID,
+      connectionId: "conn-1",
+      query: "permits",
+    });
+
+    expect(mockListAzureDevOpsRepositories).toHaveBeenCalledWith("org-1", "conn-1", "permits");
+    expect(repos).toEqual([{ fullName: "MyProject/permits-api" }]);
+  });
+
+  it("surfaces a missing/misconfigured connection as a 400, not a 500", async () => {
+    mockListAzureDevOpsRepositories.mockRejectedValue(new Error("No azure_devops integration is configured for this organization"));
+
+    await expect(
+      onboarding.listImportableAzureRepositories(USER_ID, { teamId: TEAM_ID })
+    ).rejects.toMatchObject({ statusCode: 400 });
   });
 });
 
@@ -447,7 +579,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
     expect(mockOpenPr).toHaveBeenCalledTimes(1);
     expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ provider: "github", fullName: "goa/permits-api" }));
-    expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "goa/permits-api", { prNumber: 42, prState: "open" });
+    expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "goa/permits-api", { prNumber: 42, prState: "open", review: {} });
     expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "prs_open", step: "prs" });
     expect(view.status).toBe("prs_open");
   });
@@ -701,8 +833,12 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
 
     expect(mockOpenPr).toHaveBeenCalledTimes(2);
-    expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "goa/ok-repo", { prNumber: 42, prState: "open" });
-    expect(mockUpdateRepo).not.toHaveBeenCalledWith(RUN_ID, "goa/broken-repo", expect.anything());
+    expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "goa/ok-repo", { prNumber: 42, prState: "open", review: {} });
+    expect(mockUpdateRepo).toHaveBeenCalledWith(
+      RUN_ID,
+      "goa/broken-repo",
+      expect.objectContaining({ review: expect.objectContaining({ prError: expect.any(String) }) })
+    );
     // The run still advances to prs_open because at least one PR opened.
     expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "prs_open", step: "prs" });
     expect(view.status).toBe("prs_open");
@@ -719,12 +855,71 @@ describe("openPullRequests — confirm gate and idempotency", () => {
         generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
       },
     ]);
-    mockOpenPr.mockRejectedValue(new Error("GitHub API returned 500"));
+    mockOpenPr.mockRejectedValue(new Error("GitHub API returned 500: secret upstream detail, e.g. an internal hostname"));
 
     await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true })).rejects.toMatchObject({
       statusCode: 500,
+      // Fix round 1, item 9: the raw upstream error text never reaches the
+      // client, even in the aggregate "every repo failed" message.
+      message: expect.not.stringContaining("secret upstream detail"),
     });
     expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ status: "prs_open" }));
+  });
+
+  it("never echoes the raw upstream error to the client on a partial failure, and surfaces a generic warning in the view (fix round 1, items 9/10)", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "ready" }))
+      .mockResolvedValueOnce(baseRun({ status: "ready" }));
+    // Call #1 (inside the lock, drives the PR-opening loop): pre-failure
+    // state. Call #2 (the final `toView` read for the response): reflects
+    // what this call itself just persisted for the broken repo.
+    mockListRepos
+      .mockResolvedValueOnce([
+        {
+          full_name: "goa/ok-repo",
+          selected: true,
+          pr_number: null,
+          detected_ci: "github_actions",
+          generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+          review: {},
+        },
+        {
+          full_name: "goa/broken-repo",
+          selected: true,
+          pr_number: null,
+          detected_ci: "github_actions",
+          generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+          review: {},
+        },
+      ])
+      .mockResolvedValueOnce([
+        { full_name: "goa/ok-repo", selected: true, pr_number: 42, review: {} },
+        {
+          full_name: "goa/broken-repo",
+          selected: true,
+          pr_number: null,
+          review: { prError: "could not open the pull request (see server logs for details)" },
+        },
+      ]);
+    mockOpenPr.mockImplementation(async ({ fullName }: any) => {
+      if (fullName === "goa/broken-repo") {
+        throw new Error('Could not open PR: 422 {"message":"upstream internal detail"}');
+      }
+      return { prNumber: 42, prState: "open", defaultBranch: "main" };
+    });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    // The per-repo update call persisting the failure never contains the
+    // raw upstream text.
+    const brokenRepoUpdate = mockUpdateRepo.mock.calls.find(([, fullName]: [string, string]) => fullName === "goa/broken-repo");
+    expect(brokenRepoUpdate).toBeDefined();
+    const persistedReview = brokenRepoUpdate![2].review;
+    expect(persistedReview.prError).not.toContain("upstream internal detail");
+    expect(persistedReview.prError).toBe("could not open the pull request (see server logs for details)");
+
+    expect(view.warnings).toEqual(["goa/broken-repo: could not open the pull request (see server logs for details)"]);
   });
 
   it("retry after a partial failure only reopens PRs for repos that are still missing one", async () => {

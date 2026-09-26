@@ -3,7 +3,8 @@
  *
  * POST   /onboarding/runs                       - create a draft (team, app name)
  * GET    /onboarding/runs/:id                    - wizard state
- * GET    /onboarding/github/repos?org=&q=        - import list (GitHub App installation)
+ * GET    /onboarding/github/repos?teamId=&q=     - import list (GitHub App installation, scoped to the team's org)
+ * GET    /onboarding/azure/repos?teamId=&connectionId=&q= - import list (Azure Repos, via the org's connection)
  * PUT    /onboarding/runs/:id/repositories       - selected repos
  * POST   /onboarding/runs/:id/start              - start the sandbox job
  * GET    /onboarding/runs/:id/output             - review, generated files, baselines per repo
@@ -48,14 +49,32 @@ router.get("/runs/:id", async (req: Request, res: Response) => {
 });
 
 /**
- * GET /onboarding/github/repos?org=&q=
+ * GET /onboarding/github/repos?teamId=&q=
+ *
+ * SECURITY: `teamId` (not a client-supplied `org`) is what scopes the
+ * result — the GitHub org(s) it's allowed to return come from the caller's
+ * own organization's configured integration connection, never from the
+ * request. See services/onboarding#listImportableGitHubRepositories.
  */
 router.get("/github/repos", async (req: Request, res: Response) => {
   const userId = requireUserId(req);
-  const org = typeof req.query.org === "string" ? req.query.org : undefined;
+  const teamId = typeof req.query.teamId === "string" ? req.query.teamId : "";
   const q = typeof req.query.q === "string" ? req.query.q : undefined;
 
-  const repos = await onboarding.listImportableGitHubRepositories(userId, { org, query: q });
+  const repos = await onboarding.listImportableGitHubRepositories(userId, { teamId, query: q });
+  res.json({ repositories: repos });
+});
+
+/**
+ * GET /onboarding/azure/repos?teamId=&connectionId=&q=
+ */
+router.get("/azure/repos", async (req: Request, res: Response) => {
+  const userId = requireUserId(req);
+  const teamId = typeof req.query.teamId === "string" ? req.query.teamId : "";
+  const connectionId = typeof req.query.connectionId === "string" ? req.query.connectionId : undefined;
+  const q = typeof req.query.q === "string" ? req.query.q : undefined;
+
+  const repos = await onboarding.listImportableAzureRepositories(userId, { teamId, connectionId, query: q });
   res.json({ repositories: repos });
 });
 
