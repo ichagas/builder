@@ -59,6 +59,9 @@ A page moves to a full rewrite only if at least two apply: > 800 lines; > 10 dia
 ## D-16: French later; new screens are translation-ready
 **Decision:** The bilingual UI (English and French) is **not** part of this redesign. It will be its own project. To avoid rework, the **shell and the new-capability screens** (US4–US6) use translation keys from the start (`react-i18next`, English only). The existing pages (≈ 1,000 JSX text nodes, ≈ 370 labels and props, ≈ 560 toast messages) are extracted when French is scheduled.
 
+## D-19: IBM Plex loads via a Google Fonts `<link>`, with a system fallback stack
+**Decision:** IBM Plex Sans / IBM Plex Mono (`contracts/design-system.md` §1 Type) are loaded the same way the approved prototypes do it — a `<link>` to `fonts.googleapis.com` (plus a `fonts.gstatic.com` preconnect) — rather than self-hosting the font files in the fork. `--font` and `--mono` each carry a full fallback stack (system sans/mono) behind the Plex name, so the shell and every restyled page keep the correct metrics and stay legible if the Google Fonts request is slow, blocked (e.g. a restrictive network) or fails outright — text never disappears (FOIT) or falls back to a mismatched serif. Self-hosting the fonts (bundling the woff2 files under `app/frontend-new/public/` and declaring `@font-face` locally) is deferred: it would drop the runtime dependency on `fonts.googleapis.com` and shave a request, but it's extra asset/versioning work with no UX difference for T020's scope (the fork already reaches the internet for its API calls), and can be revisited later without touching the token layer or any component, since consumers only ever reference `var(--font)`/`var(--mono)`.
+
 ## Answered questions (2026-09-25)
 
 | Question | Answer | Recorded in |
