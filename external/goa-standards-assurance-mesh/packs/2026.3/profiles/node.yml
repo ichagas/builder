@@ -1,0 +1,23 @@
+profile: node
+label: "Node 20"
+setup:
+  - uses: actions/setup-node
+    with:
+      node-version: "20"
+build:
+  default_command: "npm ci && npm run build --if-present"
+test:
+  default_command: "npm test -- --ci"
+  coverage_format: lcov
+green:
+  dependency_scan: "npm audit --audit-level=high"
+  license_scan: "npx license-checker --failOn 'GPL-3.0;AGPL-3.0'"
+  sbom: "npx @cyclonedx/cyclonedx-npm --output-file sbom/bom.json"
+  lint: "npm run lint --if-present"
+yellow:
+  copy_sources: ["src/**/*.{ts,tsx,js,jsx}", "**/*.md"]
+red:
+  recon_tooling: "nmap, nikto (against test_environment_url only)"
+blue:
+  sast: "eslint-plugin-security + Semgrep (javascript/typescript ruleset)"
+  secret_scan: "gitleaks"

@@ -1,0 +1,28 @@
+# Yellow: deterministic plain-language rules for UI copy, docs and messages
+# to the public. 12 rules; rule 7 (2026.3) now also checks error messages.
+agent: yellow
+checks:
+  - id: plain-language-01
+    description: "Avoid jargon and acronyms without a first-use explanation."
+  - id: plain-language-02
+    description: "Prefer short sentences (grade 8 reading level or below)."
+  - id: plain-language-03
+    description: "Use active voice."
+  - id: plain-language-04
+    description: "Avoid double negatives."
+  - id: plain-language-05
+    description: "Use consistent terminology for the same concept."
+  - id: plain-language-06
+    description: "Give the user a next step in every error and empty state."
+  - id: plain-language-07
+    description: "No internal codes or stack traces in user-facing text (2026.3: also applies to error messages)."
+  - id: plain-language-08
+    description: "Dates, currency and numbers use plain, localizable formats."
+  - id: plain-language-09
+    description: "Headings describe the content that follows them."
+  - id: plain-language-10
+    description: "Buttons and links describe the action, not just 'click here'."
+  - id: plain-language-11
+    description: "Alt text and ARIA labels are meaningful, not decorative filler."
+  - id: plain-language-12
+    description: "Avoid idioms and culturally specific references."

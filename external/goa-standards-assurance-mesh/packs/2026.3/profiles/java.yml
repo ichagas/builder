@@ -1,0 +1,24 @@
+profile: java
+label: "Java 17"
+setup:
+  - uses: actions/setup-java
+    with:
+      java-version: "17"
+      distribution: "temurin"
+build:
+  default_command: "mvn -B verify"
+test:
+  default_command: "mvn -B test"
+  coverage_format: jacoco
+green:
+  dependency_scan: "mvn org.owasp:dependency-check-maven:check"
+  license_scan: "mvn org.codehaus.mojo:license-maven-plugin:check-file-header"
+  sbom: "mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom"
+  lint: "mvn com.spotify.fmt:fmt-maven-plugin:check"
+yellow:
+  copy_sources: ["src/main/resources/**/*.properties", "src/main/resources/templates/**/*.html"]
+red:
+  recon_tooling: "nmap, nikto (against test_environment_url only)"
+blue:
+  sast: "SpotBugs + find-sec-bugs"
+  secret_scan: "gitleaks"

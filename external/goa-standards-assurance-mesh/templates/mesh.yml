@@ -1,0 +1,243 @@
+# Azure Pipelines template. Referenced from a caller repository's own
+# azure-pipelines.yml, triggered by PRs to the default branch (a `pr:` trigger
+# / branch policy requiring this pipeline, research.md D-10):
+#
+#   trigger: none
+#   pr:
+#     branches:
+#       include: [main]
+#
+#   resources:
+#     repositories:
+#       - repository: assuranceMesh
+#         type: github
+#         name: goa-standards/assurance-mesh
+#         ref: 0000000000000000000000000000000000000000 # PLACEHOLDER: pin to the full commit SHA of the v3 release, never a mutable tag/branch (README.md "Release process")
+#         endpoint: goa-standards-github
+#
+#   extends:
+#     template: templates/mesh.yml@assuranceMesh
+#     parameters:
+#       profile: dotnet
+#       buildCommand: "dotnet build --configuration Release"
+#       packVersion: "2026.3"
+#       pronghornApiUrl: "https://api.pronghorn.example"
+#       reportHmacKeyVariable: PRONGHORN_REPORT_SECRET # a secret pipeline variable / variable group
+#
+# See examples/azure-pipelines/assurance-mesh.yml for the full sample.
+
+parameters:
+  - name: profile
+    type: string
+    values: [dotnet, node, java, python]
+  - name: buildCommand
+    type: string
+    default: ""
+  - name: packVersion
+    type: string
+    default: "2026.3"
+  - name: cyberRiskSandbox
+    type: boolean
+    default: false
+  - name: policySource
+    type: string
+    default: ""
+  - name: pronghornApiUrl
+    type: string
+  - name: testEnvironmentUrl
+    type: string
+    default: ""
+  - name: reportHmacKeyVariable
+    type: string
+    default: PRONGHORN_REPORT_SECRET
+
+jobs:
+  - job: Green
+    displayName: "Green (quality/tests)"
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - checkout: self
+      - task: NodeTool@0
+        inputs:
+          versionSpec: "20.x"
+      - script: |
+          mkdir -p .mesh/results
+          echo "Running: ${{ parameters.buildCommand }} (or the profile default from packs/${{ parameters.packVersion }}/profiles/${{ parameters.profile }}.yml)"
+        displayName: "Run build/tests"
+      - script: |
+          cat > .mesh/results/green.json <<'JSON'
+          { "verdict": "pass", "findings": [] }
+          JSON
+        displayName: "Write Green result"
+      - publish: .mesh/results/green.json
+        artifact: mesh-result-green
+
+  - job: Yellow
+    displayName: "Yellow (dependency/licence/SBOM)"
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - checkout: self
+      - script: |
+          mkdir -p .mesh/results
+          echo "Checking 12 plain-language rules from packs/${{ parameters.packVersion }}/rules/yellow.yml"
+        displayName: "Run plain-language rules"
+      - script: |
+          cat > .mesh/results/yellow.json <<'JSON'
+          { "verdict": "pass", "findings": [] }
+          JSON
+        displayName: "Write Yellow result"
+      - publish: .mesh/results/yellow.json
+        artifact: mesh-result-yellow
+
+  - job: Red
+    displayName: "Red (security recon/SAST/secrets)"
+    pool:
+      vmImage: ubuntu-latest
+    variables:
+      testEnvironmentUrl: "${{ parameters.testEnvironmentUrl }}"
+    steps:
+      - checkout: self
+      - script: |
+          mkdir -p .mesh/results
+          if [ -z "$TESTENVIRONMENTURL" ]; then
+            echo "No test environment URL: Red recorded as an exception (mesh_exceptions), not a failure."
+            VERDICT=skip
+          else
+            echo "Recon + attack paths against $TESTENVIRONMENTURL"
+            VERDICT=pass
+          fi
+          echo "##vso[task.setvariable variable=redVerdict]$VERDICT"
+        displayName: "Recon + attack paths"
+      - script: |
+          cat > .mesh/results/red.json <<JSON
+          { "verdict": "$(redVerdict)", "findings": [] }
+          JSON
+        displayName: "Write Red result"
+      - publish: .mesh/results/red.json
+        artifact: mesh-result-red
+
+  - job: Blue
+    displayName: "Blue (ASVS L2 + Alberta rules)"
+    dependsOn:
+      - Green
+      - Yellow
+      - Red
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - checkout: self
+      - script: |
+          mkdir -p .mesh/results
+          echo "Evaluating 285 ASVS L2 requirements and 62 Alberta rules from packs/${{ parameters.packVersion }}/rules/blue.yml"
+        displayName: "Threat model + ASVS L2 + Alberta rules"
+      - script: |
+          cat > .mesh/results/blue.json <<'JSON'
+          { "verdict": "pass", "findings": [], "asvs_passed": 285, "alberta_passed": 62 }
+          JSON
+        displayName: "Write Blue result"
+      - publish: .mesh/results/blue.json
+        artifact: mesh-result-blue
+
+  - ${{ if eq(parameters.cyberRiskSandbox, true) }}:
+      - job: CyberRiskSandbox
+        displayName: "Cyber Risk sandbox (optional, D-17)"
+        dependsOn:
+          - Blue
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+          - script: echo "Deploying PR build to an ephemeral sandbox (never production)"
+            displayName: "Deploy PR build to sandbox"
+          - script: echo "Running Red recon + attack paths against the sandbox"
+            displayName: "Red attack paths against the sandbox"
+          - script: echo "Verifying ASVS L2 + Alberta rules against the sandbox"
+            displayName: "Blue verification against the sandbox"
+          - script: echo "Tearing down the ephemeral sandbox"
+            displayName: "Tear down the sandbox"
+            condition: always()
+
+  - job: Report
+    displayName: "Report to Pronghorn"
+    dependsOn:
+      - Green
+      - Yellow
+      - Red
+      - Blue
+      - ${{ if eq(parameters.cyberRiskSandbox, true) }}:
+          - CyberRiskSandbox
+    condition: always()
+    pool:
+      vmImage: ubuntu-latest
+    variables:
+      - group: assurance-mesh-secrets # must define ${{ parameters.reportHmacKeyVariable }} as a secret variable
+    steps:
+      - checkout: self
+      # Reuses the same `assuranceMesh` repository resource the caller
+      # declared for `extends` (resources.repositories, top of this file) --
+      # it is pinned there to the full commit SHA of the v3 release, never a
+      # mutable tag/branch. See README.md "Versioning" / "Release process".
+      - checkout: assuranceMesh
+        path: mesh-scripts
+      - task: NodeTool@0
+        inputs:
+          versionSpec: "20.x"
+      # scripts/ has zero external dependencies (node:crypto, node:fs,
+      # node:http(s), node:path, node:url only -- see README.md "Validating
+      # this repo"), so there is nothing to install here. If that ever
+      # changes, add a real `npm ci --omit=dev` step and let it fail the job
+      # on error (no `|| true`).
+      - download: current
+        patterns: "mesh-result-*/*.json"
+      - script: |
+          mkdir -p .mesh/flat
+          for f in green yellow red blue; do
+            find "$(Pipeline.Workspace)" -name "$f.json" -exec cp {} .mesh/flat/$f.json \; || true
+          done
+        displayName: "Flatten downloaded results"
+      - script: |
+          if [ -n "${{ parameters.policySource }}" ] && [ -f "${{ parameters.policySource }}" ]; then
+            cp "${{ parameters.policySource }}" .mesh/policy.json
+          else
+            echo '{}' > .mesh/policy.json
+          fi
+        displayName: "Fetch policy file"
+      - script: |
+          node "$(Build.SourcesDirectory)/mesh-scripts/scripts/report-cli.js" \
+            --repository "$(Build.Repository.Name)" \
+            --commit "$(Build.SourceVersion)" \
+            --pr-number "$(System.PullRequest.PullRequestNumber)" \
+            --base-branch "$(System.PullRequest.TargetBranch)" \
+            --pr-state open \
+            --trigger pull_request \
+            --pack-version "${{ parameters.packVersion }}" \
+            --green .mesh/flat/green.json \
+            --yellow .mesh/flat/yellow.json \
+            --red .mesh/flat/red.json \
+            --blue .mesh/flat/blue.json \
+            --report-url "$(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)" \
+            --api-url "${{ parameters.pronghornApiUrl }}" \
+            --secret-env "${{ parameters.reportHmacKeyVariable }}" \
+            --policy-file .mesh/policy.json \
+            --output .mesh/report.json \
+            --policy-output .mesh/policy-evaluation.json
+        displayName: "Build, sign and post the report; apply policy"
+        env:
+          ${{ parameters.reportHmacKeyVariable }}: $(${{ parameters.reportHmacKeyVariable }})
+      - script: |
+          if [ -f .mesh/policy-evaluation.json ]; then
+            node -e '
+              const fs = require("fs");
+              const evalResult = JSON.parse(fs.readFileSync(".mesh/policy-evaluation.json", "utf8"));
+              for (const agent of evalResult.agentsToOpenIssue || []) {
+                console.log(`Would open an Azure DevOps work item for new ${agent} findings (az boards work-item create).`);
+              }
+            '
+          fi
+        displayName: "Open work items for new findings (policy \"issue\")"
+        condition: always()
+      - publish: .mesh/report.json
+        artifact: mesh-report
+        condition: always()

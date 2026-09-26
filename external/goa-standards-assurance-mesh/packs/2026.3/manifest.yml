@@ -1,0 +1,48 @@
+# Standards pack manifest (data-model.md `standards_packs`).
+# `pronghorn.standards.yml` in a caller repository pins one of these versions.
+version: "2026.3"
+published_at: "2026-09-01T00:00:00Z"
+workflow_ref: "goa-standards/assurance-mesh@v3"
+notes: >
+  Alberta cybersecurity rules 2026 update, testing agent v2, Python 3.12 stack profile.
+changes:
+  - kind: new
+    text: "Alberta cybersecurity rules 2026 (62 rules, 4 new)"
+    agent: blue
+  - kind: changed
+    text: "Testing agent v2: generates contract tests for public APIs"
+    agent: green
+  - kind: changed
+    text: "Yellow rule 7 now also checks error messages"
+    agent: yellow
+  - kind: new
+    text: "Python 3.12 stack profile"
+    agent: profiles
+
+agents:
+  - id: green
+    name: Green
+    role: "Code quality and hygiene"
+    kind: deterministic
+    rules_file: rules/green.yml
+  - id: yellow
+    name: Yellow
+    role: "Plain language"
+    kind: deterministic
+    rules_file: rules/yellow.yml
+  - id: red
+    name: Red
+    role: "Attacker view"
+    kind: "recon + judgment"
+    rules_file: rules/red.yml
+  - id: blue
+    name: Blue
+    role: "Defender summary"
+    kind: "judgment, runs last"
+    rules_file: rules/blue.yml
+
+profiles:
+  - dotnet
+  - node
+  - java
+  - python
