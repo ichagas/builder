@@ -41,6 +41,7 @@ jest.mock("../../../services/onboarding/repository", () => {
     updateRunRepositoryByFullName: jest.fn(),
     claimRunTransition: jest.fn(),
     claimPrLease: jest.fn(),
+    renewPrLease: jest.fn(),
     releasePrLease: jest.fn(),
   };
 });
@@ -90,6 +91,7 @@ const mockUpdateRepo = repo.updateRunRepositoryByFullName as jest.Mock;
 const mockClaimRunTransition = repo.claimRunTransition as jest.Mock;
 const mockClaimPrLease = repo.claimPrLease as jest.Mock;
 const mockReleasePrLease = repo.releasePrLease as jest.Mock;
+const mockRenewPrLease = repo.renewPrLease as jest.Mock;
 const mockOpenPr = openRepositoryPullRequest as jest.Mock;
 const mockDbQuery = db.query as jest.Mock;
 const mockDbTransaction = db.transaction as jest.Mock;
@@ -639,6 +641,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     // pre-check, unless a test overrides one or the other). releasePrLease
     // resolves fine by default; tests can still assert it was called.
     mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready" }));
+    mockRenewPrLease.mockResolvedValue(true);
     mockReleasePrLease.mockResolvedValue(undefined);
   });
 
@@ -1123,8 +1126,11 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
     await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
 
-    expect(mockClaimPrLease).toHaveBeenCalledWith(RUN_ID);
-    expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID);
+    // Claimed with a per-call owner token, and released with the SAME token
+    // (fix round 3) so a release can only clear this call's own lease.
+    expect(mockClaimPrLease).toHaveBeenCalledWith(RUN_ID, expect.stringMatching(/^[0-9a-f-]{36}$/));
+    const ownerToken = mockClaimPrLease.mock.calls[0][1];
+    expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID, ownerToken);
     // No transaction-held advisory lock — claimPrLease/releasePrLease are
     // independent, short statements, not a `db.transaction()` wrapping the
     // whole PR-opening call.
@@ -1160,7 +1166,79 @@ describe("openPullRequests — confirm gate and idempotency", () => {
       statusCode: 500,
     });
 
-    expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID);
+    expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID, mockClaimPrLease.mock.calls[0][1]);
+  });
+
+  describe("lease renewal and expiry while running (fix round 3)", () => {
+    function readyRepos(n: number) {
+      return Array.from({ length: n }, (_, i) => ({
+        full_name: `goa/repo-${i + 1}`,
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        review: {},
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      }));
+    }
+
+    it("renews the lease (with its owner token) before every repository and before the run-level writes", async () => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+      mockListRepos.mockResolvedValue(readyRepos(3));
+      mockOpenPr.mockResolvedValue({ prNumber: 7, prState: "open", defaultBranch: "main" });
+      mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      const ownerToken = mockClaimPrLease.mock.calls[0][1];
+      // 3 repositories + 1 final check before linking/status.
+      expect(mockRenewPrLease).toHaveBeenCalledTimes(4);
+      for (const call of mockRenewPrLease.mock.calls) expect(call).toEqual([RUN_ID, ownerToken]);
+      // Each renewal happens before that repository's provider calls.
+      const renewOrder = mockRenewPrLease.mock.invocationCallOrder;
+      const openOrder = mockOpenPr.mock.invocationCallOrder;
+      expect(renewOrder[0]).toBeLessThan(openOrder[0]);
+      expect(renewOrder[1]).toBeGreaterThan(openOrder[0]);
+      expect(renewOrder[1]).toBeLessThan(openOrder[1]);
+    });
+
+    it("stops (409) when the lease expired mid-run and another call re-claimed it: no further PRs, no run-level writes, and the other holder's lease isn't cleared", async () => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+      mockListRepos.mockResolvedValue(readyRepos(3));
+      mockOpenPr.mockResolvedValue({ prNumber: 7, prState: "open", defaultBranch: "main" });
+      // Repo 1: still ours. Before repo 2: our lease lapsed and another
+      // confirm claimed it (its owner token replaced ours) -> renewal matches 0 rows.
+      mockRenewPrLease.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+      await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true })).rejects.toMatchObject({
+        statusCode: 409,
+        message: expect.stringContaining("taken over"),
+      });
+
+      expect(mockOpenPr).toHaveBeenCalledTimes(1);
+      expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ fullName: "goa/repo-1" }));
+      // Repo 1's PR is persisted (so the new holder skips it)...
+      expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "goa/repo-1", expect.objectContaining({ prNumber: 7 }));
+      // ...but nothing run-level is written on a lease we no longer hold.
+      expect(mockUpdateRun).not.toHaveBeenCalled();
+      expect(
+        mockDbQuery.mock.calls.some(([sql]) => /INSERT INTO public\.(applications|application_repositories)/.test(String(sql)))
+      ).toBe(false);
+      // Release is still attempted, but only with OUR token — the repository
+      // layer's owner guard makes it a no-op against the new holder's lease.
+      expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID, mockClaimPrLease.mock.calls[0][1]);
+    });
+
+    it("uses a distinct owner token per call", async () => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+      mockListRepos.mockResolvedValue(readyRepos(1));
+      mockOpenPr.mockResolvedValue({ prNumber: 7, prState: "open", defaultBranch: "main" });
+      mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      expect(mockClaimPrLease.mock.calls[0][1]).not.toBe(mockClaimPrLease.mock.calls[1][1]);
+    });
   });
 });
 

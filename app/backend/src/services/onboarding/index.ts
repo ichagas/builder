@@ -28,6 +28,7 @@ import {
   updateRunRepositoryByFullName,
   claimRunTransition,
   claimPrLease,
+  renewPrLease,
   releasePrLease,
   OnboardingRunRow,
   OnboardingRunRepositoryRow,
@@ -651,10 +652,25 @@ export async function openPullRequests(
   // GitHub/Azure DevOps HTTP calls, this claims a lease as *data* on the row
   // and releases it in `finally` — the pool connection for each individual
   // statement is returned immediately, never held across network I/O.
-  const run = await claimPrLease(runId);
+  //
+  // Fix round 3: the lease carries a per-call owner token, is renewed
+  // before each repository (a run can hold up to MAX_REPOSITORIES_PER_RUN
+  // repositories, each several provider HTTP calls — easily longer than the
+  // lease), and renewal/release are guarded on that token, so a call whose
+  // lease lapsed and was re-claimed by another confirm stops instead of
+  // racing it, and never clears the other call's lease on its way out.
+  const leaseOwner = crypto.randomUUID();
+  const run = await claimPrLease(runId, leaseOwner);
   if (!run) {
     throw Errors.conflict("PR opening already in progress");
   }
+
+  const ensureLease = async () => {
+    if (!(await renewPrLease(runId, leaseOwner))) {
+      logger.warn(`[onboarding] PR-opening lease lost mid-run (run=${runId}); stopping so the new holder can proceed`);
+      throw Errors.conflict("PR opening was taken over by another request; reload the run to see its current state");
+    }
+  };
 
   try {
     const organizationId = await getTeamOrgId(run.team_id);
@@ -684,6 +700,10 @@ export async function openPullRequests(
         // Already opened — idempotent no-op for this repository.
         continue;
       }
+
+      // Still ours? (and extended if less than half is left) — before any
+      // provider call for this repository.
+      await ensureLease();
 
       const provider = providerForRepository(repo.full_name);
       if (!provider) {
@@ -757,6 +777,10 @@ export async function openPullRequests(
       throw Errors.internal(`Could not open any pull requests: ${errors.join("; ")}`);
     }
 
+    // Last check before the run-level writes below (application link,
+    // status transition): never apply them on a lease someone else holds.
+    await ensureLease();
+
     // Repositories with a PR now, whether opened just now or on an earlier
     // (partial) confirm — register/refresh all of them under the application.
     const reposWithPr = selected
@@ -807,7 +831,7 @@ export async function openPullRequests(
 
     return view;
   } finally {
-    await releasePrLease(runId);
+    await releasePrLease(runId, leaseOwner);
   }
 }
 

@@ -34,6 +34,13 @@ export interface OnboardingRunRow {
    * {@link claimPrLease}/{@link releasePrLease}.
    */
   pr_lease_until: string | null;
+  /**
+   * Random token identifying which in-flight POST .../pull-requests call
+   * holds the lease (fix round 3). Renewal and release only ever touch a
+   * lease whose owner still matches, so a caller whose lease expired (and
+   * was re-claimed by someone else) can neither extend nor clear it.
+   */
+  pr_lease_owner: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,7 +66,7 @@ export interface OnboardingRunRepositoryRow {
 
 const RUN_COLUMNS = `
   id, team_id, application_name, application_id, pack_version, status, step,
-  job_execution_id, log_blob, connection_id, started_by, pr_lease_until, created_at, updated_at
+  job_execution_id, log_blob, connection_id, started_by, pr_lease_until, pr_lease_owner, created_at, updated_at
 `;
 
 const REPO_COLUMNS = `
@@ -181,41 +188,89 @@ export async function claimRunTransition(
   return rows[0] ?? null;
 }
 
-const PR_LEASE_DURATION = "10 minutes";
+/** How long a PR-opening lease lasts from its last claim/renewal. */
+export const PR_LEASE_DURATION_MINUTES = 10;
+/**
+ * Renew once less than this much of the lease is left (half the duration):
+ * `openPullRequests` calls {@link renewPrLease} before every repository, and
+ * the renewal only extends when the remaining time has dropped below this.
+ */
+export const PR_LEASE_RENEW_BELOW_MINUTES = PR_LEASE_DURATION_MINUTES / 2;
 
 /**
  * Atomically claim the short-lived "PR opening in progress" lease for a run
- * (fix round 2, item 4): a single `UPDATE ... WHERE ... RETURNING`, matched
- * only when the run's status is eligible AND its lease is unset or already
- * expired. Two concurrent confirms for the same run race here — only one
- * `UPDATE` can match, the other gets `null` back (the caller 409s: "PR
- * opening already in progress"). Unlike a transaction-held advisory lock,
- * this claims and releases in independent, short statements, so the pool
- * connection is never held across the external GitHub/Azure DevOps HTTP
- * calls `openPullRequests` makes while "holding" the lease — only the lease
- * *row itself* is held, as data, not as a database connection/transaction.
- * Callers must call {@link releasePrLease} in a `finally` so a lease is
- * never stuck for its full duration after a request that already finished
- * (successfully or not).
+ * (fix round 2, item 4; owner token added in fix round 3): a single
+ * `UPDATE ... WHERE ... RETURNING`, matched only when the run's status is
+ * eligible AND its lease is unset or already expired. Two concurrent
+ * confirms for the same run race here — only one `UPDATE` can match, the
+ * other gets `null` back (the caller 409s: "PR opening already in
+ * progress"). Unlike a transaction-held advisory lock, this claims, renews
+ * and releases in independent, short statements, so the pool connection is
+ * never held across the external GitHub/Azure DevOps HTTP calls
+ * `openPullRequests` makes while "holding" the lease — only the lease *row
+ * itself* is held, as data, not as a database connection/transaction.
+ *
+ * `ownerToken` (a fresh random UUID per call) is stored alongside the
+ * expiry; {@link renewPrLease} and {@link releasePrLease} are both guarded
+ * on it. Callers must call {@link releasePrLease} in a `finally` so a lease
+ * is never stuck for its full duration after a request that already
+ * finished (successfully or not).
  */
-export async function claimPrLease(runId: string): Promise<OnboardingRunRow | null> {
+export async function claimPrLease(runId: string, ownerToken: string): Promise<OnboardingRunRow | null> {
   const { rows } = await db.query(
     `UPDATE public.onboarding_runs
-     SET pr_lease_until = now() + interval '${PR_LEASE_DURATION}', updated_at = now()
+     SET pr_lease_until = now() + make_interval(mins => $3), pr_lease_owner = $2, updated_at = now()
      WHERE id = $1
        AND status IN ('ready', 'prs_open')
        AND (pr_lease_until IS NULL OR pr_lease_until < now())
      RETURNING ${RUN_COLUMNS}`,
-    [runId]
+    [runId, ownerToken, PR_LEASE_DURATION_MINUTES]
   );
   return rows[0] ?? null;
 }
 
-/** Release a run's PR-opening lease (idempotent — a no-op if already clear). */
-export async function releasePrLease(runId: string): Promise<void> {
+/**
+ * Keep a held lease alive during a long PR-opening loop (fix round 3):
+ * extends it to a full {@link PR_LEASE_DURATION_MINUTES} from now when less
+ * than {@link PR_LEASE_RENEW_BELOW_MINUTES} is left, otherwise leaves the
+ * expiry as is. Guarded on `pr_lease_owner = ownerToken`, so it can never
+ * extend (steal) a lease another caller claimed after ours expired — that
+ * caller's claim replaced the owner token. Returns `false` when the lease is
+ * no longer ours; the caller must stop acting on the run.
+ *
+ * Deliberately not also guarded on `pr_lease_until > now()`: if our lease
+ * lapsed but nobody claimed it in the meantime, the owner token is still
+ * ours (a claim overwrites it, a release clears it), so re-extending is
+ * safe and avoids failing a slow-but-uncontended run.
+ *
+ * Both times are Postgres's `now()`, so there is no app/DB clock skew.
+ */
+export async function renewPrLease(runId: string, ownerToken: string): Promise<boolean> {
+  const { rows } = await db.query(
+    `UPDATE public.onboarding_runs
+     SET pr_lease_until = CASE
+           WHEN pr_lease_until IS NULL OR pr_lease_until < now() + make_interval(mins => $4)
+             THEN now() + make_interval(mins => $3)
+           ELSE pr_lease_until
+         END
+     WHERE id = $1 AND pr_lease_owner = $2
+     RETURNING pr_lease_until`,
+    [runId, ownerToken, PR_LEASE_DURATION_MINUTES, PR_LEASE_RENEW_BELOW_MINUTES]
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Release a run's PR-opening lease — only if `ownerToken` still holds it
+ * (fix round 3). Idempotent, and a no-op for a lease someone else has since
+ * claimed, so a caller whose lease expired mid-run can't clear the new
+ * holder's lease on its way out.
+ */
+export async function releasePrLease(runId: string, ownerToken: string): Promise<void> {
   await db.query(
-    `UPDATE public.onboarding_runs SET pr_lease_until = NULL, updated_at = now() WHERE id = $1`,
-    [runId]
+    `UPDATE public.onboarding_runs SET pr_lease_until = NULL, pr_lease_owner = NULL, updated_at = now()
+     WHERE id = $1 AND pr_lease_owner = $2`,
+    [runId, ownerToken]
   );
 }
 

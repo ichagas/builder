@@ -8,7 +8,17 @@ jest.mock("../../../utils/database", () => ({
 }));
 
 import db from "../../../utils/database";
-import { claimRunTransition, updateRun, claimPrLease, releasePrLease } from "../../../services/onboarding/repository";
+import {
+  claimRunTransition,
+  updateRun,
+  claimPrLease,
+  renewPrLease,
+  releasePrLease,
+  PR_LEASE_DURATION_MINUTES,
+  PR_LEASE_RENEW_BELOW_MINUTES,
+} from "../../../services/onboarding/repository";
+
+const OWNER = "11111111-1111-4111-8111-111111111111";
 
 const mockDbQuery = db.query as jest.Mock;
 
@@ -64,23 +74,23 @@ describe("claimPrLease / releasePrLease (fix round 2, item 4)", () => {
   it("issues a single UPDATE ... WHERE status IN (...) AND (lease unset or expired) ... RETURNING statement", async () => {
     mockDbQuery.mockResolvedValue({ rows: [{ id: "run-1", status: "ready" }] });
 
-    await claimPrLease("run-1");
+    await claimPrLease("run-1", OWNER);
 
     expect(mockDbQuery).toHaveBeenCalledTimes(1);
     const [sql, params] = mockDbQuery.mock.calls[0];
     expect(sql).toMatch(/UPDATE public\.onboarding_runs/);
-    expect(sql).toMatch(/SET pr_lease_until = now\(\) \+ interval/);
+    expect(sql).toMatch(/SET pr_lease_until = now\(\) \+ make_interval\(mins => \$3\), pr_lease_owner = \$2/);
     expect(sql).toMatch(/WHERE id = \$1/);
     expect(sql).toMatch(/status IN \('ready', 'prs_open'\)/);
     expect(sql).toMatch(/pr_lease_until IS NULL OR pr_lease_until < now\(\)/);
     expect(sql).toMatch(/RETURNING/);
-    expect(params).toEqual(["run-1"]);
+    expect(params).toEqual(["run-1", OWNER, PR_LEASE_DURATION_MINUTES]);
   });
 
   it("returns the claimed row on success", async () => {
     mockDbQuery.mockResolvedValue({ rows: [{ id: "run-1", status: "ready" }] });
 
-    const result = await claimPrLease("run-1");
+    const result = await claimPrLease("run-1", OWNER);
 
     expect(result).toEqual({ id: "run-1", status: "ready" });
   });
@@ -88,7 +98,7 @@ describe("claimPrLease / releasePrLease (fix round 2, item 4)", () => {
   it("returns null when the claim finds 0 rows (wrong status, or another confirm already holds the lease)", async () => {
     mockDbQuery.mockResolvedValue({ rows: [] });
 
-    const result = await claimPrLease("run-1");
+    const result = await claimPrLease("run-1", OWNER);
 
     expect(result).toBeNull();
   });
@@ -96,20 +106,48 @@ describe("claimPrLease / releasePrLease (fix round 2, item 4)", () => {
   it("does not open (or hold) a transaction — a single statement via the plain query path", async () => {
     mockDbQuery.mockResolvedValue({ rows: [{ id: "run-1" }] });
 
-    await claimPrLease("run-1");
+    await claimPrLease("run-1", OWNER);
 
     // db.query, not db.transaction/getClient — no pooled connection is held
     // across this call or anything after it.
     expect(mockDbQuery).toHaveBeenCalledTimes(1);
   });
 
-  it("releasePrLease clears the lease unconditionally", async () => {
+  it("releasePrLease only clears a lease this owner still holds (never another caller's)", async () => {
     mockDbQuery.mockResolvedValue({ rows: [] });
 
-    await releasePrLease("run-1");
+    await releasePrLease("run-1", OWNER);
 
     const [sql, params] = mockDbQuery.mock.calls[0];
-    expect(sql).toMatch(/UPDATE public\.onboarding_runs SET pr_lease_until = NULL/);
-    expect(params).toEqual(["run-1"]);
+    expect(sql).toMatch(/UPDATE public\.onboarding_runs SET pr_lease_until = NULL, pr_lease_owner = NULL/);
+    expect(sql).toMatch(/WHERE id = \$1 AND pr_lease_owner = \$2/);
+    expect(params).toEqual(["run-1", OWNER]);
+  });
+});
+
+describe("renewPrLease (fix round 3)", () => {
+  afterEach(() => jest.resetAllMocks());
+
+  it("is guarded on the owner token and only extends when less than half the lease is left", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ pr_lease_until: "later" }] });
+
+    await renewPrLease("run-1", OWNER);
+
+    const [sql, params] = mockDbQuery.mock.calls[0];
+    expect(sql).toMatch(/WHERE id = \$1 AND pr_lease_owner = \$2/);
+    expect(sql).toMatch(/pr_lease_until < now\(\) \+ make_interval\(mins => \$4\)\s+THEN now\(\) \+ make_interval\(mins => \$3\)/);
+    expect(sql).toMatch(/ELSE pr_lease_until/);
+    expect(params).toEqual(["run-1", OWNER, PR_LEASE_DURATION_MINUTES, PR_LEASE_RENEW_BELOW_MINUTES]);
+    expect(PR_LEASE_RENEW_BELOW_MINUTES).toBe(PR_LEASE_DURATION_MINUTES / 2);
+  });
+
+  it("returns true while the lease is still ours", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [{ pr_lease_until: "later" }] });
+    await expect(renewPrLease("run-1", OWNER)).resolves.toBe(true);
+  });
+
+  it("returns false once another caller owns the lease (0 rows) — it can't be stolen back", async () => {
+    mockDbQuery.mockResolvedValue({ rows: [] });
+    await expect(renewPrLease("run-1", OWNER)).resolves.toBe(false);
   });
 });
