@@ -14,7 +14,7 @@
 
 ## Phase 0: Governance (blocks everything)
 
-- [X] T000 (WP-F0) Amend `.specify/memory/constitution.md` Principle VI to **UI/UX Layout Contract** (v1.1.0 → **2.0.0**, MAJOR, because a principle is redefined): `contracts/design-system.md` + prototypes are the contract for `app/frontend-new/`, and the legacy `app/frontend/` stays immutable until switch-over. Updated `.specify/templates/plan-template.md`, `.github/copilot-instructions.md`, `.github/instructions/frontend.instructions.md`, `.github/agents/code-review.agent.md`. **Remaining:** client signature in `specs/007-frontend-new/approvals/client-approval.md` (required before T073).
+- [X] T000 (WP-F0) Amend `.specify/memory/constitution.md` Principle VI to **UI/UX Layout Contract** (v1.1.0 → **2.0.0**, MAJOR, because a principle is redefined): `contracts/design-system.md` + prototypes are the contract for `app/frontend-new/`, and the legacy `app/frontend/` stays immutable until switch-over. Updated `.specify/templates/plan-template.md`, `.github/copilot-instructions.md`, `.github/instructions/frontend.instructions.md`, `.github/agents/code-review.agent.md`. No client sign-off is required while pre-go-live. A sign-off step can be added once the UI is stable.
 - [X] T001 [P] (WP-F0) `.github/instructions/frontend-new.instructions.md` (applyTo `app/frontend-new/**`): the restyle recipe (plan.md), shell ownership, tokens only, "behavior must not change" rule, tests expected.
 - [X] T002 [P] (WP-F0) Resolve the open questions in `research.md` with `/speckit.clarify` and record them in `spec.md` → Clarifications.
 - [ ] T003 [P] (WP-F0) README note: `app/frontend/` receives no more feature work (pre-go-live pivot) and remains only as the regression reference until cutover.
@@ -88,7 +88,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [ ] T070 (WP-X0) Remove embedded mode (T034) and delete `FE/src/components/layout/{PrimaryNav,ProjectSidebar,ProjectPageHeader}.tsx` once no page imports them.
 - [ ] T071 (WP-X0) Full regression run (PR-01…PR-22) on staging at 1440 and 390, recorded in `specs/007-frontend-new/checklists/regression.md`.
 - [ ] T072 (WP-X1) nginx rewrites for legacy paths (for internal testers' links).
-- [ ] T073 (WP-X2) **Requires the signed approval record.** Switch the primary host to `frontend-new` (Terraform, Front Door or App Gateway, Entra redirect URIs).
+- [ ] T073 (WP-X2) Switch the primary host to `frontend-new` (Terraform, Front Door or App Gateway, Entra redirect URIs).
 - [ ] T074 (WP-X2) Remove `app/frontend/`, its CI job and its Terraform instance right after the switch (not live yet, so no transition period). Update the constitution, README and instructions.
 
 ## Phase 6: Backend B1, versions and changes (parallel from M0)

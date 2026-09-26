@@ -4,7 +4,7 @@ Version change: 1.1.0 -> 2.0.0 (MAJOR: Principle VI redefined)
 Modified principles:
 - I–V (unchanged)
 - VI. UI/UX Layout Immutability -> VI. UI/UX Layout Contract (NON-NEGOTIABLE):
-  the approved redesign (spec 007) becomes the layout contract for
+  the redesign (spec 007) becomes the layout contract for
   app/frontend-new/; the legacy app/frontend/ keeps the immutability rule
   until switch-over and receives no feature work.
 Added sections:
@@ -20,8 +20,9 @@ Templates requiring updates:
   immutability check for app/frontend)
 - ✅ .github/copilot-instructions.md (section, layer list, anti-patterns)
 Follow-up TODOs:
-- Complete the client approval record in
-  specs/007-frontend-new/approvals/client-approval.md before switch-over.
+- Client sign-off is not required while the app is pre-go-live. Revisit a
+  sign-off step once the UI is stable (it can be added back with a MINOR
+  amendment).
 - At switch-over (spec 007, T074): remove the legacy clause and the Web App
   (legacy) layer row; the contract becomes the only rule (PATCH or MINOR).
 -->
@@ -91,10 +92,8 @@ the code compiles.
 
 ### VI. UI/UX Layout Contract (NON-NEGOTIABLE)
 
-The client-approved layout contract is
-`specs/007-frontend-new/contracts/design-system.md` together with the approved
-prototypes in `docs/design/frontend-redesign/`. The client approval is recorded
-in `specs/007-frontend-new/approvals/client-approval.md`.
+The layout contract is `specs/007-frontend-new/contracts/design-system.md`
+together with the prototypes in `docs/design/frontend-redesign/`.
 
 - **`app/frontend-new/**`**: pages, navigation, the application shell,
   information architecture, and interaction patterns MUST follow the layout
@@ -102,19 +101,19 @@ in `specs/007-frontend-new/approvals/client-approval.md`.
   layouts, navigation, and page structure defined by it. Changes to the
   contract itself (shell structure, information architecture, design tokens,
   interaction patterns) MUST update the contract and the prototypes in the same
-  change and MUST record client approval in the feature spec.
+  pull request and MUST pass code review.
 - **`app/frontend/**` (legacy, until switch-over)**: the existing layout,
   visual hierarchy, page structure, navigation, and component arrangement MUST
   NOT be modified. The legacy app receives no feature work and is kept only as
   the regression reference for spec 007 until it is removed.
 
 Styling and content changes within the contract are permitted. Any proposed
-change to the contract MUST be flagged in the feature spec and plan, and MUST
-NOT proceed without documented client approval attached to the spec artifacts.
+change to the contract MUST be flagged in the feature spec and plan.
 
-Rationale: The UI/UX layout is an explicit client requirement. The redesign was
-reviewed and approved as a whole, so the contract replaces the previous freeze
-for the new application instead of adding case-by-case exceptions to it.
+Rationale: A single, written layout contract keeps every page consistent while
+the product is built. The app is pre-go-live, so the contract changes through
+normal reviewed pull requests; a stakeholder sign-off step can be added once
+the UI is stable.
 
 ## Platform Constraints
 

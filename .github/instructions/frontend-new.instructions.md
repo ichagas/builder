@@ -4,7 +4,7 @@ applyTo: "app/frontend-new/**"
 
 # Frontend Layer (new) — Pronghorn Web App Redesign
 
-This is the new frontend from spec `specs/007-frontend-new/`. It starts as a copy of `app/frontend/` and is redesigned to the approved layout contract. It replaces `app/frontend/` at switch-over.
+This is the new frontend from spec `specs/007-frontend-new/`. It starts as a copy of `app/frontend/` and is redesigned to the layout contract. It replaces `app/frontend/` at switch-over.
 
 ## Read before changing anything
 - `specs/007-frontend-new/spec.md`, `plan.md` (especially **the move and restyle recipe**), `research.md`, `agents.md`
@@ -22,7 +22,7 @@ This is the new frontend from spec `specs/007-frontend-new/`. It starts as a cop
 - **One primary action per page**, declared in the route metadata (`src/app/routes/*.tsx`) and rendered by `PageHeader`.
 - **Tool and tab live in the URL** (`useUrlState`).
 - **Tokens only.** No raw Tailwind palette classes or hex colors outside `src/design/` (the token lint enforces this).
-- **Changing the contract itself** (shell structure, information architecture, tokens, interaction patterns) means updating `contracts/design-system.md` and the prototypes in the same PR, with client approval recorded in the spec.
+- **Changing the contract itself** (shell structure, information architecture, tokens, interaction patterns) means updating `contracts/design-system.md` and the prototypes in the same PR.
 
 ## Restyle work (existing pages)
 - **Behavior must not change.** Keep page logic, data calls, dialogs and toasts. Change only layout, navigation, tabs-in-URL, tokens and phone layout. Deeper changes are Phase R (research D-14).

@@ -17,12 +17,12 @@ applyTo: "app/frontend/src/**"
 - Reuse existing components from `app/frontend/src/components/`, hooks from `app/frontend/src/hooks/`, utilities from `app/frontend/src/lib/` and `app/frontend/src/utils/` before creating new ones.
 
 ## UI/UX Layout Immutability (NON-NEGOTIABLE, legacy app)
-**The existing UI/UX layout of this legacy app MUST NOT be modified** (Constitution Principle VI). The approved redesign lives in `app/frontend-new/`.
+**The existing UI/UX layout of this legacy app MUST NOT be modified** (Constitution Principle VI). The redesign lives in `app/frontend-new/`.
 - DO NOT change page layouts, sidebar/header/footer structure, or navigation flows.
 - DO NOT rearrange component positioning, modal/dialog patterns, or responsive breakpoints.
 - DO NOT alter visual hierarchy or page structure.
 - Styling changes (colors, fonts, spacing) within the existing layout ARE permitted when they don't alter structural layout.
-- Any layout change requires explicit written approval from the client.
+- Don't make layout changes here. Make them in `app/frontend-new/`.
 
 ## Testing
 - Framework: Vitest

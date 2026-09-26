@@ -45,8 +45,7 @@
   post-deploy validation expectations for the change.
 - **UI/UX Layout Contract**: For `app/frontend-new/`, confirm the change follows
   `specs/007-frontend-new/contracts/design-system.md`. Changes to the contract
-  itself need an updated contract and prototypes, plus client approval attached
-  to the spec. For the legacy `app/frontend/`, confirm no layout changes.
+  itself need an updated contract and prototypes in the same pull request. For the legacy `app/frontend/`, confirm no layout changes.
 
 ## Affected Layers
 

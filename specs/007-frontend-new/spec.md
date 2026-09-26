@@ -27,6 +27,7 @@ Design source (approved prototypes in `docs/design/frontend-redesign/`):
 - Q: French at cutover? → A: No, later. New screens are translation-ready (research D-16).
 - Q: Legacy freeze? → A: Not needed. The app isn't live yet; this is a pivot before go-live. `app/frontend/` stops receiving feature work.
 - Q: Which mesh checks block a PR? → A: Left configurable. PR validation runs and opens an issue when it finds something. Blocking may be allowed from the start and changed later (D-15). The CI may also run a Cyber Risk sandbox stage (D-17).
+- Q: Is a client sign-off needed for the redesign? → A: Not now. The app is pre-go-live and built by the team; add a sign-off step once the UI is stable.
 - Q: Which identity opens Azure Repos PRs? → A: TBD. Configured by admins on an Admin → Integrations page (service connection or PAT) (D-18).
 
 ## Scope
@@ -133,7 +134,7 @@ When the regression gate passes, the new app takes the primary host and `app/fro
 - **CR-001** `app/frontend/` keeps running unchanged as the reference for the regression suite until US7. It receives no feature work (pre-go-live pivot).
 - **CR-002** No existing `/api/v1` contract changes. New endpoints are additive.
 - **CR-003** All legacy routes and share-token links resolve in the new app.
-- **CR-004** **Constitution Principle VI (v2.0.0, UI/UX Layout Contract)**: `contracts/design-system.md` + the prototypes are the layout contract for `app/frontend-new/`, and `app/frontend/` stays immutable until switch-over. The written client approval MUST be recorded in `approvals/client-approval.md` before switch-over.
+- **CR-004** **Constitution Principle VI (v2.0.0, UI/UX Layout Contract)**: `contracts/design-system.md` + the prototypes are the layout contract for `app/frontend-new/`, and `app/frontend/` stays immutable until switch-over. Contract changes go through reviewed PRs that update the contract and prototypes. No client sign-off while pre-go-live.
 - **CR-005** Own container, CI job and host (`next.<domain>`) for independent deploy and rollback.
 - **CR-006** New tables in numbered migrations from `012_`.
 

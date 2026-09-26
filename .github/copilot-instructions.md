@@ -10,8 +10,8 @@
 	- WebSocket endpoint at `/ws`
 
 ## UI/UX Layout Contract (NON-NEGOTIABLE)
-The client-approved redesign is the layout contract (Constitution Principle VI, v2.0.0):
-- **`app/frontend-new/`** (the new frontend, spec `specs/007-frontend-new/`): follow `specs/007-frontend-new/contracts/design-system.md` and the prototypes in `docs/design/frontend-redesign/`. New layouts, navigation and page structure that follow the contract ARE permitted. Changes to the contract itself need an updated contract and prototypes, plus client approval recorded in the spec.
+The redesign is the layout contract (Constitution Principle VI, v2.0.0):
+- **`app/frontend-new/`** (the new frontend, spec `specs/007-frontend-new/`): follow `specs/007-frontend-new/contracts/design-system.md` and the prototypes in `docs/design/frontend-redesign/`. New layouts, navigation and page structure that follow the contract ARE permitted. Changes to the contract itself update the contract and the prototypes in the same pull request.
 - **`app/frontend/`** (legacy, until switch-over): the existing layout MUST NOT be modified. It receives no feature work and is the regression reference only.
 
 ## Repository Layout (Authoritative)
@@ -215,7 +215,7 @@ user-invokable: true
 ## What to Avoid (examples of anti-patterns)
 - Do not bypass existing auth/authorization checks in API handlers.
 - Do not hardcode environment-specific URLs in source unless already patterned that way for local dev defaults.
-- Do not deviate from the UI/UX layout contract in `app/frontend-new/`, and do not change the legacy `app/frontend/` layout. Contract changes need client approval recorded in the spec.
+- Do not deviate from the UI/UX layout contract in `app/frontend-new/`, and do not change the legacy `app/frontend/` layout. Contract changes update the contract and the prototypes in the same pull request.
 
 ### Related Resources
 - Refer to this URL for more details for instructions and guidance using and creating skills: [VS Code Copilot Skills Documentation](https://code.visualstudio.com/docs/copilot/customization/agent-skills)

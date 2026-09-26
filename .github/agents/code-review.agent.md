@@ -49,7 +49,7 @@ Determine which layers are affected based on file paths:
   - raw colors instead of design tokens
   - a toast where the change has a place on screen (new screens)
   - a restyle PR that changes page behavior (logic, data calls)
-- **REQUIRE** an updated contract and prototype, plus a recorded client approval in the spec, for changes to the contract itself (shell structure, information architecture, tokens, interaction patterns). Flag with: "⚠️ LAYOUT CONTRACT CHANGE — update the contract and the prototypes and attach client approval."
+- **REQUIRE** the contract (`contracts/design-system.md`) and the prototypes to be updated in the same PR for changes to the contract itself (shell structure, information architecture, tokens, interaction patterns). Flag with: "⚠️ LAYOUT CONTRACT CHANGE — update the contract and the prototypes in this PR."
 
 **For changes in `app/frontend/src/**` (legacy): immutability check.**
 - **REJECT** feature work and any layout change. This app is reference only until switch-over.
