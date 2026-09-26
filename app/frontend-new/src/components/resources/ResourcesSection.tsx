@@ -39,10 +39,10 @@ const resourceTypeIcons = {
 };
 
 const resourceTypeColors = {
-  file: "text-blue-500",
-  website: "text-green-500",
-  youtube: "text-red-500",
-  image: "text-purple-500",
+  file: "text-primary",
+  website: "text-ok",
+  youtube: "text-bad",
+  image: "text-define",
 };
 
 export function ResourcesSection({ resources, onRefresh, tableName }: ResourcesSectionProps) {
