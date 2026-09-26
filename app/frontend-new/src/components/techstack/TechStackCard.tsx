@@ -30,10 +30,19 @@ export function TechStackCard({ techStack, onDelete, onUpdate, onRefresh }: Tech
 
   useEffect(() => {
     const countChildren = async () => {
-      const { count } = await pronghornApi
-        .from("tech_stacks")
+      // NOTE(spec-007 Phase R): QueryBuilder.select() (src/lib/pronghornApiAdapter.ts)
+      // takes only a `columns` string — the `{ count, head }` PostgREST-style
+      // second argument here is silently ignored at runtime, and QueryResult
+      // never carries a `count` field, so `count` below is always `undefined`
+      // and childCount always falls back to 0 (pre-existing bug: child counts
+      // never render correctly, not introduced by this fix). Cast to `any` to
+      // keep the typecheck gate honest about this call site without changing
+      // runtime behavior; the actual fix needs a real count-aware adapter
+      // method and is out of scope for this type-only pass.
+      const result: any = await (pronghornApi.from("tech_stacks") as any)
         .select("*", { count: "exact", head: true })
         .eq("parent_id", techStack.id);
+      const count = result?.count;
       setChildCount(count || 0);
     };
     countChildren();

@@ -16,20 +16,23 @@
       "resources": {
         "terraformTargets": [
           "module.container_apps",
-          "module.frontend"
+          "module.frontend",
+          "module.frontend_new"
         ],
         "scripts": [
           "infra/scripts/deploy-containers.ps1"
         ],
         "containerApps": [
           "ca-pronghorn-api",
-          "ca-pronghorn-frontend"
+          "ca-pronghorn-frontend",
+          "ca-pronghorn-frontend-new"
         ],
         "outputs": [
           "resource_group_name",
           "container_registry_login_server",
           "container_app_url",
-          "frontend_app_url"
+          "frontend_app_url",
+          "frontend_new_url"
         ]
       }
     },

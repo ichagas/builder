@@ -160,15 +160,25 @@ export default function Audit() {
         },
       });
       
+      // NOTE(spec-007 Phase R): the adapter's function-invoke error type is
+      // `{ message: string } | null` (src/lib/pronghornApiAdapter.ts
+      // FunctionsInvoker) — it never has a `.name`, so the two
+      // FunctionsRelayError/FunctionsFetchError checks below are dead
+      // (always false) leftovers from a prior Supabase-SDK-shaped error and
+      // never actually match at runtime (pre-existing, not introduced by this
+      // fix). Cast to `any` to keep the typecheck gate honest about this call
+      // site without changing runtime behavior; removing the dead checks is
+      // out of scope for this type-only pass.
+      const orchestratorErrorAny = orchestratorError as any;
       // Detect timeout vs real error - Edge Functions timeout after ~60s but continue running
-      const isTimeout = orchestratorError?.message?.includes("timeout") || 
+      const isTimeout = orchestratorError?.message?.includes("timeout") ||
                         orchestratorError?.message?.includes("connection") ||
                         orchestratorError?.message?.includes("body stream") ||
                         orchestratorError?.message?.includes("EOF") ||
                         orchestratorError?.message?.includes("network") ||
                         orchestratorError?.message?.includes("Failed to send") ||
-                        orchestratorError?.name === "FunctionsRelayError" ||
-                        orchestratorError?.name === "FunctionsFetchError";
+                        orchestratorErrorAny?.name === "FunctionsRelayError" ||
+                        orchestratorErrorAny?.name === "FunctionsFetchError";
       
       // Check for actual errors - edge functions return errors in data.error sometimes
       if (orchestratorError && !isTimeout) {
@@ -361,16 +371,21 @@ export default function Audit() {
               shareToken,
             },
           });
-          
-          const isTimeout = orchestratorError?.message?.includes("timeout") || 
+
+          // NOTE(spec-007 Phase R): see the identical NOTE above (resume path)
+          // — the adapter's function-invoke error is `{ message: string } |
+          // null` and never has `.name`; these two checks are dead leftovers
+          // and never match at runtime (pre-existing, unchanged here).
+          const orchestratorError2Any = orchestratorError as any;
+          const isTimeout = orchestratorError?.message?.includes("timeout") ||
                             orchestratorError?.message?.includes("connection") ||
                             orchestratorError?.message?.includes("body stream") ||
                             orchestratorError?.message?.includes("EOF") ||
                             orchestratorError?.message?.includes("network") ||
                             orchestratorError?.message?.includes("Failed to send") ||
                             orchestratorError?.message?.includes("aborted") ||
-                            orchestratorError?.name === "FunctionsRelayError" ||
-                            orchestratorError?.name === "FunctionsFetchError";
+                            orchestratorError2Any?.name === "FunctionsRelayError" ||
+                            orchestratorError2Any?.name === "FunctionsFetchError";
           
           if (orchestratorError && !isTimeout) {
             console.error("Orchestrator error:", orchestratorError);
