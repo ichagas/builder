@@ -10,10 +10,18 @@ jest.mock("../../../utils/logger", () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
 
-jest.mock("../../../utils/database", () => ({
-  __esModule: true,
-  default: { query: jest.fn() },
-}));
+jest.mock("../../../utils/database", () => {
+  const queryFn = jest.fn();
+  // The run lock (`withRunLock`) just needs a client whose `.query` is
+  // observable; route it through the same `query` mock so existing
+  // SQL-substring assertions also see queries issued "inside" the
+  // transaction (e.g. the advisory lock, or application inserts).
+  const transactionFn = jest.fn((callback: (client: { query: jest.Mock }) => Promise<unknown>) => callback({ query: queryFn }));
+  return {
+    __esModule: true,
+    default: { query: queryFn, transaction: transactionFn },
+  };
+});
 
 jest.mock("../../../services/teams/authorization", () => ({
   checkTeamAccess: jest.fn(),
@@ -31,6 +39,7 @@ jest.mock("../../../services/onboarding/repository", () => {
     replaceRunRepositories: jest.fn(),
     updateRun: jest.fn(),
     updateRunRepositoryByFullName: jest.fn(),
+    claimRunTransition: jest.fn(),
   };
 });
 
@@ -58,8 +67,10 @@ const mockListRepos = repo.listRepositoriesForRun as jest.Mock;
 const mockReplaceRepos = repo.replaceRunRepositories as jest.Mock;
 const mockUpdateRun = repo.updateRun as jest.Mock;
 const mockUpdateRepo = repo.updateRunRepositoryByFullName as jest.Mock;
+const mockClaimRunTransition = repo.claimRunTransition as jest.Mock;
 const mockOpenPr = openRepositoryPullRequest as jest.Mock;
 const mockDbQuery = db.query as jest.Mock;
+const mockDbTransaction = db.transaction as jest.Mock;
 
 const USER_ID = "user-1";
 const TEAM_ID = "team-1";
@@ -242,15 +253,41 @@ describe("startRun", () => {
     mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
   });
 
-  it("409s if the run isn't in draft", async () => {
+  it("409s if the run isn't in draft (the atomic claim finds 0 matching rows)", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockClaimRunTransition.mockResolvedValue(null);
+
     await expect(onboarding.startRun(USER_ID, RUN_ID)).rejects.toMatchObject({ statusCode: 409 });
+    expect(mockClaimRunTransition).toHaveBeenCalledWith(RUN_ID, "draft", { status: "running", step: "sandbox" });
   });
 
   it("422s when no repository is selected", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
     mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: false }]);
     await expect(onboarding.startRun(USER_ID, RUN_ID)).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockClaimRunTransition).not.toHaveBeenCalled();
+  });
+
+  it("409s a second concurrent start once the first has already claimed the run (no second job dispatch)", async () => {
+    const dispatcher = controlledDispatcher();
+    setJobDispatcher(dispatcher);
+
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    // First caller's claim succeeds; a second, concurrent caller's claim
+    // (racing on the same `WHERE status = 'draft'`) finds 0 rows.
+    mockClaimRunTransition.mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" })).mockResolvedValueOnce(null);
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
+
+    const [first, second] = await Promise.allSettled([
+      onboarding.startRun(USER_ID, RUN_ID),
+      onboarding.startRun(USER_ID, RUN_ID),
+    ]);
+
+    expect(first.status).toBe("fulfilled");
+    expect(second.status).toBe("rejected");
+    expect((second as PromiseRejectedResult).reason).toMatchObject({ statusCode: 409 });
+    expect(dispatcher.dispatch).toHaveBeenCalledTimes(1);
   });
 
   it("dispatches the sandbox job and moves the run to running/sandbox", async () => {
@@ -259,12 +296,13 @@ describe("startRun", () => {
 
     mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
     mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    mockClaimRunTransition.mockResolvedValue(baseRun({ status: "running", step: "sandbox" }));
     mockUpdateRun.mockResolvedValue(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
 
     const view = await onboarding.startRun(USER_ID, RUN_ID);
 
     expect(dispatcher.dispatch).toHaveBeenCalled();
-    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "running", step: "sandbox", jobExecutionId: "job-exec-1" });
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { jobExecutionId: "job-exec-1" });
     expect(view.status).toBe("running");
   });
 
@@ -276,6 +314,7 @@ describe("startRun", () => {
       .mockResolvedValueOnce(baseRun({ status: "draft" })) // startRun's own access check
       .mockResolvedValueOnce(baseRun({ status: "running" })); // applySandboxResult's lookup
     mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    mockClaimRunTransition.mockResolvedValue(baseRun({ status: "running", step: "sandbox" }));
     mockUpdateRun.mockResolvedValue(baseRun({ status: "running" }));
 
     await onboarding.startRun(USER_ID, RUN_ID);
@@ -355,8 +394,8 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
   it("opens one PR per selected repository once confirmed and ready", async () => {
     mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" }))
-      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+      .mockResolvedValueOnce(baseRun({ status: "ready" })) // pre-lock auth check
+      .mockResolvedValueOnce(baseRun({ status: "ready" })); // authoritative, fresh under the lock
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -379,9 +418,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("is idempotent: confirming again after prs_open does not reopen PRs for repos that already have one", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "prs_open" }))
-      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+    mockGetRunById.mockResolvedValue(baseRun({ status: "prs_open" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -402,8 +439,8 @@ describe("openPullRequests — confirm gate and idempotency", () => {
 
   it("creates the application and registers the repository once a PR is open", async () => {
     mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready", application_id: null }))
-      .mockResolvedValueOnce(baseRun({ status: "prs_open", application_id: "app-1" }));
+      .mockResolvedValueOnce(baseRun({ status: "ready", application_id: null })) // pre-lock auth check
+      .mockResolvedValueOnce(baseRun({ status: "ready", application_id: null })); // authoritative, under the lock
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -431,9 +468,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("does not recreate the application once the run already has one", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready", application_id: "existing-app" }))
-      .mockResolvedValueOnce(baseRun({ status: "prs_open", application_id: "existing-app" }));
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: "existing-app" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -456,7 +491,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   it("skips a selected repository with no generated files and still succeeds for the rest (partial success)", async () => {
     mockGetRunById
       .mockResolvedValueOnce(baseRun({ status: "ready" }))
-      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+      .mockResolvedValueOnce(baseRun({ status: "ready" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/permits-api",
@@ -489,7 +524,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   it("partial failure: one repo's PR call throws, the other succeeds — run still advances (207-style partial success)", async () => {
     mockGetRunById
       .mockResolvedValueOnce(baseRun({ status: "ready" }))
-      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+      .mockResolvedValueOnce(baseRun({ status: "ready" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/ok-repo",
@@ -542,9 +577,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("retry after a partial failure only reopens PRs for repos that are still missing one", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready" })) // retried confirm call
-      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" })); // retried confirm call
     mockListRepos.mockResolvedValue([
       {
         full_name: "goa/already-open",
@@ -572,9 +605,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
   });
 
   it("routes azure_pipelines repos to the azure_devops provider", async () => {
-    mockGetRunById
-      .mockResolvedValueOnce(baseRun({ status: "ready", connection_id: "conn-1" }))
-      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready", connection_id: "conn-1" }));
     mockListRepos.mockResolvedValue([
       {
         full_name: "MyProject/permits-api",
@@ -592,6 +623,35 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(mockOpenPr).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "azure_devops", connectionId: "conn-1", organizationId: "org-1" })
     );
+  });
+
+  it("serializes the whole confirm under a per-run advisory lock, re-reading the run inside it", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "ready" })) // pre-lock auth check
+      .mockResolvedValueOnce(baseRun({ status: "ready" })); // authoritative, fresh under the lock
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "x", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    expect(mockDbTransaction).toHaveBeenCalledTimes(1);
+    // The advisory lock query runs first, inside the transaction, before any
+    // repository read/write for this call.
+    const lockCallIndex = mockDbQuery.mock.calls.findIndex(([sql]: [string]) => sql.includes("pg_advisory_xact_lock"));
+    expect(lockCallIndex).toBeGreaterThanOrEqual(0);
+    expect(mockDbQuery.mock.calls[lockCallIndex][1]).toEqual([RUN_ID]);
+    // getRunById is called once for the pre-lock auth check and once again
+    // (the authoritative read) only after the lock is held.
+    expect(mockGetRunById).toHaveBeenCalledTimes(2);
   });
 });
 

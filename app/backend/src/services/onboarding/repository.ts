@@ -102,7 +102,7 @@ export interface UpdateRunFields {
   connectionId?: string | null;
 }
 
-export async function updateRun(runId: string, fields: UpdateRunFields): Promise<OnboardingRunRow> {
+function buildRunUpdateSets(fields: UpdateRunFields): { sets: string[]; values: unknown[]; next: number } {
   const sets: string[] = [];
   const values: unknown[] = [];
   let i = 1;
@@ -133,13 +133,45 @@ export async function updateRun(runId: string, fields: UpdateRunFields): Promise
   }
 
   sets.push(`updated_at = now()`);
+  return { sets, values, next: i };
+}
 
+export async function updateRun(runId: string, fields: UpdateRunFields): Promise<OnboardingRunRow> {
+  const { sets, values, next } = buildRunUpdateSets(fields);
   values.push(runId);
   const { rows } = await db.query(
-    `UPDATE public.onboarding_runs SET ${sets.join(", ")} WHERE id = $${i} RETURNING ${RUN_COLUMNS}`,
+    `UPDATE public.onboarding_runs SET ${sets.join(", ")} WHERE id = $${next} RETURNING ${RUN_COLUMNS}`,
     values
   );
   return rows[0];
+}
+
+/**
+ * Atomically claim a status transition: the `UPDATE` only takes effect when
+ * the row's *current* status still matches `fromStatus` at the moment
+ * Postgres evaluates the `WHERE` clause. Two concurrent callers racing to
+ * start (or open PRs for) the same run can both read `fromStatus` from a
+ * prior `SELECT`, but only one of the resulting `UPDATE`s can match — the
+ * other sees 0 rows and gets `null` back, which callers must treat as "lost
+ * the race, someone else already made this transition" (typically a 409),
+ * never as "the run doesn't exist". This makes the state-machine transition
+ * itself atomic without needing an explicit lock, relying on Postgres's
+ * normal per-row MVCC semantics for a single-statement `UPDATE ... WHERE`.
+ */
+export async function claimRunTransition(
+  runId: string,
+  fromStatus: OnboardingStatus,
+  fields: UpdateRunFields
+): Promise<OnboardingRunRow | null> {
+  const { sets, values, next } = buildRunUpdateSets(fields);
+  values.push(runId, fromStatus);
+  const { rows } = await db.query(
+    `UPDATE public.onboarding_runs SET ${sets.join(", ")}
+     WHERE id = $${next} AND status = $${next + 1}
+     RETURNING ${RUN_COLUMNS}`,
+    values
+  );
+  return rows[0] ?? null;
 }
 
 export interface RepositorySelectionInput {

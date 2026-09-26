@@ -23,6 +23,7 @@ import {
   replaceRunRepositories,
   updateRun,
   updateRunRepositoryByFullName,
+  claimRunTransition,
   OnboardingRunRow,
   OnboardingRunRepositoryRow,
   RepositorySelectionInput,
@@ -65,6 +66,25 @@ async function toView(run: OnboardingRunRow): Promise<OnboardingRunView> {
 async function getLatestPackVersion(): Promise<string | null> {
   const { rows } = await db.query(`SELECT version FROM public.standards_packs ORDER BY published_at DESC LIMIT 1`);
   return rows[0]?.version ?? null;
+}
+
+/**
+ * Serializes the whole critical section for one onboarding run behind a
+ * Postgres advisory transaction lock keyed by the run id (fix round 1,
+ * item 1): two concurrent calls for the *same* run (e.g. a doubled-click
+ * confirm, or a retry racing the original request) block on this lock
+ * rather than both proceeding, so `openPullRequests` can safely re-read the
+ * run's authoritative state once inside and never create two `applications`
+ * rows for the same run. The lock is released automatically when the
+ * transaction ends (commit or rollback), including on an unhandled
+ * exception thrown by `fn`. `hashtext(...)::bigint` folds the run's uuid
+ * into the bigint key `pg_advisory_xact_lock` requires.
+ */
+async function withRunLock<T>(runId: string, fn: () => Promise<T>): Promise<T> {
+  return db.transaction(async (client) => {
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1)::bigint)`, [runId]);
+    return fn();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -218,14 +238,20 @@ export async function applySandboxResult(result: JobResult): Promise<void> {
 export async function startRun(userId: string, runId: string): Promise<OnboardingRunView> {
   const run = await requireRunAccess(userId, runId);
 
-  if (!canTransition(run.status, "running")) {
-    throw Errors.conflict(describeInvalidTransition(run.status, "running"));
-  }
-
   const repositories = await listRepositoriesForRun(runId);
   const selected = repositories.filter((r) => r.selected);
   if (selected.length === 0) {
     throw Errors.validation({ repositories: "select at least one repository before starting" });
+  }
+
+  // Atomic claim (fix round 1, item 1): only a run whose status is still
+  // "draft" *at the moment Postgres applies this UPDATE* is claimed. Two
+  // concurrent POST /start calls for the same run race here, not after —
+  // exactly one gets the row back and goes on to dispatch the sandbox job;
+  // the other gets `null` and 409s without ever dispatching a second job.
+  const claimed = await claimRunTransition(runId, "draft", { status: "running", step: "sandbox" });
+  if (!claimed) {
+    throw Errors.conflict(describeInvalidTransition(run.status, "running"));
   }
 
   const dispatcher = getJobDispatcher();
@@ -234,7 +260,7 @@ export async function startRun(userId: string, runId: string): Promise<Onboardin
     applySandboxResult
   );
 
-  const updated = await updateRun(runId, { status: "running", step: "sandbox", jobExecutionId });
+  const updated = await updateRun(runId, { jobExecutionId });
   logger.info(`[onboarding] sandbox job dispatched (run=${runId}, jobExecutionId=${jobExecutionId})`);
   return toView(updated);
 }
@@ -337,94 +363,118 @@ export async function openPullRequests(
   runId: string,
   params: { confirm?: boolean }
 ): Promise<OnboardingRunView> {
-  const run = await requireRunAccess(userId, runId);
-
   if (params.confirm !== true) {
     throw Errors.validation({ confirm: "must be explicitly set to true to open pull requests" });
   }
 
-  if (!PR_ELIGIBLE_STATUSES.includes(run.status)) {
-    throw Errors.conflict(`Pull requests can only be opened once the run is "ready" (currently "${run.status}")`);
-  }
+  // Authorization only here — the authoritative status/application_id read
+  // happens fresh once the run lock is held, below, never from this object.
+  await requireRunAccess(userId, runId);
 
-  const organizationId = await getTeamOrgId(run.team_id);
-  if (!organizationId) throw Errors.notFound("Team");
+  // Fix round 1, item 1: serialize the whole PR-opening + application-link
+  // critical section per run. Without this, two concurrent confirms (a
+  // doubled click, or a client retry racing the original request) could
+  // both read `application_id: null` and each create their own
+  // `applications` row for the same run. Everything below re-reads the run
+  // fresh, under the lock, so a second caller that was blocked here sees
+  // whatever the first one committed (e.g. `application_id` already set,
+  // or repositories that already have a `pr_number`) instead of stale data
+  // captured before the lock was acquired.
+  return withRunLock(runId, async () => {
+    const run = await loadRunOrThrow(runId);
 
-  const repositories = await listRepositoriesForRun(runId);
-  const selected = repositories.filter((r) => r.selected);
-
-  const errors: string[] = [];
-  const openedNow: OnboardingRunRepositoryRow[] = [];
-
-  for (const repo of selected) {
-    if (repo.pr_number) {
-      // Already opened — idempotent no-op for this repository.
-      continue;
+    if (!PR_ELIGIBLE_STATUSES.includes(run.status)) {
+      throw Errors.conflict(`Pull requests can only be opened once the run is "ready" (currently "${run.status}")`);
     }
 
-    const provider = providerForCi(repo.detected_ci);
-    const files = (repo.generated_manifest ?? []) as Array<{ path: string; content: string }>;
-    if (files.length === 0) {
-      errors.push(`${repo.full_name}: no generated files to open a PR from`);
-      continue;
+    const organizationId = await getTeamOrgId(run.team_id);
+    if (!organizationId) throw Errors.notFound("Team");
+
+    const repositories = await listRepositoriesForRun(runId);
+    const selected = repositories.filter((r) => r.selected);
+
+    const errors: string[] = [];
+    const openedNow: OnboardingRunRepositoryRow[] = [];
+
+    for (const repo of selected) {
+      if (repo.pr_number) {
+        // Already opened — idempotent no-op for this repository.
+        continue;
+      }
+
+      const provider = providerForCi(repo.detected_ci);
+      const files = (repo.generated_manifest ?? []) as Array<{ path: string; content: string }>;
+      if (files.length === 0) {
+        errors.push(`${repo.full_name}: no generated files to open a PR from`);
+        continue;
+      }
+
+      try {
+        const result = await openRepositoryPullRequest({
+          provider,
+          fullName: repo.full_name,
+          organizationId,
+          connectionId: run.connection_id,
+          branchName: `pronghorn-onboarding/${runId.slice(0, 8)}`,
+          title: `Add the Assurance Mesh CI (${run.pack_version ?? "latest pack"})`,
+          body:
+            `Opened automatically by Pronghorn onboarding for **${run.application_name}**.\n\n` +
+            "This adds the standards pack's CI workflow so pull requests to the default branch run the mesh.",
+          files,
+        });
+
+        await updateRunRepositoryByFullName(runId, repo.full_name, {
+          prNumber: result.prNumber,
+          prState: result.prState,
+        });
+        openedNow.push({ ...repo, pr_number: result.prNumber, pr_state: result.prState });
+      } catch (err: any) {
+        logger.error(`[onboarding] failed to open PR for ${repo.full_name} (run=${runId}): ${err.message}`);
+        errors.push(`${repo.full_name}: ${err.message}`);
+      }
     }
 
-    try {
-      const result = await openRepositoryPullRequest({
-        provider,
-        fullName: repo.full_name,
-        organizationId,
-        connectionId: run.connection_id,
-        branchName: `pronghorn-onboarding/${runId.slice(0, 8)}`,
-        title: `Add the Assurance Mesh CI (${run.pack_version ?? "latest pack"})`,
-        body:
-          `Opened automatically by Pronghorn onboarding for **${run.application_name}**.\n\n` +
-          "This adds the standards pack's CI workflow so pull requests to the default branch run the mesh.",
-        files,
-      });
-
-      await updateRunRepositoryByFullName(runId, repo.full_name, {
-        prNumber: result.prNumber,
-        prState: result.prState,
-      });
-      openedNow.push({ ...repo, pr_number: result.prNumber, pr_state: result.prState });
-    } catch (err: any) {
-      logger.error(`[onboarding] failed to open PR for ${repo.full_name} (run=${runId}): ${err.message}`);
-      errors.push(`${repo.full_name}: ${err.message}`);
+    if (errors.length > 0 && errors.length === selected.length) {
+      // Every repository failed — stay in "ready" so a retry is a clean
+      // confirm, not a partially-applied "prs_open".
+      throw Errors.internal(`Could not open any pull requests: ${errors.join("; ")}`);
     }
-  }
 
-  if (errors.length > 0 && errors.length === selected.length) {
-    // Every repository failed — stay in "ready" so a retry is a clean
-    // confirm, not a partially-applied "prs_open".
-    throw Errors.internal(`Could not open any pull requests: ${errors.join("; ")}`);
-  }
+    // Repositories with a PR now, whether opened just now or on an earlier
+    // (partial) confirm — register/refresh all of them under the application.
+    const reposWithPr = selected
+      .map((r) => openedNow.find((o) => o.full_name === r.full_name) ?? r)
+      .filter((r) => r.pr_number);
 
-  // Repositories with a PR now, whether opened just now or on an earlier
-  // (partial) confirm — register/refresh all of them under the application.
-  const reposWithPr = selected
-    .map((r) => openedNow.find((o) => o.full_name === r.full_name) ?? r)
-    .filter((r) => r.pr_number);
+    // Built up from the authoritative `run` read under the lock — never
+    // re-read afterward, so the returned view reflects exactly what this
+    // call itself committed (no extra read that a concurrent writer,
+    // blocked on the same lock until we're done, could never actually race).
+    let updated: OnboardingRunRow = run;
 
-  if (reposWithPr.length > 0) {
-    const applicationId = await linkApplicationForRun(run, reposWithPr);
-    if (!run.application_id) {
-      await updateRun(runId, { applicationId });
+    if (reposWithPr.length > 0) {
+      const applicationId = await linkApplicationForRun(run, reposWithPr);
+      if (!run.application_id) {
+        updated = await updateRun(runId, { applicationId });
+      }
     }
-  }
 
-  if (run.status !== "prs_open") {
-    await updateRun(runId, { status: "prs_open", step: "prs" });
-  }
+    // Checked against `run` (the authoritative snapshot from under the
+    // lock), not `updated` — this call and the applicationId one above are
+    // independent writes; a real `UPDATE ... RETURNING` always reflects
+    // both once committed, but nothing here should depend on that.
+    if (run.status !== "prs_open") {
+      updated = await updateRun(runId, { status: "prs_open", step: "prs" });
+    }
 
-  const refreshed = await loadRunOrThrow(runId);
-  const view = await toView(refreshed);
+    const view = await toView(updated);
 
-  if (errors.length > 0) {
-    logger.warn(`[onboarding] some pull requests failed (run=${runId}): ${errors.join("; ")}`);
-  }
+    if (errors.length > 0) {
+      logger.warn(`[onboarding] some pull requests failed (run=${runId}): ${errors.join("; ")}`);
+    }
 
-  return view;
+    return view;
+  });
 }
 
 // ---------------------------------------------------------------------------
