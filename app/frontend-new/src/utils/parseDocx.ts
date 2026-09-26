@@ -400,8 +400,8 @@ export async function rasterizeDocx(
   progressModal.innerHTML = `
     <div style="margin-bottom: 16px;">
       <svg style="width: 40px; height: 40px; animation: docx-raster-spin 1s linear infinite; margin: 0 auto;" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r="18" stroke="#e5e7eb" stroke-width="4" fill="none"></circle>
-        <circle cx="20" cy="20" r="18" stroke="#3b82f6" stroke-width="4" fill="none" 
+        <circle cx="20" cy="20" r="18" stroke="var(--bg)" stroke-width="4" fill="none"></circle>
+        <circle cx="20" cy="20" r="18" stroke="var(--mode-building)" stroke-width="4" fill="none" 
                 stroke-dasharray="90 120" stroke-linecap="round"></circle>
       </svg>
     </div>

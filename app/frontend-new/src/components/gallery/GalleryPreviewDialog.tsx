@@ -80,7 +80,7 @@ function ContentItem({ icon, label, count, subLabel }: ContentItemProps) {
             {label}
           </span>
           {hasContent ? (
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-ok" />
           ) : (
             <XCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
           )}
