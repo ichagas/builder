@@ -52,3 +52,4 @@ None yet.
 - **Merged WP-BE1** (tester FAIL → fix round 1 → verified by orchestrator: BE 579 tests). **Merged WP-BE7** (security PASS w/ findings → fixed; tester PASS; reviewer APPROVE). BE2 dispatched.
 - **Merged WP-F1** (tester PASS, reviewer CHANGES REQUIRED → fix round 1 → verified: FE lint 0 errors, tsc OK, 330 tests, build OK). F2 and F2b (T030 only) dispatched.
 - **Merged WP-BE8** (tester FAIL + reviewer CHANGES REQUIRED + security PASS/medium → fix round 1 → verified: BE 652 tests). BE5 dispatched (deps BE3, BE8 merged).
+- **2026-09-26 ~11:10: spend limit hit again (HTTP 429)**; stopped: F6 dev (PR-04..07 written, rerunning), F2 dev (tokens.css in progress), F2b dev (codemod starting), BE2 dev (1 commit + WIP), BE5 dev (reading), BE4 tester. BE4 reviewer APPROVE, security PASS (medium: parse-before-size-check on /mesh/runs; low: report_url validation, repo-scoped GitHub token, markdown escaping). Resumed 12:08.
