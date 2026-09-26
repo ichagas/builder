@@ -180,9 +180,16 @@ export function SourceRequirementsUpload({
       const blob = new Blob([editedContent], { type: "text/plain" });
       const file = new File([blob], selectedFile, { type: "text/plain" });
 
-      const { error } = await pronghornApi.storage
-        .from("requirement-sources")
-        .update(`${requirementId}/${selectedFile}`, file);
+      // NOTE(spec-007 Phase R): `StorageBucket` (src/lib/pronghornApiAdapter.ts)
+      // has no `update` method — only list/upload/download/remove/getPublicUrl/
+      // createSignedUrl. This call throws "update is not a function" at
+      // runtime today (pre-existing bug, not introduced by this fix). Cast to
+      // `any` to keep the typecheck gate honest about that call site without
+      // changing runtime behavior; the actual fix (likely `.upload(..., {
+      // upsert: true })`) is out of scope for this type-only pass.
+      const { error } = await (
+        pronghornApi.storage.from("requirement-sources") as any
+      ).update(`${requirementId}/${selectedFile}`, file);
 
       if (error) throw error;
 

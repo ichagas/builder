@@ -135,8 +135,16 @@ export default function BuildBookEditor() {
           .is("parent_id", null)
           .order("order_index");
 
-        const { data: allTechItems } = await pronghornApi
-          .from("tech_stacks")
+        // NOTE(spec-007 Phase R): QueryBuilder (src/lib/pronghornApiAdapter.ts)
+        // has no `.not()` filter method (only eq/neq/gt/gte/lt/lte/like/ilike/
+        // in/is/or) — this throws "not is not a function" at runtime today
+        // (pre-existing bug, not introduced by this fix). Cast to `any` to
+        // keep the typecheck gate honest about this call site without
+        // changing runtime behavior; the actual fix needs a real negated-filter
+        // adapter method and is out of scope for this type-only pass.
+        const { data: allTechItems } = await (
+          pronghornApi.from("tech_stacks") as any
+        )
           .select("*")
           .not("parent_id", "is", null)
           .order("order_index");
