@@ -45,7 +45,7 @@
 - [ ] T027 [P] (WP-F3) `PageHeader`, `PrimaryActionSlot`, `MobileTabBar`.
 - [ ] T028 [P] (WP-F3) `ActionButton`, `NextStepBanner`, `Disclosure`, `Stepper`, `Inspector`, `FilterChips`.
 - [ ] T029 [P] (WP-F3) `UndoBar` + `useUndo`, `StatusCenter` + `useLongTask` — `FE/src/lib/state/`.
-- [ ] T030 (WP-F2b) Codemod `scripts/codemods/colors-to-tokens.ts` with the mapping table from `contracts/design-system.md` §1.1, a dry-run report and a list of unmapped cases.
+- [X] T030 (WP-F2b) Codemod `scripts/codemods/colors-to-tokens.ts` with the mapping table from `contracts/design-system.md` §1.1, a dry-run report and a list of unmapped cases.
 - [ ] T031 (WP-F2b) Run the codemod on `FE/src/components/**` and `FE/src/pages/**` in area batches (one commit per area). Fix unmapped cases. Switch the token lint (T018) to error mode. Unit tests stay green.
 - [ ] T032 (WP-F3) `FE/src/lib/state/useUrlState.ts`, `useUiPrefs.ts` with tests.
 - [ ] T033 (WP-F3) Router: convert `FE/src/App.tsx` to `createBrowserRouter` in `FE/src/app/router.tsx`, with layouts in `FE/src/app/layouts/`, a **route metadata registry** `FE/src/app/routes/*.tsx` (`phase`, `tool`, `title`, `usePrimaryAction`), all legacy redirects per `contracts/routes.md` §1 (including `/t/:token`), and NotFound.
