@@ -2,120 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* Design tokens (T020): source of truth for every color/shape/type/density
+ * value. Imported before the shadcn variable block below, which re-points
+ * shadcn's HSL variables to Blueprint per contracts/design-system.md §1.1.
+ */
+@import "./design/tokens.css";
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
 All colors MUST be HSL.
+
+T020: these HSL triplets are Blueprint's hex tokens (src/design/tokens.css)
+converted to HSL so `hsl(var(--x))` keeps working everywhere shadcn already
+uses it. They are computed values, not `var(--bg)` etc. references, because
+shadcn expects a bare "H S% L%" triplet in this slot. See §1.1 of
+contracts/design-system.md for the mapping table.
 */
 
 @layer base {
   :root {
-    /* Sophisticated blue-gray palette for enterprise SaaS */
-    --background: 220 20% 98%;
-    --foreground: 220 15% 12%;
+    /* --background -> --bg, --foreground -> --ink */
+    --background: 215 35% 93%;
+    --foreground: 218 56% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 12%;
+    --card-foreground: 218 56% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 12%;
+    --popover-foreground: 218 56% 13%;
 
-    /* Primary: Deep blue for trust and professionalism */
-    --primary: 215 75% 45%;
+    /* Primary -> Blueprint --primary */
+    --primary: 225 71% 49%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 215 75% 40%;
-    
-    /* Secondary: Subtle gray-blue */
-    --secondary: 220 15% 94%;
-    --secondary-foreground: 220 15% 20%;
+    --primary-hover: 225 71% 43%;
 
-    /* Muted: Light backgrounds */
-    --muted: 220 15% 96%;
-    --muted-foreground: 220 10% 45%;
+    /* Secondary / muted -> --surface-2, muted-foreground -> --muted */
+    --secondary: 214 37% 96%;
+    --secondary-foreground: 218 56% 13%;
 
-    /* Accent: Vibrant teal for highlights */
-    --accent: 185 70% 48%;
-    --accent-foreground: 0 0% 100%;
+    --muted: 214 37% 96%;
+    --muted-foreground: 217 21% 39%;
 
-    --destructive: 0 72% 51%;
+    /* Accent -> --primary-soft, foreground -> --primary */
+    --accent: 223 81% 94%;
+    --accent-foreground: 225 71% 49%;
+
+    --destructive: 357 67% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 215 75% 45%;
+    --border: 215 28% 86%;
+    --input: 215 28% 86%;
+    --ring: 225 71% 49%;
 
-    --radius: 0.5rem;
-    
-    /* Status colors */
-    --success: 145 65% 45%;
-    --warning: 38 92% 50%;
-    --info: 205 90% 50%;
-    
-    /* Design mode status */
-    --status-design: 265 55% 55%;
-    --status-audit: 38 92% 50%;
-    --status-build: 145 65% 45%;
+    --radius: 4px;
 
-    --sidebar-background: 0 0% 98%;
+    /* Status colors -> --ok / --warn / --primary */
+    --success: 143 74% 29%;
+    --warning: 26 90% 37%;
+    --info: 225 71% 49%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Design mode status -> --c-design / --warn / --c-build */
+    --status-design: 192 91% 36%;
+    --status-audit: 26 90% 37%;
+    --status-build: 32 95% 44%;
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar -> rail tokens */
+    --sidebar-background: 220 60% 16%;
+    --sidebar-foreground: 218 62% 95%;
+    --sidebar-primary: 220 56% 26%;
+    --sidebar-primary-foreground: 218 62% 95%;
+    --sidebar-accent: 220 56% 21%;
+    --sidebar-accent-foreground: 218 62% 95%;
+    --sidebar-border: 220 47% 25%;
+    --sidebar-ring: 225 71% 49%;
   }
 
-  .dark {
-    --background: 220 18% 8%;
-    --foreground: 220 10% 95%;
+  .dark,
+  [data-theme="dark"] {
+    --background: 220 46% 10%;
+    --foreground: 219 47% 94%;
 
-    --card: 220 16% 10%;
-    --card-foreground: 220 10% 95%;
+    --card: 219 46% 15%;
+    --card-foreground: 219 47% 94%;
 
-    --popover: 220 16% 10%;
-    --popover-foreground: 220 10% 95%;
+    --popover: 219 46% 15%;
+    --popover-foreground: 219 47% 94%;
 
-    --primary: 215 75% 55%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 215 75% 50%;
+    --primary: 224 100% 71%;
+    --primary-foreground: 219 63% 12%;
+    --primary-hover: 224 100% 75%;
 
-    --secondary: 220 15% 15%;
-    --secondary-foreground: 220 10% 85%;
+    --secondary: 217 47% 18%;
+    --secondary-foreground: 219 47% 94%;
 
-    --muted: 220 15% 12%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 217 47% 18%;
+    --muted-foreground: 217 31% 71%;
 
-    --accent: 185 70% 48%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 222 52% 22%;
+    --accent-foreground: 224 100% 71%;
 
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 2 82% 72%;
+    --destructive-foreground: 219 63% 12%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 215 75% 55%;
-    
-    --success: 145 65% 45%;
-    --warning: 38 92% 50%;
-    --info: 205 90% 50%;
-    
-    --status-design: 265 55% 60%;
-    --status-audit: 38 92% 55%;
-    --status-build: 145 65% 50%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 37% 26%;
+    --input: 220 37% 26%;
+    --ring: 224 100% 71%;
+
+    --success: 147 69% 55%;
+    --warning: 36 88% 59%;
+    --info: 224 100% 71%;
+
+    --status-design: 189 74% 50%;
+    --status-audit: 36 88% 59%;
+    --status-build: 36 88% 59%;
+
+    /* Rail/global bar stay navy in both themes, so these are unchanged */
+    --sidebar-background: 220 60% 16%;
+    --sidebar-foreground: 218 62% 95%;
+    --sidebar-primary: 220 56% 26%;
+    --sidebar-primary-foreground: 218 62% 95%;
+    --sidebar-accent: 220 56% 21%;
+    --sidebar-accent-foreground: 218 62% 95%;
+    --sidebar-border: 220 47% 25%;
+    --sidebar-ring: 224 100% 71%;
   }
 }
 
@@ -126,7 +134,12 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: var(--font);
     font-feature-settings: 'cv11', 'ss01';
+  }
+
+  code, kbd, samp, pre {
+    font-family: var(--mono);
   }
   
   h1, h2, h3, h4, h5, h6 {
