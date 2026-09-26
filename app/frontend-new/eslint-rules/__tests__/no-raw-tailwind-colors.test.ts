@@ -33,6 +33,12 @@ describe("no-raw-tailwind-colors", () => {
       // design token source files are exempt at the config level (see
       // eslint.config.js `ignores`), not inside the rule itself — the rule
       // has no file-path awareness, so this case only documents intent.
+
+      // T031 (WP-F2b): a non-class string property value (no colon-shaped
+      // class regex match) is never flagged — sanity check that the new
+      // whole-file Property visitor (added for the class-lookup-table case)
+      // doesn't over-fire on ordinary object literals.
+      `const el = <div className="p-2" />; const copy = { label: "Send message", id: "not-a-class-string" };`,
     ],
     invalid: [
       {
@@ -105,6 +111,44 @@ describe("no-raw-tailwind-colors", () => {
       {
         code: `const el = <div className="hover:dark:bg-blue-500/50" />;`,
         errors: [{ messageId: "rawTailwindColor", data: { token: "hover:dark:bg-blue-500/50" } }],
+      },
+      // T031 (WP-F2b): object-literal property VALUES used as a status/type
+      // -> classes lookup table, e.g. `const typeColors = { EPIC:
+      // "bg-purple-500/10 ...", ... }`, used later via `className={MAP[key]}`
+      // — not a className value or a class-helper-call argument at the
+      // point the string appears, so this needs its own whole-file check.
+      {
+        code: `const typeColors = { EPIC: "bg-purple-500/10 text-purple-700 border-purple-500/20" };`,
+        errors: [
+          { messageId: "rawTailwindColor", data: { token: "bg-purple-500/10" } },
+          { messageId: "rawTailwindColor", data: { token: "text-purple-700" } },
+          { messageId: "rawTailwindColor", data: { token: "border-purple-500/20" } },
+        ],
+      },
+      // Same shape with a quoted key.
+      {
+        code: `const map = { "IN_PROGRESS": "bg-amber-500" };`,
+        errors: [{ messageId: "rawTailwindColor", data: { token: "bg-amber-500" } }],
+      },
+      // T031 (WP-F2b): a conditional expression living inside a
+      // className={`...${...}`} template-literal interpolation, e.g.
+      // `` className={`p-3 ${cond ? "border-green-500/50 bg-green-500/10" :
+      // "bg-muted/50"}`} `` — previously only the static quasi text was
+      // checked, so the ternary's branches (real, rendered class strings)
+      // were invisible.
+      {
+        code: "const el = <div className={`p-3 ${cond ? \"border-green-500/50 bg-green-500/10\" : \"bg-muted/50\"}`} />;",
+        errors: [
+          { messageId: "rawTailwindColor", data: { token: "border-green-500/50" } },
+          { messageId: "rawTailwindColor", data: { token: "bg-green-500/10" } },
+        ],
+      },
+      // T031 (WP-F2b): a style={{}} color literal must be reported exactly
+      // once even though it is now reachable both via the JSXAttribute
+      // "style" handling and the whole-file Property visitor.
+      {
+        code: `const el = <div style={{ color: "#ff0000" }} />;`,
+        errors: [{ messageId: "rawHexColor", data: { hex: "#ff0000" } }],
       },
     ],
   });

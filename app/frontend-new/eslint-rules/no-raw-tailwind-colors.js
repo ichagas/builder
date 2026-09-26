@@ -97,10 +97,21 @@ function findHexColors(text) {
  * @param {import('eslint').Rule.RuleContext} context
  * @param {import('estree').Node} node
  * @param {string} text
- * @param {{allowHex?: boolean, allowTailwind?: boolean}} [opts]
+ * @param {{allowHex?: boolean, allowTailwind?: boolean, seen?: WeakSet<object>}} [opts]
  */
 function reportInString(context, node, text, opts = {}) {
-  const { allowHex = true, allowTailwind = true } = opts;
+  const { allowHex = true, allowTailwind = true, seen } = opts;
+
+  // T031 (WP-F2b): several entry points below can now reach the same
+  // string/quasi node (e.g. a `style={{ ... }}` property value is checked
+  // directly by the JSXAttribute handler *and* would otherwise be re-walked
+  // by the new whole-file `Property` visitor below). Report each node at
+  // most once so switching this rule to "error" doesn't produce duplicate
+  // errors for one real violation.
+  if (seen) {
+    if (seen.has(node)) return;
+    seen.add(node);
+  }
 
   if (allowTailwind) {
     for (const token of findTailwindTokens(text)) {
@@ -132,36 +143,46 @@ function reportInString(context, node, text, opts = {}) {
  *
  * @param {import('eslint').Rule.RuleContext} context
  * @param {import('estree').Node | null | undefined} node
+ * @param {WeakSet<object>} [seen]
  */
-function checkClassValueExpression(context, node) {
+function checkClassValueExpression(context, node, seen) {
   if (!node) return;
 
   switch (node.type) {
     case "Literal":
       if (typeof node.value === "string") {
-        reportInString(context, node, node.value);
+        reportInString(context, node, node.value, { seen });
       }
       break;
 
     case "TemplateLiteral":
       for (const quasi of node.quasis) {
-        reportInString(context, quasi, quasi.value.raw);
+        reportInString(context, quasi, quasi.value.raw, { seen });
+      }
+      // T031 (WP-F2b) fix: a template literal's `${...}` interpolations
+      // were never walked, so a conditional expression living inside one
+      // (e.g. `` `p-3 ${cond ? "border-green-500/50 bg-green-500/10" :
+      // "bg-muted/50"}` ``) was invisible to this rule even though it is a
+      // real, rendered class string — mirrors the colors-to-tokens codemod
+      // fix for the same gap.
+      for (const expr of node.expressions) {
+        checkClassValueExpression(context, expr, seen);
       }
       break;
 
     case "ConditionalExpression":
-      checkClassValueExpression(context, node.consequent);
-      checkClassValueExpression(context, node.alternate);
+      checkClassValueExpression(context, node.consequent, seen);
+      checkClassValueExpression(context, node.alternate, seen);
       break;
 
     case "LogicalExpression":
-      checkClassValueExpression(context, node.left);
-      checkClassValueExpression(context, node.right);
+      checkClassValueExpression(context, node.left, seen);
+      checkClassValueExpression(context, node.right, seen);
       break;
 
     case "ArrayExpression":
       for (const el of node.elements) {
-        checkClassValueExpression(context, el);
+        checkClassValueExpression(context, el, seen);
       }
       break;
 
@@ -169,11 +190,19 @@ function checkClassValueExpression(context, node) {
       for (const prop of node.properties) {
         if (prop.type !== "Property") continue;
         if (prop.key.type === "Literal" && typeof prop.key.value === "string") {
-          reportInString(context, prop.key, prop.key.value);
+          reportInString(context, prop.key, prop.key.value, { seen });
         } else if (prop.key.type === "Identifier" && !prop.computed) {
           // `{ "bg-red-500": cond }` is the common case above; a bare
           // identifier key (`{ active: cond }`) is not a class string.
         }
+        // T031 (WP-F2b) fix: also check the property *value* here, so an
+        // object passed straight to cn()/clsx() as a lookup (e.g.
+        // `cn(STATUS_STYLES[status])` isn't this shape, but
+        // `cn({ base: true, [STATUS_STYLES[status]]: true })` style code
+        // sometimes nests a literal class string as a value too) is
+        // covered the same way the standalone-object-literal visitor
+        // below covers the far more common top-level lookup-table case.
+        checkClassValueExpression(context, prop.value, seen);
       }
       break;
 
@@ -199,6 +228,12 @@ const noRawTailwindColorsRule = {
     },
   },
   create(context) {
+    // Per-file dedupe set (see reportInString): several visitors below can
+    // reach the same AST node (a style={{}} property value is handled
+    // directly here *and* would otherwise be re-walked by the standalone
+    // ObjectExpression visitor added for the class-lookup-table case).
+    const seen = new WeakSet();
+
     return {
       JSXAttribute(node) {
         const name = node.name && node.name.name;
@@ -214,10 +249,10 @@ const noRawTailwindColorsRule = {
             for (const prop of node.value.expression.properties) {
               if (prop.type !== "Property") continue;
               if (prop.value.type === "Literal" && typeof prop.value.value === "string") {
-                reportInString(context, prop.value, prop.value.value, { allowTailwind: false });
+                reportInString(context, prop.value, prop.value.value, { allowTailwind: false, seen });
               } else if (prop.value.type === "TemplateLiteral") {
                 for (const quasi of prop.value.quasis) {
-                  reportInString(context, quasi, quasi.value.raw, { allowTailwind: false });
+                  reportInString(context, quasi, quasi.value.raw, { allowTailwind: false, seen });
                 }
               }
             }
@@ -227,13 +262,13 @@ const noRawTailwindColorsRule = {
 
         // className="..." (plain string)
         if (node.value && node.value.type === "Literal" && typeof node.value.value === "string") {
-          reportInString(context, node.value, node.value.value);
+          reportInString(context, node.value, node.value.value, { seen });
           return;
         }
 
         // className={...} (expression container: template literal, cn(...), ternary, etc.)
         if (node.value && node.value.type === "JSXExpressionContainer") {
-          checkClassValueExpression(context, node.value.expression);
+          checkClassValueExpression(context, node.value.expression, seen);
         }
       },
 
@@ -249,7 +284,26 @@ const noRawTailwindColorsRule = {
         if (!calleeName || !CLASS_HELPER_CALLEES.has(calleeName)) return;
 
         for (const arg of node.arguments) {
-          checkClassValueExpression(context, arg);
+          checkClassValueExpression(context, arg, seen);
+        }
+      },
+
+      // T031 (WP-F2b) fix: a status/type -> classes lookup table used later
+      // via `className={MAP[key]}` (e.g. `const typeColors = { EPIC:
+      // "bg-purple-500/10 text-purple-700 ...", ... }`) is neither a
+      // className value nor a class-helper-call argument at the point the
+      // string literal appears, so neither visitor above ever sees it —
+      // mirrors the colors-to-tokens codemod's step 3b. Every plain string
+      // property value in the file is checked the same way a JSX className
+      // string is; an ordinary non-class string property (e.g. `label:
+      // "Send message"`) never matches the token/hex regexes, so nothing
+      // unrelated is flagged, and `seen` skips anything a more specific
+      // visitor already reported (style={{}} values, cn({...}) values).
+      Property(node) {
+        if (node.value.type === "Literal" && typeof node.value.value === "string") {
+          reportInString(context, node.value, node.value.value, { seen });
+        } else if (node.value.type === "TemplateLiteral") {
+          checkClassValueExpression(context, node.value, seen);
         }
       },
     };
