@@ -82,6 +82,10 @@ up() {
       # (index.ts) by default -- ALLOWED_ORIGINS overrides it. Covers the
       # handful of FE ports agents are likely to pick (8140-8149).
       export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-http://localhost:8140,http://localhost:8141,http://localhost:8142,http://localhost:8143,http://localhost:8144,http://localhost:8145,http://localhost:8146,http://localhost:8147,http://localhost:8148,http://localhost:8149}"
+      # A full regression run (21+ specs x 2 viewports, plus retries) can
+      # easily exceed the default 1000-req/15min limit from one "IP"
+      # (everything is localhost in e2e) -- rateLimit.ts reads this override.
+      export RATE_LIMIT_MAX="${RATE_LIMIT_MAX:-100000}"
       export GITHUB_ORG="${GITHUB_ORG:-e2e-not-configured}"
       # repoBlobStore.ts (repo staging blob storage) requires this to be set
       # to construct its BlobServiceClient at boot, but doesn't touch the
