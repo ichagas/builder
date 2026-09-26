@@ -34,6 +34,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T142 | BLOCKED-EXTERNAL | 92578d7, 5880ecb, 7eedbf8 | WP-BE7. Content in external/goa-standards-assurance-mesh/. Human: create repo, move content, tag v3, replace placeholder mesh_scripts_ref SHA, run sample GitHub + Azure Repos PRs |
 | T122–T125 | done | 3b9431c, 0e4d61a, 8f1ff15, a171714, 05b6c70, 3abdca1, 3cf26ee, 411f02d, 9f5188d | WP-BE4. Fix round 1: route-scoped raw body (413 before parse), report_url validation, Markdown/HTML/@mention escaping in issues, repo-scoped GitHub App tokens, Azure DevOps via BE8 `getAzureDevOpsClient` |
 | T020–T023 | done | 4fdb817, 7b4345d, d93a5b6, 3da919f, 35d4fa9, d8a7ff8, 65ffc24, b0fd31c, c5da929, 7ac7f14 | WP-F2. 9 atoms (RepoRow added per contract). Fix round 1: radius key s→xs (Tailwind `rounded-s` collision), TypeChip font, RepoRow ≤900px collapse, light contrast (ok #13803D→#127B3B, warn #B45309→#B05109, dark ink on mesh green/yellow), D-19 fonts via Google Fonts |
+| T102, T104 | done | 910f589, 74aefe9, ad830f7, 968742d, 6779f30, 7533733 | WP-BE2. Fix round 1: release() gated by releaseChecks, advisory lock + FOR UPDATE, carry-over reuses version by name, staging partitioned by branch (migration 018), branch-scoped unstage/discard. Follow-up (low): release and WI-key advisory locks share the hashtext(projectId) key space |
 | T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
 
 ## Escalations to Opus 5.5
@@ -83,5 +84,6 @@ Unmerged WP branches (worktrees in `../PRONGHORN-BLUE-wt/<WP>`, all clean):
 - BE5: tester PASS (826 tests), reviewer CHANGES REQUIRED (no transition locking, report_secret_ref null, default_branch, duplicated token minting, Azure import missing), security FAIL (high: cross-org repo enumeration on /onboarding/github/repos → decided: require teamId, filter by the org's configured GitHub scope) → fix round 1 dispatched.
 - F6: T017 done (4efeb81): PR-01..PR-21 54/54 green twice on legacy, axe-legacy.json baseline. Reviewer APPROVE. Legacy bugs recorded in e2e/README.md (restyles keep them; Phase R): BuildBook create never inserts (QueryBuilder.select after insert), Gallery clone param mismatch + missing toaster, Gallery titles blank (project_name alias), ProjectSettings name clobber.
 - BE2 fix round 1 done (968742d, 6779f30, 7533733; 652 BE tests; migration 018) → re-review.
+- **Merged WP-BE2** (re-review APPROVE; verified by orchestrator: BE build OK, 806 tests on feature/frontend-new).
 
 Not started: F5, T037, T037, all of waves 3–5, BE6, polish, T170–T171.
