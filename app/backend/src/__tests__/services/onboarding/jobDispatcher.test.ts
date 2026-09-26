@@ -1,7 +1,13 @@
 /**
  * Unit tests for the in-memory job dispatcher default (spec 007, WP-BE5).
  */
-import { InMemoryJobDispatcher } from "../../../services/onboarding/jobDispatcher";
+import {
+  InMemoryJobDispatcher,
+  getJobDispatcher,
+  setJobDispatcher,
+  resetJobDispatcher,
+  JobDispatcher,
+} from "../../../services/onboarding/jobDispatcher";
 
 describe("InMemoryJobDispatcher", () => {
   it("returns a job execution id synchronously and reports a ready result asynchronously", async () => {
@@ -34,5 +40,30 @@ describe("InMemoryJobDispatcher", () => {
   it("cancel is a no-op that does not throw", async () => {
     const dispatcher = new InMemoryJobDispatcher();
     await expect(dispatcher.cancel("inmemory-run-1")).resolves.toBeUndefined();
+  });
+});
+
+describe("dispatcher injection point", () => {
+  afterEach(() => resetJobDispatcher());
+
+  it("defaults to an InMemoryJobDispatcher", () => {
+    expect(getJobDispatcher()).toBeInstanceOf(InMemoryJobDispatcher);
+  });
+
+  it("setJobDispatcher swaps the active dispatcher (e.g. WP-BE6's real one, or a test double)", () => {
+    const fake: JobDispatcher = {
+      dispatch: jest.fn(async () => ({ jobExecutionId: "fake-exec" })),
+      cancel: jest.fn(async () => {}),
+    };
+
+    setJobDispatcher(fake);
+
+    expect(getJobDispatcher()).toBe(fake);
+  });
+
+  it("resetJobDispatcher restores the default InMemoryJobDispatcher", () => {
+    setJobDispatcher({ dispatch: jest.fn(), cancel: jest.fn() });
+    resetJobDispatcher();
+    expect(getJobDispatcher()).toBeInstanceOf(InMemoryJobDispatcher);
   });
 });

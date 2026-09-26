@@ -32,6 +32,41 @@ describe("onboarding stateMachine", () => {
     expect(canTransition("draft", "draft")).toBe(false);
   });
 
+  it("exhaustively rejects every illegal transition out of each non-terminal status", () => {
+    const ALL: Array<
+      "draft" | "running" | "ready" | "prs_open" | "completed" | "failed" | "cancelled"
+    > = ["draft", "running", "ready", "prs_open", "completed", "failed", "cancelled"];
+    const ALLOWED: Record<string, string[]> = {
+      draft: ["running", "cancelled"],
+      running: ["ready", "failed", "cancelled"],
+      ready: ["prs_open", "failed", "cancelled"],
+      prs_open: ["completed"],
+      completed: [],
+      failed: [],
+      cancelled: [],
+    };
+
+    for (const from of ALL) {
+      for (const to of ALL) {
+        const expected = from !== to && ALLOWED[from].includes(to);
+        expect(canTransition(from, to)).toBe(expected);
+      }
+    }
+  });
+
+  it("allows running/ready to move to failed", () => {
+    expect(canTransition("running", "failed")).toBe(true);
+    expect(canTransition("ready", "failed")).toBe(true);
+  });
+
+  it("terminal statuses (completed, failed, cancelled) have no outgoing transitions at all", () => {
+    for (const terminal of ["completed", "failed", "cancelled"] as const) {
+      for (const to of ["draft", "running", "ready", "prs_open", "completed", "failed", "cancelled"] as const) {
+        expect(canTransition(terminal, to)).toBe(false);
+      }
+    }
+  });
+
   it("treats completed, failed and cancelled as terminal", () => {
     expect(isTerminal("completed")).toBe(true);
     expect(isTerminal("failed")).toBe(true);

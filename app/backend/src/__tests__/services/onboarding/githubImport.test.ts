@@ -80,6 +80,35 @@ describe("listGitHubRepositories", () => {
     expect(byQuery.map((r) => r.fullName).sort()).toEqual(["goa/permits-api", "other-org/permits-clone"]);
   });
 
+  it("matches org case-insensitively and combines org + query filters", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockResolvedValue("installation-token");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositories: [repo("goa/permits-api", "goa"), repo("goa/health-portal", "goa"), repo("other-org/permits-clone", "other-org")],
+      }),
+    }) as unknown as typeof fetch;
+
+    const byOrgCaseInsensitive = await listGitHubRepositories({ org: "GOA" });
+    expect(byOrgCaseInsensitive.map((r) => r.fullName).sort()).toEqual(["goa/health-portal", "goa/permits-api"]);
+
+    const combined = await listGitHubRepositories({ org: "goa", query: "permits" });
+    expect(combined.map((r) => r.fullName)).toEqual(["goa/permits-api"]);
+  });
+
+  it("returns an empty list when nothing matches the org/query filters", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockResolvedValue("installation-token");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ repositories: [repo("goa/permits-api", "goa")] }),
+    }) as unknown as typeof fetch;
+
+    const repos = await listGitHubRepositories({ org: "no-such-org" });
+    expect(repos).toEqual([]);
+  });
+
   it("paginates until a short page is returned", async () => {
     mockIsConfigured.mockReturnValue(true);
     mockGetToken.mockResolvedValue("installation-token");

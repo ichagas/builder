@@ -140,6 +140,16 @@ describe("startDraftRun", () => {
     });
   });
 
+  it("403s when the caller's account has no profile", async () => {
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockGetProfileId.mockResolvedValue(null);
+
+    await expect(
+      onboarding.startDraftRun(USER_ID, { teamId: TEAM_ID, applicationName: "Permits API" })
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(mockCreateRun).not.toHaveBeenCalled();
+  });
+
   it("creates a draft run for an authorized team member", async () => {
     mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
     mockGetProfileId.mockResolvedValue("profile-1");
@@ -194,6 +204,22 @@ describe("setRunRepositories", () => {
     await expect(
       onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "goa/permits-api" }])
     ).rejects.toMatchObject({ statusCode: 409 });
+    expect(mockReplaceRepos).not.toHaveBeenCalled();
+  });
+
+  it("422s a repository entry whose fullName isn't \"org/repo\"", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    await expect(
+      onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "not-a-valid-full-name" }])
+    ).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockReplaceRepos).not.toHaveBeenCalled();
+  });
+
+  it("422s a repository entry missing fullName entirely", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    await expect(
+      onboarding.setRunRepositories(USER_ID, RUN_ID, [{} as any])
+    ).rejects.toMatchObject({ statusCode: 422 });
     expect(mockReplaceRepos).not.toHaveBeenCalled();
   });
 
@@ -308,6 +334,15 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: "true" as any })).rejects.toMatchObject({
       statusCode: 422,
     });
+    await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: 1 as any })).rejects.toMatchObject({
+      statusCode: 422,
+    });
+    await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: "yes" as any })).rejects.toMatchObject({
+      statusCode: 422,
+    });
+    await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: null as any })).rejects.toMatchObject({
+      statusCode: 422,
+    });
     expect(mockOpenPr).not.toHaveBeenCalled();
   });
 
@@ -418,6 +453,124 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ applicationId: expect.anything() }));
   });
 
+  it("skips a selected repository with no generated files and still succeeds for the rest (partial success)", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "ready" }))
+      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "x", content: "y" }],
+      },
+      {
+        full_name: "goa/no-manifest",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [],
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    // Only the repo with generated files got a PR; the run still advances
+    // because not every repository failed.
+    expect(mockOpenPr).toHaveBeenCalledTimes(1);
+    expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ fullName: "goa/permits-api" }));
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "prs_open", step: "prs" });
+    expect(view.status).toBe("prs_open");
+  });
+
+  it("partial failure: one repo's PR call throws, the other succeeds — run still advances (207-style partial success)", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "ready" }))
+      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/ok-repo",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "x", content: "y" }],
+      },
+      {
+        full_name: "goa/broken-repo",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "x", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockImplementation(async ({ fullName }: any) => {
+      if (fullName === "goa/broken-repo") throw new Error("GitHub API returned 500");
+      return { prNumber: 42, prState: "open" };
+    });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    expect(mockOpenPr).toHaveBeenCalledTimes(2);
+    expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "goa/ok-repo", { prNumber: 42, prState: "open" });
+    expect(mockUpdateRepo).not.toHaveBeenCalledWith(RUN_ID, "goa/broken-repo", expect.anything());
+    // The run still advances to prs_open because at least one PR opened.
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "prs_open", step: "prs" });
+    expect(view.status).toBe("prs_open");
+  });
+
+  it("every repository failing to open a PR throws (500) and does not advance the run past ready", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/broken-repo",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "x", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockRejectedValue(new Error("GitHub API returned 500"));
+
+    await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true })).rejects.toMatchObject({
+      statusCode: 500,
+    });
+    expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ status: "prs_open" }));
+  });
+
+  it("retry after a partial failure only reopens PRs for repos that are still missing one", async () => {
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "ready" })) // retried confirm call
+      .mockResolvedValueOnce(baseRun({ status: "prs_open" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/already-open",
+        selected: true,
+        pr_number: 7, // opened on a previous confirm
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "x", content: "y" }],
+      },
+      {
+        full_name: "goa/previously-failed",
+        selected: true,
+        pr_number: null, // failed last time, still missing a PR
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: "x", content: "y" }],
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 8, prState: "open" });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    expect(mockOpenPr).toHaveBeenCalledTimes(1);
+    expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ fullName: "goa/previously-failed" }));
+    expect(view.status).toBe("prs_open");
+  });
+
   it("routes azure_pipelines repos to the azure_devops provider", async () => {
     mockGetRunById
       .mockResolvedValueOnce(baseRun({ status: "ready", connection_id: "conn-1" }))
@@ -462,5 +615,47 @@ describe("cancelRun", () => {
 
     const view = await onboarding.cancelRun(USER_ID, RUN_ID);
     expect(view.status).toBe("cancelled");
+  });
+
+  it("cancels a running run: best-effort cancels the dispatched job execution", async () => {
+    const dispatcher = { dispatch: jest.fn(), cancel: jest.fn(async () => {}) };
+    setJobDispatcher(dispatcher as any);
+
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running", job_execution_id: "job-exec-1" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "cancelled" }));
+    mockListRepos.mockResolvedValue([]);
+
+    const view = await onboarding.cancelRun(USER_ID, RUN_ID);
+
+    expect(dispatcher.cancel).toHaveBeenCalledWith("job-exec-1");
+    expect(view.status).toBe("cancelled");
+  });
+
+  it("still cancels the run even when the dispatcher's cancel call throws (best-effort)", async () => {
+    const dispatcher = { dispatch: jest.fn(), cancel: jest.fn(async () => { throw new Error("job already finished"); }) };
+    setJobDispatcher(dispatcher as any);
+
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running", job_execution_id: "job-exec-1" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "cancelled" }));
+    mockListRepos.mockResolvedValue([]);
+
+    const view = await onboarding.cancelRun(USER_ID, RUN_ID);
+
+    expect(dispatcher.cancel).toHaveBeenCalledWith("job-exec-1");
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "cancelled" });
+    expect(view.status).toBe("cancelled");
+  });
+
+  it("does not call the dispatcher's cancel when the run never had a job execution id (still draft)", async () => {
+    const dispatcher = { dispatch: jest.fn(), cancel: jest.fn(async () => {}) };
+    setJobDispatcher(dispatcher as any);
+
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft", job_execution_id: null }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "cancelled" }));
+    mockListRepos.mockResolvedValue([]);
+
+    await onboarding.cancelRun(USER_ID, RUN_ID);
+
+    expect(dispatcher.cancel).not.toHaveBeenCalled();
   });
 });

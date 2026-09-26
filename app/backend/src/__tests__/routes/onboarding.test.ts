@@ -118,6 +118,14 @@ describe("GET /onboarding/github/repos", () => {
 });
 
 describe("PUT /onboarding/runs/:id/repositories", () => {
+  it("401s without auth", async () => {
+    const res = await request(createApp())
+      .put("/onboarding/runs/run-1/repositories")
+      .send({ repositories: [{ fullName: "goa/permits-api" }] });
+    expect(res.status).toBe(401);
+    expect(mocked.setRunRepositories).not.toHaveBeenCalled();
+  });
+
   it("rejects a non-array repositories body before reaching the service", async () => {
     const res = await request(createApp(USER_ID)).put("/onboarding/runs/run-1/repositories").send({ repositories: "nope" });
     expect(res.status).toBe(422);
@@ -143,6 +151,12 @@ describe("PUT /onboarding/runs/:id/repositories", () => {
 });
 
 describe("POST /onboarding/runs/:id/start", () => {
+  it("401s without auth", async () => {
+    const res = await request(createApp()).post("/onboarding/runs/run-1/start");
+    expect(res.status).toBe(401);
+    expect(mocked.startRun).not.toHaveBeenCalled();
+  });
+
   it("409s on an invalid transition", async () => {
     mocked.startRun.mockRejectedValue(Errors.conflict("not draft"));
     const res = await request(createApp(USER_ID)).post("/onboarding/runs/run-1/start");
@@ -158,6 +172,12 @@ describe("POST /onboarding/runs/:id/start", () => {
 });
 
 describe("GET /onboarding/runs/:id/output", () => {
+  it("401s without auth", async () => {
+    const res = await request(createApp()).get("/onboarding/runs/run-1/output");
+    expect(res.status).toBe(401);
+    expect(mocked.getRunOutput).not.toHaveBeenCalled();
+  });
+
   it("409s when output isn't ready yet", async () => {
     mocked.getRunOutput.mockRejectedValue(Errors.conflict("not ready"));
     const res = await request(createApp(USER_ID)).get("/onboarding/runs/run-1/output");
@@ -172,6 +192,24 @@ describe("GET /onboarding/runs/:id/output", () => {
 });
 
 describe("POST /onboarding/runs/:id/pull-requests", () => {
+  it("401s without auth", async () => {
+    const res = await request(createApp()).post("/onboarding/runs/run-1/pull-requests").send({ confirm: true });
+    expect(res.status).toBe(401);
+    expect(mocked.openPullRequests).not.toHaveBeenCalled();
+  });
+
+  it("passes a truthy non-boolean confirm (e.g. \"true\" or 1) through unchanged, and lets the service reject it", async () => {
+    mocked.openPullRequests.mockRejectedValue(Errors.validation({ confirm: "must be true" }));
+
+    let res = await request(createApp(USER_ID)).post("/onboarding/runs/run-1/pull-requests").send({ confirm: "true" });
+    expect(res.status).toBe(422);
+    expect(mocked.openPullRequests).toHaveBeenLastCalledWith(USER_ID, "run-1", { confirm: "true" });
+
+    res = await request(createApp(USER_ID)).post("/onboarding/runs/run-1/pull-requests").send({ confirm: 1 });
+    expect(res.status).toBe(422);
+    expect(mocked.openPullRequests).toHaveBeenLastCalledWith(USER_ID, "run-1", { confirm: 1 });
+  });
+
   it("passes confirm through to the service and lets it enforce the gate (422 without confirm)", async () => {
     mocked.openPullRequests.mockRejectedValue(Errors.validation({ confirm: "must be true" }));
     const res = await request(createApp(USER_ID)).post("/onboarding/runs/run-1/pull-requests").send({});
@@ -195,6 +233,12 @@ describe("POST /onboarding/runs/:id/pull-requests", () => {
 });
 
 describe("POST /onboarding/runs/:id/cancel", () => {
+  it("401s without auth", async () => {
+    const res = await request(createApp()).post("/onboarding/runs/run-1/cancel");
+    expect(res.status).toBe(401);
+    expect(mocked.cancelRun).not.toHaveBeenCalled();
+  });
+
   it("409s when the run is already terminal", async () => {
     mocked.cancelRun.mockRejectedValue(Errors.conflict("already completed"));
     const res = await request(createApp(USER_ID)).post("/onboarding/runs/run-1/cancel");
