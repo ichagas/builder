@@ -33,3 +33,6 @@ None yet.
 
 - **Wave 1 dispatched** (developers, Sonnet 5, worktrees under `../PRONGHORN-BLUE-wt/`): F1, F6 (T016–T017 only; T037 after F3), BE1, BE3, BE7. T003 (F0 leftover) assigned to F1.
 - **Merged WP-BE3** (tester PASS, reviewer APPROVE). BE build OK, 510 tests.
+- **Wave 2 backend started early** (BE3 merged): BE4, BE8 developers dispatched.
+- **2026-09-25 ~23:30: monthly spend limit hit (HTTP 429)**; all running agents stopped mid-task (F6 dev at PR-03, BE1 fix round 1, BE4 dev, BE8 dev, F1 tester/reviewer, BE7 tester). Uncommitted work stays in each worktree. Resumed 2026-09-26 06:45.
+- Pending when interrupted: BE7 security fixes (pin mesh-scripts checkout + actions to SHA, don't swallow npm install errors); F1 fix (8 inherited TS errors make the CI typecheck step fail); BE1 fix round 1 (non-UUID token → 500; WI key race; semver ordering).
