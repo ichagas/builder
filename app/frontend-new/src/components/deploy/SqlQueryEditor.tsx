@@ -154,9 +154,9 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className="flex flex-col h-full bg-[var(--ide-bg)]">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#3e3e42] bg-[#252526]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)]">
         <div className="flex items-center gap-2">
           <Button
             size="sm"

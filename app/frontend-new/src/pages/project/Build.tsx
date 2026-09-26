@@ -762,10 +762,10 @@ export default function Build() {
                 <ResizablePanelGroup direction="horizontal" className="flex-1">
                   {/* Left: File Tree */}
                   <ResizablePanel defaultSize={20} minSize={15}>
-                    <div className="h-full flex flex-col border-r bg-[#1e1e1e]">
-                      <div className="p-2 border-b border-[#3e3e42] bg-[#252526]">
+                    <div className="h-full flex flex-col border-r bg-[var(--ide-bg)]">
+                      <div className="p-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)]">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-semibold text-[#cccccc]">Files</span>
+                          <span className="text-sm font-semibold text-[var(--ide-ink)]">Files</span>
                           <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
@@ -774,7 +774,7 @@ export default function Build() {
                                 setCreateType("file");
                                 setCreateDialogOpen(true);
                               }}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title="New File"
                             >
                               <FilePlus className="h-3.5 w-3.5" />
@@ -786,7 +786,7 @@ export default function Build() {
                                 setCreateType("folder");
                                 setCreateDialogOpen(true);
                               }}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title="New Folder"
                             >
                               <FolderPlus className="h-3.5 w-3.5" />
@@ -795,7 +795,7 @@ export default function Build() {
                               variant="ghost"
                               size="icon"
                               onClick={() => fileInputRef.current?.click()}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title="Upload File"
                             >
                               <Upload className="h-3.5 w-3.5" />
@@ -805,7 +805,7 @@ export default function Build() {
                               size="icon"
                               onClick={handleDeleteFile}
                               disabled={!currentFile}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc] disabled:opacity-50"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)] disabled:opacity-50"
                               title="Delete File"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -821,7 +821,7 @@ export default function Build() {
                               variant="ghost"
                               size="icon"
                               onClick={() => setShowDeletedFiles(!showDeletedFiles)}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title={showDeletedFiles ? "Hide deleted files" : "Show deleted files"}
                             >
                               {showDeletedFiles ? (
@@ -833,13 +833,13 @@ export default function Build() {
                           </div>
                         </div>
                         {selectedFolderPath && selectedFolderPath !== "/" && (
-                          <div className="text-xs text-[#858585] truncate bg-[#1e2a3a] px-2 py-1 rounded border border-[#3e5a7a]">
-                            Creating in: <span className="text-[#4ec9b0]">{selectedFolderPath}</span>
+                          <div className="text-xs text-[var(--ide-muted)] truncate bg-[var(--ide-diff-add-bg)] px-2 py-1 rounded border border-[var(--ide-diff-add-border)]">
+                            Creating in: <span className="text-[var(--ide-type)]">{selectedFolderPath}</span>
                           </div>
                         )}
                         {selectedFolderPath === "/" && (
-                          <div className="text-xs text-[#858585] truncate bg-[#1e2a3a] px-2 py-1 rounded border border-[#3e5a7a]">
-                            Creating in: <span className="text-[#4ec9b0]">root directory</span>
+                          <div className="text-xs text-[var(--ide-muted)] truncate bg-[var(--ide-diff-add-bg)] px-2 py-1 rounded border border-[var(--ide-diff-add-border)]">
+                            Creating in: <span className="text-[var(--ide-type)]">root directory</span>
                           </div>
                         )}
                       </div>
@@ -880,7 +880,7 @@ export default function Build() {
                           onSave={handleEditorSave}
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full bg-[#1e1e1e] text-muted-foreground">
+                        <div className="flex items-center justify-center h-full bg-[var(--ide-bg)] text-muted-foreground">
                           <p>Select a file to view or edit</p>
                         </div>
                       )}
@@ -993,10 +993,10 @@ export default function Build() {
                   </TabsList>
 
                   <TabsContent value="files" forceMount className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden">
-                    <div className="h-full flex flex-col bg-[#1e1e1e]">
-                      <div className="p-2 border-b border-[#3e3e42] bg-[#252526]">
+                    <div className="h-full flex flex-col bg-[var(--ide-bg)]">
+                      <div className="p-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)]">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-semibold text-[#cccccc]">Files</span>
+                          <span className="text-sm font-semibold text-[var(--ide-ink)]">Files</span>
                           <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
@@ -1005,7 +1005,7 @@ export default function Build() {
                                 setCreateType("file");
                                 setCreateDialogOpen(true);
                               }}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title="New File"
                             >
                               <FilePlus className="h-3.5 w-3.5" />
@@ -1017,7 +1017,7 @@ export default function Build() {
                                 setCreateType("folder");
                                 setCreateDialogOpen(true);
                               }}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title="New Folder"
                             >
                               <FolderPlus className="h-3.5 w-3.5" />
@@ -1026,7 +1026,7 @@ export default function Build() {
                               variant="ghost"
                               size="icon"
                               onClick={() => fileInputRef.current?.click()}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title="Upload File"
                             >
                               <Upload className="h-3.5 w-3.5" />
@@ -1036,7 +1036,7 @@ export default function Build() {
                               size="icon"
                               onClick={handleDeleteFile}
                               disabled={!currentFile}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc] disabled:opacity-50"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)] disabled:opacity-50"
                               title="Delete File"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1045,7 +1045,7 @@ export default function Build() {
                               variant="ghost"
                               size="icon"
                               onClick={() => setShowDeletedFiles(!showDeletedFiles)}
-                              className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]"
+                              className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
                               title={showDeletedFiles ? "Hide deleted files" : "Show deleted files"}
                             >
                               {showDeletedFiles ? (
@@ -1057,13 +1057,13 @@ export default function Build() {
                           </div>
                         </div>
                         {selectedFolderPath && selectedFolderPath !== "/" && (
-                          <div className="text-xs text-[#858585] truncate bg-[#1e2a3a] px-2 py-1 rounded border border-[#3e5a7a]">
-                            Creating in: <span className="text-[#4ec9b0]">{selectedFolderPath}</span>
+                          <div className="text-xs text-[var(--ide-muted)] truncate bg-[var(--ide-diff-add-bg)] px-2 py-1 rounded border border-[var(--ide-diff-add-border)]">
+                            Creating in: <span className="text-[var(--ide-type)]">{selectedFolderPath}</span>
                           </div>
                         )}
                         {selectedFolderPath === "/" && (
-                          <div className="text-xs text-[#858585] truncate bg-[#1e2a3a] px-2 py-1 rounded border border-[#3e5a7a]">
-                            Creating in: <span className="text-[#4ec9b0]">root directory</span>
+                          <div className="text-xs text-[var(--ide-muted)] truncate bg-[var(--ide-diff-add-bg)] px-2 py-1 rounded border border-[var(--ide-diff-add-border)]">
+                            Creating in: <span className="text-[var(--ide-type)]">root directory</span>
                           </div>
                         )}
                       </div>
@@ -1155,22 +1155,22 @@ export default function Build() {
 
       {/* Large file warning dialog */}
       <AlertDialog open={!!largeFileWarning} onOpenChange={(open) => !open && setLargeFileWarning(null)}>
-        <AlertDialogContent className="bg-[#252526] border-[#3e3e42]">
+        <AlertDialogContent className="bg-[var(--ide-panel)] border-[var(--ide-border)]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-[#cccccc]">
+            <AlertDialogTitle className="flex items-center gap-2 text-[var(--ide-ink)]">
               <AlertTriangle className="h-5 w-5 text-warn" />
               Large File Warning
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[#858585]">
+            <AlertDialogDescription className="text-[var(--ide-muted)]">
               This file is <span className="text-warn font-semibold">
                 {largeFileWarning ? (largeFileWarning.contentLength / (1024 * 1024)).toFixed(1) : 0} MB
               </span>. Loading large files may slow down your browser.
               <br /><br />
-              <span className="text-[#cccccc]">{largeFileWarning?.path}</span>
+              <span className="text-[var(--ide-ink)]">{largeFileWarning?.path}</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-[#3e3e42] text-[#cccccc] border-[#3e3e42] hover:bg-[#4e4e52] hover:text-white">
+            <AlertDialogCancel className="bg-[var(--ide-border)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-scrollbar)] hover:text-white">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

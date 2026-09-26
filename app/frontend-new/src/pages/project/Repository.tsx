@@ -948,9 +948,9 @@ export default function Repository() {
 
               <TabsContent value="files" className="space-y-6">
                 {selectedRepoId ? (
-                  <Card className="p-0 overflow-hidden bg-[#1e1e1e] border-none">
-                    <div className="px-4 py-3 border-b border-[#3e3e42] bg-[#252526] flex items-center justify-between">
-                      <h3 className="font-semibold text-sm text-[#cccccc]">Explorer</h3>
+                  <Card className="p-0 overflow-hidden bg-[var(--ide-bg)] border-none">
+                    <div className="px-4 py-3 border-b border-[var(--ide-border)] bg-[var(--ide-panel)] flex items-center justify-between">
+                      <h3 className="font-semibold text-sm text-[var(--ide-ink)]">Explorer</h3>
                       <div className="flex items-center gap-2">
                         <Button
                           onClick={() => {
@@ -959,7 +959,7 @@ export default function Repository() {
                           }}
                           size="sm"
                           variant="outline"
-                          className="h-8 px-2 gap-1 bg-[#2a2d2e] text-[#cccccc] border-[#3e3e42] hover:bg-[#313335]"
+                          className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                         >
                           <FilePlus className="h-3 w-3" />
                           File
@@ -971,7 +971,7 @@ export default function Repository() {
                           }}
                           size="sm"
                           variant="outline"
-                          className="h-8 px-2 gap-1 bg-[#2a2d2e] text-[#cccccc] border-[#3e3e42] hover:bg-[#313335]"
+                          className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                         >
                           <FolderPlus className="h-3 w-3" />
                           Folder
@@ -980,16 +980,16 @@ export default function Repository() {
                           onClick={() => setIdeModalOpen(true)}
                           size="sm"
                           variant="outline"
-                          className="gap-2 h-8 bg-[#2a2d2e] text-[#cccccc] border-[#3e3e42] hover:bg-[#313335]"
+                          className="gap-2 h-8 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                         >
                           <Maximize2 className="h-4 w-4" />
                           Full-Screen IDE
                         </Button>
                       </div>
                     </div>
-                    <ResizablePanelGroup direction="horizontal" className="min-h-[700px] bg-[#1e1e1e]">
+                    <ResizablePanelGroup direction="horizontal" className="min-h-[700px] bg-[var(--ide-bg)]">
                       <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
-                        <div className="h-full border-r border-[#3e3e42] bg-[#252526]">
+                        <div className="h-full border-r border-[var(--ide-border)] bg-[var(--ide-panel)]">
                           {loadingFiles ? (
                             <div className="flex items-center justify-center h-full text-muted-foreground">
                               Loading files...

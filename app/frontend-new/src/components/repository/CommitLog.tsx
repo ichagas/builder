@@ -47,8 +47,8 @@ export function CommitLog({ repoId, selectedBranch, shareToken }: CommitLogProps
 
   if (loading) {
     return (
-      <Card className="bg-[#1e1e1e] border-[#3e3e42]">
-        <CardContent className="py-4 text-center text-[#cccccc]">
+      <Card className="bg-[var(--ide-bg)] border-[var(--ide-border)]">
+        <CardContent className="py-4 text-center text-[var(--ide-ink)]">
           Loading commits...
         </CardContent>
       </Card>
@@ -57,8 +57,8 @@ export function CommitLog({ repoId, selectedBranch, shareToken }: CommitLogProps
 
   if (commits.length === 0) {
     return (
-      <Card className="bg-[#1e1e1e] border-[#3e3e42]">
-        <CardContent className="py-4 text-center text-[#858585]">
+      <Card className="bg-[var(--ide-bg)] border-[var(--ide-border)]">
+        <CardContent className="py-4 text-center text-[var(--ide-muted)]">
           No commits yet
         </CardContent>
       </Card>
@@ -66,9 +66,9 @@ export function CommitLog({ repoId, selectedBranch, shareToken }: CommitLogProps
   }
 
   return (
-    <Card className="bg-[#1e1e1e] border-[#3e3e42]">
+    <Card className="bg-[var(--ide-bg)] border-[var(--ide-border)]">
       <CardHeader>
-        <CardTitle className="text-[#cccccc] text-sm flex items-center gap-2">
+        <CardTitle className="text-[var(--ide-ink)] text-sm flex items-center gap-2">
           <GitCommit className="h-4 w-4" />
           Commit History {selectedBranch && `(${selectedBranch})`}
         </CardTitle>
@@ -79,14 +79,14 @@ export function CommitLog({ repoId, selectedBranch, shareToken }: CommitLogProps
             {commits.map((commit) => (
               <div
                 key={commit.id}
-                className="p-3 bg-[#252526] border border-[#3e3e42] rounded-lg hover:bg-[#2a2d2e] transition-colors"
+                className="p-3 bg-[var(--ide-panel)] border border-[var(--ide-border)] rounded-lg hover:bg-[var(--ide-hover)] transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#cccccc] truncate">
+                    <p className="text-sm font-medium text-[var(--ide-ink)] truncate">
                       {commit.commit_message}
                     </p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-[#858585]">
+                    <div className="flex items-center gap-4 mt-2 text-xs text-[var(--ide-muted)]">
                       <span className="flex items-center gap-1">
                         <GitCommit className="h-3 w-3" />
                         {commit.commit_sha.substring(0, 7)}
@@ -101,7 +101,7 @@ export function CommitLog({ repoId, selectedBranch, shareToken }: CommitLogProps
                       </span>
                     </div>
                     {commit.branch !== "main" && (
-                      <span className="inline-block mt-2 px-2 py-0.5 text-xs bg-[#3e3e42] text-[#cccccc] rounded">
+                      <span className="inline-block mt-2 px-2 py-0.5 text-xs bg-[var(--ide-border)] text-[var(--ide-ink)] rounded">
                         {commit.branch}
                       </span>
                     )}

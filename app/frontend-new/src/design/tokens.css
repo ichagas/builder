@@ -123,6 +123,44 @@
   /* Elevation */
   --shadow: none;
   --shadow-pop: 0 10px 28px rgba(11, 24, 48, .28);
+
+  /* IDE surface (T031, WP-F2b hand-fix). A fixed "VS Code Dark+"-style
+   * palette used by the code/file-browsing widgets (file trees, the code
+   * editor and its markdown/diff preview, commit log, SQL editor, search
+   * results) so they read like a familiar developer tool. Deliberately
+   * constant in both the app's light and dark theme — these are not
+   * semantic app-status/phase colors, so they are defined once here rather
+   * than re-pointed under `.dark`/`[data-theme="dark"]`. Values are the
+   * exact literal hex this code already used before T031; this block only
+   * moves them behind `var(--ide-*)` so `no-raw-tailwind-colors` (T018/T031)
+   * has a token to point at instead of allow-listing dozens of call sites.
+   */
+  --ide-bg: #1e1e1e;
+  --ide-panel: #252526;
+  --ide-panel-2: #313335;
+  --ide-hover: #2a2d2e;
+  --ide-border: #3e3e42;
+  --ide-tab-border: #37373d;
+  --ide-input: #3c3c3c;
+  --ide-input-alt: #2d2d2d;
+  --ide-ink: #cccccc;
+  --ide-ink-bright: #ffffff;
+  --ide-ink-bright-2: #e6e6e6;
+  --ide-default-text: #d4d4d4;
+  --ide-muted: #858585;
+  --ide-muted-2: #808080;
+  --ide-scrollbar: #4e4e52;
+  --ide-selection: #264f78;
+  --ide-accent: #007acc;
+  --ide-accent-hover: #1177bb;
+  --ide-accent-active: #0e639c;
+  --ide-folder: #dcb67a;
+  --ide-type: #4ec9b0;
+  --ide-string: #ce9178;
+  --ide-variable: #9cdcfe;
+  --ide-diff-add-bg: #1e2a3a;
+  --ide-diff-add-border: #3e5a7a;
+  --ide-link: #60a5fa;
 }
 
 .dark,

@@ -602,10 +602,10 @@ export function DatabaseExplorer({ database, externalConnection, shareToken, onB
 
   // Schema tree panel JSX (inlined to prevent remounting)
   const schemaTreePanelJsx = (
-    <div className="h-full flex flex-col bg-[#1e1e1e]">
-      <div className="p-2 border-b border-[#3e3e42] bg-[#252526] flex items-center justify-between">
-        <div className="flex items-center gap-2"><Database className="h-4 w-4 text-primary" /><span className="text-sm font-semibold text-[#cccccc]">Schema</span></div>
-        <Button variant="ghost" size="icon" onClick={() => loadSchema()} disabled={loadingSchema} className="h-6 w-6 hover:bg-[#2a2d2e] text-[#cccccc]">
+    <div className="h-full flex flex-col bg-[var(--ide-bg)]">
+      <div className="p-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)] flex items-center justify-between">
+        <div className="flex items-center gap-2"><Database className="h-4 w-4 text-primary" /><span className="text-sm font-semibold text-[var(--ide-ink)]">Schema</span></div>
+        <Button variant="ghost" size="icon" onClick={() => loadSchema()} disabled={loadingSchema} className="h-6 w-6 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]">
           {loadingSchema ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         </Button>
       </div>

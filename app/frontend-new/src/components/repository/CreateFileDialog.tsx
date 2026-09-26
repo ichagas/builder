@@ -38,16 +38,16 @@ export function CreateFileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1e1e1e] border-[#3e3e42]">
+      <DialogContent className="bg-[var(--ide-bg)] border-[var(--ide-border)]">
         <DialogHeader>
-          <DialogTitle className="text-[#cccccc]">Create New {type === "file" ? "File" : "Folder"}</DialogTitle>
-          <DialogDescription className="text-[#858585]">
+          <DialogTitle className="text-[var(--ide-ink)]">Create New {type === "file" ? "File" : "Folder"}</DialogTitle>
+          <DialogDescription className="text-[var(--ide-muted)]">
             {basePath && basePath !== "/" ? `Creating in: ${basePath}` : "Creating in root directory"}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-[#cccccc]">{type === "file" ? "File" : "Folder"} Name</Label>
+            <Label htmlFor="name" className="text-[var(--ide-ink)]">{type === "file" ? "File" : "Folder"} Name</Label>
             <Input
               id="name"
               placeholder={type === "file" ? "example.ts" : "folder-name"}
@@ -59,15 +59,15 @@ export function CreateFileDialog({
                 }
               }}
               autoFocus
-              className="bg-[#2a2d2e] border-[#3e3e42] text-[#cccccc] placeholder:text-[#858585]"
+              className="bg-[var(--ide-hover)] border-[var(--ide-border)] text-[var(--ide-ink)] placeholder:text-[var(--ide-muted)]"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-[#2a2d2e] text-[#cccccc] border-[#3e3e42] hover:bg-[#313335]">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]">
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!name.trim()} className="bg-[#0e639c] text-white hover:bg-[#1177bb]">
+          <Button onClick={handleConfirm} disabled={!name.trim()} className="bg-[var(--ide-accent-active)] text-white hover:bg-[var(--ide-accent-hover)]">
             Create
           </Button>
         </DialogFooter>

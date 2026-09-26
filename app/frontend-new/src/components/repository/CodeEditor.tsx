@@ -323,15 +323,15 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
 
   if (!filePath) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#1e1e1e] text-[#cccccc]">
+      <div className="flex items-center justify-center h-full bg-[var(--ide-bg)] text-[var(--ide-ink)]">
         Select a file to edit
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-[#3e3e42] bg-[#252526]">
+    <div className="flex flex-col h-full bg-[var(--ide-bg)]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)]">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* Dirty indicator - yellow dot */}
           {isDirty && (
@@ -347,11 +347,11 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
             </TooltipProvider>
           )}
           {isImage ? (
-            <ImageIcon className="h-4 w-4 text-[#cccccc] shrink-0" />
+            <ImageIcon className="h-4 w-4 text-[var(--ide-ink)] shrink-0" />
           ) : (
-            <FileText className="h-4 w-4 text-[#cccccc] shrink-0" />
+            <FileText className="h-4 w-4 text-[var(--ide-ink)] shrink-0" />
           )}
-          <h3 className="text-sm font-normal truncate text-[#cccccc]">{filePath}</h3>
+          <h3 className="text-sm font-normal truncate text-[var(--ide-ink)]">{filePath}</h3>
         </div>
         <div className="flex items-center gap-3">
           {!isImage && (
@@ -367,7 +367,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
                         handleShowDiffToggle(pressed);
                         if (pressed) setShowMarkdown(false);
                       }}
-                      className="h-8 px-2 border border-[#3e3e42] text-[#cccccc] hover:bg-[#3e3e42] hover:text-white data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:border-blue-600"
+                      className="h-8 px-2 border border-[var(--ide-border)] text-[var(--ide-ink)] hover:bg-[var(--ide-border)] hover:text-white data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:border-blue-600"
                     >
                       <GitCompare className="h-4 w-4" />
                     </Toggle>
@@ -387,7 +387,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
                         setShowMarkdown(pressed);
                         if (pressed && showDiffMode) handleShowDiffToggle(false);
                       }}
-                      className="h-8 px-2 border border-[#3e3e42] text-[#cccccc] hover:bg-[#3e3e42] hover:text-white data-[state=on]:bg-green-600 data-[state=on]:text-white data-[state=on]:border-green-600"
+                      className="h-8 px-2 border border-[var(--ide-border)] text-[var(--ide-ink)] hover:bg-[var(--ide-border)] hover:text-white data-[state=on]:bg-green-600 data-[state=on]:text-white data-[state=on]:border-green-600"
                     >
                       <Eye className="h-4 w-4" />
                     </Toggle>
@@ -416,7 +416,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
               size="sm"
               variant="ghost"
               onClick={onClose}
-              className="h-8 hover:bg-[#2a2d2e] text-[#cccccc]"
+              className="h-8 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -425,11 +425,11 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
       </div>
       <div className="flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-full text-[#cccccc]">
+          <div className="flex items-center justify-center h-full text-[var(--ide-ink)]">
             Loading...
           </div>
         ) : isImage && imageDataUrl ? (
-          <div className="flex items-center justify-center h-full p-4 bg-[#1e1e1e]">
+          <div className="flex items-center justify-center h-full p-4 bg-[var(--ide-bg)]">
             <img
               src={imageDataUrl}
               alt={filePath}
@@ -444,22 +444,22 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
             />
           </div>
         ) : showMarkdown ? (
-          <div className="h-full overflow-auto p-6 bg-[#1e1e1e] text-[#cccccc]">
+          <div className="h-full overflow-auto p-6 bg-[var(--ide-bg)] text-[var(--ide-ink)]">
             <div className="prose prose-invert prose-sm max-w-none 
-              prose-headings:text-[#e6e6e6] prose-headings:font-semibold
+              prose-headings:text-[var(--ide-ink-bright-2)] prose-headings:font-semibold
               prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
-              prose-p:text-[#cccccc] prose-p:leading-relaxed
-              prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
-              prose-strong:text-[#e6e6e6] prose-strong:font-semibold
-              prose-code:text-[#ce9178] prose-code:bg-[#2d2d2d] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-              prose-pre:bg-[#2d2d2d] prose-pre:border prose-pre:border-[#3e3e42]
-              prose-blockquote:border-l-[#4ec9b0] prose-blockquote:text-[#9cdcfe]
-              prose-ul:text-[#cccccc] prose-ol:text-[#cccccc]
-              prose-li:marker:text-[#808080]
-              prose-hr:border-[#3e3e42]
-              prose-table:text-[#cccccc]
-              prose-th:bg-[#2d2d2d] prose-th:border prose-th:border-[#3e3e42] prose-th:px-3 prose-th:py-2
-              prose-td:border prose-td:border-[#3e3e42] prose-td:px-3 prose-td:py-2
+              prose-p:text-[var(--ide-ink)] prose-p:leading-relaxed
+              prose-a:text-[var(--ide-link)] prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-[var(--ide-ink-bright-2)] prose-strong:font-semibold
+              prose-code:text-[var(--ide-string)] prose-code:bg-[var(--ide-input-alt)] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+              prose-pre:bg-[var(--ide-input-alt)] prose-pre:border prose-pre:border-[var(--ide-border)]
+              prose-blockquote:border-l-[var(--ide-type)] prose-blockquote:text-[var(--ide-variable)]
+              prose-ul:text-[var(--ide-ink)] prose-ol:text-[var(--ide-ink)]
+              prose-li:marker:text-[var(--ide-muted-2)]
+              prose-hr:border-[var(--ide-border)]
+              prose-table:text-[var(--ide-ink)]
+              prose-th:bg-[var(--ide-input-alt)] prose-th:border prose-th:border-[var(--ide-border)] prose-th:px-3 prose-th:py-2
+              prose-td:border prose-td:border-[var(--ide-border)] prose-td:px-3 prose-td:py-2
             ">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {content}

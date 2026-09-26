@@ -144,7 +144,7 @@ export function AgentFileTree({
     collectColors(node.children);
     
     if (colors.size === 0) return "";
-    if (colors.size > 1) return "bg-[#3e3e42]"; // Grey for mixed
+    if (colors.size > 1) return "bg-[var(--ide-border)]"; // Grey for mixed
     if (colors.has("red")) return "bg-red-500/20";
     if (colors.has("yellow")) return "bg-yellow-500/20";
     if (colors.has("green")) return "bg-green-500/20";
@@ -152,11 +152,11 @@ export function AgentFileTree({
   };
 
   const getFileColor = (operationType?: string): string => {
-    if (!operationType) return "text-[#cccccc]";
+    if (!operationType) return "text-[var(--ide-ink)]";
     if (operationType === "delete") return "text-red-400";
     if (operationType === "edit" || operationType === "rename") return "text-yellow-400";
     if (operationType === "add") return "text-green-400";
-    return "text-[#cccccc]";
+    return "text-[var(--ide-ink)]";
   };
 
   const handleFolderClick = (path: string) => {
@@ -185,34 +185,34 @@ export function AgentFileTree({
         <ContextMenu key={node.id}>
           <ContextMenuTrigger>
             <div
-              className={`flex items-center gap-1 px-2 py-1 hover:bg-[#2a2d2e] cursor-pointer transition-colors ${folderBgColor}`}
+              className={`flex items-center gap-1 px-2 py-1 hover:bg-[var(--ide-hover)] cursor-pointer transition-colors ${folderBgColor}`}
               style={{ paddingLeft: `${level * 12 + 8}px` }}
               onClick={() => handleFolderClick(node.path)}
             >
               {isExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#858585]" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--ide-muted)]" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#858585]" />
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--ide-muted)]" />
               )}
               {isExpanded ? (
-                <FolderOpen className="h-4 w-4 shrink-0 text-[#dcb67a]" />
+                <FolderOpen className="h-4 w-4 shrink-0 text-[var(--ide-folder)]" />
               ) : (
-                <Folder className="h-4 w-4 shrink-0 text-[#dcb67a]" />
+                <Folder className="h-4 w-4 shrink-0 text-[var(--ide-folder)]" />
               )}
-              <span className="text-sm truncate text-[#cccccc] font-medium">{node.name}</span>
+              <span className="text-sm truncate text-[var(--ide-ink)] font-medium">{node.name}</span>
             </div>
           </ContextMenuTrigger>
-          <ContextMenuContent className="bg-[#252526] border-[#3e3e42]">
+          <ContextMenuContent className="bg-[var(--ide-panel)] border-[var(--ide-border)]">
             <ContextMenuItem 
               onClick={() => onRenameFile(node.id, node.path)}
-              className="text-[#cccccc] focus:bg-[#2a2d2e] focus:text-[#ffffff]"
+              className="text-[var(--ide-ink)] focus:bg-[var(--ide-hover)] focus:text-[var(--ide-ink-bright)]"
             >
               <Edit className="h-4 w-4 mr-2" />
               Rename
             </ContextMenuItem>
             <ContextMenuItem 
               onClick={() => onDeleteFile(node.id, node.path)}
-              className="text-bad focus:bg-[#2a2d2e] focus:text-bad-soft"
+              className="text-bad focus:bg-[var(--ide-hover)] focus:text-bad-soft"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -234,8 +234,8 @@ export function AgentFileTree({
       <ContextMenu key={node.id}>
         <ContextMenuTrigger>
           <div
-            className={`flex items-center gap-1 px-2 py-1 hover:bg-[#2a2d2e] cursor-pointer transition-colors ${
-              isSelected ? "bg-[#37373d]" : ""
+            className={`flex items-center gap-1 px-2 py-1 hover:bg-[var(--ide-hover)] cursor-pointer transition-colors ${
+              isSelected ? "bg-[var(--ide-tab-border)]" : ""
             }`}
             style={{ paddingLeft: `${level * 12 + 20}px` }}
             onClick={() => onSelectFile(node.id, node.path, node.isStaged, node.contentLength, node.isBinary)}
@@ -295,25 +295,25 @@ export function AgentFileTree({
             )}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="bg-[#252526] border-[#3e3e42]">
+        <ContextMenuContent className="bg-[var(--ide-panel)] border-[var(--ide-border)]">
           <ContextMenuItem 
             onClick={() => onAttachToPrompt(node.id, node.path)}
-            className="text-[#cccccc] focus:bg-[#2a2d2e] focus:text-[#ffffff]"
+            className="text-[var(--ide-ink)] focus:bg-[var(--ide-hover)] focus:text-[var(--ide-ink-bright)]"
           >
             <Paperclip className="h-4 w-4 mr-2" />
             Attach to Prompt
           </ContextMenuItem>
-          <ContextMenuSeparator className="bg-[#3e3e42]" />
+          <ContextMenuSeparator className="bg-[var(--ide-border)]" />
           <ContextMenuItem 
             onClick={() => onRenameFile(node.id, node.path)}
-            className="text-[#cccccc] focus:bg-[#2a2d2e] focus:text-[#ffffff]"
+            className="text-[var(--ide-ink)] focus:bg-[var(--ide-hover)] focus:text-[var(--ide-ink-bright)]"
           >
             <Edit className="h-4 w-4 mr-2" />
             Rename
           </ContextMenuItem>
           <ContextMenuItem 
             onClick={() => onDeleteFile(node.id, node.path)}
-            className="text-bad focus:bg-[#2a2d2e] focus:text-bad-soft"
+            className="text-bad focus:bg-[var(--ide-hover)] focus:text-bad-soft"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
@@ -324,12 +324,12 @@ export function AgentFileTree({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#1e1e1e]">
+    <div className="h-full flex flex-col bg-[var(--ide-bg)]">
       <ScrollArea className="flex-1 overflow-y-auto">
         <div className="py-2">
           {tree.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-[#858585]">No files yet</p>
+              <p className="text-sm text-[var(--ide-muted)]">No files yet</p>
             </div>
           ) : (
             tree.map((node) => renderNode(node))

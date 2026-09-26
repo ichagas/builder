@@ -50,7 +50,7 @@ export function IDEModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
       <DialogContent 
-        className="max-w-[98vw] max-h-[98vh] w-[98vw] h-[98vh] p-0 bg-[#1e1e1e]"
+        className="max-w-[98vw] max-h-[98vh] w-[98vw] h-[98vh] p-0 bg-[var(--ide-bg)]"
         onEscapeKeyDown={(e) => {
           e.preventDefault();
           onOpenChange(false);
@@ -60,16 +60,16 @@ export function IDEModal({
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-[#3e3e42] bg-[#252526]">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)]">
             <div className="flex items-center gap-2">
-              <Maximize2 className="h-4 w-4 text-[#858585]" />
-              <h2 className="font-semibold text-sm text-[#cccccc]">Pronghorn IDE</h2>
+              <Maximize2 className="h-4 w-4 text-[var(--ide-muted)]" />
+              <h2 className="font-semibold text-sm text-[var(--ide-ink)]">Pronghorn IDE</h2>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-2 gap-1 bg-[#2a2d2e] text-[#cccccc] border-[#3e3e42] hover:bg-[#313335]"
+                className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                 onClick={() => {
                   setRootCreateType("file");
                   setRootCreateDialogOpen(true);
@@ -81,7 +81,7 @@ export function IDEModal({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-2 gap-1 bg-[#2a2d2e] text-[#cccccc] border-[#3e3e42] hover:bg-[#313335]"
+                className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                 onClick={() => {
                   setRootCreateType("folder");
                   setRootCreateDialogOpen(true);
@@ -94,7 +94,7 @@ export function IDEModal({
                 variant="ghost"
                 size="icon"
                 onClick={() => onOpenChange(false)}
-                className="h-8 w-8 hover:bg-[#2a2d2e] text-[#cccccc]"
+                className="h-8 w-8 hover:bg-[var(--ide-hover)] text-[var(--ide-ink)]"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -105,9 +105,9 @@ export function IDEModal({
           <div className="flex-1 overflow-hidden">
             <ResizablePanelGroup direction="horizontal">
               <ResizablePanel defaultSize={20} minSize={15} maxSize={40}>
-                <div className="h-full border-r border-[#3e3e42] bg-[#252526]">
-                  <div className="px-3 py-2 border-b border-[#3e3e42] bg-[#252526]">
-                    <p className="text-xs font-medium text-[#858585] uppercase tracking-wide">Explorer</p>
+                <div className="h-full border-r border-[var(--ide-border)] bg-[var(--ide-panel)]">
+                  <div className="px-3 py-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)]">
+                    <p className="text-xs font-medium text-[var(--ide-muted)] uppercase tracking-wide">Explorer</p>
                   </div>
                   <EnhancedFileTree
                     files={fileStructure}
