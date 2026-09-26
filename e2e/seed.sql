@@ -106,6 +106,11 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- Tech stacks (PR-05, PR-17) ------------------------------------------------
+-- `type` is NULL here on purpose: it's a root-level tech stack (a category),
+-- and `type` is only set on leaf items nested under one (see
+-- TechStackTreeManager.tsx / EditTechStackItemDialog.tsx). The library page's
+-- `get_tech_stacks_root` RPC (PR-17) filters on `parent_id IS NULL AND type
+-- IS NULL`, so a non-NULL type here would make this row invisible there.
 INSERT INTO public.tech_stacks (id, org_id, name, description, created_by, type)
 VALUES (
   '00000000-0000-4000-8000-000000000301',
@@ -113,7 +118,7 @@ VALUES (
   'E2E Tech Stack',
   'Seeded for PR-05/PR-17 read coverage.',
   '00000000-0000-4000-8000-0000000000a1',
-  'backend'
+  NULL
 )
 ON CONFLICT (id) DO NOTHING;
 

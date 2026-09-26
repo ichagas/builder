@@ -6,6 +6,13 @@
  * Monaco editor, search, stage/unstage, commit, pull/push, PAT management
  * -- all need a real GitHub App installation (D-18). See e2e/README.md
  * coverage notes.
+ *
+ * `exact: true` on the "Repository" heading match is load-bearing, not
+ * decoration: unique()'s project name is "PR-11 Repository Project-<ts>-
+ * <rand>", whose sidebar heading contains "Repository" as a substring, so a
+ * non-exact match is ambiguous against the page's own "Repository" h1 --
+ * flaky depending on which one Playwright's accessible-name search visits
+ * first. This was an intermittent flake in the previously-green suite.
  */
 import { test, expect, recordAxeBaseline, api, defaultOwner, unique } from "../fixtures";
 import { routes } from "../routes";
@@ -15,7 +22,7 @@ test("PR-11 repository: loads, shows GitHub connect banner, create-repo dialog o
 }, testInfo) => {
   const project = await api.createProject(defaultOwner, unique("PR-11 Repository Project"));
   await page.goto(routes.project.repository(project.id));
-  await expect(page.getByRole("heading", { name: "Repository" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Repository", exact: true })).toBeVisible();
   await expect(page.getByText("Connect your GitHub account")).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect GitHub" })).toBeVisible();
 
@@ -24,7 +31,7 @@ test("PR-11 repository: loads, shows GitHub connect banner, create-repo dialog o
   await page.keyboard.press("Escape");
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Repository" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Repository", exact: true })).toBeVisible();
 
   await recordAxeBaseline(page, "pr-11", testInfo);
 });

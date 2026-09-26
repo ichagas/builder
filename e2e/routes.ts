@@ -31,6 +31,7 @@ export const routes = {
   welcome: () => (currentApp() === "legacy" ? "/" : "/welcome"),
   auth: () => "/auth",
   authCallback: () => "/auth/callback",
+  githubCallback: () => "/github/callback",
   terms: () => "/terms",
   privacy: () => "/privacy",
   license: () => "/license",

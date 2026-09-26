@@ -28,7 +28,7 @@
 - [ ] T014 (WP-F1) Build and push the `frontend-new` image in `.github/workflows/platform-deploy.yml`.
 - [ ] T015 (WP-F1) Terraform `module "frontend_new"` (reuse `infra/modules/frontend`) at `next.<domain>`. API CORS and APIM origins. Entra redirect URI.
 - [X] T016 [P] (WP-F6) Playwright harness shared by both apps: `e2e/` at repo root or `FE/e2e/` with `BASE_URL` switch, `fixtures.ts` (mock auth, share tokens), `seed.sql`, and a docker compose profile `e2e`.
-- [ ] T017 (WP-F6) **Legacy smoke suite**, written and passing **against `app/frontend`**: one spec per regression row PR-01…PR-21 (page loads, main read, main write, reload). Files `e2e/regression/pr-xx.spec.ts`. This is the regression gate.
+- [X] T017 (WP-F6) **Legacy smoke suite**, written and passing **against `app/frontend`**: one spec per regression row PR-01…PR-21 (page loads, main read, main write, reload). Files `e2e/regression/pr-xx.spec.ts`. This is the regression gate.
 - [ ] T018 [P] (WP-F1) Token lint (`FE/eslint.config.js` custom rule): report raw Tailwind palette classes and hex outside `src/design/**`. Warn mode now, error mode after T031.
 
 ## Phase 2: Foundation, design system and shell (blocks page work)
