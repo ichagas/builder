@@ -17,7 +17,7 @@
 - [X] T000 (WP-F0) Amend `.specify/memory/constitution.md` Principle VI to **UI/UX Layout Contract** (v1.1.0 → **2.0.0**, MAJOR, because a principle is redefined): `contracts/design-system.md` + prototypes are the contract for `app/frontend-new/`, and the legacy `app/frontend/` stays immutable until switch-over. Updated `.specify/templates/plan-template.md`, `.github/copilot-instructions.md`, `.github/instructions/frontend.instructions.md`, `.github/agents/code-review.agent.md`. No client sign-off is required while pre-go-live. A sign-off step can be added once the UI is stable.
 - [X] T001 [P] (WP-F0) `.github/instructions/frontend-new.instructions.md` (applyTo `app/frontend-new/**`): the restyle recipe (plan.md), shell ownership, tokens only, "behavior must not change" rule, tests expected.
 - [X] T002 [P] (WP-F0) Resolve the open questions in `research.md` with `/speckit.clarify` and record them in `spec.md` → Clarifications.
-- [ ] T003 [P] (WP-F0) README note: `app/frontend/` receives no more feature work (pre-go-live pivot) and remains only as the regression reference until cutover.
+- [X] T003 [P] (WP-F0) README note: `app/frontend/` receives no more feature work (pre-go-live pivot) and remains only as the regression reference until cutover.
 
 ## Phase 1: Fork and setup
 
