@@ -25,7 +25,7 @@
 - [X] T011 (WP-F1) `FE/.env.example`: add `VITE_APP_CHANNEL=next`. Confirm the Entra redirect URI variable for the new host.
 - [X] T012 [P] (WP-F1) `FE/Dockerfile` and `FE/nginx.conf` (from the fork) with `/health`, SPA fallback and legacy-path rewrites placeholder.
 - [X] T013 (WP-F1) CI: `frontend-new` job in `.github/workflows/ci.yml` (path filter `app/frontend-new/**`: lint, typecheck, unit, build) added to `ci-gate`. NOTE: the typecheck step (`npx tsc -p tsconfig.app.json --noEmit`) currently fails on 8 pre-existing type errors inherited unchanged from `app/frontend` at the T010 fork, in `src/components/requirements/SourceRequirementsUpload.tsx`, `src/components/techstack/TechStackCard.tsx`, `src/pages/BuildBookEditor.tsx`, `src/pages/project/Audit.tsx` — files outside WP-F1's ownership (owned by the WP-F2+ page/component work). Not introduced by this task; flagging as a cross-WP dependency so `ci-gate` is not red once those pages are touched.
-- [ ] T014 (WP-F1) Build and push the `frontend-new` image in `.github/workflows/platform-deploy.yml`.
+- [X] T014 (WP-F1) Build and push the `frontend-new` image in `.github/workflows/platform-deploy.yml`.
 - [ ] T015 (WP-F1) Terraform `module "frontend_new"` (reuse `infra/modules/frontend`) at `next.<domain>`. API CORS and APIM origins. Entra redirect URI.
 - [ ] T016 [P] (WP-F6) Playwright harness shared by both apps: `e2e/` at repo root or `FE/e2e/` with `BASE_URL` switch, `fixtures.ts` (mock auth, share tokens), `seed.sql`, and a docker compose profile `e2e`.
 - [ ] T017 (WP-F6) **Legacy smoke suite**, written and passing **against `app/frontend`**: one spec per regression row PR-01…PR-21 (page loads, main read, main write, reload). Files `e2e/regression/pr-xx.spec.ts`. This is the regression gate.
