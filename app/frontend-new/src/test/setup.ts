@@ -58,3 +58,21 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: vi.fn(),
   })),
 });
+
+// jsdom does not implement ResizeObserver — cmdk (the CommandPalette's,
+// T036, underlying library) observes element size. A no-op stub is enough
+// for tests, which don't assert on layout.
+if (typeof window.ResizeObserver === "undefined") {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}
+
+// jsdom does not implement Element.scrollIntoView (used by cmdk and by
+// TimelineStrip, T026, to keep the selection in view).
+if (typeof Element.prototype.scrollIntoView === "undefined") {
+  Element.prototype.scrollIntoView = function scrollIntoView() {};
+}
