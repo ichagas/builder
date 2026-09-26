@@ -28,6 +28,7 @@ import packsRouter from "../packs";
 import versionsRouter from "../versions";
 import workItemsRouter, { workItemByIdRouter } from "../workItems";
 import adminIntegrationsRouter from "../admin/integrations";
+import onboardingRouter from "../onboarding";
 
 const router = Router();
 
@@ -58,6 +59,7 @@ router.use("/teams", authMiddleware, teamsRouter);
 router.use("/applications", authMiddleware, applicationsRouter);
 router.use("/packs", authMiddleware, packsRouter);
 router.use("/admin/integrations", authMiddleware, adminIntegrationsRouter);
+router.use("/onboarding", authMiddleware, onboardingRouter);
 
 // - db is protected (require auth)
 // - rpc and functions use optional auth (some calls allow anonymous)
