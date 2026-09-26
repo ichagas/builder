@@ -26,7 +26,7 @@
  */
 import { logger } from "../../utils/logger";
 import db from "../../utils/database";
-import { getInstallationToken, isGitHubAppConfigured } from "../../utils/githubAppAuth";
+import { getInstallationTokenForRepo, isGitHubAppConfigured } from "../../utils/githubAppAuth";
 import { MeshFinding } from "./ingest";
 
 export interface OpenIssueResult {
@@ -92,7 +92,11 @@ async function createGitHubIssue(fullName: string, title: string, body: string):
     logger.warn("[mesh-issue-service] GitHub App not configured; skipping issue creation");
     return null;
   }
-  const token = await getInstallationToken();
+  // Scoped to this one repository and the minimal permission needed (write
+  // access to issues only) rather than the installation-wide token — a
+  // compromised/buggy call here can't touch any other repository or
+  // permission the platform's GitHub App happens to hold.
+  const token = await getInstallationTokenForRepo({ fullName, permissions: { issues: "write" } });
   const res = await fetch(`https://api.github.com/repos/${fullName}/issues`, {
     method: "POST",
     headers: {

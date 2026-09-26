@@ -27,10 +27,10 @@ jest.mock("../../../utils/database", () => ({
 }));
 
 const mockIsGitHubAppConfigured = jest.fn();
-const mockGetInstallationToken = jest.fn();
+const mockGetInstallationTokenForRepo = jest.fn();
 jest.mock("../../../utils/githubAppAuth", () => ({
   isGitHubAppConfigured: () => mockIsGitHubAppConfigured(),
-  getInstallationToken: () => mockGetInstallationToken(),
+  getInstallationTokenForRepo: (...args: unknown[]) => mockGetInstallationTokenForRepo(...args),
 }));
 
 const mockFetch = jest.fn();
@@ -55,7 +55,7 @@ function runRow(overrides: Partial<Record<string, any>> = {}) {
 beforeEach(() => {
   mockDbQuery.mockReset();
   mockIsGitHubAppConfigured.mockReset();
-  mockGetInstallationToken.mockReset();
+  mockGetInstallationTokenForRepo.mockReset();
   mockFetch.mockReset();
   resetAzureDevOpsClientProviderForTests();
 });
@@ -89,7 +89,7 @@ describe("openIssueForNewFindings", () => {
   it("opens a GitHub issue via the GitHub App and records issue_ref", async () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [runRow()] });
     mockIsGitHubAppConfigured.mockReturnValue(true);
-    mockGetInstallationToken.mockResolvedValue("installation-token");
+    mockGetInstallationTokenForRepo.mockResolvedValue("installation-token");
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ number: 42, html_url: "https://github.com/goa/permits-api/issues/42" }),
@@ -110,6 +110,25 @@ describe("openIssueForNewFindings", () => {
     );
   });
 
+  it("requests a token scoped to only the target repository and issues:write, not an installation-wide token", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [runRow({ full_name: "goa/permits-api" })] });
+    mockIsGitHubAppConfigured.mockReturnValue(true);
+    mockGetInstallationTokenForRepo.mockResolvedValue("installation-token");
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ number: 42, html_url: "https://github.com/goa/permits-api/issues/42" }),
+    });
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE mesh_runs
+
+    await openIssueForNewFindings("run-1");
+
+    expect(mockGetInstallationTokenForRepo).toHaveBeenCalledWith({
+      fullName: "goa/permits-api",
+      permissions: { issues: "write" },
+    });
+    expect(mockGetInstallationTokenForRepo).toHaveBeenCalledTimes(1);
+  });
+
   it("does not open an issue when the GitHub App isn't configured", async () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [runRow()] });
     mockIsGitHubAppConfigured.mockReturnValue(false);
@@ -124,7 +143,7 @@ describe("openIssueForNewFindings", () => {
   it("returns a failure result (not a throw) when GitHub returns an error", async () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [runRow()] });
     mockIsGitHubAppConfigured.mockReturnValue(true);
-    mockGetInstallationToken.mockResolvedValue("installation-token");
+    mockGetInstallationTokenForRepo.mockResolvedValue("installation-token");
     mockFetch.mockResolvedValue({ ok: false, status: 403, text: async () => "rate limited" });
 
     const result = await openIssueForNewFindings("run-1");
@@ -192,7 +211,7 @@ describe("openIssueForNewFindings — Markdown injection via repository display 
       rows: [runRow({ full_name: "goa/permits-api" })],
     });
     mockIsGitHubAppConfigured.mockReturnValue(true);
-    mockGetInstallationToken.mockResolvedValue("installation-token");
+    mockGetInstallationTokenForRepo.mockResolvedValue("installation-token");
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ number: 44, html_url: "https://github.com/goa/permits-api/issues/44" }),

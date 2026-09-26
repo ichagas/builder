@@ -18,7 +18,7 @@
  * quoting style, key order — exactly the local edits this must not touch).
  */
 import { logger } from "../../utils/logger";
-import { getInstallationToken, isGitHubAppConfigured } from "../../utils/githubAppAuth";
+import { getInstallationTokenForRepo, isGitHubAppConfigured } from "../../utils/githubAppAuth";
 
 const MANIFEST_PATH = "pronghorn.standards.yml";
 const GITHUB_ACTIONS_WORKFLOW_PATH = ".github/workflows/assurance-mesh.yml";
@@ -127,7 +127,14 @@ export async function openUpdatePr(repo: RepoToUpdate, target: UpdatePrTarget): 
     return { repositoryId: repo.id, opened: false, reason: "GitHub App is not configured" };
   }
 
-  const token = await getInstallationToken();
+  // Scoped to this one repository and the minimal permissions needed
+  // (read/write file contents to bump the manifest, and open a pull
+  // request) rather than the installation-wide token — this operation
+  // touches one repo at a time and should not be able to reach any other.
+  const token = await getInstallationTokenForRepo({
+    fullName: repo.fullName,
+    permissions: { contents: "write", pull_requests: "write" },
+  });
   const branchName = `pronghorn/update-pack-${target.packVersion}`;
 
   // Base branch tip.

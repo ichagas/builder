@@ -8,10 +8,10 @@ jest.mock("../../../utils/logger", () => ({
 }));
 
 const mockIsGitHubAppConfigured = jest.fn();
-const mockGetInstallationToken = jest.fn();
+const mockGetInstallationTokenForRepo = jest.fn();
 jest.mock("../../../utils/githubAppAuth", () => ({
   isGitHubAppConfigured: () => mockIsGitHubAppConfigured(),
-  getInstallationToken: () => mockGetInstallationToken(),
+  getInstallationTokenForRepo: (...args: unknown[]) => mockGetInstallationTokenForRepo(...args),
 }));
 
 const mockFetch = jest.fn();
@@ -58,9 +58,9 @@ function repo(overrides: Partial<RepoToUpdate> = {}): RepoToUpdate {
 beforeEach(() => {
   mockFetch.mockReset();
   mockIsGitHubAppConfigured.mockReset();
-  mockGetInstallationToken.mockReset();
+  mockGetInstallationTokenForRepo.mockReset();
   mockIsGitHubAppConfigured.mockReturnValue(true);
-  mockGetInstallationToken.mockResolvedValue("installation-token");
+  mockGetInstallationTokenForRepo.mockResolvedValue("installation-token");
 });
 
 describe("bumpPackVersion / bumpWorkflowRef", () => {
@@ -133,6 +133,38 @@ describe("openUpdatePr", () => {
     const putWorkflowBody = JSON.parse((putWorkflowCall[1] as any).body);
     const decodedWorkflow = Buffer.from(putWorkflowBody.content, "base64").toString("utf8");
     expect(decodedWorkflow).toContain('pack_version: "2026.3"');
+  });
+
+  it("requests a token scoped to only this repository and minimal permissions", async () => {
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ object: { sha: "base-sha" } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ content: b64(MANIFEST_CONTENT), encoding: "base64", sha: "manifest-sha" }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ content: b64(WORKFLOW_CONTENT), encoding: "base64", sha: "workflow-sha" }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ number: 99, html_url: "https://github.com/goa/permits-api/pull/99" }),
+      });
+
+    await openUpdatePr(repo({ fullName: "goa/permits-api" }), {
+      packVersion: "2026.3",
+      workflowRef: "goa-standards/assurance-mesh@v3",
+    });
+
+    expect(mockGetInstallationTokenForRepo).toHaveBeenCalledWith({
+      fullName: "goa/permits-api",
+      permissions: { contents: "write", pull_requests: "write" },
+    });
+    // Never the installation-wide token.
+    expect(mockGetInstallationTokenForRepo).toHaveBeenCalledTimes(1);
   });
 
   it("reports 'nothing to change' when both files are already on the target version/ref", async () => {

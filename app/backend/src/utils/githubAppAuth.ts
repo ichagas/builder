@@ -78,6 +78,85 @@ export async function getInstallationToken(): Promise<string> {
   return token;
 }
 
+export interface RepoScopedTokenOptions {
+  /**
+   * The repository this token may act on, as `"owner/repo"`. Only the
+   * repo-name segment is sent to GitHub — the installation-token API scopes
+   * `repositories` by name within the app's one installation account, not by
+   * full `owner/repo` path.
+   */
+  fullName: string;
+  /**
+   * Minimal permission set to request for this token, e.g.
+   * `{ issues: "write" }`. Must be a subset of what the installation itself
+   * was granted; GitHub rejects a request for anything wider.
+   */
+  permissions: Record<string, string>;
+}
+
+/**
+ * Mint a GitHub App installation access token scoped to exactly one
+ * repository and a minimal set of permissions, instead of the
+ * installation-wide token {@link getInstallationToken} returns.
+ *
+ * The whole-installation token from `getInstallationToken` can act on every
+ * repository (and every permission) the platform's single GitHub App
+ * installation was granted — appropriate for the app's own status/dispatch
+ * calls, but too broad to hand to per-repository mesh operations (opening an
+ * issue, opening an update PR), whose blast radius should be limited to the
+ * one repository being acted on. This calls the same
+ * `POST /app/installations/{id}/access_tokens` endpoint but with
+ * `repositories`/`permissions` in the request body, per
+ * https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app.
+ *
+ * Not cached: each call is already scoped narrowly to a single repository
+ * and permission set, per-repo mesh operations are low-volume, and caching
+ * would need a cache key per repo+permission-set for negligible benefit here.
+ *
+ * @throws Error if GitHub App env vars are not configured, `fullName` has no
+ *   repo segment, or token exchange fails.
+ */
+export async function getInstallationTokenForRepo(options: RepoScopedTokenOptions): Promise<string> {
+  if (!isGitHubAppConfigured()) {
+    throw new Error(
+      "GitHub App is not configured. Set GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID, and GITHUB_APP_PRIVATE_KEY.",
+    );
+  }
+
+  const repoName = options.fullName.split("/").pop();
+  if (!repoName) {
+    throw new Error(`Invalid repository full name: "${options.fullName}"`);
+  }
+
+  const appJwt = createAppJwt();
+  const url = `https://api.github.com/app/installations/${GITHUB_APP_INSTALLATION_ID}/access_tokens`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${appJwt}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ repositories: [repoName], permissions: options.permissions }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    logger.error(
+      `[github-app] Failed to get repo-scoped installation token for ${options.fullName}: status=${res.status} body=${errText}`,
+    );
+    throw new Error(`GitHub App repo-scoped token exchange failed: ${res.status} ${errText}`);
+  }
+
+  const data = (await res.json()) as { token: string; expires_at: string };
+  logger.info(
+    `[github-app] Repo-scoped installation token acquired for ${options.fullName}, expires_at=${data.expires_at}`,
+  );
+  return data.token;
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
