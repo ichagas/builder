@@ -50,12 +50,12 @@ function AgentNode({ data, id, selected }: { data: any; id: string; selected: bo
       <Handle type="target" position={Position.Left} className="w-3 h-3" />
       <Card 
         className={`p-4 rounded-lg shadow-lg min-w-[180px] border-2 transition-all ${
-          isExecuting ? "ring-4 ring-yellow-400 animate-pulse" : ""
+          isExecuting ? "ring-4 ring-warn animate-pulse" : ""
         } ${selected ? "ring-2 ring-white" : ""}`}
         style={{ 
           backgroundColor: bgColor,
           borderColor: bgColor,
-          color: "#ffffff"
+          color: "var(--surface)"
         }}
       >
         <div className="flex items-center justify-between mb-1">

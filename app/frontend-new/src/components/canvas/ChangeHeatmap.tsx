@@ -128,11 +128,11 @@ export function ChangeHeatmap({ metrics, currentIteration, totalIterations }: Ch
           <span>Intensity:</span>
           <div className="flex gap-1">
             <div className="w-4 h-4 bg-muted" title="No changes" />
-            <div className="w-4 h-4 bg-blue-100 dark:bg-blue-950" title="Low" />
-            <div className="w-4 h-4 bg-blue-200 dark:bg-blue-900" title="Low-Medium" />
-            <div className="w-4 h-4 bg-orange-200 dark:bg-orange-900" title="Medium" />
-            <div className="w-4 h-4 bg-orange-300 dark:bg-orange-800" title="Medium-High" />
-            <div className="w-4 h-4 bg-red-300 dark:bg-red-800" title="High" />
+            <div className="w-4 h-4 bg-primary-soft dark:bg-primary" title="Low" />
+            <div className="w-4 h-4 bg-primary-soft dark:bg-primary" title="Low-Medium" />
+            <div className="w-4 h-4 bg-warn-soft dark:bg-warn" title="Medium" />
+            <div className="w-4 h-4 bg-warn-soft dark:bg-warn" title="Medium-High" />
+            <div className="w-4 h-4 bg-bad-soft dark:bg-bad" title="High" />
           </div>
         </div>
       </div>
