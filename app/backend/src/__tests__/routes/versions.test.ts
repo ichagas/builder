@@ -154,6 +154,34 @@ describe("POST /projects/:projectId/versions", () => {
     expect(res.body).toEqual(created);
   });
 
+  it("allows an owner-role token (share link, no user session) to create a version", async () => {
+    mockOwnerCheck("someone-else");
+    mockTokenRoleCheck("owner");
+    const created = { id: "v4", project_id: PROJECT_ID, name: "v1.3.0", kind: "hotfix" };
+    mockDbQuery.mockResolvedValueOnce({ rows: [created] });
+
+    const res = await request(createApp()) // no userId => no Authorization header, no req.user
+      .post(`/projects/${PROJECT_ID}/versions?token=owner-token`)
+      .send({ name: "v1.3.0", kind: "hotfix" });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual(created);
+  });
+
+  it("KNOWN DEFECT: a malformed ?token= surfaces as a raw 500, not 403", async () => {
+    // See the matching test in workItems.test.ts and services/versions/access.test.ts:
+    // `project_tokens.token` is a `uuid` column, so a non-UUID-shaped token
+    // fails the SQL with `22P02` (no `statusCode`), and errorHandler.ts falls
+    // back to 500 for any error without one.
+    mockOwnerCheck("someone-else");
+    const pgError: any = new Error('invalid input syntax for type uuid: "garbage"');
+    pgError.code = "22P02";
+    mockDbQuery.mockRejectedValueOnce(pgError);
+
+    const res = await request(createApp()).get(`/projects/${PROJECT_ID}/versions?token=garbage`);
+    expect(res.status).toBe(500); // documents current behavior; should be 403
+  });
+
   it("validates name is required", async () => {
     mockOwnerCheck(OWNER_ID);
     const res = await request(createApp(OWNER_ID))

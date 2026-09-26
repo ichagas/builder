@@ -183,6 +183,35 @@ describe("POST /projects/:projectId/work-items", () => {
     expect(res.status).toBe(201);
   });
 
+  it("allows an owner-role token (not just an authenticated owner user) to create a work item", async () => {
+    mockOwnerCheck("someone-else");
+    mockTokenRoleCheck("owner");
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 0 }] });
+    const created = { ...baseWorkItem, key: "WI-1" };
+    mockDbQuery.mockResolvedValueOnce({ rows: [created] });
+
+    const res = await request(createProjectApp())
+      .post(`/projects/${PROJECT_ID}/work-items?token=owner-token`)
+      .send({ type: "bug", title: "Reported via share link" });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("works with only ?token= and no user session at all (no Authorization header, no req.user)", async () => {
+    mockOwnerCheck("someone-else");
+    mockTokenRoleCheck("editor");
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 0 }] });
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ ...baseWorkItem, key: "WI-1" }] });
+
+    // createProjectApp() with no userId never sets req.user, matching an
+    // anonymous request through optionalAuthMiddleware with a share token.
+    const res = await request(createProjectApp())
+      .post(`/projects/${PROJECT_ID}/work-items?token=editor-token`)
+      .send({ type: "bug", title: "Anonymous via token" });
+
+    expect(res.status).toBe(201);
+  });
+
   it("validates type", async () => {
     mockOwnerCheck(OWNER_ID);
     const res = await request(createProjectApp(OWNER_ID))
@@ -197,6 +226,50 @@ describe("POST /projects/:projectId/work-items", () => {
       .post(`/projects/${PROJECT_ID}/work-items`)
       .send({ type: "bug" });
     expect(res.status).toBe(422);
+  });
+
+  it("KNOWN DEFECT: a malformed ?token= (not UUID-shaped) surfaces as a raw 500, not 403", async () => {
+    // `project_tokens.token` is `uuid` in infra/migrations/001_full_schema.sql.
+    // Verified against a real postgres:16-alpine container: a non-UUID token
+    // fails the role lookup with `22P02 invalid input syntax for type uuid`,
+    // which has no `statusCode` and falls through errorHandler.ts as 500,
+    // leaking the raw Postgres message. Per contracts/api.md, every B1 route
+    // "authorizes through authorize_project_access, like the RPCs" and should
+    // reject bad tokens with 403, the same as an unknown-but-valid-format one.
+    mockOwnerCheck("someone-else");
+    const pgError: any = new Error('invalid input syntax for type uuid: "not-a-real-token"');
+    pgError.code = "22P02";
+    mockDbQuery.mockRejectedValueOnce(pgError);
+
+    const res = await request(createProjectApp())
+      .post(`/projects/${PROJECT_ID}/work-items?token=not-a-real-token`)
+      .send({ type: "bug", title: "x" });
+
+    expect(res.status).toBe(500); // documents current behavior; should be 403
+  });
+
+  it("KNOWN DEFECT: a WI-<n> key collision under concurrent creates surfaces as an unhandled 500, not a retry or 409", async () => {
+    // `nextWorkItemKey` reads MAX(key) then a separate INSERT computes the
+    // same next key for two concurrent requests targeting the same project
+    // (confirmed empirically: 7/10 concurrent inserts failed this way
+    // against a real database). Unlike POST /versions (which catches 23505
+    // and returns 409, see routes/versions.ts), this route's INSERT has no
+    // catch for the `work_items_project_id_key_key` unique-constraint
+    // violation, so the loser of the race gets a raw 500 instead of a clean
+    // conflict response or a transparent retry.
+    mockOwnerCheck(OWNER_ID);
+    mockDbQuery.mockResolvedValueOnce({ rows: [{ max_num: 5 }] }); // key sequencing query
+    const raceError: any = new Error(
+      'duplicate key value violates unique constraint "work_items_project_id_key_key"'
+    );
+    raceError.code = "23505";
+    mockDbQuery.mockRejectedValueOnce(raceError); // the INSERT loses the race
+
+    const res = await request(createProjectApp(OWNER_ID))
+      .post(`/projects/${PROJECT_ID}/work-items`)
+      .send({ type: "bug", title: "Racing create" });
+
+    expect(res.status).toBe(500); // documents current behavior; should be 409 (or a retry)
   });
 });
 
