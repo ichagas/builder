@@ -621,6 +621,36 @@ module "container_apps" {
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
+# Platform Key Vault write access for the Integrations service (spec 007,
+# D-18, WP-BE8)
+# -----------------------------------------------------------------------------
+# Admin -> Integrations writes and deletes Azure DevOps PAT secrets in the
+# platform Key Vault at runtime (services/integrations/secretStore.ts), which
+# needs create/set/delete on secrets -- "Key Vault Secrets User" (read-only,
+# granted above) is not enough. Scoped to the platform vault only (not the
+# resource group), following least privilege.
+#
+# The runtime credential is `getAzureCredential()` (DefaultAzureCredential).
+# Per the existing comment on api_system_identity_storage_blob_contributor
+# above: when the API container app has both a system-assigned identity and
+# the UAMI attached, the Azure SDK's DefaultAzureCredential resolves to the
+# SYSTEM-assigned identity, not the UAMI -- so this grant targets
+# module.container_apps.principal_id, matching the genapp Key Vault grant
+# (api_system_identity_genapp_kv_secrets_officer) below.
+#
+# BLOCKED-EXTERNAL: this role assignment has not been applied (no `terraform
+# apply` was run — no cloud access from this agent). An operator with
+# subscription access must run `terraform apply` (or an equivalent role
+# assignment) before Admin -> Integrations can write secrets in a real
+# environment; until then, set INTEGRATIONS_SECRET_STORE=memory or leave
+# KEY_VAULT_URL unset so the backend falls back to the in-memory secret store.
+resource "azurerm_role_assignment" "api_system_identity_platform_kv_secrets_officer" {
+  scope                = module.keyvault.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = module.container_apps.principal_id
+}
+
+# -----------------------------------------------------------------------------
 # ACR Pull Role Assignment for Container App
 # -----------------------------------------------------------------------------
 
