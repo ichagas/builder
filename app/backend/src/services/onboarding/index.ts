@@ -264,6 +264,66 @@ function providerForCi(detectedCi: string | null): "github" | "azure_devops" {
 }
 
 /**
+ * Materializes the onboarded application (data-model.md §2/§3):
+ * `onboarding_runs.application_id` is set once PRs are opened, and each
+ * repository that got a PR is registered in `application_repositories` so
+ * it immediately shows up in the team portfolio (WP-BE3). Reuses an
+ * existing `applications` row if this run already has one (a retried
+ * confirm call). `full_name` is globally unique, so re-onboarding a
+ * repository that was already registered (e.g. to a different application)
+ * reassigns it rather than erroring.
+ */
+async function linkApplicationForRun(
+  run: OnboardingRunRow,
+  repositoriesWithPr: OnboardingRunRepositoryRow[]
+): Promise<string> {
+  let applicationId = run.application_id;
+
+  if (!applicationId) {
+    const { rows } = await db.query(
+      `INSERT INTO public.applications (team_id, name, onboarded_at)
+       VALUES ($1, $2, now())
+       RETURNING id`,
+      [run.team_id, run.application_name]
+    );
+    applicationId = rows[0].id;
+  }
+
+  for (const repo of repositoriesWithPr) {
+    await db.query(
+      `INSERT INTO public.application_repositories
+         (application_id, provider, full_name, ci_provider, profile, stack_label, part, build_command, pinned_pack, connection_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (full_name) DO UPDATE SET
+         application_id = EXCLUDED.application_id,
+         provider = EXCLUDED.provider,
+         ci_provider = EXCLUDED.ci_provider,
+         profile = EXCLUDED.profile,
+         stack_label = EXCLUDED.stack_label,
+         part = EXCLUDED.part,
+         build_command = EXCLUDED.build_command,
+         pinned_pack = EXCLUDED.pinned_pack,
+         connection_id = EXCLUDED.connection_id,
+         updated_at = now()`,
+      [
+        applicationId,
+        providerForCi(repo.detected_ci),
+        repo.full_name,
+        repo.detected_ci,
+        repo.detected_profile,
+        repo.detected_stack,
+        repo.part,
+        repo.detected_build,
+        run.pack_version,
+        run.connection_id,
+      ]
+    );
+  }
+
+  return applicationId as string;
+}
+
+/**
  * Opens one PR per selected repository. **Only** reachable when the caller
  * passes `confirm: true` (enforced here, not trusted from any earlier step)
  * and the run has reached `ready` (sandbox output exists to open PRs from).
@@ -294,6 +354,7 @@ export async function openPullRequests(
   const selected = repositories.filter((r) => r.selected);
 
   const errors: string[] = [];
+  const openedNow: OnboardingRunRepositoryRow[] = [];
 
   for (const repo of selected) {
     if (repo.pr_number) {
@@ -326,6 +387,7 @@ export async function openPullRequests(
         prNumber: result.prNumber,
         prState: result.prState,
       });
+      openedNow.push({ ...repo, pr_number: result.prNumber, pr_state: result.prState });
     } catch (err: any) {
       logger.error(`[onboarding] failed to open PR for ${repo.full_name} (run=${runId}): ${err.message}`);
       errors.push(`${repo.full_name}: ${err.message}`);
@@ -336,6 +398,19 @@ export async function openPullRequests(
     // Every repository failed — stay in "ready" so a retry is a clean
     // confirm, not a partially-applied "prs_open".
     throw Errors.internal(`Could not open any pull requests: ${errors.join("; ")}`);
+  }
+
+  // Repositories with a PR now, whether opened just now or on an earlier
+  // (partial) confirm — register/refresh all of them under the application.
+  const reposWithPr = selected
+    .map((r) => openedNow.find((o) => o.full_name === r.full_name) ?? r)
+    .filter((r) => r.pr_number);
+
+  if (reposWithPr.length > 0) {
+    const applicationId = await linkApplicationForRun(run, reposWithPr);
+    if (!run.application_id) {
+      await updateRun(runId, { applicationId });
+    }
   }
 
   if (run.status !== "prs_open") {
