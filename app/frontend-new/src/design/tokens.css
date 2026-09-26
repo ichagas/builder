@@ -4,7 +4,7 @@
  * shared/lifecycle.css, shared/onboarding.css, shared/base.css} ("Style 2 · Blueprint").
  *
  * Each token is exposed twice:
- *  - as a plain hex/length custom property (`--ok: #13803D;`) for raw `var(--x)` use
+ *  - as a plain hex/length custom property (`--ok: #127B3B;`) for raw `var(--x)` use
  *    in CSS and inline styles/SVG (chart strokes, etc.);
  *  - color tokens additionally get an `-rgb` channel triple (`--ok-rgb: 19 128 61;`)
  *    consumed by `tailwind-preset.ts` via `rgb(var(--x-rgb) / <alpha-value>)`, which is
@@ -39,9 +39,18 @@
   --focus: #2451D6; --focus-rgb: 36 81 214;
 
   /* Status */
-  --ok: #13803D; --ok-rgb: 19 128 61;
+  /* Fix round 1, item 4: #13803D on --ok-soft measured 4.28:1 and #B45309 on
+   * --warn-soft measured 4.40:1 — both below WCAG AA (4.5:1), per
+   * src/design/__tests__/contrast.test.ts's "domain-atom token pairs" (added
+   * to cover DeltaChip's `bg-ok-soft text-ok` / `bg-warn-soft text-warn`,
+   * not just "on a plain surface"). Darkened both minimally — old → new:
+   * --ok #13803D → #127B3B (4.57:1 on --ok-soft), --warn #B45309 → #B05109
+   * (4.57:1 on --warn-soft). Both still clear AA on --surface with margin
+   * to spare (5.35:1 / 5.21:1). See contracts/design-system.md §1.
+   */
+  --ok: #127B3B; --ok-rgb: 18 123 59;
   --ok-soft: #DDF2E5; --ok-soft-rgb: 221 242 229;
-  --warn: #B45309; --warn-rgb: 180 83 9;
+  --warn: #B05109; --warn-rgb: 176 81 9;
   --warn-soft: #FCEEDB; --warn-soft-rgb: 252 238 219;
   --bad: #C0262D; --bad-rgb: 192 38 45;
   --bad-soft: #FBE4E5; --bad-soft-rgb: 251 228 229;

@@ -14,9 +14,12 @@ const LIGHT = {
   muted: "#4F5F78",
   primary: "#2451D6",
   primaryForeground: "#FFFFFF",
-  ok: "#13803D",
+  // Fix round 1, item 4: #13803D on ok-soft was 4.28:1 and #B45309 on
+  // warn-soft was 4.40:1 — both below AA. Darkened minimally (see
+  // contracts/design-system.md §1's note) to clear 4.5:1 with margin.
+  ok: "#127B3B",
   okSoft: "#DDF2E5",
-  warn: "#B45309",
+  warn: "#B05109",
   warnSoft: "#FCEEDB",
   bad: "#C0262D",
   badSoft: "#FBE4E5",
@@ -88,9 +91,10 @@ describe("token contrast (WCAG AA, ratio >= 4.5:1)", () => {
  * the T023 domain atoms (DeltaChip, TypeChip, AdoptionBar, MeshDots), not
  * just the raw status tokens on a plain surface. A status token's "-soft"
  * background (used by DeltaChip/TypeChip as `bg-x-soft text-x`) and the
- * Assurance Mesh dot backgrounds (used by MeshDots as `bg-mesh-x
- * text-primary-foreground`) are separate token pairs from "x on surface"
- * and must each individually clear AA on their own.
+ * Assurance Mesh dot backgrounds (used by MeshDots as `bg-mesh-x` with
+ * per-agent text — `text-ink` for green/yellow, `text-primary-foreground`
+ * for red/blue, see MeshDots.tsx) are separate token pairs from "x on
+ * surface" and must each individually clear AA on their own.
  */
 describe("domain-atom token pairs (WCAG AA, ratio >= 4.5:1)", () => {
   it.each([
@@ -112,10 +116,11 @@ describe("domain-atom token pairs (WCAG AA, ratio >= 4.5:1)", () => {
     // AdoptionBar latest segment: primary-foreground text on solid `ok`.
     ["light primary-foreground/ok (AdoptionBar latest)", LIGHT.primaryForeground, LIGHT.ok],
     ["dark primary-foreground/ok (AdoptionBar latest)", DARK.primaryForeground, DARK.ok],
-    // MeshDots: primary-foreground (white/dark-ink) letter on each agent's
-    // solid mesh color.
-    ["light primary-foreground/mesh-green (MeshDots)", LIGHT.primaryForeground, LIGHT.mGreen],
-    ["light primary-foreground/mesh-yellow (MeshDots)", LIGHT.primaryForeground, LIGHT.mYellow],
+    // MeshDots: green/yellow render dark ink text in light theme (white
+    // fails there: 3.30:1 / 2.94:1); red/blue keep primary-foreground
+    // (white), which already clears AA on both. See MeshDots.tsx AGENT_TEXT.
+    ["light ink/mesh-green (MeshDots)", LIGHT.ink, LIGHT.mGreen],
+    ["light ink/mesh-yellow (MeshDots)", LIGHT.ink, LIGHT.mYellow],
     ["light primary-foreground/mesh-red (MeshDots)", LIGHT.primaryForeground, LIGHT.mRed],
     ["light primary-foreground/mesh-blue (MeshDots)", LIGHT.primaryForeground, LIGHT.mBlue],
     ["dark primary-foreground/mesh-green (MeshDots)", DARK.primaryForeground, DARK.mGreen],

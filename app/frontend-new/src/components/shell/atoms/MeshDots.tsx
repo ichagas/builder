@@ -24,6 +24,21 @@ const AGENT_BG: Record<MeshAgentId, string> = {
   blue: "bg-mesh-blue",
 };
 
+// Fix round 1, item 4: white (--primary-foreground in light theme) on the
+// green/yellow mesh fills fails WCAG AA (3.30:1 / 2.94:1) — those fills are
+// bright/mid-toned in light theme. Dark ink text passes there (5.11:1 /
+// 5.73:1), and in dark theme (where --primary-foreground is itself a dark
+// navy, already passing at 7.76:1 / 9.22:1 against the brighter dark-theme
+// fills, while --ink flips to a *light* color that would fail), `dark:`
+// keeps using --primary-foreground. Red/blue already clear AA with
+// --primary-foreground in both themes, so they're unchanged.
+const AGENT_TEXT: Record<MeshAgentId, string> = {
+  green: "text-ink dark:text-primary-foreground",
+  yellow: "text-ink dark:text-primary-foreground",
+  red: "text-primary-foreground",
+  blue: "text-primary-foreground",
+};
+
 const STATUS_WORD: Record<MeshAgentStatus, string> = {
   pass: "Pass",
   warn: "Warning",
@@ -61,7 +76,8 @@ export function MeshDots({ statuses, className, ...props }: MeshDotsProps) {
             key={a.id}
             title={`${a.name}: ${STATUS_WORD[status]}`}
             className={cn(
-              "grid h-[22px] w-[22px] place-items-center rounded-xs font-mono text-[11px] font-bold text-primary-foreground",
+              "grid h-[22px] w-[22px] place-items-center rounded-xs font-mono text-[11px] font-bold",
+              AGENT_TEXT[a.id],
               status === "none" ? "" : AGENT_BG[a.id],
               STATUS_CLASSES[status],
             )}

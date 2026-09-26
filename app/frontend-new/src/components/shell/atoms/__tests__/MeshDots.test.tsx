@@ -31,4 +31,19 @@ describe("MeshDots", () => {
     expect(label).toContain("Red Fail");
     expect(label).toContain("Blue Skipped");
   });
+
+  // Fix round 1, item 4: white text on the green/yellow mesh fills fails
+  // WCAG AA in light theme (3.30:1 / 2.94:1) — see
+  // src/design/__tests__/contrast.test.ts. Green/yellow use dark ink text
+  // (which passes: 5.11:1 / 5.73:1) instead; red/blue keep
+  // primary-foreground, which already passes in both themes.
+  it("renders dark ink text on green/yellow and primary-foreground on red/blue", () => {
+    render(<MeshDots statuses={{ green: "pass", yellow: "pass", red: "pass", blue: "pass" }} />);
+    expect(screen.getByText("G").className).toContain("text-ink");
+    expect(screen.getByText("Y").className).toContain("text-ink");
+    expect(screen.getByText("R").className).toContain("text-primary-foreground");
+    expect(screen.getByText("R").className).not.toContain("text-ink");
+    expect(screen.getByText("B").className).toContain("text-primary-foreground");
+    expect(screen.getByText("B").className).not.toContain("text-ink");
+  });
 });
