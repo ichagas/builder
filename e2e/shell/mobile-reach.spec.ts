@@ -67,33 +67,48 @@ test.describe("mobile reach (contracts/design-system.md §2, spec.md SC-005)", (
     }
   });
 
-  test("the primary action slot, when a page publishes one, is >=44px tall and sits above the tab bar in the bottom 35%", async ({
+  test("the primary action slot, when a page publishes one, is >=44px tall, sits above the tab bar in the bottom 35%, and runs the action on tap", async ({
     page,
   }) => {
-    // No route currently publishes a primary action (project tool pages are
-    // still legacy-page-in-shell pending their WP-D*/G*/B*/S* restyle
-    // tasks; see contracts/routes.md PR-22 and plan.md's "move and restyle
-    // recipe"), so the slot renders nothing anywhere in the live app yet --
-    // this is the expected pre-restyle state, not a shell defect. This test
-    // asserts the always-true side of the contract (no primary action -> no
-    // slot in the layout) and documents, for the pages that add one later,
-    // the exact assertion they must pass.
+    // Requirements (WP-D1, T042) publishes "Add epic" -- see
+    // pages/project/requirements.primaryAction.ts -- so the seeded project's
+    // requirements page is a real, live route to assert this contract
+    // against (contracts/design-system.md §2 "PrimaryActionSlot",
+    // spec.md SC-005/US1 AC3), not just the component's source.
     await page.goto(`/p/${seed.projectId}/v/current/define/requirements`);
-    const slot = page.locator("#mobile-primary-action");
-    await expect(slot).toHaveCount(0);
+    await expect(page.getByText("E2E seeded requirement")).toBeVisible();
 
-    // Contract check on the component itself: PrimaryActionSlot renders a
-    // fixed h-11 (44px) button — verified against its source below so this
-    // spec still fails loudly if that sizing regresses, without needing a
-    // live page that publishes an action.
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const src = fs.readFileSync(
-      path.resolve(import.meta.dirname, "../../app/frontend-new/src/components/shell/PrimaryActionSlot.tsx"),
-      "utf-8",
-    );
-    expect(src).toMatch(/\bh-11\b/); // h-11 = 2.75rem = 44px
-    expect(src).toMatch(/bottom-\[calc\(56px/); // fixed above the 56px-tall MobileTabBar
+    const slot = page.locator("#mobile-primary-action");
+    await expect(slot).toBeVisible();
+
+    const button = slot.getByRole("button", { name: "Add epic" });
+    const buttonBox = await button.boundingBox();
+    expect(buttonBox).not.toBeNull();
+    expect(buttonBox!.height).toBeGreaterThanOrEqual(44);
+    expect(buttonBox!.y).toBeGreaterThanOrEqual(BOTTOM_35_PERCENT_Y);
+
+    // Sits above the tab bar, not overlapping it.
+    const tabBar = page.getByRole("navigation", { name: "Project" }).last();
+    const tabBarBox = await tabBar.boundingBox();
+    expect(tabBarBox).not.toBeNull();
+    expect(buttonBox!.y + buttonBox!.height).toBeLessThanOrEqual(tabBarBox!.y);
+
+    // Tapping it runs the page's real "Add epic" action (addRequirement),
+    // not just a visual affordance. Compares a before/after count (rather
+    // than asserting a single "New Epic" match) since the seeded project is
+    // shared across test runs and re-running this spec adds another one
+    // each time.
+    const newEpicBefore = await page.getByText("New Epic", { exact: true }).count();
+    await button.click();
+    await expect(page.getByText("New Epic", { exact: true })).toHaveCount(newEpicBefore + 1);
+  });
+
+  test("the primary action slot renders nothing on a route with no primary action", async ({ page }) => {
+    // Library's build-books route registers useNoPrimaryAction (see
+    // app/routes/library.tsx) -- a route that genuinely has no primary
+    // action, unlike Requirements above, which now has one.
+    await page.goto("/library/build-books");
+    await expect(page.locator("#mobile-primary-action")).toHaveCount(0);
   });
 
   test("the search button opens the command palette from mobile chrome", async ({ page }) => {
