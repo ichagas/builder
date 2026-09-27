@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
-import { ProjectPageHeader } from "@/components/layout/ProjectPageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage";
 import { useShareToken } from "@/hooks/useShareToken";
+import { useUrlState } from "@/lib/state/useUrlState";
+import { useCreatePresentationDialogOpen } from "./present.primaryAction";
 import apiClient, { getAccessToken } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,8 +106,7 @@ interface Layout {
 export default function Present() {
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId || "");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   // List of presentation metadata (lightweight)
   const [presentationsList, setPresentationsList] = useState<PresentationMeta[]>([]);
   // Full presentation data (loaded on demand)
@@ -124,8 +124,9 @@ export default function Present() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<"default" | "light" | "vibrant">("default");
   
-  // Main page tabs: list, editor, blackboard
-  const [activeTab, setActiveTab] = useState<"list" | "editor" | "blackboard">("list");
+  // Main page tabs: list, editor, blackboard (T053, WP-S3: moved into the
+  // URL per the restyle recipe step 3)
+  const [activeTab, setActiveTab] = useUrlState("tab", "list");
   
   // Right panel toggle for notes and mode (notes vs json)
   const [showNotesPanel, setShowNotesPanel] = useState(true);
@@ -139,8 +140,12 @@ export default function Present() {
   // Layouts from JSON
   const layouts: Layout[] = presentationLayoutsData.layouts;
   
-  // Create dialog state
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // Create dialog state -- driven by the header's primary action (T053,
+  // WP-S3), see present.primaryAction.ts.
+  const [isCreateOpen, setIsCreateOpen] = useCreatePresentationDialogOpen();
+  // Reset the shared create-presentation-dialog store on unmount so no
+  // state leaks into the next time Present mounts.
+  useEffect(() => () => setIsCreateOpen(false), [setIsCreateOpen]);
   const [newName, setNewName] = useState("New Presentation");
   const [newMode, setNewMode] = useState<"concise" | "detailed">("concise");
   const [newTargetSlides, setNewTargetSlides] = useState(15);
@@ -599,13 +604,10 @@ export default function Present() {
 
   if (tokenMissing) {
     return (
-      <div className="flex h-screen bg-background">
-        <ProjectSidebar projectId={projectId || ""} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="p-4 md:p-6">
-            <ProjectPageHeader title="Present" onMenuClick={() => setIsSidebarOpen(true)} />
-            <TokenRecoveryMessage />
-          </div>
+      <div className="flex min-h-full flex-col">
+        <PageHeader />
+        <div className="p-4 md:p-6">
+          <TokenRecoveryMessage />
         </div>
       </div>
     );
@@ -747,14 +749,113 @@ export default function Present() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <ProjectSidebar projectId={projectId || ""} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="p-4 md:p-6 flex-1 flex flex-col overflow-hidden">
-          <ProjectPageHeader title="Present" onMenuClick={() => setIsSidebarOpen(true)} />
-          
+    <div className="flex min-h-full flex-col">
+      <PageHeader />
+      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6">
+        {/* Create Presentation Dialog -- opened via the shell's primary
+            action (PageHeader / PrimaryActionSlot); see
+            present.primaryAction.ts. Also opened from the empty-state
+            "Create Presentation" button below. */}
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Presentation</DialogTitle>
+              <DialogDescription>
+                Configure and generate an AI-powered project presentation
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input value={newName} onChange={e => setNewName(e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Mode</Label>
+                <Select value={newMode} onValueChange={(v: "concise" | "detailed") => setNewMode(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="concise">Concise (10-15 slides)</SelectItem>
+                    <SelectItem value="detailed">Detailed (20-30 slides)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Target Slides</Label>
+                <Input
+                  type="number"
+                  value={newTargetSlides}
+                  onChange={e => setNewTargetSlides(parseInt(e.target.value) || 15)}
+                  min={5}
+                  max={50}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Custom Focus (optional)</Label>
+                <Textarea
+                  value={newPrompt}
+                  onChange={e => setNewPrompt(e.target.value)}
+                  placeholder="Any specific areas you want to emphasize..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  Image Style
+                </Label>
+                <Select value={newImageStyle} onValueChange={setNewImageStyle}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {IMAGE_STYLES.map(style => (
+                      <SelectItem key={style.id} value={style.id}>
+                        {style.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  Image Generation Model
+                </Label>
+                <Select value={newImageModel} onValueChange={setNewImageModel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {IMAGE_MODELS.map(model => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreatePresentation}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="flex-1 flex flex-col overflow-hidden">
           <div className="mt-4 flex-1 flex flex-col overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "list" | "editor" | "blackboard")} className="flex-1 flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <TabsList>
                   <TabsTrigger value="list">Presentations</TabsTrigger>
@@ -765,113 +866,8 @@ export default function Present() {
                     Blackboard
                   </TabsTrigger>
                 </TabsList>
-                
-                {activeTab === "list" && (
-                  <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Presentation
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create Presentation</DialogTitle>
-                        <DialogDescription>
-                          Configure and generate an AI-powered project presentation
-                        </DialogDescription>
-                      </DialogHeader>
-                      
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label>Name</Label>
-                          <Input value={newName} onChange={e => setNewName(e.target.value)} />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Mode</Label>
-                          <Select value={newMode} onValueChange={(v: "concise" | "detailed") => setNewMode(v)}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="concise">Concise (10-15 slides)</SelectItem>
-                              <SelectItem value="detailed">Detailed (20-30 slides)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Target Slides</Label>
-                          <Input 
-                            type="number" 
-                            value={newTargetSlides} 
-                            onChange={e => setNewTargetSlides(parseInt(e.target.value) || 15)} 
-                            min={5} 
-                            max={50}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Custom Focus (optional)</Label>
-                          <Textarea 
-                            value={newPrompt} 
-                            onChange={e => setNewPrompt(e.target.value)}
-                            placeholder="Any specific areas you want to emphasize..."
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-2">
-                            <Palette className="h-4 w-4" />
-                            Image Style
-                          </Label>
-                          <Select value={newImageStyle} onValueChange={setNewImageStyle}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {IMAGE_STYLES.map(style => (
-                                <SelectItem key={style.id} value={style.id}>
-                                  {style.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-2">
-                            <Bot className="h-4 w-4" />
-                            Image Generation Model
-                          </Label>
-                          <Select value={newImageModel} onValueChange={setNewImageModel}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {IMAGE_MODELS.map(model => (
-                                <SelectItem key={model.id} value={model.id}>
-                                  {model.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                        <Button onClick={handleCreatePresentation}>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Generate
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
               </div>
-              
+
               {/* Presentations List Tab - Table view */}
               <TabsContent value="list" className="flex-1 overflow-hidden mt-0">
                 {isLoadingList ? (

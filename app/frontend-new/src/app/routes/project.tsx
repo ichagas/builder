@@ -1,6 +1,7 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useNoPrimaryAction, type ProjectToolRoute, type SimpleRoute } from "./types";
 import { useRequirementsPrimaryAction } from "@/pages/project/requirements.primaryAction";
+import { usePresentPrimaryAction } from "@/pages/project/present.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -51,7 +52,7 @@ export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
   { tool: "database", phase: "build", title: "Database", usePrimaryAction: useNoPrimaryAction, Component: Database },
   { tool: "environments", phase: "ship", title: "Environments", usePrimaryAction: useNoPrimaryAction, Component: Deploy },
   { tool: "audit", phase: "ship", title: "Audit", usePrimaryAction: useNoPrimaryAction, Component: Audit },
-  { tool: "present", phase: "ship", title: "Present", usePrimaryAction: useNoPrimaryAction, Component: Present },
+  { tool: "present", phase: "ship", title: "Present", usePrimaryAction: usePresentPrimaryAction, Component: Present },
 ];
 
 export const PHASE_ORDER: Array<{ id: "define" | "design" | "build" | "ship"; label: string }> = [
