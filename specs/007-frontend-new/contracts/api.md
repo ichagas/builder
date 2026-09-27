@@ -58,8 +58,10 @@ Token access: every route accepts `?token=` and authorizes through `authorize_pr
 `POST /mesh/runs`'s `repository` is the repository's canonical
 `application_repositories.full_name` (data-model.md §2): `"<owner>/<repo>"`
 for GitHub, `"<adoOrg>/<project>/<repo>"` for Azure Repos. The API matches it
-**exactly** and does no normalization (it can't: a bare Azure repo name
-doesn't identify the organization or project); the mesh CI templates are
+**case-insensitively** (fix round 3: GitHub and Azure DevOps names are
+case-insensitive; `lower(full_name)` is unique, migration 021) and does no
+other normalization (it can't: a bare Azure repo name doesn't identify the
+organization or project); the mesh CI templates are
 responsible for sending the canonical form (`templates/mesh.yml` builds the
 Azure one from `System.CollectionUri`/`System.TeamProject`/
 `Build.Repository.Name` via `scripts/lib/repository.js`). A value that is

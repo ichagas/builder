@@ -122,11 +122,14 @@ router.post("/runs", async (req: Request, res: Response) => {
   }
 
   // `repository` must be the canonical `application_repositories.full_name`
-  // ("<owner>/<repo>" for GitHub, "<adoOrg>/<project>/<repo>" for Azure
-  // Repos — contracts/api.md `POST /mesh/runs`); the mesh CI templates send
-  // exactly that and this endpoint does no normalization, only an exact
-  // lookup. Anything that isn't one of those two shapes can't match a row,
-  // so it's rejected (with the same generic 401) before touching the DB.
+  // shape ("<owner>/<repo>" for GitHub, "<adoOrg>/<project>/<repo>" for
+  // Azure Repos — contracts/api.md `POST /mesh/runs`); the mesh CI templates
+  // send exactly that. Matched case-insensitively (fix round 3, item 7: both
+  // providers' names are case-insensitive), backed by the unique
+  // lower(full_name) index from migration 021 so at most one row matches.
+  // No other normalization. Anything that isn't one of those two shapes
+  // can't match a row, so it's rejected (with the same generic 401) before
+  // touching the DB.
   const repositoryFullName: unknown = body?.repository;
   if (typeof repositoryFullName !== "string" || inferRepositoryProvider(repositoryFullName) === null) {
     return rejectIngestAuth(res);
@@ -137,7 +140,7 @@ router.post("/runs", async (req: Request, res: Response) => {
             a.team_id, a.onboarded_at
      FROM public.application_repositories ar
      JOIN public.applications a ON a.id = ar.application_id
-     WHERE ar.full_name = $1`,
+     WHERE lower(ar.full_name) = lower($1)`,
     [repositoryFullName],
   );
   const repo = repoRows[0];

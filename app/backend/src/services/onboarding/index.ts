@@ -297,6 +297,18 @@ export async function setRunRepositories(
     }
   }
 
+  // Fix round 3, item 7: repository names are case-insensitive on both
+  // providers (and application_repositories matches on lower(full_name)),
+  // so "goa/x" and "GOA/x" are the same repository — never two entries.
+  const seen = new Set<string>();
+  for (const repo of repositories) {
+    const key = repo.fullName.toLowerCase();
+    if (seen.has(key)) {
+      throw Errors.validation({ repositories: `"${repo.fullName}" is listed more than once (names are case-insensitive)` });
+    }
+    seen.add(key);
+  }
+
   // Fix round 3, item 6 (security): the platform's GitHub App installation
   // is shared by every organization, so a well-formed name is not enough —
   // each repository must be inside THIS organization's configured scope
@@ -476,13 +488,16 @@ interface ExistingRegistration {
  * {@link linkApplicationForRun} (must never silently reassign a repository
  * to a different application — same item).
  */
+// Matched case-insensitively (fix round 3, item 7; unique lower(full_name)
+// index, migration 021) — the same repository in a different case is the
+// same registration.
 async function getExistingRegistration(fullName: string): Promise<ExistingRegistration | null> {
   const { rows } = await db.query(
     `SELECT ar.application_id, ar.report_secret_ref, ar.default_branch, t.organization_id
      FROM public.application_repositories ar
      JOIN public.applications a ON a.id = ar.application_id
      JOIN public.teams t ON t.id = a.team_id
-     WHERE ar.full_name = $1`,
+     WHERE lower(ar.full_name) = lower($1)`,
     [fullName]
   );
   if (!rows[0]) return null;
@@ -626,7 +641,7 @@ async function linkApplicationForRun(
           `INSERT INTO public.application_repositories
              (application_id, provider, full_name, default_branch, ci_provider, profile, stack_label, part, build_command, pinned_pack, connection_id, report_secret_ref)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-           ON CONFLICT (full_name) DO UPDATE SET
+           ON CONFLICT ((lower(full_name))) DO UPDATE SET
              application_id = EXCLUDED.application_id,
              provider = EXCLUDED.provider,
              default_branch = EXCLUDED.default_branch,

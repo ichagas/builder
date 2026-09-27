@@ -196,7 +196,40 @@ describe("POST /mesh/runs", () => {
     expect(mockDbQuery).not.toHaveBeenCalled();
   });
 
-  it("looks an Azure Repos report up by its exact <adoOrg>/<project>/<repo> full_name (no normalization)", async () => {
+  it("matches the repository case-insensitively (fix round 3, item 7): lower(full_name) lookup, raw value as the parameter", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [] }); // repo lookup
+
+    const body = JSON.stringify(reportBody({ repository: "GOA/Permits-API" }));
+    await request(createApp())
+      .post("/mesh/runs")
+      .set("Content-Type", "application/json")
+      .set("X-Pronghorn-Signature", sign(body))
+      .send(body);
+
+    expect(mockDbQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockDbQuery.mock.calls[0];
+    expect(sql).toMatch(/WHERE lower\(ar\.full_name\) = lower\(\$1\)/);
+    expect(params).toEqual(["GOA/Permits-API"]);
+  });
+
+  it("accepts a correctly signed report whose repository differs from the registered full_name only in case", async () => {
+    // The (mocked) lower(full_name) lookup finds the registered row.
+    mockDbQuery.mockResolvedValueOnce({ rows: [repoRow()] });
+    mockDbQuery.mockResolvedValue({ rows: [] });
+    mockClientQuery.mockResolvedValueOnce({ rows: [{ id: "run-ci" }] }); // INSERT mesh_runs
+    mockClientQuery.mockResolvedValue({ rows: [] });
+    const body = JSON.stringify(reportBody({ repository: "GOA/permits-api" }));
+    const res = await request(createApp())
+      .post("/mesh/runs")
+      .set("Content-Type", "application/json")
+      .set("X-Pronghorn-Signature", sign(body))
+      .send(body);
+
+    expect(res.status).toBe(201);
+    expect(res.body.run_id).toBe("run-ci");
+  });
+
+  it("looks an Azure Repos report up by its <adoOrg>/<project>/<repo> full_name (no normalization beyond case)", async () => {
     mockDbQuery.mockResolvedValueOnce({ rows: [] }); // repo lookup
 
     const body = JSON.stringify(reportBody({ repository: "contoso/My Project/permits-api" }));

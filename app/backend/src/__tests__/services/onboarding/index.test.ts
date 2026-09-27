@@ -498,6 +498,14 @@ describe("setRunRepositories", () => {
     expect(mockReplaceRepos).toHaveBeenCalledWith(RUN_ID, [{ fullName: "contoso/My Project/permits-api", selected: true }]);
   });
 
+  it("422s the same repository listed twice in different case (fix round 3, item 7)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    await expect(
+      onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "goa/permits-api" }, { fullName: "GOA/Permits-API" }])
+    ).rejects.toMatchObject({ statusCode: 422 });
+    expect(mockReplaceRepos).not.toHaveBeenCalled();
+  });
+
   describe("organization scope (fix round 3, item 6 — cross-org selection)", () => {
     beforeEach(() => {
       mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
@@ -1402,6 +1410,36 @@ describe("openPullRequests — confirm gate and idempotency", () => {
           review: expect.objectContaining({ applicationLinkWarning: onboarding.APPLICATION_LINK_BLOCKED_WARNING }),
         })
       );
+    });
+
+    it("matches registrations case-insensitively: lookup by lower(full_name), upsert arbitrated on lower(full_name) (fix round 3, item 7)", async () => {
+      mockListRepos.mockResolvedValue([readyRepo("GOA/permits-api")]);
+      // Registered as "goa/permits-api" to another application: the
+      // case-insensitive lookup finds it, so it's blocked, not duplicated.
+      mockDbQuery.mockImplementation(async (sql: string, params?: any[]) => {
+        if (sql.includes("ar.report_secret_ref") && /lower\(ar\.full_name\) = lower\(\$1\)/.test(sql) && params?.[0] === "GOA/permits-api") {
+          return { rows: [{ application_id: "other-app", organization_id: "org-1", report_secret_ref: "x", default_branch: "main" }] };
+        }
+        return { rows: [] };
+      });
+
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      expect(upsertCalls()).toHaveLength(0);
+      expect(mockUpdateRepo).toHaveBeenCalledWith(
+        RUN_ID,
+        "GOA/permits-api",
+        expect.objectContaining({
+          review: expect.objectContaining({ applicationLinkWarning: onboarding.APPLICATION_LINK_BLOCKED_WARNING }),
+        })
+      );
+    });
+
+    it("the guarded upsert's conflict target is lower(full_name)", async () => {
+      mockListRepos.mockResolvedValue([readyRepo("goa/permits-api")]);
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+      const [upsert] = upsertCalls();
+      expect(String(upsert[0])).toContain("ON CONFLICT ((lower(full_name))) DO UPDATE");
     });
 
     it("surfaces the blocked state in the run's warnings", async () => {
