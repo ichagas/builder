@@ -6,15 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
-import { ProjectPageHeader } from "@/components/layout/ProjectPageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { StandardsTreeSelector } from "@/components/standards/StandardsTreeSelector";
 import { TechStackTreeSelector } from "@/components/techstack/TechStackTreeSelector";
 import { useShareToken } from "@/hooks/useShareToken";
 import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage";
 import { useRealtimeProjectStandards } from "@/hooks/useRealtimeProjectStandards";
 import { ApplyBuildBookDialog } from "@/components/buildbook/ApplyBuildBookDialog";
+import { usePublishProjectStandardsPrimaryAction } from "./standards.primaryAction";
 interface Standard {
   id: string;
   code: string;
@@ -48,7 +47,6 @@ export default function Standards() {
   const [selectedTechStackItems, setSelectedTechStackItems] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Real-time hook for project standards and tech stacks
   const { 
@@ -200,10 +198,25 @@ export default function Standards() {
     }
   };
 
+  // T043 (WP-D2): "Save Changes" is the page's primary action, declared in
+  // the route registry (app/routes/project.tsx) and rendered by PageHeader.
+  // Publish it here (where handleSave/saving actually live) rather than
+  // duplicating the realtime subscription in the route-level hook -- see
+  // standards.primaryAction.ts.
+  usePublishProjectStandardsPrimaryAction(
+    projectId && !loading
+      ? {
+          label: "Save Changes",
+          onClick: handleSave,
+          disabled: saving,
+          disabledReason: saving ? "Saving…" : undefined,
+        }
+      : undefined
+  );
+
   if (tokenMissing) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
+      <div className="flex min-h-full items-center justify-center p-6">
         <TokenRecoveryMessage />
       </div>
     );
@@ -211,88 +224,72 @@ export default function Standards() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <div className="flex relative">
-          <ProjectSidebar projectId={projectId!} />
-          <div className="flex-1 w-full flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
+      <div className="flex min-h-full flex-col">
+        <PageHeader crumb="Define" />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      <div className="flex relative">
-        <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        <main className="flex-1 w-full overflow-auto">
-          <div className="px-4 md:px-6 py-6 md:py-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <ProjectPageHeader
-                title="Project Standards"
-                subtitle="Select applicable standards and tech stacks for this project"
-                onMenuClick={() => setIsSidebarOpen(true)}
-              />
-              <ApplyBuildBookDialog
-                projectId={projectId!}
-                shareToken={shareToken}
-                onApplied={loadData}
-              />
-            </div>
+    <div className="flex min-h-full flex-col">
+      <PageHeader crumb="Define" />
+      <div className="flex-1 overflow-auto px-4 py-6 md:px-6 md:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <p className="text-sm text-muted-foreground">Select applicable standards and tech stacks for this project</p>
+          <ApplyBuildBookDialog
+            projectId={projectId!}
+            shareToken={shareToken}
+            onApplied={loadData}
+          />
+        </div>
 
-            <div className="space-y-6">
-              {/* Tech Stacks Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tech Stacks</CardTitle>
-                  <CardDescription>Select applicable technology stack items</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[400px]">
-                    <TechStackTreeSelector
-                      techStacks={techStacks.map(ts => ({ ...ts, items: [] }))}
-                      selectedItems={selectedTechStackItems}
-                      onSelectionChange={setSelectedTechStackItems}
-                    />
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+        <div className="space-y-6">
+          {/* Tech Stacks Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tech Stacks</CardTitle>
+              <CardDescription>Select applicable technology stack items</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[400px]">
+                <TechStackTreeSelector
+                  techStacks={techStacks.map(ts => ({ ...ts, items: [] }))}
+                  selectedItems={selectedTechStackItems}
+                  onSelectionChange={setSelectedTechStackItems}
+                />
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-              {/* Standards Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Standards</CardTitle>
-                  <CardDescription>
-                    Select standards hierarchically - parent selections include all children
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[500px]">
-                    <StandardsTreeSelector
-                      categories={categories}
-                      selectedStandards={selectedStandards}
-                      onSelectionChange={setSelectedStandards}
-                    />
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+          {/* Standards Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Standards</CardTitle>
+              <CardDescription>
+                Select standards hierarchically - parent selections include all children
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px]">
+                <StandardsTreeSelector
+                  categories={categories}
+                  selectedStandards={selectedStandards}
+                  onSelectionChange={setSelectedStandards}
+                />
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => { setSelectedStandards(new Set()); setSelectedTechStackItems(new Set()); }}>
-                  Reset
-                </Button>
-                <Button onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
-                </Button>
-              </div>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => { setSelectedStandards(new Set()); setSelectedTechStackItems(new Set()); }}>
+              Reset
+            </Button>
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );
