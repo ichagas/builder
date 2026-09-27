@@ -31,6 +31,21 @@ describe("sandboxSecretStore selection", () => {
     await expect(store.getSecret(name)).resolves.toBe("super-secret-value");
   });
 
+  it("generates an unguessable name — a v4 UUID (122 bits of randomness), never a sequential or predictable one (fix round 2, item A)", async () => {
+    const { getSandboxSecretStore } = await import("../../../../services/onboarding/sandbox/sandboxSecretStore");
+    const store = getSandboxSecretStore();
+
+    const names = await Promise.all([1, 2, 3].map(() => store.createSecret("repo-auth", "v", 1800)));
+    for (const name of names) {
+      expect(name).toMatch(/^onboarding-repo-auth-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    }
+    // Get-only access (no list) means an attacker's only path to another
+    // run's secret is guessing its name — three calls never collide, and
+    // structurally can't be enumerated (no shared counter/timestamp prefix
+    // beyond the fixed "repo-auth" the caller itself chose).
+    expect(new Set(names).size).toBe(3);
+  });
+
   it("throws SandboxSecretStoreConfigurationError in production with nothing configured", async () => {
     process.env.NODE_ENV = "production";
     const { getSandboxSecretStore, SandboxSecretStoreConfigurationError } = await import(

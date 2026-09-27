@@ -1056,9 +1056,13 @@ resource "azurerm_role_assignment" "onboarding_sandbox_uami_acr_pull" {
 # an expiry, and the job fetches each value itself at startup with its own
 # UAMI. RBAC (Azure role assignments, not legacy access policies, matching
 # ./modules/keyvault's convention):
-#  - the sandbox job's UAMI: "Key Vault Secrets User" (read-only) — it must
-#    never be able to write or enumerate secrets, only read the ones it was
-#    handed the name of.
+#  - the sandbox job's UAMI: a CUSTOM role with only
+#    `Microsoft.KeyVault/vaults/secrets/getSecret/action` (fix round 2, item
+#    A — below) — deliberately NOT the built-in "Key Vault Secrets User",
+#    which also grants `secrets/readMetadata/action` (list/enumerate every
+#    secret name in the vault, including every OTHER run's, across every
+#    organization). A compromised execution can only fetch the exact secret
+#    it was handed the name of; it can never discover what else is there.
 #  - the API's identity: "Key Vault Secrets Officer" (read/write/delete) —
 #    it mints secrets at dispatch and deletes them at every terminal state
 #    (services/onboarding/sandbox/sandboxSecretStore.ts#cleanupSandboxSecrets).
@@ -1086,8 +1090,10 @@ module "onboarding_sandbox_keyvault" {
   allowed_ip_ranges             = var.keyvault_allowed_ip_ranges
   allowed_subnet_ids            = [var.onboarding_sandbox_subnet_id]
 
-  # Read-only for the sandbox job's own identity — never Officer.
-  secrets_user_principal_ids = [azurerm_user_assigned_identity.onboarding_sandbox[0].principal_id]
+  # No secrets_user_principal_ids here (deliberately) — the built-in "Key
+  # Vault Secrets User" role includes secrets/readMetadata/action (list),
+  # not just get. The sandbox job's UAMI instead gets a custom, get-only
+  # role below (fix round 2, item A).
 
   tags = local.common_tags
 
@@ -1102,6 +1108,60 @@ resource "azurerm_role_assignment" "api_onboarding_sandbox_keyvault_officer" {
   scope                = module.onboarding_sandbox_keyvault[0].id
   role_definition_name = "Key Vault Secrets Officer"
   principal_id         = module.container_apps.principal_id
+}
+
+# -----------------------------------------------------------------------------
+# Sandbox job's Key Vault access: get-only, never list (fix round 2, item A
+# — security). The built-in "Key Vault Secrets User" role bundles
+# `Microsoft.KeyVault/vaults/secrets/readMetadata/action`, which lets its
+# holder enumerate every secret name in the vault (list), not merely read
+# the one it was handed. Every per-run secret in this vault belongs to some
+# organization's onboarding run — across every organization, since this is
+# ONE shared sandbox vault for the whole platform — so a compromised
+# execution able to list would be able to discover, and then fetch (its
+# `getSecret` right is real, not merely latent), another run's callback key
+# or clone credential. This custom role has exactly one dataAction, no list.
+#
+# Residual risk (accepted, documented per fix round 2 item A):
+#  - A compromised execution can still read the small, FIXED set of secret
+#    names it was itself handed via its own env — its own run's callback
+#    key and its own selected repositories' clone credentials. It cannot
+#    discover or read any other run's secrets: secret names are
+#    `onboarding-<prefix>-<uuidv4>` (sandboxSecretStore.ts#generateSecretName),
+#    and a UUIDv4 carries 122 bits of cryptographic randomness
+#    (crypto.randomUUID(), Node's CSPRNG) — brute-forcing or guessing
+#    another run's name is not a practical attack.
+#  - Each secret's TTL (sandboxVaultUrl's ttlSeconds — roughly the job
+#    timeout plus margin) bounds how long even ITS OWN credentials remain
+#    valid if cleanup never runs (a crash); cleanupSandboxSecrets deletes
+#    them immediately at every terminal state in the normal path.
+#  - Every clone credential this role could ever fetch is itself read-only
+#    at the provider (GitHub: `contents: read` only; Azure Repos: whatever
+#    the configured PAT allows, never broader than the connection an
+#    organization's own admin configured) — even a fully exfiltrated
+#    credential grants no write access to the repository it names.
+# -----------------------------------------------------------------------------
+
+resource "azurerm_role_definition" "onboarding_sandbox_kv_secret_getter" {
+  count       = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name        = "${local.onboarding_sandbox_job_name}-kv-secret-getter"
+  scope       = module.onboarding_sandbox_keyvault[0].id
+  description = "Get (never list/enumerate) secrets in the onboarding sandbox Key Vault — the sandbox job may only read the exact secret name(s) it was given (T141, fix round 2, item A)."
+
+  permissions {
+    data_actions = [
+      "Microsoft.KeyVault/vaults/secrets/getSecret/action",
+    ]
+  }
+
+  assignable_scopes = [module.onboarding_sandbox_keyvault[0].id]
+}
+
+resource "azurerm_role_assignment" "onboarding_sandbox_uami_kv_secret_getter" {
+  count              = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope              = module.onboarding_sandbox_keyvault[0].id
+  role_definition_id = azurerm_role_definition.onboarding_sandbox_kv_secret_getter[0].role_definition_resource_id
+  principal_id       = azurerm_user_assigned_identity.onboarding_sandbox[0].principal_id
 }
 
 # -----------------------------------------------------------------------------

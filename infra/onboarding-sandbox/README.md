@@ -89,8 +89,38 @@ job's own timeout:
 - The API's identity is **Key Vault Secrets Officer** on this vault (write
   at dispatch, delete at every terminal state —
   `app/backend/src/services/onboarding/sandbox/sandboxSecretStore.ts#cleanupSandboxSecrets`).
-- This job's own identity is **Key Vault Secrets User only** (read-only) —
-  it can fetch the secrets it was handed the name of, and nothing else.
+- This job's own identity gets a **custom role with exactly one dataAction**,
+  `Microsoft.KeyVault/vaults/secrets/getSecret/action` (fix round 2, item A
+  — `infra/main.tf`'s `onboarding_sandbox_kv_secret_getter`) — deliberately
+  **not** the built-in "Key Vault Secrets User" role, which also grants
+  `secrets/readMetadata/action` (list/enumerate every secret name in the
+  vault). This is ONE shared vault for the whole platform's onboarding
+  runs, across every organization, so the ability to list would let a
+  compromised execution discover other runs' secret names — and, since its
+  `getSecret` right is real, fetch them too. Get-only means it can only
+  ever read the exact name(s) it was itself handed via its own env.
+  `src/keyvault.ts` exposes only a by-name GET, never a list call, and the
+  vault itself would reject one even if it did.
+
+### Residual risk (fix round 2, item A)
+
+Even with get-only access, a fully compromised execution can still read
+**its own run's** secrets — the ones named in its own environment. That
+residual exposure is bounded by:
+
+- **Unguessable names.** Every secret name is
+  `onboarding-<prefix>-<uuid>` (`sandboxSecretStore.ts#generateSecretName`),
+  where `<uuid>` is `crypto.randomUUID()` — a UUIDv4 from Node's CSPRNG,
+  122 bits of randomness. Guessing another run's name (get-only access has
+  no other way to find one) is not a practical attack.
+- **Short TTL.** Each secret expires a little past the job's own timeout
+  even if cleanup never runs (a crash); the normal path deletes every
+  secret immediately at the run's terminal state.
+- **Read-only clone scope.** Every clone credential this role could ever
+  fetch is itself read-only at the provider (GitHub: an installation token
+  scoped to `contents: read` only; Azure Repos: whatever the organization's
+  own configured PAT allows) — even a fully exfiltrated credential grants
+  no write access to the repository it names.
 
 The "start" call then carries only non-secret env: the run id, callback URL,
 the vault's URI, and secret **names**. This container fetches each value

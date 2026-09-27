@@ -10,6 +10,17 @@
  * the client id must be passed explicitly (`PRONGHORN_IDENTITY_CLIENT_ID` —
  * set by Terraform's `azurerm_container_app_job.onboarding_sandbox`
  * `identity.identity_ids`, `infra/main.tf`).
+ *
+ * Fix round 2, item A (security): this module deliberately exposes only
+ * {@link getSecret} — one GET by exact name, never a LIST/enumerate call.
+ * That's not just a coding convention: the sandbox job's UAMI is granted a
+ * custom Azure role with exactly one dataAction,
+ * `Microsoft.KeyVault/vaults/secrets/getSecret/action` (`infra/main.tf`'s
+ * `onboarding_sandbox_kv_secret_getter`), not the built-in "Key Vault
+ * Secrets User" role (which also grants `secrets/readMetadata/action` —
+ * list). Even if this file grew a list call by mistake, the vault itself
+ * would reject it. See `infra/onboarding-sandbox/README.md`'s "Secrets: the
+ * sandbox Key Vault" section for the full residual-risk writeup.
  */
 
 const IMDS_TOKEN_ENDPOINT = "http://169.254.169.254/metadata/identity/oauth2/token";
