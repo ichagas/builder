@@ -12,9 +12,13 @@ import type { UsePrimaryAction } from "@/components/shell/types";
  * route registry's `usePrimaryAction` without lifting that input's state
  * out of the page would mean duplicating it, so the primary action instead
  * focuses the existing inline input (`TECH_STACK_NAME_INPUT_ID`, rendered by
- * `pages/TechStacks.tsx`) so the desktop `PageHeader` button and the mobile
- * `PrimaryActionSlot` both drive the same on-page control non-admins can't
- * use at all (mirrors the page's own `isAdmin` gate on `handleAddTechStack`).
+ * `pages/TechStacks.tsx`).
+ *
+ * Legacy hides the create control entirely for non-admins (`{isAdmin &&
+ * ...}`), and WP-L1's `useStandardsPrimaryAction` follows the same
+ * convention, so this returns `undefined` (no PageHeader button, no mobile
+ * PrimaryActionSlot) rather than a visible-but-disabled action for
+ * non-admins -- matching what the page itself already does.
  *
  * Label is "New tech stack", not "Add Tech Stack" (the page's own inline
  * button, kept as-is): PR-17 (`e2e/regression/pr-17.spec.ts`) does
@@ -28,10 +32,10 @@ export const TECH_STACK_NAME_INPUT_ID = "new-tech-stack-name";
 export const useTechStacksPrimaryAction: UsePrimaryAction = () => {
   const { isAdmin } = useAdmin();
 
+  if (!isAdmin) return undefined;
+
   return {
     label: "New tech stack",
-    disabled: !isAdmin,
-    disabledReason: !isAdmin ? "Admin access required" : undefined,
     onClick: () => {
       document.getElementById(TECH_STACK_NAME_INPUT_ID)?.focus();
     },
