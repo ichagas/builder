@@ -286,7 +286,7 @@ export default function Landing() {
               </span>{" "}
               Apps with AI
             </h1>
-            <p className="text-lg md:text-xl public-text-muted-foreground max-w-lg leading-relaxed mx-auto lg:mx-0">
+            <p className="text-lg md:text-xl public-text-muted max-w-lg leading-relaxed mx-auto lg:mx-0">
               Transform requirements into production code with AI agents that understand your standards, design your
               architecture, and write compliant code—all with complete traceability.
             </p>
@@ -365,7 +365,7 @@ export default function Landing() {
             <h2 className="text-4xl font-medium tracking-tight mb-4 public-heading">
               Everything You Need to Build Better Software
             </h2>
-            <p className="text-xl public-text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-xl public-text-muted max-w-3xl mx-auto">
               From requirements to production code, Pronghorn provides the complete toolkit for standards-driven
               development with AI assistance at every step.
             </p>
@@ -378,7 +378,7 @@ export default function Landing() {
                   <feature.icon className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-medium mb-3 public-heading">{feature.title}</h3>
-                <p className="public-text-muted-foreground">{feature.description}</p>
+                <p className="public-text-muted">{feature.description}</p>
               </Card>
             ))}
           </div>
@@ -390,7 +390,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-medium tracking-tight mb-4 public-heading">Your 11-Step Journey</h2>
-            <p className="text-xl public-text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-xl public-text-muted max-w-3xl mx-auto">
               From initial idea to deployed application—a complete workflow powered by AI at every step
             </p>
           </div>
@@ -522,7 +522,7 @@ export default function Landing() {
             <h2 className="text-4xl font-medium tracking-tight mb-4 public-heading">
               Meet the AI Teams
             </h2>
-            <p className="text-xl public-text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-xl public-text-muted max-w-3xl mx-auto">
               Specialized agents that collaborate, iterate, and refine your architecture until it stabilizes
             </p>
           </div>
@@ -544,14 +544,14 @@ export default function Landing() {
                 {canvasAgents.map((agent, i) => (
                   <div key={i} className={`flex items-center gap-2 p-2 rounded-lg ${agent.featured ? "ring-1 ring-primary-soft dark:ring-primary public-chip-rose" : "public-bg-tertiary"}`}>
                     <div className={`w-2 h-2 rounded-full ${agent.color}`}></div>
-                    <span className={`text-xs font-medium ${agent.featured ? "" : "public-text-muted-foreground"}`}>
+                    <span className={`text-xs font-medium ${agent.featured ? "" : "public-text-muted"}`}>
                       {agent.name}
                     </span>
                   </div>
                 ))}
               </div>
               
-              <p className="text-sm public-text-muted-foreground">
+              <p className="text-sm public-text-muted">
                 Agents iterate on a shared <span className="font-medium public-heading">blackboard</span> until your architecture stabilizes—each bringing their expertise to refine the design.
               </p>
             </Card>
@@ -574,7 +574,7 @@ export default function Landing() {
                     <div className="w-5 h-5 public-chip-amber rounded-full flex items-center justify-center flex-shrink-0">
                       <Check className="w-3 h-3" />
                     </div>
-                    <span className="text-sm public-text-muted-foreground">{capability}</span>
+                    <span className="text-sm public-text-muted">{capability}</span>
                   </li>
                 ))}
               </ul>
@@ -713,7 +713,7 @@ export default function Landing() {
             <h2 className="text-4xl font-medium tracking-tight mb-4 public-heading">
               AI That Understands Your Whole Project
             </h2>
-            <p className="text-xl public-text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-xl public-text-muted max-w-3xl mx-auto">
               Pronghorn is built on <span className="font-semibold public-heading">Context Engineering</span>—the practice of curating rich, structured context that makes AI dramatically more effective. Every artifact, standard, and decision becomes context for better AI output.
             </p>
           </div>
@@ -731,7 +731,7 @@ export default function Landing() {
                   <p className="text-sm public-text-subtle">Open-source templates</p>
                 </div>
               </div>
-              <p className="text-sm public-text-muted-foreground mb-4">
+              <p className="text-sm public-text-muted mb-4">
                 Curated technology stack templates covering frameworks, languages, databases, and infrastructure. Use them as-is or customize for your organization.
               </p>
               <Button variant="outline" size="sm" onClick={() => navigate("/tech-stacks")} className="w-full">
@@ -750,7 +750,7 @@ export default function Landing() {
                   <p className="text-sm public-text-subtle">Compliance & best practices</p>
                 </div>
               </div>
-              <p className="text-sm public-text-muted-foreground mb-4">
+              <p className="text-sm public-text-muted mb-4">
                 Organizational standards, compliance requirements, and best practices. Link standards to projects for automatic traceability and validation.
               </p>
               <Button variant="outline" size="sm" onClick={() => navigate("/standards")} className="w-full">
@@ -769,7 +769,7 @@ export default function Landing() {
                   <p className="text-sm public-text-subtle">Complete project blueprints</p>
                 </div>
               </div>
-              <p className="text-sm public-text-muted-foreground mb-4">
+              <p className="text-sm public-text-muted mb-4">
                 Comprehensive project templates bundling standards, tech stacks, resources, and documentation. Chat with AI about any Build Book, then download everything for local development.
               </p>
               <div className="flex gap-2">
@@ -791,7 +791,7 @@ export default function Landing() {
                 <h3 className="text-2xl font-medium public-heading mb-4">
                   Download Complete Build Books for Any AI Tool
                 </h3>
-                <p className="public-text-muted-foreground mb-6">
+                <p className="public-text-muted mb-6">
                   Each Build Book can be downloaded as a complete package—standards, tech stacks, documentation, and AI prompts—ready to use with <span className="font-medium">Cursor, Claude, ChatGPT, Copilot</span>, or any other AI development tool.
                 </p>
                 <ul className="space-y-3">
@@ -805,7 +805,7 @@ export default function Landing() {
                       <div className="w-5 h-5 public-chip-amber rounded-full flex items-center justify-center flex-shrink-0">
                         <Check className="w-3 h-3" />
                       </div>
-                      <span className="text-sm public-text-muted-foreground">{item}</span>
+                      <span className="text-sm public-text-muted">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -817,7 +817,7 @@ export default function Landing() {
                   <div className="w-3 h-3 rounded-full bg-ok" />
                   <span className="text-xs public-text-subtle ml-2">build-book-export.md</span>
                 </div>
-                <div className="font-mono text-xs space-y-2 public-text-muted-foreground">
+                <div className="font-mono text-xs space-y-2 public-text-muted">
                   <div className="text-define"># Enterprise React Application</div>
                   <div className="public-text-subtle">---</div>
                   <div><span className="text-ok">## Tech Stack</span></div>
@@ -842,7 +842,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
           <div>
             <h2 className="text-4xl font-medium tracking-tight mb-6 public-heading">Why Choose Pronghorn?</h2>
-            <p className="text-xl public-text-muted-foreground leading-relaxed mb-10">
+            <p className="text-xl public-text-muted leading-relaxed mb-10">
               Built for teams who refuse to compromise on quality. Every feature designed to maintain traceability from
               concept to deployment.
             </p>
@@ -852,7 +852,7 @@ export default function Landing() {
                   <div className="w-6 h-6 public-chip-emerald rounded-full flex items-center justify-center flex-shrink-0">
                     <Check className="w-4 h-4" />
                   </div>
-                  <span className="public-text-muted-foreground">{benefit}</span>
+                  <span className="public-text-muted">{benefit}</span>
                 </li>
               ))}
             </ul>
@@ -906,7 +906,7 @@ export default function Landing() {
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight mb-6 public-heading">
                 Ready to Build with AI Precision?
               </h2>
-              <p className="text-lg md:text-xl public-text-muted-foreground mb-8 md:mb-10 max-w-2xl mx-auto">
+              <p className="text-lg md:text-xl public-text-muted mb-8 md:mb-10 max-w-2xl mx-auto">
                 Join teams who are shipping better software, faster, with complete traceability from requirements to
                 code.
               </p>
@@ -930,17 +930,17 @@ export default function Landing() {
           </div>
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
             <nav aria-label="Footer navigation" className="flex gap-6 text-sm">
-              <Link to="/terms" className="public-text-muted-foreground hover:public-brand underline decoration-1 underline-offset-2 hover:no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">
+              <Link to="/terms" className="public-text-muted hover:public-brand underline decoration-1 underline-offset-2 hover:no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">
                 Terms of Use
               </Link>
-              <Link to="/privacy" className="public-text-muted-foreground hover:public-brand underline decoration-1 underline-offset-2 hover:no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">
+              <Link to="/privacy" className="public-text-muted hover:public-brand underline decoration-1 underline-offset-2 hover:no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">
                 Privacy Policy
               </Link>
-              <Link to="/license" className="public-text-muted-foreground hover:public-brand underline decoration-1 underline-offset-2 hover:no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">
+              <Link to="/license" className="public-text-muted hover:public-brand underline decoration-1 underline-offset-2 hover:no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">
                 License
               </Link>
             </nav>
-            <div className="text-sm public-text-muted-foreground text-center md:text-right">
+            <div className="text-sm public-text-muted text-center md:text-right">
               <p>© 2025 Pronghorn. <Link to="/license" className="public-brand underline decoration-1 underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">MIT License</Link> Open Source by the Government of Alberta.</p>
             </div>
           </div>
