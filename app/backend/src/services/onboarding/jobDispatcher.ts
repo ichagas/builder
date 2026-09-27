@@ -485,6 +485,26 @@ export class JobDispatcherConfigurationError extends Error {
 }
 
 /**
+ * Set as the active dispatcher at process start (`src/index.ts`) when
+ * {@link createJobDispatcherFromEnv} throws — so a misconfigured production
+ * deploy still boots and serves every unrelated route (mirrors
+ * `services/integrations/secretStore.ts`'s never-crash-at-load philosophy),
+ * but `POST /onboarding/runs/:id/start` gets a clear 503 instead of quietly
+ * running sandbox jobs in-memory.
+ */
+export class FailClosedJobDispatcher implements JobDispatcher {
+  constructor(private readonly configError: JobDispatcherConfigurationError) {}
+
+  async dispatch(): Promise<DispatchJobOutput> {
+    throw this.configError;
+  }
+
+  async cancel(): Promise<void> {
+    throw this.configError;
+  }
+}
+
+/**
  * Builds the process-wide dispatcher from `ONBOARDING_JOB_DISPATCHER`
  * (`azure` | `local` | `memory`) and the matching config env vars — mirrors
  * `services/integrations/secretStore.ts`'s fail-closed selection:

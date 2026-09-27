@@ -76,6 +76,12 @@ import { swaggerSpec, getOpenApiSpec } from "./swagger";
 import { initWebSocket, getWsStats } from "./websocket";
 import { initRepoBlobStore } from "./utils/repoBlobStore";
 import {
+  createJobDispatcherFromEnv,
+  setJobDispatcher,
+  FailClosedJobDispatcher,
+  JobDispatcherConfigurationError,
+} from "./services/onboarding/jobDispatcher";
+import {
   startDockerDeploymentPoller,
   stopDockerDeploymentPoller,
 } from "./services/deployment/docker/poller";
@@ -259,6 +265,22 @@ app.use(errorHandler);
 
 export async function startServer() {
   initRepoBlobStore();
+
+  // Onboarding sandbox job dispatcher (spec 007, WP-BE6, T141): resolved
+  // once from ONBOARDING_JOB_DISPATCHER. A misconfigured production deploy
+  // never crashes startup (mirrors services/integrations/secretStore.ts) —
+  // it's logged here, and every /onboarding/runs/:id/start call gets a
+  // clear 503 (FailClosedJobDispatcher) instead of silently running sandbox
+  // jobs in-memory.
+  try {
+    setJobDispatcher(createJobDispatcherFromEnv());
+  } catch (err) {
+    logger.error(
+      "Onboarding job dispatcher is not configured — POST /onboarding/runs/:id/start will 503 until it is (see .env.example's Onboarding Sandbox Job section)",
+      { error: (err as Error).message },
+    );
+    setJobDispatcher(new FailClosedJobDispatcher(err as JobDispatcherConfigurationError));
+  }
 
   // Run database migrations before accepting traffic (controlled by RUN_MIGRATIONS_ON_STARTUP env var)
   const runMigrationsFlag = (
