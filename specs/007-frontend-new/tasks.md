@@ -76,7 +76,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 ## Phase 4: US3, restyle library, settings, public (P2)
 
-- [ ] T060 [P] [US3] (WP-L1) Standards Library `pages/Standards.tsx` → `/library/standards`. PR-16.
+- [x] T060 [P] [US3] (WP-L1) Standards Library `pages/Standards.tsx` → `/library/standards`. PR-16.
 - [ ] T061 [P] [US3] (WP-L2) Tech Stacks `pages/TechStacks.tsx`. PR-17.
 - [ ] T062 [P] [US3] (WP-L3) Build Books `pages/BuildBooks.tsx`, `BuildBookDetail.tsx`, `BuildBookEditor.tsx`. PR-18.
 - [ ] T063 [P] [US3] (WP-L4) Gallery `pages/Gallery.tsx`. PR-19.

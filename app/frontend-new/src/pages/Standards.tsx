@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Standard } from "@/components/standards/StandardsTree";
 import { CategoryCard } from "@/components/standards/CategoryCard";
 import { AICreateStandardsDialog } from "@/components/standards/AICreateStandardsDialog";
@@ -11,6 +11,7 @@ import { Search, Plus } from "lucide-react";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { useAdmin } from "@/contexts/AdminContext";
 import { toast } from "sonner";
+import { NEW_CATEGORY_NAME_INPUT_ID } from "@/pages/standards.primaryAction";
 
 export default function Standards() {
   const { isAdmin } = useAdmin();
@@ -164,18 +165,16 @@ export default function Standards() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
+    <div className="flex min-h-full flex-col bg-background">
+      <PageHeader />
 
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-3 md:space-y-4">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-2 md:gap-4">
-              <h1 className="text-2xl md:text-3xl font-bold">Standards Library</h1>
-              {isAdmin && <Badge variant="secondary">Admin</Badge>}
+          {isAdmin && (
+            <div>
+              <Badge variant="secondary">Admin</Badge>
             </div>
-          </div>
+          )}
 
           {/* Search */}
           <div className="flex items-center gap-4">
@@ -196,6 +195,7 @@ export default function Standards() {
               <CardContent className="pt-4 md:pt-6 p-4 md:p-6">
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <Input
+                    id={NEW_CATEGORY_NAME_INPUT_ID}
                     placeholder="New category name..."
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
