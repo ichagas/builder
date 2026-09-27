@@ -51,6 +51,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T020/T024/T027/T037 follow-ups (F3b) | done | 1dd6db8, 252ad7b, 5b90860 | WP-F3b. `createPrimaryActionStore` (src/lib/state), TimelineStrip in nav[aria-label=Versions] (axe `region` gone), mobile-reach checks the real primary-action slot. Shell suite 105/0 |
 | T053 | done | e9cfd80, 6f0c600, d6cd4b3 | WP-S3. Present; tabs in URL; New Presentation only on the list tab (review fix). PR-15 green 1440/390; axe 0 serious/critical |
 | T047 | done | 3a4945d, 9705e66 | WP-G2. Specifications; title "Project Specifications" (PR-09); spec generation via useLongTask. PR-09 green new+legacy 1440/390; axe subset of legacy (nested-interactive ×10 pre-existing) |
+| T043 | done | ef51039, 63f703e | WP-D2. Project Standards; "Save Changes" as the primary action (createPrimaryActionStore). PR-05 green 1440/390; axe strictly fewer than legacy |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
 ## Escalations to Opus 5.5
@@ -153,3 +154,4 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - **User restarted Docker Desktop** (Docker VM ~4 GB). User rule: **local resources can't handle multiple Docker stacks: E2E strictly one at a time.** Orchestrator now resumes E2E agents sequentially (one finishes and tears down before the next starts), with the lock as a backstop. Batch 2 E2E order: S3, G2, D2, D3, D4, S1. Future batches: developers may code in parallel; E2E is serialized.
 - **Merged WP-S3** (E2E PR-15 green at 1440/390, axe better than legacy; verified on feature: lint 0 errors, tsc OK, **722 FE tests**, build OK). G2 E2E running (serial).
 - **Merged WP-G2** (route-file conflict auto-resolved; verified on feature: lint 0 errors, tsc OK, **726 FE tests**, build OK). D2 E2E running.
+- **Merged WP-D2** (verified on feature: lint 0 errors, tsc OK, **730 FE tests**, build OK). D3 E2E running.
