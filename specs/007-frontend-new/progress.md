@@ -53,6 +53,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T047 | done | 3a4945d, 9705e66 | WP-G2. Specifications; title "Project Specifications" (PR-09); spec generation via useLongTask. PR-09 green new+legacy 1440/390; axe subset of legacy (nested-interactive ×10 pre-existing) |
 | T043 | done | ef51039, 63f703e | WP-D2. Project Standards; "Save Changes" as the primary action (createPrimaryActionStore). PR-05 green 1440/390; axe strictly fewer than legacy |
 | T044 | done | d9bf548, f5557b8 | WP-D3. Artifacts; "Add artifact" primary action; mobile icon buttons labelled. PR-06 green 1440/390; axe **0 violations** both viewports |
+| T045 | done | 16b37a8, 0a819d8, 9ab5558 | WP-D4. Chat; sessions sidebar → Sheet on phones; toggle aria-label; primary action "Start a conversation"; duplicate <main> removed. PR-07 green 1440/390; axe fewer nodes than legacy |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
 ## Escalations to Opus 5.5
@@ -157,3 +158,4 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - **Merged WP-G2** (route-file conflict auto-resolved; verified on feature: lint 0 errors, tsc OK, **726 FE tests**, build OK). D2 E2E running.
 - **Merged WP-D2** (verified on feature: lint 0 errors, tsc OK, **730 FE tests**, build OK). D3 E2E running.
 - **Merged WP-D3** (verified on feature: lint 0 errors, tsc OK, **734 FE tests**, build OK). D4 E2E running.
+- **Merged WP-D4** (verified on feature: lint 0 errors, tsc OK, **738 FE tests**, build OK). S1 E2E running (last of batch 2).
