@@ -64,7 +64,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [x] T042 [P] [US2] (WP-D1) Requirements `pages/project/Requirements.tsx`. PR-04.
 - [ ] T043 [P] [US2] (WP-D2) Project standards `pages/project/Standards.tsx`. PR-05.
 - [ ] T044 [P] [US2] (WP-D3) Artifacts `pages/project/Artifacts.tsx` (+ collaboration views). PR-06.
-- [ ] T045 [P] [US2] (WP-D4) Chat `pages/project/Chat.tsx`. PR-07.
+- [x] T045 [P] [US2] (WP-D4) Chat `pages/project/Chat.tsx`. PR-07.
 - [ ] T046 [P] [US2] (WP-G1) Canvas `pages/project/Canvas.tsx` in a full-bleed content area. Palettes and properties panels become an `Inspector`/`Sheet` on phones. PR-08.
 - [ ] T047 [P] [US2] (WP-G2) Specifications `pages/project/Specifications.tsx`. PR-09.
 - [ ] T048 [P] [US2] (WP-B1) Build agent `pages/project/Build.tsx` (full-bleed, resizable panels kept, tabs in the URL). PR-10.

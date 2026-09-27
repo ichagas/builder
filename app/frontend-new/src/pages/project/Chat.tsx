@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
 import { useParams } from "react-router-dom";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,7 +34,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProjectSelector, ProjectSelectionResult } from "@/components/project/ProjectSelector";
-import { Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { usePublishChatPrimaryAction } from "./chat.primaryAction";
 
 export default function Chat() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -65,7 +65,6 @@ export default function Chat() {
   const isMobile = useIsMobile();
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
   const [attachedContext, setAttachedContext] = useState<ProjectSelectionResult | null>(null);
-  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(false);
 
   const {
     messages,
@@ -178,6 +177,14 @@ export default function Chat() {
       setSelectedSessionId(newSession.id);
     }
   };
+
+  // T045 (WP-D4): "Start new chat" is the page's primary action, declared in
+  // the route registry (app/routes/project.tsx) and rendered by PageHeader.
+  // It's the same new-session flow as the in-page "New Chat" buttons (kept
+  // unchanged below) -- see chat.primaryAction.ts for why the label differs.
+  usePublishChatPrimaryAction(
+    projectId && isTokenSet ? { label: "Start new chat", onClick: handleNewChat } : undefined
+  );
 
   const handleSummarizeChat = async () => {
     if (!selectedSessionId || isProcessing) return;
@@ -668,7 +675,6 @@ export default function Chat() {
   if (tokenMissing) {
     return (
       <div className="h-screen bg-background flex flex-col">
-        <PrimaryNav />
         <TokenRecoveryMessage />
       </div>
     );
@@ -679,65 +685,20 @@ export default function Chat() {
     return <PageLoader />;
   }
 
-  return (
-    <div className="h-screen bg-background flex flex-col">
-      <PrimaryNav />
+  // T045 (WP-D4): sessions list, shared between the desktop inline sidebar
+  // and the mobile Sheet (contracts/design-system.md "secondary side panels
+  // become Sheet/Inspector" at <=768px) so both stay in sync with no
+  // duplicated markup.
+  const sessionsList = (
+    <>
+      <Button onClick={handleNewChat} className="w-full">
+        <Plus className="h-4 w-4 mr-2" />
+        New Chat
+      </Button>
 
-      <div className="flex relative flex-1 overflow-hidden">
-        <ProjectSidebar projectId={projectId!} isOpen={isProjectSidebarOpen} onOpenChange={setIsProjectSidebarOpen} />
-
-        <main className="flex-1 w-full flex overflow-hidden">
-          {/* Sessions Sidebar */}
-          <div
-            className={`border-r border-border bg-card transition-all duration-300 flex flex-col ${
-              isSidebarCollapsed ? "w-12" : "w-64"
-            }`}
-          >
-            {/* Header with Menu and Collapse Toggle */}
-            <div className="flex flex-col items-center p-2 border-b border-border gap-2">
-              <div className="flex items-center justify-between w-full">
-                {!isSidebarCollapsed && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setIsProjectSidebarOpen(true)}
-                    aria-label="Open menu"
-                  >
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 ml-auto"
-                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                >
-                  {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                </Button>
-              </div>
-              {isSidebarCollapsed && (
-                <Button
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={handleNewChat}
-                  aria-label="New Chat"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-
-            {!isSidebarCollapsed && (
-              <div className="p-4 space-y-4">
-                <Button onClick={handleNewChat} className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Chat
-                </Button>
-
-                <ScrollArea className="flex-1">
-                  <div className="space-y-2">
-                    {sessions.map((session) => (
+      <ScrollArea className="flex-1">
+        <div className="space-y-2">
+          {sessions.map((session) => (
                       <Card
                         key={session.id}
                         className={`p-3 cursor-pointer hover:bg-muted transition-colors ${
@@ -846,9 +807,62 @@ export default function Chat() {
                     ))}
                   </div>
                 </ScrollArea>
+              </>
+  );
+
+  return (
+    <div className="h-screen bg-background flex flex-col">
+      <PageHeader crumb="Define" />
+
+      <div className="flex relative flex-1 overflow-hidden">
+        <main className="flex-1 w-full flex overflow-hidden">
+          {/* Sessions Sidebar */}
+          <div
+            className={`border-r border-border bg-card transition-all duration-300 flex flex-col ${
+              isSidebarCollapsed ? "w-12" : "w-64"
+            }`}
+          >
+            {/* Collapse Toggle */}
+            <div className="flex flex-col items-center p-2 border-b border-border gap-2">
+              <div className="flex items-center justify-between w-full">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 ml-auto"
+                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  aria-label={isSidebarCollapsed ? "Expand chat sessions" : "Collapse chat sessions"}
+                >
+                  {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
               </div>
+              {isSidebarCollapsed && (
+                <Button
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleNewChat}
+                  aria-label="New Chat"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Desktop: inline expand. Mobile (<=768px, contracts/design-system.md
+                "secondary side panels become Sheet/Inspector"): a Sheet instead,
+                controlled by the same isSidebarCollapsed toggle above. */}
+            {!isSidebarCollapsed && !isMobile && (
+              <div className="p-4 space-y-4 flex-1 overflow-hidden flex flex-col">{sessionsList}</div>
             )}
           </div>
+
+          {isMobile && (
+            <Sheet open={!isSidebarCollapsed} onOpenChange={(open) => setIsSidebarCollapsed(!open)}>
+              <SheetContent side="left" className="w-[85vw] max-w-sm p-0 flex flex-col gap-0">
+                <SheetTitle className="sr-only">Chat sessions</SheetTitle>
+                <div className="p-4 pt-10 space-y-4 flex-1 overflow-hidden flex flex-col">{sessionsList}</div>
+              </SheetContent>
+            </Sheet>
+          )}
 
           {/* Chat Area */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
