@@ -1,8 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import type { Database } from "@/integrations/pronghorn-api/types";
+import { startLongTask, type LongTaskHandle } from "@/lib/state/useLongTask";
 
 type Deployment = Database["public"]["Tables"]["project_deployments"]["Row"];
+
+// deployment_status values that mean "in progress" (see
+// contracts/design-system.md §3 useLongTask, T035 WP-F5): "running" is a
+// steady, deployed-and-up state, not an in-flight one.
+const ACTIVE_DEPLOYMENT_STATUSES = new Set(["pending", "building", "deploying"]);
 
 export const useRealtimeDeployments = (
   projectId: string | undefined,
@@ -156,6 +163,52 @@ export const useRealtimeDeployments = (
       channelRef.current = null;
     };
   }, [projectId, enabled, shareToken, loadDeployments]);
+
+  // T035 (WP-F5): bridge each deployment's own status into useLongTask, so
+  // an in-flight deploy shows in the shell's status pill/status center with
+  // no page edits (FR-005). One task per deployment id — dedupe across
+  // hook instances is handled by `startLongTask` itself (T035 note in
+  // useLongTask.ts).
+  const { t } = useTranslation();
+  const deployHandlesRef = useRef<Map<string, LongTaskHandle>>(new Map());
+
+  useEffect(() => {
+    for (const deployment of deployments) {
+      const id = `deploy-${deployment.id}`;
+      if (ACTIVE_DEPLOYMENT_STATUSES.has(deployment.status)) {
+        const label = t("shell.longTask.deploy.running", { name: deployment.name });
+        const existing = deployHandlesRef.current.get(id);
+        if (existing) {
+          existing.update(undefined, label);
+        } else {
+          deployHandlesRef.current.set(
+            id,
+            startLongTask({
+              id,
+              label,
+              href: projectId ? `/p/${projectId}/v/current/ship/environments` : undefined,
+            }),
+          );
+        }
+      } else {
+        const existing = deployHandlesRef.current.get(id);
+        if (existing) {
+          if (deployment.status === "failed") existing.fail();
+          else existing.done();
+          deployHandlesRef.current.delete(id);
+        }
+      }
+    }
+  }, [deployments, projectId, t]);
+
+  useEffect(() => {
+    const handles = deployHandlesRef.current;
+    return () => {
+      // Unmount: drop our local handles only — don't mark any still-running
+      // deployment as done/failed, its status is tracked server-side.
+      handles.clear();
+    };
+  }, []);
 
   return {
     deployments,

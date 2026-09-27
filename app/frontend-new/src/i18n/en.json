@@ -31,6 +31,17 @@
       "body": "The page you're looking for doesn't exist or may have moved.",
       "searchPlaceholder": "Search projects and tools",
       "projectsLink": "Go to Projects"
+    },
+    "longTask": {
+      "audit": {
+        "running": "Running audit"
+      },
+      "agent": {
+        "running": "Running build agent"
+      },
+      "deploy": {
+        "running": "Deploying {{name}}"
+      }
     }
   },
   "commandPalette": {

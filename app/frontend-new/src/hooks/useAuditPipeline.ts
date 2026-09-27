@@ -2,7 +2,9 @@
 // No database writes until explicit save. All operations update local state only.
 
 import { useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { getAccessToken } from "@/lib/apiClient";
+import { useLongTaskBridge } from "@/lib/state/useLongTaskBridge";
 
 export type PipelinePhase =
   | "idle"
@@ -3367,6 +3369,26 @@ export function useAuditPipeline() {
     },
     [results, steps, updateStep, addStepDetail, runPipeline],
   );
+
+  // T035 (WP-F5): bridge this pipeline's own run/progress state into
+  // useLongTask, so a running audit shows in the shell's status pill and
+  // status center with no page edits (FR-005). `lastInputRef` (set at the
+  // top of `runPipeline`) carries the session this run belongs to, so the
+  // task has a stable per-run id and a link back to the Audit tool.
+  const { t } = useTranslation();
+  const auditRunId = lastInputRef.current
+    ? `audit-${lastInputRef.current.sessionId}`
+    : undefined;
+  useLongTaskBridge({
+    id: auditRunId,
+    active: isRunning,
+    label: t("shell.longTask.audit.running"),
+    progress: progress.progress,
+    href: lastInputRef.current
+      ? `/p/${lastInputRef.current.projectId}/v/current/ship/audit`
+      : undefined,
+    failed: progress.phase === "error" || !!error,
+  });
 
   return {
     isRunning,

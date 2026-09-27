@@ -1,5 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
+import { startLongTask, type LongTaskHandle } from "@/lib/state/useLongTask";
 
 interface AgentOperation {
   id: string;
@@ -12,6 +14,11 @@ interface AgentOperation {
   created_at: string;
   completed_at: string | null;
 }
+
+// Operation statuses that mean the owning agent session is still working
+// (T035, WP-F5 long-task bridge).
+const ACTIVE_OPERATION_STATUSES = new Set(["pending", "in_progress"]);
+const FAILED_OPERATION_STATUSES = new Set(["error", "failed"]);
 
 export function useInfiniteAgentOperations(
   projectId: string | null, 
@@ -114,6 +121,63 @@ export function useInfiniteAgentOperations(
       setLoading(false);
     }
   }, [projectId, shareToken, agentType, offset, loading, hasMore]);
+
+  // T035 (WP-F5): bridge each agent session's operations into useLongTask,
+  // so a running build/database agent session shows in the shell's status
+  // pill/status center with no page edits (FR-005). One task per
+  // (agentType, session), grouped from the currently loaded page of
+  // operations — a session not currently active in that page is left
+  // alone rather than force-finished, since it may simply be paginated out.
+  const { t } = useTranslation();
+  const sessionHandlesRef = useRef<Map<string, LongTaskHandle>>(new Map());
+
+  useEffect(() => {
+    const bySession = new Map<string, AgentOperation[]>();
+    for (const operation of operations) {
+      const list = bySession.get(operation.session_id) ?? [];
+      list.push(operation);
+      bySession.set(operation.session_id, list);
+    }
+
+    for (const [sessionId, ops] of bySession) {
+      const id = `agent-${agentType}-${sessionId}`;
+      const active = ops.some((op) => ACTIVE_OPERATION_STATUSES.has(op.status));
+      if (active) {
+        const label = t("shell.longTask.agent.running");
+        const existing = sessionHandlesRef.current.get(id);
+        if (existing) {
+          existing.update(undefined, label);
+        } else {
+          sessionHandlesRef.current.set(
+            id,
+            startLongTask({
+              id,
+              label,
+              href: projectId
+                ? `/p/${projectId}/v/current/build/${agentType === "database" ? "database" : "agent"}`
+                : undefined,
+            }),
+          );
+        }
+      } else {
+        const existing = sessionHandlesRef.current.get(id);
+        if (existing) {
+          if (ops.some((op) => FAILED_OPERATION_STATUSES.has(op.status))) existing.fail();
+          else existing.done();
+          sessionHandlesRef.current.delete(id);
+        }
+      }
+    }
+  }, [operations, agentType, projectId, t]);
+
+  useEffect(() => {
+    const handles = sessionHandlesRef.current;
+    return () => {
+      // Unmount: drop our local handles only — a still-running session is
+      // never marked done/failed just because this component went away.
+      handles.clear();
+    };
+  }, []);
 
   return { operations, loading, hasMore, loadMore, refetch: loadInitialOperations };
 }

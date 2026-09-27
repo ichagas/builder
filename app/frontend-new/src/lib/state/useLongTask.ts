@@ -58,14 +58,28 @@ function setTask(id: string, patch: Partial<LongTask> & { status: LongTaskStatus
 }
 
 export function startLongTask(input: StartLongTaskInput): LongTaskHandle {
-  tasks.set(input.id, {
-    id: input.id,
-    label: input.label,
-    channel: input.channel,
-    href: input.href,
-    status: "running",
-    startedAt: Date.now(),
-  });
+  // Dedupe by id: if this run is already tracked and running (e.g. two
+  // components/hook instances both bridge the same underlying run — T035),
+  // reuse the existing entry instead of resetting its startedAt/status, so
+  // the status pill shows one row per run, not one per caller.
+  const existing = tasks.get(input.id);
+  if (existing && existing.status === "running") {
+    tasks.set(input.id, {
+      ...existing,
+      label: input.label,
+      channel: input.channel ?? existing.channel,
+      href: input.href ?? existing.href,
+    });
+  } else {
+    tasks.set(input.id, {
+      id: input.id,
+      label: input.label,
+      channel: input.channel,
+      href: input.href,
+      status: "running",
+      startedAt: Date.now(),
+    });
+  }
   notify();
 
   const finish = (status: "done" | "failed") => {
