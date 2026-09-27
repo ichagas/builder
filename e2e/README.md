@@ -10,7 +10,17 @@ each logical page into the right URL shape for whichever app is under test.
   be green **on legacy** before any page-restyle task starts, and green **on
   the new app** before that page's task is considered done.
 - `e2e/shell/*.spec.ts` -- foundation E2E for the new app's shell (T037):
-  remount, redirects, mobile reach. Not written yet.
+  `remount.spec.ts` (no shell remount across tool navigation, tool/tab
+  restored on reload), `redirects.spec.ts` (every row of
+  contracts/routes.md §1, including `/build-books/:id[/edit]` and every
+  `/project/:id/<page>/t/:token`), `mobile-reach.spec.ts` (every
+  MobileTabBar item reachable in one tap, the tab bar sits in the bottom
+  35% at 390x844 per spec.md SC-005, the ⌘K palette and status center open
+  from mobile chrome, no horizontal scroll), and `axe-shell.spec.ts` (axe
+  scoped to shell landmarks only -- header/rail/tab bar/dialogs, not routed
+  page content -- at 1440 and 390, light and dark; the bar for the shell is
+  zero violations, not just zero serious/critical). Run with `npm run
+  test:shell` (shell only) or `npm run test:new` (regression + shell).
 - `e2e/fixtures.ts` -- shared `test`/`expect`, mock-auth cache seeding, and
   the axe-baseline recorder. Import `test`/`expect` from here, not directly
   from `@playwright/test`.
