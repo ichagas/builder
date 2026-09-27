@@ -79,6 +79,24 @@ const TAILWIND_COLOR_TOKEN = new RegExp(
 
 const HEX_COLOR = /#(?:[0-9a-fA-F]{3,4}){1,2}\b/;
 
+// WP-F2b fix round 2, item 3: Tailwind arbitrary-value color utilities —
+// `bg-[#fff]`, `bg-[hsl(210,100%,50%)]`, `text-[rgb(0,0,0)]`,
+// `border-[rgba(0,0,0,.5)]`, `ring-[hsla(0,0%,0%,.5)]` — bypass the design
+// token layer exactly like a raw palette class or bare hex literal, but
+// weren't previously matched by TAILWIND_COLOR_TOKEN (which only knows the
+// named palette, e.g. `bg-red-500`) or, for the functional-notation cases
+// (hsl/rgb/rgba/hsla), by HEX_COLOR either. `#fff`-style arbitrary values
+// are already caught by HEX_COLOR regardless of the surrounding `-[...]`
+// (it matches the hex literal anywhere in the string), so this only adds
+// the functional-notation forms. `-[var(--x)]` (and anything that reaches a
+// CSS variable through one, e.g. `-[hsl(var(--h),var(--s),var(--l))]`) is
+// the *correct*, token-driven way to use an arbitrary value and must never
+// be flagged — excluded by checking for `var(` anywhere in the brackets,
+// not just requiring the token to start with a color function.
+const ARBITRARY_COLOR_FN_TOKEN = new RegExp(
+  `^(?:[a-z0-9_-]+:)*(?:${UTILITY_PREFIXES})-\\[(?:hsla?|rgba?)\\([^\\]]*\\)\\](?:/(?:\\d{1,3}|\\[[^\\]]+\\]))?$`,
+);
+
 const CLASS_HELPER_CALLEES = new Set(["cn", "clsx", "classnames", "cx", "twMerge", "tv"]);
 
 function findTailwindTokens(text) {
@@ -86,6 +104,13 @@ function findTailwindTokens(text) {
     .split(/\s+/)
     .filter(Boolean)
     .filter((token) => TAILWIND_COLOR_TOKEN.test(token));
+}
+
+function findArbitraryColorFnTokens(text) {
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token) => ARBITRARY_COLOR_FN_TOKEN.test(token) && !token.includes("var("));
 }
 
 function findHexColors(text) {
@@ -194,6 +219,13 @@ function reportInString(context, node, text, opts = {}) {
       context.report({
         node,
         messageId: "rawTailwindColor",
+        data: { token },
+      });
+    }
+    for (const token of findArbitraryColorFnTokens(text)) {
+      context.report({
+        node,
+        messageId: "rawArbitraryColor",
         data: { token },
       });
     }
@@ -314,6 +346,8 @@ const noRawTailwindColorsRule = {
     messages: {
       rawTailwindColor:
         'Raw Tailwind color class "{{token}}" bypasses the design token layer. Use a design token (see src/design/) instead.',
+      rawArbitraryColor:
+        'Raw Tailwind arbitrary color value "{{token}}" bypasses the design token layer. Use a design token (see src/design/), e.g. "bg-primary" or "bg-[var(--primary)]", instead.',
       rawHexColor:
         'Raw hex color literal "{{hex}}" bypasses the design token layer. Use a design token (see src/design/) instead.',
       sameTokenTextBg:

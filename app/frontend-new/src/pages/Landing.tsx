@@ -306,7 +306,7 @@ export default function Landing() {
 
               {/* Floating shield icon */}
               <div className="absolute top-0 right-10 z-20 animate-float">
-                <div className="bg-[hsl(210,100%,50%)] p-4 rounded-2xl shadow-xl transform rotate-12">
+                <div className="bg-primary p-4 rounded-2xl shadow-xl transform rotate-12">
                   <ShieldCheck className="w-12 h-12 text-white" />
                 </div>
               </div>
@@ -347,7 +347,7 @@ export default function Landing() {
                       <span className="text-sm font-medium">Standards linked</span>
                     </div>
                     <div className="flex items-center gap-3 p-3 public-chip-rose rounded-lg border border-primary-soft dark:border-primary">
-                      <div className="w-2 h-2 rounded-full bg-[hsl(210,100%,55%)] animate-pulse" />
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                       <span className="text-sm font-medium">AI agents building...</span>
                     </div>
                   </div>
@@ -634,7 +634,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto">
           <div className="public-gradient-dark rounded-3xl p-10 md:p-16 relative overflow-hidden">
             {/* Background decorations */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[hsl(210,100%,50%)]/20 rounded-full blur-3xl" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-ok/20 rounded-full blur-3xl" />
             
             <div className="relative z-10">
@@ -860,7 +860,7 @@ export default function Landing() {
 
           {/* Stats Card */}
           <div className="relative h-[450px] w-full rounded-3xl overflow-hidden shadow-2xl public-gradient-dark p-10 flex flex-col justify-center">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[hsl(210,100%,50%)]/20 rounded-full blur-3xl" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-ok/20 rounded-full blur-3xl" />
             <div className="relative z-10 space-y-6">
               <div className="flex items-center gap-4">
@@ -900,7 +900,7 @@ export default function Landing() {
       <section className="py-16 md:py-24 px-4 md:px-6">
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-gradient-to-br from-primary-soft/50 dark:from-primary/20 to-primary-soft dark:to-primary/10 rounded-3xl p-8 md:p-12 lg:p-16 relative overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-64 h-64 bg-[hsl(210,100%,50%)]/10 rounded-full blur-3xl" />
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-warn/10 rounded-full blur-3xl" />
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight mb-6 public-heading">

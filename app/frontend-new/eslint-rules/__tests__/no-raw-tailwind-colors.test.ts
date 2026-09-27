@@ -55,6 +55,16 @@ describe("no-raw-tailwind-colors", () => {
       // Non-legend tokens (surface/ink/line/etc.) pairing with themselves
       // isn't this bug — restricted to the fixed color-group list.
       `const el = <div className="border-line text-line" />;`,
+
+      // WP-F2b fix round 2, item 3: an arbitrary value wrapping a design
+      // token (`var(--…)`) is the *correct* way to reach a CSS variable
+      // from a Tailwind arbitrary-value utility and must never be flagged,
+      // for any of the four functional color notations.
+      `const el = <div className="bg-[var(--primary)]" />;`,
+      `const el = <div className="text-[hsl(var(--primary-h),var(--primary-s),var(--primary-l))]" />;`,
+      `const el = <div className="border-[rgb(var(--line-rgb))]" />;`,
+      // A non-color arbitrary value (e.g. an arbitrary width) is unaffected.
+      `const el = <div className="w-[120%] h-[3px]" />;`,
     ],
     invalid: [
       {
@@ -191,6 +201,37 @@ describe("no-raw-tailwind-colors", () => {
       {
         code: "const el = cn(`p-2 bg-bad text-bad`);",
         errors: [{ messageId: "sameTokenTextBg", data: { pair: "bg-bad / text-bad" } }],
+      },
+      // WP-F2b fix round 2, item 3: Tailwind arbitrary-value color
+      // utilities in the functional notations, mirroring the Landing.tsx
+      // hits (`bg-[hsl(210,100%,50%)]`).
+      {
+        code: `const el = <div className="bg-[hsl(210,100%,50%)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "bg-[hsl(210,100%,50%)]" } }],
+      },
+      {
+        code: `const el = <div className="bg-[hsl(210,100%,50%)]/20" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "bg-[hsl(210,100%,50%)]/20" } }],
+      },
+      {
+        code: `const el = <div className="text-[rgb(0,122,204)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "text-[rgb(0,122,204)]" } }],
+      },
+      {
+        code: `const el = <div className="border-[rgba(0,0,0,.5)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "border-[rgba(0,0,0,.5)]" } }],
+      },
+      {
+        code: `const el = <div className="ring-[hsla(0,0%,0%,.5)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "ring-[hsla(0,0%,0%,.5)]" } }],
+      },
+      // Works via cn() too, and a `dark:` variant prefix is preserved in
+      // the reported token.
+      {
+        code: `const el = cn("dark:bg-[hsl(210,100%,50%)]");`,
+        errors: [
+          { messageId: "rawArbitraryColor", data: { token: "dark:bg-[hsl(210,100%,50%)]" } },
+        ],
       },
     ],
   });
