@@ -74,7 +74,7 @@ export default function GitHubCallback() {
         )}
         {status === "success" && (
           <>
-            <CheckCircle className="h-8 w-8 mx-auto text-green-600" />
+            <CheckCircle className="h-8 w-8 mx-auto text-ok" />
             <p className="text-lg font-medium">GitHub connected! Redirecting…</p>
           </>
         )}

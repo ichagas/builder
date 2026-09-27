@@ -58,8 +58,8 @@ const formatSize = (chars: number): string => {
 
 const getSizeClass = (chars: number): { class: string; warning: boolean } => {
   if (chars >= 200000) return { class: "bg-destructive text-destructive-foreground", warning: true };
-  if (chars >= 100000) return { class: "bg-orange-500 text-white", warning: true };
-  if (chars >= 50000) return { class: "bg-yellow-500 text-black", warning: false };
+  if (chars >= 100000) return { class: "bg-warn text-white", warning: true };
+  if (chars >= 50000) return { class: "bg-warn text-black", warning: false };
   return { class: "", warning: false };
 };
 
@@ -360,8 +360,8 @@ export function RepositoryFilesSelector({
           <div
             className={cn(
               "flex items-center gap-2 py-1.5 px-2 hover:bg-accent/50 rounded-sm cursor-pointer group",
-              hasSizeIssue && "bg-orange-50 dark:bg-orange-950/20",
-              folderStats.hasWarning && "border-l-2 border-orange-500"
+              hasSizeIssue && "bg-warn-soft dark:bg-warn/20",
+              folderStats.hasWarning && "border-l-2 border-warn"
             )}
             style={{ paddingLeft }}
           >
@@ -381,9 +381,9 @@ export function RepositoryFilesSelector({
               className="data-[state=indeterminate]:bg-primary/50"
             />
             {isExpanded ? (
-              <FolderOpen className="h-4 w-4 text-yellow-500" />
+              <FolderOpen className="h-4 w-4 text-warn" />
             ) : (
-              <Folder className="h-4 w-4 text-yellow-500" />
+              <Folder className="h-4 w-4 text-warn" />
             )}
             <span className="text-sm font-medium truncate">{node.name}</span>
 
@@ -394,14 +394,14 @@ export function RepositoryFilesSelector({
                   variant="secondary"
                   className={cn(
                     "text-xs ml-auto",
-                    folderStats.hasWarning ? "bg-orange-500 text-white" : "bg-yellow-500 text-black"
+                    folderStats.hasWarning ? "bg-warn text-white" : "bg-warn text-black"
                   )}
                 >
                   {folderStats.largeFileCount} large
                 </Badge>
                 <AlertTriangle className={cn(
                   "h-3 w-3 flex-shrink-0",
-                  folderStats.hasWarning ? "text-orange-500" : "text-yellow-600"
+                  folderStats.hasWarning ? "text-warn" : "text-warn"
                 )} />
               </>
             )}
@@ -413,7 +413,7 @@ export function RepositoryFilesSelector({
             )}
           </div>
           {isExpanded && (
-            <div className={cn(hasSizeIssue && "border-l border-orange-300 dark:border-orange-800 ml-3")}>
+            <div className={cn(hasSizeIssue && "border-l border-warn-soft dark:border-warn ml-3")}>
               {node.children.map(child => renderNode(child, depth + 1))}
             </div>
           )}
@@ -433,7 +433,7 @@ export function RepositoryFilesSelector({
         className={cn(
           "flex items-center gap-2 py-1.5 px-2 hover:bg-accent/50 rounded-sm cursor-pointer",
           isSelected && "bg-accent/30",
-          sizeInfo.warning && "border-l-2 border-orange-500"
+          sizeInfo.warning && "border-l-2 border-warn"
         )}
         style={{ paddingLeft: paddingLeft + 24 }}
         onClick={() => toggleFile(node.path)}
@@ -450,7 +450,7 @@ export function RepositoryFilesSelector({
           </Badge>
         )}
         {sizeInfo.warning && (
-          <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+          <AlertTriangle className="h-3 w-3 text-warn flex-shrink-0" />
         )}
       </div>
     );

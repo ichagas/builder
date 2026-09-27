@@ -14,25 +14,25 @@ interface ZoneNodeData {
 }
 
 const zoneColorClasses: Record<string, string> = {
-  blue: "bg-blue-100/60 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700",
-  green: "bg-green-100/60 dark:bg-green-950/40 border-green-300 dark:border-green-700",
-  yellow: "bg-yellow-100/60 dark:bg-yellow-950/40 border-yellow-300 dark:border-yellow-700",
-  red: "bg-red-100/60 dark:bg-red-950/40 border-red-300 dark:border-red-700",
-  purple: "bg-purple-100/60 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700",
-  gray: "bg-slate-100/60 dark:bg-slate-950/40 border-slate-300 dark:border-slate-700",
-  orange: "bg-orange-100/60 dark:bg-orange-950/40 border-orange-300 dark:border-orange-700",
-  cyan: "bg-cyan-100/60 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-700",
+  blue: "bg-primary-soft/60 dark:bg-primary/40 border-primary-soft dark:border-primary",
+  green: "bg-ok-soft/60 dark:bg-ok/40 border-ok-soft dark:border-ok",
+  yellow: "bg-warn-soft/60 dark:bg-warn/40 border-warn-soft dark:border-warn",
+  red: "bg-bad-soft/60 dark:bg-bad/40 border-bad-soft dark:border-bad",
+  purple: "bg-define/60 dark:bg-define/40 border-define",
+  gray: "bg-surface-2/60 dark:bg-surface-2/40 border-line dark:border-line-2",
+  orange: "bg-warn-soft/60 dark:bg-warn/40 border-warn-soft dark:border-warn",
+  cyan: "bg-design/60 dark:bg-design/40 border-design",
 };
 
 const zoneTitleClasses: Record<string, string> = {
-  blue: "bg-blue-200/80 dark:bg-blue-900/60 text-blue-900 dark:text-blue-100",
-  green: "bg-green-200/80 dark:bg-green-900/60 text-green-900 dark:text-green-100",
-  yellow: "bg-yellow-200/80 dark:bg-yellow-900/60 text-yellow-900 dark:text-yellow-100",
-  red: "bg-red-200/80 dark:bg-red-900/60 text-red-900 dark:text-red-100",
-  purple: "bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-100",
-  gray: "bg-slate-200/80 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100",
-  orange: "bg-orange-200/80 dark:bg-orange-900/60 text-orange-900 dark:text-orange-100",
-  cyan: "bg-cyan-200/80 dark:bg-cyan-900/60 text-cyan-900 dark:text-cyan-100",
+  blue: "bg-primary-soft/80 dark:bg-primary/60 text-primary dark:text-primary-soft",
+  green: "bg-ok-soft/80 dark:bg-ok/60 text-ok dark:text-ok-soft",
+  yellow: "bg-warn-soft/80 dark:bg-warn/60 text-warn dark:text-warn-soft",
+  red: "bg-bad-soft/80 dark:bg-bad/60 text-bad dark:text-bad-soft",
+  purple: "bg-define/80 dark:bg-define/60 text-define",
+  gray: "bg-surface-2/80 dark:bg-surface-2/60 text-foreground dark:text-muted-foreground",
+  orange: "bg-warn-soft/80 dark:bg-warn/60 text-warn dark:text-warn-soft",
+  cyan: "bg-design/80 dark:bg-design/60 text-design",
 };
 
 export const ZoneNode = memo(({ data, selected, id }: NodeProps<ZoneNodeData>) => {

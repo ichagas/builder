@@ -78,32 +78,41 @@ const legacyNodeIcons: Record<string, LucideIcon> = {
   OTHER: MoreHorizontal,
 };
 
-// Legacy fallback colors (for backward compatibility)
+// Legacy fallback colors (for backward compatibility). Categorical legend:
+// each canvas node *type* gets its own color with no status/phase meaning
+// (a TABLE node isn't "broken", a WEBHOOK isn't "broken" either — they
+// just used to share --bad by coincidence), so this maps to the
+// non-semantic --cat-* palette rather than ok/warn/bad/define/design
+// (WP-F2b fix round 1, contracts/design-system.md §1.2). 23 node types
+// against 8 hues means hues are reused across unrelated types — the
+// per-type Lucide icon above is what actually disambiguates them.
+// Neutral/unknown types (API_UTIL, TECH_STACK, OTHER) keep the existing
+// surface-2/muted styling rather than being forced onto a hue.
 const legacyNodeColors: Record<string, string> = {
-  PROJECT: "bg-cyan-500/10 border-cyan-500/50 text-cyan-700 dark:text-cyan-400",
-  PAGE: "bg-sky-500/10 border-sky-500/50 text-sky-700 dark:text-sky-400",
-  COMPONENT: "bg-blue-500/10 border-blue-500/50 text-blue-700 dark:text-blue-400",
-  WEB_COMPONENT: "bg-blue-500/10 border-blue-500/50 text-blue-700 dark:text-blue-400",
-  HOOK_COMPOSABLE: "bg-violet-500/10 border-violet-500/50 text-violet-700 dark:text-violet-400",
-  API: "bg-green-500/10 border-green-500/50 text-green-700 dark:text-green-400",
-  API_SERVICE: "bg-green-500/10 border-green-500/50 text-green-700 dark:text-green-400",
-  API_ROUTER: "bg-lime-500/10 border-lime-500/50 text-lime-700 dark:text-lime-400",
-  API_MIDDLEWARE: "bg-amber-500/10 border-amber-500/50 text-amber-700 dark:text-amber-400",
-  API_CONTROLLER: "bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-400",
-  API_UTIL: "bg-stone-500/10 border-stone-500/50 text-stone-700 dark:text-stone-400",
-  DATABASE: "bg-purple-500/10 border-purple-500/50 text-purple-700 dark:text-purple-400",
-  SCHEMA: "bg-fuchsia-500/10 border-fuchsia-500/50 text-fuchsia-700 dark:text-fuchsia-400",
-  TABLE: "bg-rose-500/10 border-rose-500/50 text-rose-700 dark:text-rose-400",
-  SERVICE: "bg-orange-500/10 border-orange-500/50 text-orange-700 dark:text-orange-400",
-  EXTERNAL_SERVICE: "bg-orange-500/10 border-orange-500/50 text-orange-700 dark:text-orange-400",
-  WEBHOOK: "bg-pink-500/10 border-pink-500/50 text-pink-700 dark:text-pink-400",
-  FIREWALL: "bg-red-500/10 border-red-500/50 text-red-700 dark:text-red-400",
-  SECURITY: "bg-yellow-500/10 border-yellow-500/50 text-yellow-700 dark:text-yellow-400",
-  REQUIREMENT: "bg-indigo-500/10 border-indigo-500/50 text-indigo-700 dark:text-indigo-400",
-  STANDARD: "bg-teal-500/10 border-teal-500/50 text-teal-700 dark:text-teal-400",
-  TECH_STACK: "bg-gray-500/10 border-gray-500/50 text-gray-700 dark:text-gray-400",
-  AGENT: "bg-cyan-600/10 border-cyan-600/50 text-cyan-800 dark:text-cyan-300",
-  OTHER: "bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-400",
+  PROJECT: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  PAGE: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  COMPONENT: "bg-cat-2/10 border-cat-2/50 text-cat-2",
+  WEB_COMPONENT: "bg-cat-2/10 border-cat-2/50 text-cat-2",
+  HOOK_COMPOSABLE: "bg-cat-3/10 border-cat-3/50 text-cat-3",
+  API: "bg-cat-4/10 border-cat-4/50 text-cat-4",
+  API_SERVICE: "bg-cat-4/10 border-cat-4/50 text-cat-4",
+  API_ROUTER: "bg-cat-4/10 border-cat-4/50 text-cat-4",
+  API_MIDDLEWARE: "bg-cat-5/10 border-cat-5/50 text-cat-5",
+  API_CONTROLLER: "bg-cat-4/10 border-cat-4/50 text-cat-4",
+  API_UTIL: "bg-surface-2/10 border-line-2/50 text-foreground dark:text-muted-foreground",
+  DATABASE: "bg-cat-6/10 border-cat-6/50 text-cat-6",
+  SCHEMA: "bg-cat-6/10 border-cat-6/50 text-cat-6",
+  TABLE: "bg-cat-7/10 border-cat-7/50 text-cat-7",
+  SERVICE: "bg-cat-8/10 border-cat-8/50 text-cat-8",
+  EXTERNAL_SERVICE: "bg-cat-8/10 border-cat-8/50 text-cat-8",
+  WEBHOOK: "bg-cat-7/10 border-cat-7/50 text-cat-7",
+  FIREWALL: "bg-cat-7/10 border-cat-7/50 text-cat-7",
+  SECURITY: "bg-cat-8/10 border-cat-8/50 text-cat-8",
+  REQUIREMENT: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  STANDARD: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  TECH_STACK: "bg-surface-2/10 border-line-2/50 text-foreground dark:text-muted-foreground",
+  AGENT: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  OTHER: "bg-surface-2/10 border-line-2/50 text-foreground dark:text-muted-foreground",
 };
 
 interface CanvasNodeProps extends NodeProps {

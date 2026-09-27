@@ -43,18 +43,18 @@ export function AgentProgressMonitor({ projectId, shareToken }: AgentProgressMon
   // const loadBlackboard = async () => { ... };
 
   const getOperationIcon = (type: string, status: string) => {
-    if (status === "in_progress") return <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />;
+    if (status === "in_progress") return <Loader2 className="h-4 w-4 animate-spin text-warn" />;
     if (status === "failed") return <XCircle className="h-4 w-4 text-destructive" />;
     if (status === "completed") {
       switch (type) {
         case "create":
-          return <FilePlus className="h-4 w-4 text-green-500" />;
+          return <FilePlus className="h-4 w-4 text-ok" />;
         case "edit":
-          return <FileEdit className="h-4 w-4 text-blue-500" />;
+          return <FileEdit className="h-4 w-4 text-primary" />;
         case "delete":
-          return <FileX className="h-4 w-4 text-red-500" />;
+          return <FileX className="h-4 w-4 text-bad" />;
         case "search":
-          return <FolderSearch className="h-4 w-4 text-purple-500" />;
+          return <FolderSearch className="h-4 w-4 text-define" />;
         default:
           return <FileText className="h-4 w-4 text-muted-foreground" />;
       }
@@ -65,9 +65,9 @@ export function AgentProgressMonitor({ projectId, shareToken }: AgentProgressMon
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge variant="default" className="bg-green-500">Completed</Badge>;
+        return <Badge variant="default" className="bg-ok">Completed</Badge>;
       case "in_progress":
-        return <Badge variant="default" className="bg-yellow-500">In Progress</Badge>;
+        return <Badge variant="default" className="bg-warn">In Progress</Badge>;
       case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       default:

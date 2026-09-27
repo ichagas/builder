@@ -15,6 +15,7 @@ import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage"
 import { useRealtimeCanvas } from "@/hooks/useRealtimeCanvas";
 import { useRealtimeLayers } from "@/hooks/useRealtimeLayers";
 import { useNodeTypes } from "@/hooks/useNodeTypes";
+import { getMiniMapNodeColor } from "@/pages/project/miniMapNodeColor";
 import { connectionLogic, getXPosition } from "@/lib/connectionLogic";
 import apiClient from "@/lib/apiClient";
 import ReactFlow, { Background, Controls, MiniMap, Connection, Edge, Node, NodeChange, ReactFlowProvider, getNodesBounds } from "reactflow";
@@ -312,12 +313,12 @@ function CanvasFlow() {
           strokeWidth: 2,
         },
         labelStyle: edge.labelStyle || { 
-          fill: "#000000",
+          fill: "#000000",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- fixed black-on-white edge-label readability, independent of app theme
           fontSize: 12,
           fontWeight: 500,
         },
         labelBgStyle: edge.labelBgStyle || { 
-          fill: "#ffffff",
+          fill: "#ffffff",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- fixed black-on-white edge-label readability, independent of app theme
           fillOpacity: 0.9,
         },
         labelBgPadding: edge.labelBgPadding || [8, 4] as [number, number],
@@ -351,12 +352,12 @@ function CanvasFlow() {
           strokeWidth: 2,
         },
         labelStyle: { 
-          fill: "#000000",
+          fill: "#000000",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- fixed black-on-white edge-label readability, independent of app theme
           fontSize: 12,
           fontWeight: 500,
         },
         labelBgStyle: { 
-          fill: "#ffffff",
+          fill: "#ffffff",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- fixed black-on-white edge-label readability, independent of app theme
           fillOpacity: 0.9,
         },
         labelBgPadding: [8, 4] as [number, number],
@@ -866,12 +867,12 @@ function CanvasFlow() {
                 strokeWidth: 2,
               },
               labelStyle: { 
-                fill: "#000000",
+                fill: "#000000",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- fixed black-on-white edge-label readability, independent of app theme
                 fontSize: 12,
                 fontWeight: 500,
               },
               labelBgStyle: { 
-                fill: "#ffffff",
+                fill: "#ffffff",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- fixed black-on-white edge-label readability, independent of app theme
                 fillOpacity: 0.9,
               },
               labelBgPadding: [8, 4] as [number, number],
@@ -983,7 +984,7 @@ function CanvasFlow() {
       try {
         if (format === "png") {
           // PNG export - use viewport as-is
-          const dataUrl = await toPng(viewport, { backgroundColor: "#ffffff" });
+          const dataUrl = await toPng(viewport, { backgroundColor: "#ffffff" });  // eslint-disable-line token-lint/no-raw-tailwind-colors -- PNG/SVG export must render on a fixed white background regardless of the current app theme (a portable snapshot, not an in-app view)
           const link = document.createElement("a");
           link.download = "canvas-snapshot.png";
           link.href = dataUrl;
@@ -1002,7 +1003,7 @@ function CanvasFlow() {
 
           // Generate SVG
           const svgDataUrl = await toSvg(viewport, { 
-            backgroundColor: "#ffffff",
+            backgroundColor: "#ffffff",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- PNG/SVG export must render on a fixed white background regardless of the current app theme (a portable snapshot, not an in-app view)
           });
           
           // Extract SVG content from data URL (it's URL-encoded, not base64)
@@ -1724,15 +1725,11 @@ function CanvasFlow() {
                 <Background />
                 <Controls />
                 <MiniMap
-                  nodeColor={(node) => {
-                    const colors: Record<string, string> = {
-                      COMPONENT: "#3b82f6",
-                      API: "#10b981",
-                      DATABASE: "#a855f7",
-                      SERVICE: "#f97316",
-                    };
-                    return colors[node.data.type] || "#6b7280";
-                  }}
+                  // See src/pages/project/miniMapNodeColor.ts (WP-F2b fix
+                  // round 1): node-type legend colors from the categorical
+                  // palette tokens, matching CanvasNode.tsx's node-type
+                  // colors and following theme changes automatically.
+                  nodeColor={(node) => getMiniMapNodeColor(node.data.type)}
                   className="bg-card border border-border"
                 />
                 {isLassoActive && <Lasso partial={true} setNodes={setNodes} />}

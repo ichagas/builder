@@ -223,7 +223,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
         );
       case "substitutable":
         return (
-          <Badge variant="outline" className="text-xs gap-1 border-amber-500 text-amber-600">
+          <Badge variant="outline" className="text-xs gap-1 border-warn text-warn">
             <FileCode className="h-3 w-3" />
             Dynamic
           </Badge>
@@ -398,7 +398,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                           <Badge variant="secondary" className="text-xs">Custom</Badge>
                         )}
                         {!section.isCustom && isSectionModified(section) && (
-                          <Badge className="text-xs bg-green-500/20 text-green-600 border-green-500/30 border">
+                          <Badge className="text-xs bg-ok/20 text-ok border-ok/30 border">
                             Modified
                           </Badge>
                         )}
@@ -459,9 +459,9 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                               placeholder="Enter section content..."
                             />
                             {section.variables && section.variables.length > 0 && (
-                              <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                              <div className="flex items-start gap-2 p-2 rounded-lg bg-warn/10 border border-warn/20">
+                                <AlertTriangle className="h-4 w-4 text-warn mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-warn">
                                   <strong>Warning:</strong> This section contains dynamic variables ({section.variables.join(", ")}). 
                                   Removing these variables will prevent runtime data from being injected into the prompt.
                                 </p>
@@ -563,7 +563,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                             <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{toolName}</code>
                             <Badge variant="secondary" className="text-xs">{tool.category}</Badge>
                             {isModified && (
-                              <Badge className="text-xs bg-green-500/20 text-green-600 border-green-500/30 border">Modified</Badge>
+                              <Badge className="text-xs bg-ok/20 text-ok border-ok/30 border">Modified</Badge>
                             )}
                           </div>
                           {isModified && (
@@ -589,7 +589,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                               const p = paramDef as ToolParamDefinition;
                               return (
                                 <div key={paramName} className="flex items-start gap-2 text-xs ml-2">
-                                  <code className="text-amber-600 dark:text-amber-400 font-mono">{paramName}</code>
+                                  <code className="text-warn font-mono">{paramName}</code>
                                   <span className="text-muted-foreground">: {p.type}</span>
                                   {p.required && <Badge variant="outline" className="text-xs px-1 py-0">required</Badge>}
                                   <span className="text-muted-foreground/70 flex-1">— {p.description}</span>
@@ -640,7 +640,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                             <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{toolName}</code>
                             <Badge variant="secondary" className="text-xs">{tool.category}</Badge>
                             {isModified && (
-                              <Badge className="text-xs bg-green-500/20 text-green-600 border-green-500/30 border">Modified</Badge>
+                              <Badge className="text-xs bg-ok/20 text-ok border-ok/30 border">Modified</Badge>
                             )}
                           </div>
                           {isModified && (
@@ -665,7 +665,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                               const p = paramDef as ToolParamDefinition;
                               return (
                                 <div key={paramName} className="flex items-start gap-2 text-xs ml-2">
-                                  <code className="text-amber-600 dark:text-amber-400 font-mono">{paramName}</code>
+                                  <code className="text-warn font-mono">{paramName}</code>
                                   <span className="text-muted-foreground">: {p.type}</span>
                                   {p.required && <Badge variant="outline" className="text-xs px-1 py-0">required</Badge>}
                                   <span className="text-muted-foreground/70 flex-1">— {p.description}</span>
@@ -724,7 +724,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                               const p = paramDef as ToolParamDefinition;
                               return (
                                 <div key={paramName} className="flex items-start gap-2 text-xs ml-2">
-                                  <code className="text-amber-600 dark:text-amber-400 font-mono">{paramName}</code>
+                                  <code className="text-warn font-mono">{paramName}</code>
                                   <span className="text-muted-foreground">: {p.type}</span>
                                   {p.required && <Badge variant="outline" className="text-xs px-1 py-0">required</Badge>}
                                   <span className="text-muted-foreground/70 flex-1">— {p.description}</span>
@@ -773,7 +773,7 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
                               const p = paramDef as ToolParamDefinition;
                               return (
                                 <div key={paramName} className="flex items-start gap-2 text-xs ml-2">
-                                  <code className="text-amber-600 dark:text-amber-400 font-mono">{paramName}</code>
+                                  <code className="text-warn font-mono">{paramName}</code>
                                   <span className="text-muted-foreground">: {p.type}</span>
                                   {p.required && <Badge variant="outline" className="text-xs px-1 py-0">required</Badge>}
                                   <span className="text-muted-foreground/70 flex-1">— {p.description}</span>
@@ -838,10 +838,10 @@ export function AgentPromptEditor({ projectId, shareToken, agentType = "coding-a
             </div>
             
             {/* Info about placeholders */}
-            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-md text-sm text-amber-700 dark:text-amber-400">
+            <div className="flex items-start gap-2 p-3 bg-warn-soft dark:bg-warn/30 rounded-md text-sm text-warn">
               <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>
-                Variables in <code className="bg-amber-100 dark:bg-amber-900 px-1.5 py-0.5 rounded text-xs font-mono">{"{{handlebars}}"}</code> are 
+                Variables in <code className="bg-warn-soft dark:bg-warn px-1.5 py-0.5 rounded text-xs font-mono">{"{{handlebars}}"}</code> are 
                 substituted at runtime with live data (project context, chat history, blackboard memory).
               </span>
             </div>

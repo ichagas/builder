@@ -33,8 +33,8 @@ const formatSize = (chars: number): string => {
 
 const getSizeClass = (chars: number): { class: string; warning: boolean } => {
   if (chars >= 200000) return { class: "bg-destructive text-destructive-foreground", warning: true };
-  if (chars >= 100000) return { class: "bg-orange-500 text-white", warning: true };
-  if (chars >= 50000) return { class: "bg-yellow-500 text-black", warning: false };
+  if (chars >= 100000) return { class: "bg-warn text-white", warning: true };
+  if (chars >= 50000) return { class: "bg-warn text-black", warning: false };
   return { class: "bg-muted text-muted-foreground", warning: false };
 };
 
@@ -85,7 +85,7 @@ function ArtifactNode({ artifact, level, selectedArtifacts, onToggle, allArtifac
       <div
         className={cn(
           "flex items-start gap-2 py-1.5 px-2 hover:bg-muted/50 rounded transition-colors",
-          !isFolder && sizeInfo.warning && "border-l-2 border-orange-500"
+          !isFolder && sizeInfo.warning && "border-l-2 border-warn"
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
@@ -118,9 +118,9 @@ function ArtifactNode({ artifact, level, selectedArtifacts, onToggle, allArtifac
         {/* Icon */}
         {isFolder ? (
           isExpanded ? (
-            <FolderOpen className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <FolderOpen className="h-4 w-4 text-warn mt-0.5 flex-shrink-0" />
           ) : (
-            <Folder className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <Folder className="h-4 w-4 text-warn mt-0.5 flex-shrink-0" />
           )
         ) : artifact.image_url ? (
           <div className="w-8 h-8 rounded overflow-hidden bg-muted shrink-0">
@@ -154,7 +154,7 @@ function ArtifactNode({ artifact, level, selectedArtifacts, onToggle, allArtifac
               </Badge>
             )}
             {!isFolder && sizeInfo.warning && (
-              <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+              <AlertTriangle className="h-3 w-3 text-warn flex-shrink-0" />
             )}
           </div>
           {!isFolder && artifact.content && (
@@ -334,9 +334,9 @@ export function ArtifactsListSelector({
       </div>
       
       {largeItemCount > 0 && (
-        <div className="flex items-center gap-2 p-2 rounded-md bg-orange-500/10 border border-orange-500/20 text-sm">
-          <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
-          <span className="text-orange-600 dark:text-orange-400">
+        <div className="flex items-center gap-2 p-2 rounded-md bg-warn/10 border border-warn/20 text-sm">
+          <AlertTriangle className="h-4 w-4 text-warn flex-shrink-0" />
+          <span className="text-warn">
             {largeItemCount} large artifact{largeItemCount > 1 ? "s" : ""} detected. Items over 100K chars may cause timeouts.
           </span>
         </div>
@@ -368,7 +368,7 @@ export function ArtifactsListSelector({
                 className={cn(
                   "relative rounded-lg border overflow-hidden cursor-pointer transition-all",
                   isSelected && "ring-2 ring-primary",
-                  sizeInfo.warning && "border-orange-500/30"
+                  sizeInfo.warning && "border-warn/30"
                 )}
                 onClick={() => toggleArtifact(artifact.id)}
               >
@@ -415,7 +415,7 @@ export function ArtifactsListSelector({
                 key={artifact.id}
                 className={cn(
                   "flex items-start gap-2 p-2 hover:bg-muted/50 rounded border",
-                  sizeInfo.warning && "border-orange-500/30"
+                  sizeInfo.warning && "border-warn/30"
                 )}
               >
                 <Checkbox
@@ -448,7 +448,7 @@ export function ArtifactsListSelector({
                       {formatSize(charCount)}
                     </Badge>
                     {sizeInfo.warning && (
-                      <AlertTriangle className="h-3 w-3 text-orange-500" />
+                      <AlertTriangle className="h-3 w-3 text-warn" />
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground line-clamp-2 mt-1">

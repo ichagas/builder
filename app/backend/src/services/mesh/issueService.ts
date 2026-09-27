@@ -25,6 +25,8 @@ import { logger } from "../../utils/logger";
 import db from "../../utils/database";
 import { getInstallationTokenForRepo, isGitHubAppConfigured } from "../../utils/githubAppAuth";
 import { getAzureDevOpsClient } from "../integrations";
+import { extractAzureDevOpsOrgLogin } from "../integrations/providers/azureDevOps";
+import { parseRepositoryFullName } from "../repositories/fullName";
 import { MeshFinding } from "./ingest";
 
 export interface OpenIssueResult {
@@ -51,7 +53,12 @@ export interface AzureDevOpsWorkItem {
 
 /** Minimal surface this service needs from an Azure DevOps connection. */
 export interface AzureDevOpsClient {
-  createWorkItem(input: { project: string; title: string; description: string }): Promise<AzureDevOpsWorkItem>;
+  /**
+   * `adoOrg` is the Azure DevOps organization the repository's `full_name`
+   * says it belongs to; an implementation must refuse to file the work item
+   * through a connection for a different organization.
+   */
+  createWorkItem(input: { adoOrg: string; project: string; title: string; description: string }): Promise<AzureDevOpsWorkItem>;
 }
 
 /** Resolves the Azure DevOps client to use for a given organization/connection. */
@@ -91,7 +98,17 @@ class DefaultAzureDevOpsClientProvider implements AzureDevOpsClientProvider {
     }
 
     return {
-      async createWorkItem({ project, title, description }): Promise<AzureDevOpsWorkItem> {
+      async createWorkItem({ adoOrg, project, title, description }): Promise<AzureDevOpsWorkItem> {
+        // Same defense in depth as onboarding's PR opening: the connection
+        // resolved for this organization must be for the Azure DevOps
+        // organization the repository's full_name names — otherwise the
+        // project segment would be resolved against the wrong ADO org.
+        const clientOrg = extractAzureDevOpsOrgLogin(adoClient.organizationUrl);
+        if (clientOrg && clientOrg.toLowerCase() !== adoOrg.toLowerCase()) {
+          throw new Error(
+            `Repository belongs to Azure DevOps organization "${adoOrg}", but the resolved connection is for "${clientOrg}"`,
+          );
+        }
         const patchDocument = [
           { op: "add", path: "/fields/System.Title", value: title },
           { op: "add", path: "/fields/System.Description", value: description },
@@ -141,8 +158,9 @@ async function createGitHubIssue(fullName: string, title: string, body: string):
   // access to issues only) rather than the installation-wide token — a
   // compromised/buggy call here can't touch any other repository or
   // permission the platform's GitHub App happens to hold.
+  const { owner, repo } = parseRepositoryFullName("github", fullName);
   const token = await getInstallationTokenForRepo({ fullName, permissions: { issues: "write" } });
-  const res = await fetch(`https://api.github.com/repos/${fullName}/issues`, {
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -267,13 +285,14 @@ export async function openIssueForNewFindings(runId: string): Promise<OpenIssueR
       const issue = await createGitHubIssue(run.full_name, title, body);
       if (issue) issueRef = `github:${run.full_name}#${issue.number}`;
     } else if (run.provider === "azure_devops") {
+      // `full_name` is "<adoOrg>/<project>/<repo>" for Azure Repos
+      // (data-model.md §2); the work item is filed against the project.
+      // Parsed strictly (services/repositories/fullName) so a malformed or
+      // stale name fails here instead of filing against the wrong segment.
+      const { adoOrg, project } = parseRepositoryFullName("azure_devops", run.full_name);
       const client = await azureDevOpsClientProvider.getClient(run.organization_id, run.connection_id);
       if (client) {
-        // `full_name` follows the same "<project>/<repo>" shape GitHub's
-        // "<owner>/<repo>" does (see application_repositories.full_name);
-        // the work item is filed against the Azure DevOps project.
-        const project = run.full_name.split("/")[0];
-        const workItem = await client.createWorkItem({ project, title, description: body });
+        const workItem = await client.createWorkItem({ adoOrg, project, title, description: body });
         issueRef = `azure_devops:${run.full_name}#${workItem.id}`;
       }
     }

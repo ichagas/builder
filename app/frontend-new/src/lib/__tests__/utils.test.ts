@@ -16,8 +16,15 @@ describe("cn (class name utility)", () => {
   });
 
   it("merges conflicting tailwind classes (last wins)", () => {
-    // tailwind-merge should resolve conflicts
+    // tailwind-merge should resolve conflicts. Literal Tailwind palette
+    // classes here are generic fixtures for testing the cn()/tailwind-merge
+    // utility itself, not app styling (T031, WP-F2b) — rewriting them to
+    // design tokens would just be testing the same merge behavior with
+    // different literal strings, and risks the codemod touching only one
+    // side of a `.toBe(...)` assertion (as it did once; reverted, see the
+    // T031 "gallery and utils (final sweep)" commit).
     expect(cn("p-4", "p-2")).toBe("p-2");
+    // eslint-disable-next-line token-lint/no-raw-tailwind-colors
     expect(cn("text-red-500", "text-blue-500")).toBe("text-blue-500");
   });
 

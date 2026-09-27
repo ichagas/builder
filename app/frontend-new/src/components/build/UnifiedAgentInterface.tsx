@@ -877,18 +877,18 @@ export function UnifiedAgentInterface({
   };
 
   const getOperationIcon = (type: string, status: string) => {
-    if (status === "in_progress") return <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />;
+    if (status === "in_progress") return <Loader2 className="h-4 w-4 animate-spin text-warn" />;
     if (status === "failed") return <XCircle className="h-4 w-4 text-destructive" />;
     if (status === "completed") {
       switch (type) {
         case "create":
-          return <FilePlus className="h-4 w-4 text-green-500" />;
+          return <FilePlus className="h-4 w-4 text-ok" />;
         case "edit":
-          return <FileEdit className="h-4 w-4 text-blue-500" />;
+          return <FileEdit className="h-4 w-4 text-primary" />;
         case "delete":
-          return <FileX className="h-4 w-4 text-red-500" />;
+          return <FileX className="h-4 w-4 text-bad" />;
         case "search":
-          return <FolderSearch className="h-4 w-4 text-purple-500" />;
+          return <FolderSearch className="h-4 w-4 text-define" />;
         default:
           return <FileText className="h-4 w-4 text-muted-foreground" />;
       }
@@ -899,9 +899,9 @@ export function UnifiedAgentInterface({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge variant="default" className="bg-green-500">Completed</Badge>;
+        return <Badge variant="default" className="bg-ok">Completed</Badge>;
       case "in_progress":
-        return <Badge variant="default" className="bg-yellow-500">In Progress</Badge>;
+        return <Badge variant="default" className="bg-warn">In Progress</Badge>;
       case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       default:
@@ -1107,14 +1107,14 @@ export function UnifiedAgentInterface({
                   
                   {/* BLACKBOARD ENTRY: Show when enabled and entry exists */}
                   {chatHistorySettings.showBlackboard && parsed.blackboardEntry && (
-                    <div className="mb-3 p-2 rounded bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                    <div className="mb-3 p-2 rounded bg-warn-soft dark:bg-warn/20 border border-warn-soft dark:border-warn">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
+                        <Badge variant="outline" className="text-xs bg-warn-soft dark:bg-warn/50 text-warn dark:text-warn-soft border-warn-soft dark:border-warn">
                           {parsed.blackboardEntry.entry_type}
                         </Badge>
-                        <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-300">Blackboard</p>
+                        <p className="text-xs font-semibold text-warn dark:text-warn-soft">Blackboard</p>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap text-yellow-900 dark:text-yellow-100">
+                      <p className="text-sm whitespace-pre-wrap text-warn dark:text-warn-soft">
                         {parsed.blackboardEntry.content}
                       </p>
                     </div>

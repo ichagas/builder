@@ -311,7 +311,7 @@ JSON example:
               <p className="text-sm text-destructive">{error}</p>
             )}
             {fileName && (
-              <div className="flex items-center gap-2 text-sm text-green-600">
+              <div className="flex items-center gap-2 text-sm text-ok">
                 <FileSpreadsheet className="h-4 w-4" />
                 <span>Data loaded successfully from pasted text</span>
                 <Button variant="ghost" size="icon" className="h-5 w-5" onClick={clearFile}>

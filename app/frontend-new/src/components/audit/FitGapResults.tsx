@@ -288,20 +288,20 @@ export function FitGapResults({
               Avg Coverage
             </div>
           </div>
-          <div className="text-center p-2 sm:p-3 rounded-lg bg-green-500/10">
-            <div className="text-lg sm:text-2xl font-bold text-green-500">
+          <div className="text-center p-2 sm:p-3 rounded-lg bg-ok/10">
+            <div className="text-lg sm:text-2xl font-bold text-ok">
               {summary.strongFitPct.toFixed(0)}%
             </div>
             <div className="text-[10px] sm:text-xs text-muted-foreground">Strong Fit</div>
           </div>
-          <div className="text-center p-2 sm:p-3 rounded-lg bg-yellow-500/10">
-            <div className="text-lg sm:text-2xl font-bold text-yellow-500">
+          <div className="text-center p-2 sm:p-3 rounded-lg bg-warn/10">
+            <div className="text-lg sm:text-2xl font-bold text-warn">
               {summary.partialFitPct.toFixed(0)}%
             </div>
             <div className="text-[10px] sm:text-xs text-muted-foreground">Partial</div>
           </div>
-          <div className="text-center p-2 sm:p-3 rounded-lg bg-red-500/10">
-            <div className="text-lg sm:text-2xl font-bold text-red-500">
+          <div className="text-center p-2 sm:p-3 rounded-lg bg-bad/10">
+            <div className="text-lg sm:text-2xl font-bold text-bad">
               {summary.gapPct.toFixed(0)}%
             </div>
             <div className="text-[10px] sm:text-xs text-muted-foreground">Gaps</div>

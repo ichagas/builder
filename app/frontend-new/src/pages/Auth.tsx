@@ -85,9 +85,9 @@ export default function Auth() {
   const AuthModeIndicator = () => {
     if (isEasyAuthEnabled()) {
       return (
-        <Alert className="mb-4 border-blue-500/50 bg-blue-500/10">
-          <Shield className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-sm text-blue-700 dark:text-blue-400">
+        <Alert className="mb-4 border-primary/50 bg-primary/10">
+          <Shield className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm text-primary">
             <span className="font-medium">Azure Easy Auth</span>
             <p className="mt-1">Secure authentication via Azure Container Apps.</p>
           </AlertDescription>

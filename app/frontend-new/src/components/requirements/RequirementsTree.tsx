@@ -37,10 +37,10 @@ interface RequirementsTreeProps {
 
 const typeIcons = { EPIC: FileText, FEATURE: ListTodo, STORY: CheckSquare, ACCEPTANCE_CRITERIA: FileCheck };
 const typeColors = {
-  EPIC: "bg-purple-500/10 text-purple-700 border-purple-500/20",
-  FEATURE: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  STORY: "bg-green-500/10 text-green-700 border-green-500/20",
-  ACCEPTANCE_CRITERIA: "bg-orange-500/10 text-orange-700 border-orange-500/20",
+  EPIC: "bg-define/10 text-define border-define/20",
+  FEATURE: "bg-primary/10 text-primary border-primary/20",
+  STORY: "bg-ok/10 text-ok border-ok/20",
+  ACCEPTANCE_CRITERIA: "bg-warn/10 text-warn border-warn/20",
 };
 
 function getNextType(type: RequirementType): RequirementType | null {

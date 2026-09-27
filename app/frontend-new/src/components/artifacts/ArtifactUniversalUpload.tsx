@@ -126,12 +126,12 @@ export function ArtifactUniversalUpload({
   };
 
   const categories: FileCategory[] = [
-    { type: "images", label: "Images", icon: Image, count: counts.images, color: "text-blue-500" },
-    { type: "excel", label: "Excel", icon: FileSpreadsheet, count: counts.excel, color: "text-green-500" },
-    { type: "textFiles", label: "Text Files", icon: FileText, count: counts.textFiles, color: "text-yellow-500" },
-    { type: "docx", label: "Word", icon: FileText, count: counts.docx, color: "text-blue-600" },
-    { type: "pdf", label: "PDF", icon: FileIcon, count: counts.pdf, color: "text-red-500" },
-    { type: "pptx", label: "PowerPoint", icon: Presentation, count: counts.pptx, color: "text-orange-500" },
+    { type: "images", label: "Images", icon: Image, count: counts.images, color: "text-primary" },
+    { type: "excel", label: "Excel", icon: FileSpreadsheet, count: counts.excel, color: "text-ok" },
+    { type: "textFiles", label: "Text Files", icon: FileText, count: counts.textFiles, color: "text-warn" },
+    { type: "docx", label: "Word", icon: FileText, count: counts.docx, color: "text-primary" },
+    { type: "pdf", label: "PDF", icon: FileIcon, count: counts.pdf, color: "text-bad" },
+    { type: "pptx", label: "PowerPoint", icon: Presentation, count: counts.pptx, color: "text-warn" },
   ];
 
   return (
@@ -150,9 +150,9 @@ export function ArtifactUniversalUpload({
       />
 
       {recentUpload && (
-        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shrink-0">
-          <Check className="h-4 w-4 text-green-500 shrink-0" />
-          <span className="text-sm text-green-700 dark:text-green-400">
+        <div className="bg-ok/10 border border-ok/30 rounded-lg p-3 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shrink-0">
+          <Check className="h-4 w-4 text-ok shrink-0" />
+          <span className="text-sm text-ok">
             Added: {[
               recentUpload.images > 0 && `${recentUpload.images} image${recentUpload.images !== 1 ? "s" : ""}`,
               recentUpload.excel > 0 && `${recentUpload.excel} excel`,

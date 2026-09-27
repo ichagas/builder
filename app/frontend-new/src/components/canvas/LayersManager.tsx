@@ -88,7 +88,7 @@ export function LayersManager({
             <div
               key={layer.id}
               className={`flex items-center gap-2 p-2 rounded-md group transition-colors ${
-                isActive ? "bg-green-500/20 border border-green-500/50" : "bg-muted/50"
+                isActive ? "bg-ok/20 border border-ok/50" : "bg-muted/50"
               }`}
             >
               <Button
@@ -99,7 +99,7 @@ export function LayersManager({
                 title={isActive ? "Deactivate layer" : "Set as active layer"}
               >
                 {isActive ? (
-                  <CheckCircle2 className="w-3 h-3 text-green-500" />
+                  <CheckCircle2 className="w-3 h-3 text-ok" />
                 ) : (
                   <Circle className="w-3 h-3" />
                 )}

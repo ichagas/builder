@@ -113,13 +113,13 @@ export function TesseractVisualizer({
   // Get polarity display info
   const getPolarityInfo = (polarity: number) => {
     if (polarity > 0.5) {
-      return { label: "HIGH", color: "bg-green-500 text-white", textColor: "text-green-600" };
+      return { label: "HIGH", color: "bg-ok text-white", textColor: "text-ok" };
     } else if (polarity > 0) {
-      return { label: "MED", color: "bg-yellow-500 text-white", textColor: "text-yellow-600" };
+      return { label: "MED", color: "bg-warn text-white", textColor: "text-warn" };
     } else if (polarity === 0) {
       return { label: "NEUTRAL", color: "bg-muted text-muted-foreground", textColor: "text-muted-foreground" };
     } else {
-      return { label: "LOW", color: "bg-red-500 text-white", textColor: "text-red-600" };
+      return { label: "LOW", color: "bg-bad text-white", textColor: "text-bad" };
     }
   };
 
@@ -316,12 +316,12 @@ export function TesseractVisualizer({
                     <div className="h-5 bg-muted/30 rounded mb-3" />
                     <div className="h-8 bg-muted/20 rounded mb-3" />
                     <div className="space-y-2 mb-3">
-                      <div className="h-4 bg-blue-500/10 rounded w-3/4" />
-                      <div className="h-4 bg-blue-500/10 rounded w-1/2" />
+                      <div className="h-4 bg-primary/10 rounded w-3/4" />
+                      <div className="h-4 bg-primary/10 rounded w-1/2" />
                     </div>
                     <div className="space-y-2 mb-3">
-                      <div className="h-4 bg-green-500/10 rounded w-2/3" />
-                      <div className="h-4 bg-green-500/10 rounded w-3/4" />
+                      <div className="h-4 bg-ok/10 rounded w-2/3" />
+                      <div className="h-4 bg-ok/10 rounded w-3/4" />
                     </div>
                     <div className="h-8 bg-muted/20 rounded" />
                   </div>
@@ -395,8 +395,8 @@ export function TesseractVisualizer({
                       {/* D1 Items Section */}
                       <div className="p-3 border-b">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-blue-500" />
-                          <span className="text-xs font-medium text-blue-600">{d1Label}</span>
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                          <span className="text-xs font-medium text-primary">{d1Label}</span>
                           <Badge variant="secondary" className="text-[10px] h-4 px-1 ml-auto">
                             {d1Count}
                           </Badge>
@@ -408,7 +408,7 @@ export function TesseractVisualizer({
                                 <TooltipProvider key={item.id}>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="text-xs px-2 py-1 bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded truncate cursor-help">
+                                      <div className="text-xs px-2 py-1 bg-primary/10 text-primary dark:text-primary-soft rounded truncate cursor-help">
                                         {item.label}
                                       </div>
                                     </TooltipTrigger>
@@ -425,7 +425,7 @@ export function TesseractVisualizer({
                               column.d1ElementIds.slice(0, 3).map((id) => (
                                 <div 
                                   key={id} 
-                                  className="text-xs px-2 py-1 bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded truncate"
+                                  className="text-xs px-2 py-1 bg-primary/10 text-primary dark:text-primary-soft rounded truncate"
                                 >
                                   {id.slice(0, 20)}...
                                 </div>
@@ -440,8 +440,8 @@ export function TesseractVisualizer({
                       {/* D2 Items Section */}
                       <div className="p-3 border-b">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                          <span className="text-xs font-medium text-green-600">{d2Label}</span>
+                          <div className="w-2 h-2 rounded-full bg-ok" />
+                          <span className="text-xs font-medium text-ok">{d2Label}</span>
                           <Badge variant="secondary" className="text-[10px] h-4 px-1 ml-auto">
                             {d2Count}
                           </Badge>
@@ -453,7 +453,7 @@ export function TesseractVisualizer({
                                 <TooltipProvider key={item.id}>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="text-xs px-2 py-1 bg-green-500/10 text-green-700 dark:text-green-300 rounded truncate cursor-help">
+                                      <div className="text-xs px-2 py-1 bg-ok/10 text-ok dark:text-ok-soft rounded truncate cursor-help">
                                         {item.label}
                                       </div>
                                     </TooltipTrigger>
@@ -470,7 +470,7 @@ export function TesseractVisualizer({
                               column.d2ElementIds.slice(0, 3).map((id) => (
                                 <div 
                                   key={id} 
-                                  className="text-xs px-2 py-1 bg-green-500/10 text-green-700 dark:text-green-300 rounded truncate"
+                                  className="text-xs px-2 py-1 bg-ok/10 text-ok dark:text-ok-soft rounded truncate"
                                 >
                                   {id.slice(0, 20)}...
                                 </div>
@@ -507,23 +507,23 @@ export function TesseractVisualizer({
           {/* Legend */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mt-4 pt-4 border-t text-xs">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              <div className="w-3 h-3 rounded-full bg-primary" />
               <span>{d1Label} Items</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div className="w-3 h-3 rounded-full bg-ok" />
               <span>{d2Label} Items</span>
             </div>
             <div className="border-l pl-2 flex items-center gap-1">
-              <Badge className="bg-green-500 text-white text-[10px] h-4 px-1">HIGH</Badge>
+              <Badge className="bg-ok text-white text-[10px] h-4 px-1">HIGH</Badge>
               <span className="hidden sm:inline">Strong Alignment</span>
             </div>
             <div className="flex items-center gap-1">
-              <Badge className="bg-yellow-500 text-white text-[10px] h-4 px-1">MED</Badge>
+              <Badge className="bg-warn text-white text-[10px] h-4 px-1">MED</Badge>
               <span className="hidden sm:inline">Partial</span>
             </div>
             <div className="flex items-center gap-1">
-              <Badge className="bg-red-500 text-white text-[10px] h-4 px-1">LOW</Badge>
+              <Badge className="bg-bad text-white text-[10px] h-4 px-1">LOW</Badge>
               <span className="hidden sm:inline">Gap</span>
             </div>
           </div>
@@ -561,13 +561,13 @@ export function TesseractVisualizer({
               {/* D1 Elements */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                  <div className="w-3 h-3 rounded-full bg-primary" />
                   <h4 className="font-medium">{d1Label} Elements ({deepDiveData.d1Items.length})</h4>
                 </div>
                 <div className="space-y-2">
                   {deepDiveData.d1Items.map((item) => (
-                    <div key={item.id} className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">{item.label}</p>
+                    <div key={item.id} className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                      <p className="text-sm font-medium text-primary dark:text-primary-soft">{item.label}</p>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.content.slice(0, 150)}...</p>
                     </div>
                   ))}
@@ -580,13 +580,13 @@ export function TesseractVisualizer({
               {/* D2 Elements */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <div className="w-3 h-3 rounded-full bg-ok" />
                   <h4 className="font-medium">{d2Label} Elements ({deepDiveData.d2Items.length})</h4>
                 </div>
                 <div className="space-y-2">
                   {deepDiveData.d2Items.map((item) => (
-                    <div key={item.id} className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                      <p className="text-sm font-medium text-green-700 dark:text-green-300">{item.label}</p>
+                    <div key={item.id} className="p-3 bg-ok/10 border border-ok/20 rounded-lg">
+                      <p className="text-sm font-medium text-ok dark:text-ok-soft">{item.label}</p>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.content.slice(0, 150)}...</p>
                     </div>
                   ))}

@@ -55,12 +55,12 @@ const PHASE_DISPLAY_NAMES: Record<string, string> = {
 };
 
 const AGENT_COLORS: Record<string, string> = {
-  security_analyst: "text-red-500",
-  business_analyst: "text-blue-500",
-  developer: "text-green-500",
-  end_user: "text-purple-500",
-  architect: "text-orange-500",
-  orchestrator: "text-yellow-500",
+  security_analyst: "text-bad",
+  business_analyst: "text-primary",
+  developer: "text-ok",
+  end_user: "text-define",
+  architect: "text-warn",
+  orchestrator: "text-warn",
 };
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
@@ -78,17 +78,17 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 const ACTIVITY_COLORS: Record<string, string> = {
-  thinking: "border-l-yellow-500",
-  tool_call: "border-l-blue-500",
-  response: "border-l-green-500",
-  error: "border-l-red-500",
-  phase_change: "border-l-purple-500",
-  node_insert: "border-l-emerald-500",
-  edge_insert: "border-l-cyan-500",
-  blackboard_write: "border-l-cyan-500",
-  llm_call: "border-l-orange-500",
-  success: "border-l-green-500",
-  failure: "border-l-red-500",
+  thinking: "border-l-warn",
+  tool_call: "border-l-primary",
+  response: "border-l-ok",
+  error: "border-l-bad",
+  phase_change: "border-l-define",
+  node_insert: "border-l-ok",
+  edge_insert: "border-l-design",
+  blackboard_write: "border-l-design",
+  llm_call: "border-l-warn",
+  success: "border-l-ok",
+  failure: "border-l-bad",
 };
 
 // Extract tool name from activity title like "Tool: read_dataset_item"
@@ -262,15 +262,15 @@ function CondensedIterationRow({
                 </Badge>
                 {totalTools > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <span className="flex items-center gap-0.5 text-blue-500" title="Reads">
+                    <span className="flex items-center gap-0.5 text-primary" title="Reads">
                       <FileSearch className="h-3 w-3" />
                       <span>{summary.toolCalls.reads}</span>
                     </span>
-                    <span className="flex items-center gap-0.5 text-green-500" title="Creates">
+                    <span className="flex items-center gap-0.5 text-ok" title="Creates">
                       <Plus className="h-3 w-3" />
                       <span>{summary.toolCalls.creates}</span>
                     </span>
-                    <span className="flex items-center gap-0.5 text-orange-500" title="Writes">
+                    <span className="flex items-center gap-0.5 text-warn" title="Writes">
                       <Pencil className="h-3 w-3" />
                       <span>{summary.toolCalls.writes}</span>
                     </span>
@@ -462,15 +462,15 @@ export function AuditActivityStream({ activities, isLoading }: AuditActivityStre
               {/* Legend for condensed view */}
               <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 pb-2 border-b">
                 <div className="flex items-center gap-1">
-                  <FileSearch className="h-3 w-3 text-blue-500" />
+                  <FileSearch className="h-3 w-3 text-primary" />
                   <span>Reads</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Plus className="h-3 w-3 text-green-500" />
+                  <Plus className="h-3 w-3 text-ok" />
                   <span>Creates</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Pencil className="h-3 w-3 text-orange-500" />
+                  <Pencil className="h-3 w-3 text-warn" />
                   <span>Writes</span>
                 </div>
               </div>

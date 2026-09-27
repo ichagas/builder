@@ -1,12 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Design tokens (T020): source of truth for every color/shape/type/density
  * value. Imported before the shadcn variable block below, which re-points
  * shadcn's HSL variables to Blueprint per contracts/design-system.md §1.1.
+ * Must stay the first statement: CSS drops an @import that follows any other
+ * rule (e.g. @tailwind), which silently removes every token.
  */
 @import "./design/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
 All colors MUST be HSL.

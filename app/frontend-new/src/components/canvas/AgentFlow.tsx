@@ -27,22 +27,27 @@ interface AgentDefinition {
 
 // Custom agent node component with connection handles
 function AgentNode({ data, id, selected }: { data: any; id: string; selected: boolean }) {
-  // Color mapping from Tailwind classes to actual colors
+  // Color mapping from Tailwind classes to actual colors. This is a
+  // categorical legend (each agent kind gets its own color, no
+  // status/phase meaning), so it maps to the non-semantic --cat-* palette
+  // rather than status/phase tokens (WP-F2b fix round 1,
+  // contracts/design-system.md §1.2) — a purple-500 agent isn't "define
+  // phase" and a red-500 agent isn't "broken".
   const colorMap: Record<string, string> = {
-    "bg-blue-500": "#3b82f6",
-    "bg-green-500": "#22c55e",
-    "bg-red-500": "#ef4444",
-    "bg-purple-500": "#a855f7",
-    "bg-orange-500": "#f97316",
-    "bg-cyan-500": "#06b6d4",
-    "bg-pink-500": "#ec4899",
-    "bg-yellow-500": "#eab308",
-    "bg-indigo-500": "#6366f1",
-    "bg-teal-500": "#14b8a6",
-    "bg-gray-600": "#4b5563",
+    "bg-blue-500": "var(--cat-1)",
+    "bg-green-500": "var(--cat-7)",
+    "bg-red-500": "var(--cat-5)",
+    "bg-purple-500": "var(--cat-3)",
+    "bg-orange-500": "var(--cat-8)",
+    "bg-cyan-500": "var(--cat-6)",
+    "bg-pink-500": "var(--cat-5)",
+    "bg-yellow-500": "var(--cat-4)",
+    "bg-indigo-500": "var(--cat-1)",
+    "bg-teal-500": "var(--cat-2)",
+    "bg-gray-600": "var(--muted)",
   };
 
-  const bgColor = colorMap[data.color] || "#3b82f6";
+  const bgColor = colorMap[data.color] || "var(--primary)";
   const isExecuting = data.isExecuting || false;
 
   return (
@@ -50,12 +55,12 @@ function AgentNode({ data, id, selected }: { data: any; id: string; selected: bo
       <Handle type="target" position={Position.Left} className="w-3 h-3" />
       <Card 
         className={`p-4 rounded-lg shadow-lg min-w-[180px] border-2 transition-all ${
-          isExecuting ? "ring-4 ring-yellow-400 animate-pulse" : ""
+          isExecuting ? "ring-4 ring-warn animate-pulse" : ""
         } ${selected ? "ring-2 ring-white" : ""}`}
         style={{ 
           backgroundColor: bgColor,
           borderColor: bgColor,
-          color: "#ffffff"
+          color: "var(--surface)"
         }}
       >
         <div className="flex items-center justify-between mb-1">

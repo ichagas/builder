@@ -26,11 +26,11 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  "CREATE_TABLE": "bg-green-500/20 text-green-700 border-green-500/30",
-  "CREATE_INDEX": "bg-blue-500/20 text-blue-700 border-blue-500/30",
-  "INSERT": "bg-amber-500/20 text-amber-700 border-amber-500/30",
-  "ALTER_TABLE": "bg-purple-500/20 text-purple-700 border-purple-500/30",
-  "DROP_TABLE": "bg-red-500/20 text-red-700 border-red-500/30"
+  "CREATE_TABLE": "bg-ok/20 text-ok border-ok/30",
+  "CREATE_INDEX": "bg-primary/20 text-primary border-primary/30",
+  "INSERT": "bg-warn/20 text-warn border-warn/30",
+  "ALTER_TABLE": "bg-define/20 text-define border-define/30",
+  "DROP_TABLE": "bg-bad/20 text-bad border-bad/30"
 };
 
 export default function SqlReviewPanel({
@@ -220,7 +220,7 @@ export default function SqlReviewPanel({
                       }}
                     >
                       {isCopied ? (
-                        <Check className="h-4 w-4 text-green-500" />
+                        <Check className="h-4 w-4 text-ok" />
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
@@ -231,7 +231,7 @@ export default function SqlReviewPanel({
                   {isExpanded && (
                     <div className="px-3 pb-3">
                       <pre className={cn(
-                        "p-3 rounded-lg bg-[#1e1e1e] text-[#d4d4d4] text-xs font-mono overflow-x-auto max-h-[300px]",
+                        "p-3 rounded-lg bg-[var(--ide-bg)] text-[var(--ide-default-text)] text-xs font-mono overflow-x-auto max-h-[300px]",
                         "whitespace-pre-wrap break-words",
                         isExcluded && "opacity-50"
                       )}>
@@ -266,7 +266,7 @@ export default function SqlReviewPanel({
       </div>
 
       {!reviewed && (
-        <p className="text-sm text-amber-600 flex items-center gap-1">
+        <p className="text-sm text-warn flex items-center gap-1">
           You must review and confirm the SQL statements before proceeding
         </p>
       )}

@@ -71,6 +71,32 @@ export function validateAzureDevOpsOrgUrl(input: string): { valid: boolean; erro
   };
 }
 
+/**
+ * The Azure DevOps organization login from a validated organization URL —
+ * `https://dev.azure.com/<org>` or `https://<org>.visualstudio.com` — or
+ * `null` if `organizationUrl` isn't one of those two shapes. Used (fix
+ * round 2, item 1) to build a globally-unique `application_repositories`
+ * `full_name` for Azure Repos (`<adoOrg>/<project>/<repo>`), since
+ * `<project>/<repo>` alone can collide across different Azure DevOps
+ * organizations/tenants the platform serves.
+ */
+export function extractAzureDevOpsOrgLogin(organizationUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(organizationUrl);
+  } catch {
+    return null;
+  }
+
+  if (url.hostname === "dev.azure.com") {
+    const segments = url.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+    return segments[0] ?? null;
+  }
+
+  const visualStudioMatch = /^([A-Za-z0-9-]+)\.visualstudio\.com$/.exec(url.hostname);
+  return visualStudioMatch ? visualStudioMatch[1] : null;
+}
+
 function basicAuthHeader(pat: string): string {
   return `Basic ${Buffer.from(`:${pat}`).toString("base64")}`;
 }

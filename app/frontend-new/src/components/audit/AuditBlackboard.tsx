@@ -45,17 +45,17 @@ const agentConfig: Record<
 > = {
   security_analyst: {
     icon: Shield,
-    color: "text-red-500",
+    color: "text-bad",
     label: "Security Analyst",
   },
   business_analyst: {
     icon: Briefcase,
-    color: "text-blue-500",
+    color: "text-primary",
     label: "Business Analyst",
   },
-  developer: { icon: Code, color: "text-green-500", label: "Developer" },
-  end_user: { icon: User, color: "text-purple-500", label: "End User" },
-  architect: { icon: Building, color: "text-orange-500", label: "Architect" },
+  developer: { icon: Code, color: "text-ok", label: "Developer" },
+  end_user: { icon: User, color: "text-define", label: "End User" },
+  architect: { icon: Building, color: "text-warn", label: "Architect" },
   orchestrator: { icon: Bot, color: "text-primary", label: "Orchestrator" },
 };
 

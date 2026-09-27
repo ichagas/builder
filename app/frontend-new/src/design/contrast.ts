@@ -35,3 +35,32 @@ export function contrastRatio(hex1: string, hex2: string): number {
 
 /** WCAG AA for normal text. */
 export const AA_TEXT = 4.5;
+
+/**
+ * Hue angle (0..360°) of a hex color on the HSL color wheel. Used to check
+ * that the categorical palette's hues (contracts/design-system.md §1.2)
+ * stay far enough from the status hues (--ok/--warn/--bad) to never read as
+ * a status color by coincidence (WP-F2b fix round 2, item 2).
+ */
+export function hueDegrees(hex: string): number {
+  const [r8, g8, b8] = hexToRgb(hex);
+  const r = r8 / 255, g = g8 / 255, b = b8 / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 0;
+  let h: number;
+  switch (max) {
+    case r: h = ((g - b) / d) % 6; break;
+    case g: h = (b - r) / d + 2; break;
+    default: h = (r - g) / d + 4; break;
+  }
+  h *= 60;
+  return h < 0 ? h + 360 : h;
+}
+
+/** Shortest distance between two hue angles on the 360° color wheel. */
+export function hueDistance(h1: number, h2: number): number {
+  const d = Math.abs(h1 - h2) % 360;
+  return Math.min(d, 360 - d);
+}

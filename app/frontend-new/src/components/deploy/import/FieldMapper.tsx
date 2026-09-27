@@ -138,7 +138,7 @@ export default function FieldMapper({
         
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <CheckCircle2 className="h-4 w-4 text-ok" />
             {mappedCount} mapped
           </span>
           <span className="flex items-center gap-1">
@@ -150,7 +150,7 @@ export default function FieldMapper({
 
       {/* Info message if no target columns */}
       {validTargetColumns.length === 0 && selectedTable && (
-        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-700">
+        <div className="p-3 rounded-lg bg-warn/10 border border-warn/30 text-sm text-warn">
           No columns found for the selected table. Please verify the table exists and has columns.
         </div>
       )}
@@ -190,7 +190,7 @@ export default function FieldMapper({
                     <ArrowRight className={cn(
                       "h-4 w-4 mx-auto",
                       mapping.ignored && "text-muted-foreground",
-                      !mapping.ignored && mapping.targetColumn && "text-green-500"
+                      !mapping.ignored && mapping.targetColumn && "text-ok"
                     )} />
                   </td>
                   <td className="px-3 py-2 border-b">
@@ -249,7 +249,7 @@ export default function FieldMapper({
                   </td>
                   <td className="px-3 py-2 border-b">
                     {status === "exact" && (
-                      <Badge variant="default" className="bg-green-500/20 text-green-700 border-green-500/30">
+                      <Badge variant="default" className="bg-ok/20 text-ok border-ok/30">
                         <Sparkles className="h-3 w-3 mr-1" />
                         Exact match
                       </Badge>
@@ -260,7 +260,7 @@ export default function FieldMapper({
                       </Badge>
                     )}
                     {status === "unmapped" && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-500/30">
+                      <Badge variant="outline" className="text-warn border-warn/30">
                         Unmapped
                       </Badge>
                     )}
@@ -279,7 +279,7 @@ export default function FieldMapper({
 
       {/* Warnings */}
       {mappings.some(m => !m.targetColumn && !m.ignored) && (
-        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-700">
+        <div className="p-3 rounded-lg bg-warn/10 border border-warn/30 text-sm text-warn">
           Some columns are not mapped. They will be skipped during import.
         </div>
       )}

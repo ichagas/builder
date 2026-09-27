@@ -39,10 +39,10 @@ export function GitHubConnectBanner() {
 
   if (connected) {
     return (
-      <Card className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30">
+      <Card className="border-ok-soft bg-ok-soft dark:border-ok dark:bg-ok/30">
         <CardContent className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
-            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <CheckCircle className="h-4 w-4 text-ok" />
             <span className="text-sm font-medium">
               Connected to GitHub as <strong>{githubUsername}</strong>
             </span>
@@ -75,10 +75,10 @@ export function GitHubConnectBanner() {
   }
 
   return (
-    <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+    <Card className="border-warn-soft bg-warn-soft dark:border-warn dark:bg-warn/30">
       <CardContent className="flex items-center justify-between py-3">
         <div className="flex items-center gap-3">
-          <GitBranch className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <GitBranch className="h-4 w-4 text-warn" />
           <div>
             <span className="text-sm font-medium">Connect your GitHub account</span>
             <p className="text-xs text-muted-foreground">

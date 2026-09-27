@@ -16,7 +16,11 @@ jest.mock("../../../utils/githubAppAuth", () => ({
 jest.mock("jsonwebtoken", () => ({ sign: jest.fn(() => "fake-app-jwt") }));
 
 import { isGitHubAppConfigured, getInstallationToken } from "../../../utils/githubAppAuth";
-import { getGitHubAppStatus } from "../../../services/integrations/providers/githubApp";
+import {
+  getGitHubAppStatus,
+  isValidGitHubLogin,
+  verifyGitHubOwnersHaveRepositories,
+} from "../../../services/integrations/providers/githubApp";
 
 const mockIsConfigured = isGitHubAppConfigured as jest.Mock;
 const mockGetToken = getInstallationToken as jest.Mock;
@@ -83,5 +87,109 @@ describe("getGitHubAppStatus", () => {
 
     expect(status.ok).toBe(false);
     expect(status.error).toContain("bad private key");
+  });
+});
+
+describe("isValidGitHubLogin", () => {
+  it.each(["goa", "goa-standards", "a", "a1", "GOA-Standards", "x".repeat(39)])(
+    "accepts %s",
+    (login) => {
+      expect(isValidGitHubLogin(login)).toBe(true);
+    }
+  );
+
+  it.each([
+    "",
+    "-leading",
+    "trailing-",
+    "goa--standards",
+    "goa_standards",
+    "goa standards",
+    "x".repeat(40),
+    "goa/standards",
+    null,
+    undefined,
+    42,
+  ])("rejects %p", (login) => {
+    expect(isValidGitHubLogin(login)).toBe(false);
+  });
+});
+
+describe("verifyGitHubOwnersHaveRepositories", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.resetAllMocks();
+  });
+
+  it("reports every owner as not-ok, without a network call, when the App isn't configured", async () => {
+    mockIsConfigured.mockReturnValue(false);
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const results = await verifyGitHubOwnersHaveRepositories(["goa", "goa-labs"]);
+
+    expect(results).toEqual([
+      { owner: "goa", ok: false, error: "GitHub App is not configured" },
+      { owner: "goa-labs", ok: false, error: "GitHub App is not configured" },
+    ]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("marks an owner ok only when a visible repository's owner login matches (case-insensitively)", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockResolvedValue("installation-token");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositories: [{ owner: { login: "GOA-Standards" } }, { owner: { login: "other-org" } }],
+      }),
+    }) as unknown as typeof fetch;
+
+    const results = await verifyGitHubOwnersHaveRepositories(["goa-standards", "goa-labs"]);
+
+    expect(results).toEqual([
+      { owner: "goa-standards", ok: true, error: undefined },
+      { owner: "goa-labs", ok: false, error: "No repositories visible to the installation under this owner" },
+    ]);
+  });
+
+  it("reports every owner as failing when GitHub returns a non-2xx status", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockResolvedValue("installation-token");
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 }) as unknown as typeof fetch;
+
+    const results = await verifyGitHubOwnersHaveRepositories(["goa"]);
+
+    expect(results).toEqual([{ owner: "goa", ok: false, error: "GitHub API returned 500" }]);
+  });
+
+  it("reports every owner as failing when the token exchange throws", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockRejectedValue(new Error("bad private key"));
+
+    const results = await verifyGitHubOwnersHaveRepositories(["goa"]);
+
+    expect(results).toEqual([{ owner: "goa", ok: false, error: "bad private key" }]);
+  });
+
+  it("paginates until a short page, across multiple owners", async () => {
+    mockIsConfigured.mockReturnValue(true);
+    mockGetToken.mockResolvedValue("installation-token");
+    const fullPage = Array.from({ length: 100 }, () => ({ owner: { login: "goa" } }));
+    const secondPage = [{ owner: { login: "goa-labs" } }];
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ repositories: fullPage }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ repositories: secondPage }) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const results = await verifyGitHubOwnersHaveRepositories(["goa", "goa-labs"]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(results).toEqual([
+      { owner: "goa", ok: true, error: undefined },
+      { owner: "goa-labs", ok: true, error: undefined },
+    ]);
   });
 });

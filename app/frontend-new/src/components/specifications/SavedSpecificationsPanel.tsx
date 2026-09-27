@@ -208,7 +208,7 @@ export function SavedSpecificationsPanel({
                       key={latestSpec.agent_id}
                       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                         isViewingOldVersion 
-                          ? "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20" 
+                          ? "bg-warn/10 border-warn/30 hover:bg-warn/20" 
                           : "bg-card hover:bg-accent/50"
                       }`}
                     >
@@ -228,7 +228,7 @@ export function SavedSpecificationsPanel({
                             onSetAsLatest={onSetAsLatest}
                           />
                           {isViewingOldVersion && (
-                            <Badge variant="outline" className="text-amber-600 border-amber-500/50 bg-amber-500/10 text-xs">
+                            <Badge variant="outline" className="text-warn border-warn/50 bg-warn/10 text-xs">
                               <AlertTriangle className="h-3 w-3 mr-1" />
                               Not Latest
                             </Badge>
@@ -249,7 +249,7 @@ export function SavedSpecificationsPanel({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 text-xs gap-1 text-amber-600 hover:text-amber-700"
+                            className="h-8 text-xs gap-1 text-warn hover:text-warn"
                             onClick={() => onReturnToLatest(latestSpec.agent_id)}
                             title="Return to latest version"
                           >

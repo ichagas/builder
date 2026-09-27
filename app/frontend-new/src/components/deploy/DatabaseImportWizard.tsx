@@ -1050,22 +1050,22 @@ export default function DatabaseImportWizard({
                 <div className="flex items-center gap-4 p-3 border rounded-lg bg-muted/30 shrink-0 mb-4">
                   <span className="text-sm font-medium">Import Summary:</span>
                   {matchSummary.newTables > 0 && (
-                    <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-600 dark:text-green-400">
+                    <span className="text-xs px-2 py-1 rounded bg-ok/20 text-ok">
                       {matchSummary.newTables} new
                     </span>
                   )}
                   {matchSummary.insertTables > 0 && (
-                    <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                    <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary">
                       {matchSummary.insertTables} insert
                     </span>
                   )}
                   {matchSummary.augmentTables > 0 && (
-                    <span className="text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400">
+                    <span className="text-xs px-2 py-1 rounded bg-define/20 text-define">
                       {matchSummary.augmentTables} augment
                     </span>
                   )}
                   {matchSummary.conflictTables > 0 && (
-                    <span className="text-xs px-2 py-1 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <span className="text-xs px-2 py-1 rounded bg-warn/20 text-warn">
                       {matchSummary.conflictTables} conflicts
                     </span>
                   )}
@@ -1081,7 +1081,7 @@ export default function DatabaseImportWizard({
                     <TabsTrigger value="conflicts">
                       Matching & Conflicts
                       {tableMatches.some(m => m.conflicts.length > 0) && (
-                        <span className="ml-1 text-amber-500">•</span>
+                        <span className="ml-1 text-warn">•</span>
                       )}
                     </TabsTrigger>
                   </TabsList>

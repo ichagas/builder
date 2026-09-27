@@ -800,7 +800,7 @@ function CategoryNavItem({ category, standards, selectedId, expandedIds, onSelec
             }`}
           />
         )}
-        <FolderTree className="h-4 w-4 text-amber-500 shrink-0" />
+        <FolderTree className="h-4 w-4 text-warn shrink-0" />
         <span className="truncate font-medium">{category.name}</span>
       </button>
       {isExpanded && hasChildren && (
@@ -814,7 +814,7 @@ function CategoryNavItem({ category, standards, selectedId, expandedIds, onSelec
               expandedIds={expandedIds}
               onSelect={onSelect}
               onToggle={onToggle}
-              icon={<FileText className="h-4 w-4 text-blue-500 shrink-0" />}
+              icon={<FileText className="h-4 w-4 text-primary shrink-0" />}
             />
           ))}
         </div>
@@ -944,7 +944,7 @@ function NavItem({ item, level, selectedId, expandedIds, onSelect, onToggle, ico
               expandedIds={expandedIds}
               onSelect={onSelect}
               onToggle={onToggle}
-              icon={<FileText className="h-4 w-4 text-blue-500 shrink-0" />}
+              icon={<FileText className="h-4 w-4 text-primary shrink-0" />}
             />
           ))}
         </div>
@@ -1045,7 +1045,7 @@ function MobileCategoryNavItem({ category, standards, selectedId, expandedIds, o
             }`}
           />
         )}
-        <FolderTree className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+        <FolderTree className="h-4 w-4 text-warn shrink-0 mt-0.5" />
         <span className="font-medium break-words">{category.name}</span>
       </button>
       {isExpanded && hasChildren && (
@@ -1059,7 +1059,7 @@ function MobileCategoryNavItem({ category, standards, selectedId, expandedIds, o
               expandedIds={expandedIds}
               onSelect={onSelect}
               onToggle={onToggle}
-              icon={<FileText className="h-4 w-4 text-blue-500 shrink-0" />}
+              icon={<FileText className="h-4 w-4 text-primary shrink-0" />}
             />
           ))}
         </div>
@@ -1122,7 +1122,7 @@ function MobileNavItem({ item, level, selectedId, expandedIds, onSelect, onToggl
               expandedIds={expandedIds}
               onSelect={onSelect}
               onToggle={onToggle}
-              icon={<FileText className="h-4 w-4 text-blue-500 shrink-0" />}
+              icon={<FileText className="h-4 w-4 text-primary shrink-0" />}
             />
           ))}
         </div>

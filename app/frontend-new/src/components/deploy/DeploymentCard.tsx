@@ -290,7 +290,7 @@ const DeploymentCard = ({ deployment, shareToken, onUpdate, onSelect, isSelected
                   title="Copy URL"
                 >
                   {copiedUrl ? (
-                    <Check className="h-3 w-3 text-green-500" />
+                    <Check className="h-3 w-3 text-ok" />
                   ) : (
                     <Copy className="h-3 w-3" />
                   )}
@@ -450,7 +450,7 @@ const DeploymentCard = ({ deployment, shareToken, onUpdate, onSelect, isSelected
                   size="sm" 
                   onClick={() => handleDownloadPackage("env-only")}
                   disabled={isActionLoading === "download-env"}
-                  className="text-xs bg-blue-600 hover:bg-blue-700"
+                  className="text-xs bg-primary hover:bg-primary"
                   title="Download .run config file only (use with pronghorn-runner git clone)"
                 >
                   {isActionLoading === "download-env" ? (

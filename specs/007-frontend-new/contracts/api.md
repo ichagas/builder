@@ -55,24 +55,88 @@ Token access: every route accepts `?token=` and authorizes through `authorize_pr
 | **POST** | **`/mesh/runs`** | **Ingest from the generated CI (GitHub Actions or Azure Pipelines) on PRs to the default branch. HMAC header `X-Pronghorn-Signature`. No user auth.** |
 | POST | `/mesh/runs/:runId/issue` | Open an issue (GitHub) or work item (Azure DevOps) for new findings (policy `issue`, D-15) |
 
+`POST /mesh/runs`'s `repository` is the repository's canonical
+`application_repositories.full_name` (data-model.md §2): `"<owner>/<repo>"`
+for GitHub, `"<adoOrg>/<project>/<repo>"` for Azure Repos. The API matches it
+**case-insensitively** (fix round 3: GitHub and Azure DevOps names are
+case-insensitive; `lower(full_name)` is unique, migration 021) and does no
+other normalization (it can't: a bare Azure repo name doesn't identify the
+organization or project); the mesh CI templates are
+responsible for sending the canonical form (`templates/mesh.yml` builds the
+Azure one from `System.CollectionUri`/`System.TeamProject`/
+`Build.Repository.Name` via `scripts/lib/repository.js`). A value that is
+neither shape gets the same generic 401 as an unknown repository.
+
 ### Admin: Integrations (D-18), organization admins only
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/admin/integrations` | GitHub App and Azure DevOps connections with status |
-| POST | `/admin/integrations` | Add an Azure DevOps connection (service connection or PAT). The secret goes to Key Vault |
-| POST | `/admin/integrations/:id/test` | Test the connection |
+| GET | `/admin/integrations` | Platform GitHub App status (`githubApp`) + this organization's `github_app` connections (`githubAppConnections`) + Azure DevOps connections (`azureDevOps`) with status |
+| POST | `/admin/integrations` | `{ provider: "github_app", displayName, owners: string[] }` to configure the organization's GitHub import scope (see below; 409 if the organization already has one — use PATCH; enforced by a partial unique index, migration 020, so concurrent creates also 409), or (default/omitted `provider`) add an Azure DevOps connection (service connection or PAT — the secret goes to Key Vault) |
+| PATCH | `/admin/integrations/:id` | Update `displayName` and/or (a `github_app` connection only) `owners` |
+| POST | `/admin/integrations/:id/test` | Test the connection: for `github_app`, confirms the installation can see at least one repository under every configured owner; for Azure DevOps, the existing org-URL/credential check |
 | DELETE | `/admin/integrations/:id` | Remove it (blocked while repositories use it) |
+
+A `github_app` connection holds no secret — the platform's single GitHub App
+installation's credentials are env/Key Vault configuration, not something an
+org admin provides here. Its `scope.owners` (1-50 GitHub user/organization
+logins, validated against GitHub's login syntax and lowercased) is what
+`GET /onboarding/github/repos` (B3 section, below) is scoped to: an
+organization with no `github_app` connection configured sees an empty
+onboarding import list, never every repository the shared installation can
+see.
 
 ### B3: Onboarding
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/onboarding/runs` | Create a draft (team, app name) |
 | GET | `/onboarding/runs/:id` | Wizard state |
-| GET | `/onboarding/github/repos?org=&q=` | Import list (GitHub App installation) |
-| PUT | `/onboarding/runs/:id/repositories` | Selected repos |
+| GET | `/onboarding/github/repos?teamId=&q=` | Import list (GitHub App installation, scoped to `teamId`'s organization — see below) |
+| GET | `/onboarding/azure/repos?teamId=&connectionId=&q=` | Import list (Azure Repos, via the organization's configured connection) |
+| PUT | `/onboarding/runs/:id/repositories` | Selected repos: `{ repositories: [{ fullName, selected? }] }`, each `fullName` a canonical full_name (`owner/repo` or `adoOrg/project/repo`, as returned by the import lists) — anything else is 422; a repository outside the organization's scope (see below) is 403 and nothing is stored |
 | POST | `/onboarding/runs/:id/start` | Start the sandbox job (Container Apps Job) |
 | GET | `/onboarding/runs/:id/output` | Review, generated files, baselines per repo |
 | POST | `/onboarding/runs/:id/pull-requests` | Open one PR per repo: GitHub (GitHub App) or Azure Repos, with the generated CI for that platform |
 | POST | `/onboarding/runs/:id/cancel` | Cancel |
+
+`GET /onboarding/github/repos` takes `teamId`, not a client-supplied `org`
+(fix round 1, item 6): the organization is derived from the team
+server-side, and only repositories owned by a GitHub login in that
+organization's configured `github_app` integration connection scope
+(`integration_connections.scope.owner`/`.owners`) are returned — an
+organization with no such connection configured gets an empty list, never
+every repository the platform's single, shared GitHub App installation can
+see. `GET /onboarding/azure/repos` is scoped the same way through
+`connectionId` (defaulting to the organization's sole Azure DevOps
+connection), which is itself always resolved within the caller's own
+organization (WP-BE8).
+
+**Repository scope (fix round 3, security).** The GitHub App installation is
+shared by every organization, so being reachable by it is not authorization.
+`PUT .../repositories` only accepts a GitHub repository whose owner is one of
+the organization's `github_app` connection `scope.owners` (case-insensitive;
+no connection → every GitHub repository is refused), and an Azure Repos
+repository whose `adoOrg` is the Azure DevOps organization of the connection
+PR opening will use (the run's `connectionId`, else the organization's
+default `azure_devops` connection). Anything else is **403** naming the
+repository and the reason. The same check runs again at `POST
+.../pull-requests`, before a report secret is minted or any installation
+token/PAT is used: a repository that has since left the scope gets no PR and
+the warning `"<full_name>: outside this organization's configured repository
+scope"`.
+
+The run object returned by every B3 endpoint above carries a `warnings:
+string[]` field (fix round 1, item 10): one generic message per repository
+whose most recent `pull-requests` confirm could not open a PR for it (no
+generated files, a disallowed generated path, or an upstream GitHub/Azure
+DevOps failure — never the raw upstream error text, which is logged
+server-side only). Empty once every selected repository has an open PR.
+It also carries a **blocked** warning (`"<full_name>: already onboarded to
+another application; not registered under this one"`) for a repository whose
+PR opened but which is already registered (`application_repositories`) to a
+different application — whether found up front or lost to a concurrent
+confirm (the guarded upsert `RETURNING` no row, fix round 3). A blocked
+repository is never reassigned; if every repository in the call is blocked,
+no application is created for the run. The confirm itself still succeeds
+(`prs_open`); the warning is the blocked state.
 
 Realtime: `onboarding-{runId}` streams `{type:"log"|"step"|"done", ...}`.

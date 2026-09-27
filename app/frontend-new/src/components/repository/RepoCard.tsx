@@ -73,7 +73,7 @@ export function RepoCard({ repo, shareToken, onDelete, onPrimeChange }: RepoCard
           </div>
           <div className="flex gap-2">
             {repo.is_prime && (
-              <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white">
+              <Badge variant="default" className="bg-warn hover:bg-warn text-white">
                 <Crown className="h-3 w-3 mr-1" />
                 Prime
               </Badge>

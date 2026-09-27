@@ -27,17 +27,25 @@ export default tseslint.config(
     },
   },
   {
-    // T018: token lint. Flags raw Tailwind palette color classes and hex
-    // color literals everywhere except the design token layer itself
+    // T018/T031: token lint. Flags raw Tailwind palette color classes and
+    // hex color literals everywhere except the design token layer itself
     // (src/design/**), where such literals are expected/authoritative.
-    // WARN mode now; T031 switches this to "error" once the codemod lands.
+    // ERROR mode (T031): the colors-to-tokens codemod (T030/T031) has
+    // mapped every raw class in src/components/** and src/pages/**, the
+    // rule's own object-literal-value/template-literal-expression blind
+    // spots are closed, and every remaining raw hex is either tokenized
+    // (src/design/tokens.css's --ide-* group) or carries an inline
+    // eslint-disable with a reason (Canvas 2D/D3 rendering contexts that
+    // can't resolve CSS custom properties, PNG/PDF export snapshots that
+    // must stay a fixed color regardless of app theme, PowerPoint's own
+    // OOXML theme colors, and a Recharts attribute-selector false positive).
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/design/**"],
     plugins: {
       "token-lint": tokenLint,
     },
     rules: {
-      "token-lint/no-raw-tailwind-colors": "warn",
+      "token-lint/no-raw-tailwind-colors": "error",
     },
   },
 );

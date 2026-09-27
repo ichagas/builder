@@ -201,7 +201,7 @@ export function TableStructureViewer({
                       onClick={() => handleCopy(col.name, `col-${col.name}`)}
                     >
                       {copiedItem === `col-${col.name}` ? (
-                        <Check className="h-3 w-3 text-green-500" />
+                        <Check className="h-3 w-3 text-ok" />
                       ) : (
                         <Copy className="h-3 w-3" />
                       )}
@@ -243,7 +243,7 @@ export function TableStructureViewer({
                           onClick={() => handleCopy(idx.definition, `idx-${idx.name}`)}
                         >
                           {copiedItem === `idx-${idx.name}` ? (
-                            <Check className="h-3 w-3 text-green-500" />
+                            <Check className="h-3 w-3 text-ok" />
                           ) : (
                             <Copy className="h-3 w-3" />
                           )}

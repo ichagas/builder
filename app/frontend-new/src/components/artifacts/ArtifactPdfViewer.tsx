@@ -364,7 +364,7 @@ export function ArtifactPdfViewer({
         <>
           {/* File header */}
           <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30 shrink-0">
-            <FileText className="h-5 w-5 text-red-500 shrink-0" />
+            <FileText className="h-5 w-5 text-bad shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{pdfData.filename}</p>
               <p className="text-xs text-muted-foreground">
@@ -572,7 +572,7 @@ export function ArtifactPdfViewer({
                         isSelected
                           ? "border-primary ring-2 ring-primary/20"
                           : "border-transparent hover:border-muted-foreground/30",
-                        previewPageIndex === pageIndex && "ring-2 ring-blue-500"
+                        previewPageIndex === pageIndex && "ring-2 ring-primary"
                       )}
                       onClick={() => setPreviewPageIndex(pageIndex)}
                     >

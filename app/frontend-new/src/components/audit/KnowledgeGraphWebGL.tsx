@@ -1,3 +1,12 @@
+/* eslint-disable token-lint/no-raw-tailwind-colors -- this file's node/edge-type
+ * colors are Canvas 2D fillStyle/strokeStyle values consumed by
+ * react-force-graph-2d's paint callbacks and raw ctx.* calls. The Canvas 2D
+ * API does not resolve CSS custom properties (var(--x) is not a valid
+ * fillStyle; an invalid fillStyle is silently ignored, not an error), so
+ * these must stay literal hex rather than pointing at a design token
+ * (T031, WP-F2b). Kept in sync with KnowledgeGraph.tsx's identical palette
+ * (the D3/SVG fallback renderer for the same graph) so both renderers look
+ * the same when toggled. */
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
 import * as d3 from "d3";

@@ -112,7 +112,7 @@ export function ExternalDatabaseCard({
   const getStatusBadge = () => {
     const statusColors: Record<string, string> = {
       untested: "bg-muted text-muted-foreground",
-      connected: "bg-green-500/20 text-green-400",
+      connected: "bg-ok/20 text-ok",
       failed: "bg-destructive/20 text-destructive",
     };
 
@@ -298,7 +298,7 @@ export function ExternalDatabaseCard({
                   ) : (
                     <>
                       {connection.status === "connected" ? (
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        <CheckCircle className="h-4 w-4 mr-2 text-ok" />
                       ) : (
                         <RefreshCw className="h-4 w-4 mr-2" />
                       )}

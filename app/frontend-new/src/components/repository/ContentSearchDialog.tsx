@@ -61,25 +61,25 @@ export function ContentSearchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] bg-[#1e1e1e] border-[#3e3e42]">
+      <DialogContent className="max-w-3xl max-h-[80vh] bg-[var(--ide-bg)] border-[var(--ide-border)]">
         <DialogHeader>
-          <DialogTitle className="text-[#cccccc]">Search in Files</DialogTitle>
+          <DialogTitle className="text-[var(--ide-ink)]">Search in Files</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[#858585]" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--ide-muted)]" />
               <Input
                 placeholder="Search for content..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-8 bg-[#3c3c3c] border-[#3e3e42] text-[#cccccc] placeholder:text-[#858585]"
+                className="pl-8 bg-[var(--ide-input)] border-[var(--ide-border)] text-[var(--ide-ink)] placeholder:text-[var(--ide-muted)]"
               />
             </div>
             <Button
               onClick={handleSearch}
-              className="bg-[#0e639c] hover:bg-[#1177bb] text-white"
+              className="bg-[var(--ide-accent-active)] hover:bg-[var(--ide-accent-hover)] text-white"
             >
               Search
             </Button>
@@ -87,12 +87,12 @@ export function ContentSearchDialog({
 
           <ScrollArea className="h-[50vh]">
             {results.length === 0 && searchQuery && (
-              <div className="text-center text-[#858585] py-8">
+              <div className="text-center text-[var(--ide-muted)] py-8">
                 No results found
               </div>
             )}
             {results.length === 0 && !searchQuery && (
-              <div className="text-center text-[#858585] py-8">
+              <div className="text-center text-[var(--ide-muted)] py-8">
                 Enter a search query to find content in files
               </div>
             )}
@@ -100,20 +100,20 @@ export function ContentSearchDialog({
               {results.map((result) => (
                 <div
                   key={result.path}
-                  className="border border-[#3e3e42] rounded bg-[#252526]"
+                  className="border border-[var(--ide-border)] rounded bg-[var(--ide-panel)]"
                 >
                   <div
-                    className="flex items-center gap-2 px-3 py-2 border-b border-[#3e3e42] cursor-pointer hover:bg-[#2a2d2e]"
+                    className="flex items-center gap-2 px-3 py-2 border-b border-[var(--ide-border)] cursor-pointer hover:bg-[var(--ide-hover)]"
                     onClick={() => {
                       onFileSelect(result.path);
                       onOpenChange(false);
                     }}
                   >
-                    <File className="h-4 w-4 text-[#858585]" />
-                    <span className="text-sm text-[#cccccc] font-medium">
+                    <File className="h-4 w-4 text-[var(--ide-muted)]" />
+                    <span className="text-sm text-[var(--ide-ink)] font-medium">
                       {result.path}
                     </span>
-                    <span className="ml-auto text-xs text-[#858585]">
+                    <span className="ml-auto text-xs text-[var(--ide-muted)]">
                       {result.matches.length} match{result.matches.length > 1 ? "es" : ""}
                     </span>
                   </div>
@@ -121,13 +121,13 @@ export function ContentSearchDialog({
                     {result.matches.map((match, idx) => (
                       <div
                         key={idx}
-                        className="text-xs text-[#cccccc] font-mono px-2 py-1 hover:bg-[#2a2d2e] rounded cursor-pointer"
+                        className="text-xs text-[var(--ide-ink)] font-mono px-2 py-1 hover:bg-[var(--ide-hover)] rounded cursor-pointer"
                         onClick={() => {
                           onFileSelect(result.path);
                           onOpenChange(false);
                         }}
                       >
-                        <span className="text-[#858585]">{match.line}:</span>{" "}
+                        <span className="text-[var(--ide-muted)]">{match.line}:</span>{" "}
                         <span>{match.text}</span>
                       </div>
                     ))}

@@ -164,7 +164,10 @@ router.get("/:projectId/release-checks", async (req: Request, res: Response) => 
   const token = tokenFromQuery(req.query.token);
   await authorizeProject(projectId, req.user?.id, token);
 
-  const result = await releaseService.releaseChecks(projectId);
+  // Optional: check a specific version (e.g. a planned/hotfix version not
+  // yet the earliest open one) rather than the default next-open-version.
+  const versionId = typeof req.query.versionId === "string" ? req.query.versionId : undefined;
+  const result = await releaseService.releaseChecks(projectId, versionId);
   res.json(result);
 });
 

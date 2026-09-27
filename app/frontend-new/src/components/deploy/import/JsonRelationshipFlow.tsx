@@ -46,7 +46,7 @@ const TableNode = ({ data }: { data: { label: string; columns: string[]; isRoot:
       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
         <TableProperties className="h-4 w-4 text-primary" />
         <span className="font-semibold text-sm">{data.label}</span>
-        {data.isRoot && <Key className="h-3 w-3 text-amber-500" />}
+        {data.isRoot && <Key className="h-3 w-3 text-warn" />}
       </div>
       <div className="space-y-1">
         {data.columns.slice(0, 6).map((col, i) => (
