@@ -189,9 +189,9 @@ export const JsonRelationshipFlow: React.FC<JsonRelationshipFlowProps> = ({
         labelBgStyle: { fill: "hsl(var(--background))" },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: "hsl(var(--primary))",
+          color: "var(--primary)",
         },
-        style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
+        style: { stroke: "var(--primary)", strokeWidth: 2 },
       });
     });
     
@@ -210,9 +210,9 @@ export const JsonRelationshipFlow: React.FC<JsonRelationshipFlowProps> = ({
           labelBgStyle: { fill: "hsl(var(--background))" },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "hsl(var(--primary))",
+            color: "var(--primary)",
           },
-          style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
+          style: { stroke: "var(--primary)", strokeWidth: 2 },
         });
       }
     });
@@ -253,7 +253,7 @@ export const JsonRelationshipFlow: React.FC<JsonRelationshipFlowProps> = ({
         elementsSelectable={true}
         attributionPosition="bottom-left"
       >
-        <Background color="hsl(var(--muted))" gap={16} />
+        <Background color="var(--surface-2)" gap={16} />
         <Controls className="bg-background border rounded" />
       </ReactFlow>
     </div>

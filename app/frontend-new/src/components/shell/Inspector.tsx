@@ -64,7 +64,7 @@ export function Inspector({ title, onClose, children, detent = "half", onDetentC
               type="button"
               onClick={() => onDetentChange?.(NEXT_DETENT[detent])}
               aria-label={t("shell.inspector.resize", { detent })}
-              className="flex h-8 w-8 items-center justify-center rounded-xs text-muted"
+              className="flex h-8 w-8 items-center justify-center rounded-xs text-muted-foreground"
             >
               <ChevronDown aria-hidden="true" className={cn("h-4 w-4 transition-transform", detent === "full" && "rotate-180")} />
             </button>
@@ -83,7 +83,7 @@ function InspectorHeader({ title, onClose, detentButton }: { title: string; onCl
       <h2 className="text-sm font-semibold text-ink">{title}</h2>
       <div className="flex items-center gap-1">
         {detentButton}
-        <button type="button" onClick={onClose} aria-label={t("shell.inspector.close")} className="flex h-8 w-8 items-center justify-center rounded-xs text-muted">
+        <button type="button" onClick={onClose} aria-label={t("shell.inspector.close")} className="flex h-8 w-8 items-center justify-center rounded-xs text-muted-foreground">
           <X aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>

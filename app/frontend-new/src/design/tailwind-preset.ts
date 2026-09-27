@@ -14,7 +14,7 @@ import type { Config } from "tailwindcss";
  *   bg-mode-building|released|connected
  *   bg-rail-bg, text-rail-ink, border-rail-line, bg-rail-hover, bg-rail-active, text-rail-muted
  *   bg-gbar (gbar-bg), border-gbar-line, text-gbar-ink
- *   bg-surface, bg-surface-2, border-line, border-line-2, text-ink, text-muted
+ *   bg-surface, bg-surface-2, border-line, border-line-2, text-ink, text-muted-foreground
  *   bg-chart-1 .. bg-chart-6
  *
  * Every color is defined with the `rgb(var(--x-rgb) / <alpha-value>)` pattern
@@ -51,7 +51,16 @@ export const designSystemPreset = {
           2: themeColor("--line-2-rgb"),
         },
         ink: themeColor("--ink-rgb"),
-        muted: themeColor("--muted-rgb"),
+        // `muted` (DEFAULT/foreground) is defined in tailwind.config.ts's own
+        // `extend.colors`, not here: shadcn's `bg-muted`/`text-muted-foreground`
+        // need the DEFAULT/foreground shape and, since a config's own `extend`
+        // wins over a preset's, a bare `muted` key here would be dead weight —
+        // worse, it previously caused exactly this defect (T020 follow-up,
+        // WP-F2c): this preset pointed the bare `muted` utility straight at
+        // `--muted-rgb` (Blueprint's muted *ink*), which never won because
+        // tailwind.config.ts's structured `muted: {DEFAULT, foreground}`
+        // (object) always overrides a preset's scalar value for the same key.
+        // See contracts/design-system.md §1.1 and tailwind.config.ts.
         focus: themeColor("--focus-rgb"),
 
         // Status

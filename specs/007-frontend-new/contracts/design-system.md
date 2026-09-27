@@ -55,6 +55,10 @@ The fork keeps shadcn's HSL variables in `src/index.css`. They are **re-pointed*
 | `--sidebar-*` | the rail tokens (`--rail-bg`, `--rail-ink`…) |
 | `--radius` | `4px` |
 
+**Collision rule (T020 follow-up, WP-F2c):** `tokens.css` (Blueprint) and `index.css` (shadcn) must never declare the *same* CSS custom property name. `--muted`, `--primary`, `--primary-foreground` and `--radius` used to be defined in both files — `tokens.css`'s hex/px values (the source of truth) *and* `index.css`'s re-pointed HSL triplet for the same name — and since `index.css` loads after `tokens.css`, the HSL triplet silently won everywhere, including `var(--x)` used as a raw CSS color (e.g. `tokens.css`'s own `--chart-1: var(--primary)`, which resolved to a bare, invalid "H S% L%" string). The fix: those four are defined exactly once, in `tokens.css` only; `index.css` no longer redeclares them, and `tailwind.config.ts`'s `muted`/`primary` color entries read the Blueprint `-rgb` tokens directly (`rgb(var(--surface-2-rgb) / <alpha-value>)` etc.) instead of `hsl(var(--muted))`/`hsl(var(--primary))`. `src/design/__tests__/no-token-collision.test.ts` guards against a regression (no property name defined in both files; the compiled Tailwind output for `text-muted-foreground`/`bg-muted`/`bg-primary`/`text-primary-foreground` uses the rgb tokens, not the old HSL vars; no bare `text-muted` class in `src/`).
+
+Utility classes, resolved after the fix: `bg-muted` → `--surface-2` (a *background* tone); `text-muted-foreground` → `--muted` (Blueprint's muted *ink*) — use `text-muted-foreground` for muted body/caption text, never the bare `text-muted` class (it renders the muted *background* color as text, ~1:1 contrast). `bg-primary`/`text-primary-foreground` → `--primary`/`--primary-foreground`.
+
 Codemod mapping for hard-coded Tailwind colors (T031). Unmapped cases are listed for manual review:
 
 | Found | Replace with |

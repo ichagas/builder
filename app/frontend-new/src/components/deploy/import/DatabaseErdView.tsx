@@ -380,9 +380,9 @@ export const DatabaseErdView: React.FC<DatabaseErdViewProps> = ({
         labelBgStyle: { fill: "hsl(var(--background))" },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: "hsl(var(--primary))",
+          color: "var(--primary)",
         },
-        style: { stroke: "hsl(var(--primary))", strokeWidth: 1.5 },
+        style: { stroke: "var(--primary)", strokeWidth: 1.5 },
       });
     });
     
@@ -399,7 +399,7 @@ export const DatabaseErdView: React.FC<DatabaseErdViewProps> = ({
           labelStyle: { fontSize: 9, fill: match.status === "conflict" ? "hsl(var(--destructive))" : "hsl(var(--muted-foreground))" },
           labelBgStyle: { fill: "hsl(var(--background))" },
           style: { 
-            stroke: match.status === "conflict" ? "hsl(var(--destructive))" : "hsl(var(--primary))", 
+            stroke: match.status === "conflict" ? "hsl(var(--destructive))" : "var(--primary)", 
             strokeWidth: 1.5,
             strokeDasharray: "5,5"
           },
@@ -534,7 +534,7 @@ export const DatabaseErdView: React.FC<DatabaseErdViewProps> = ({
         elementsSelectable={true}
         attributionPosition="bottom-left"
       >
-        <Background color="hsl(var(--muted))" gap={16} />
+        <Background color="var(--surface-2)" gap={16} />
         <Controls className="bg-background border rounded" />
       </ReactFlow>
     </div>

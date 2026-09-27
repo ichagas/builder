@@ -35,7 +35,7 @@ export function FilterChips({ options, paramKey = "f", defaultValue = "all", cla
             onClick={() => setActive(option.id)}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
-              isActive ? "border-primary bg-primary-soft text-primary" : "border-line bg-surface text-muted",
+              isActive ? "border-primary bg-primary-soft text-primary" : "border-line bg-surface text-muted-foreground",
             )}
           >
             {option.label}

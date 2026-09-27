@@ -71,7 +71,7 @@ export function CommandPalette({ open, onOpenChange, items }: CommandPaletteProp
               {groupItems.map((item) => (
                 <CommandItem key={item.id} value={`${item.label} ${item.hint ?? ""}`} onSelect={() => select(item)}>
                   <span className="flex-1">{item.label}</span>
-                  {item.hint ? <span className="text-xs text-muted">{item.hint}</span> : null}
+                  {item.hint ? <span className="text-xs text-muted-foreground">{item.hint}</span> : null}
                 </CommandItem>
               ))}
             </CommandGroup>

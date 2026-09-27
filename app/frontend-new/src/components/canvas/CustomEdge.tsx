@@ -76,7 +76,7 @@ export const CustomEdge = memo(({
   }
 
   // Extract stroke color and width from style prop, with defaults
-  const strokeColor = (style?.stroke as string) || "hsl(var(--primary))";
+  const strokeColor = (style?.stroke as string) || "var(--primary)";
   const strokeWidth = (style?.strokeWidth as number) || 2;
 
   return (

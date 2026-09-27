@@ -23,10 +23,10 @@ export default function Privacy() {
               <Link to="/terms" className="public-brand underline decoration-1 underline-offset-2 text-sm font-medium hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-brand)]">(Alpha)</Link>
             </Link>
             <div className="flex items-center gap-4 text-sm">
-              <Link to="/terms" className="public-text-muted hover:text-[var(--public-brand)] transition-colors underline decoration-1 underline-offset-2">
+              <Link to="/terms" className="public-text-muted-foreground hover:text-[var(--public-brand)] transition-colors underline decoration-1 underline-offset-2">
                 Terms
               </Link>
-              <Link to="/license" className="public-text-muted hover:text-[var(--public-brand)] transition-colors underline decoration-1 underline-offset-2">
+              <Link to="/license" className="public-text-muted-foreground hover:text-[var(--public-brand)] transition-colors underline decoration-1 underline-offset-2">
                 License
               </Link>
               <ThemeToggle />
@@ -37,12 +37,12 @@ export default function Privacy() {
 
       {/* Main Content */}
       <main role="main" id="main-content" className="container mx-auto px-6 pt-32 pb-16 max-w-4xl">
-        <p className="text-sm public-text-muted uppercase tracking-wider mb-2">Your Data Matters</p>
+        <p className="text-sm public-text-muted-foreground uppercase tracking-wider mb-2">Your Data Matters</p>
         <h1 className="text-4xl font-medium tracking-tight mb-4 public-heading">Privacy Policy</h1>
-        <p className="text-lg public-text-muted mb-8">
+        <p className="text-lg public-text-muted-foreground mb-8">
           We believe in transparency and protecting your privacy. Learn how we collect, use, and safeguard your information.
         </p>
-        <p className="text-sm public-text-muted mb-8">Last updated: December 10, 2025</p>
+        <p className="text-sm public-text-muted-foreground mb-8">Last updated: December 10, 2025</p>
 
         <div className="prose max-w-none space-y-6 public-prose">
 
@@ -199,12 +199,12 @@ export default function Privacy() {
             <PronghornLogo className="h-6 w-6 rounded-lg" />
             <span className="text-sm font-semibold tracking-tight public-heading">Pronghorn</span>
           </Link>
-          <nav role="navigation" aria-label="Footer navigation" className="flex items-center gap-6 text-sm public-text-muted">
+          <nav role="navigation" aria-label="Footer navigation" className="flex items-center gap-6 text-sm public-text-muted-foreground">
             <Link to="/terms" className="hover:text-[var(--public-brand)] underline decoration-1 underline-offset-2 transition-colors">Terms of Use</Link>
             <Link to="/privacy" className="hover:text-[var(--public-brand)] underline decoration-1 underline-offset-2 transition-colors">Privacy Policy</Link>
             <Link to="/license" className="hover:text-[var(--public-brand)] underline decoration-1 underline-offset-2 transition-colors">License</Link>
           </nav>
-          <p className="text-sm public-text-muted">© 2025 Government of Alberta</p>
+          <p className="text-sm public-text-muted-foreground">© 2025 Government of Alberta</p>
         </div>
       </footer>
     </div>

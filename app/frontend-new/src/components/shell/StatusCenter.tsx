@@ -43,7 +43,7 @@ export function StatusCenter({ className }: { className?: string }) {
       {open ? (
         <div id={popoverId} role="dialog" aria-label={t("shell.status.runningAndRecent")} className="absolute right-0 top-full z-40 mt-2 w-72 rounded-xs border border-line bg-surface p-2 shadow-lg">
           {tasks.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-muted">{t("shell.status.nothingRunning")}</p>
+            <p className="px-1 py-2 text-sm text-muted-foreground">{t("shell.status.nothingRunning")}</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {tasks.map((task) => (
@@ -51,7 +51,7 @@ export function StatusCenter({ className }: { className?: string }) {
                   {STATUS_ICON[task.status]}
                   <span className="min-w-0 flex-1 truncate text-ink">{task.label}</span>
                   {task.status === "running" && task.progress !== undefined ? (
-                    <span className="text-xs text-muted">{Math.round(task.progress)}%</span>
+                    <span className="text-xs text-muted-foreground">{Math.round(task.progress)}%</span>
                   ) : null}
                 </li>
               ))}

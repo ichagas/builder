@@ -52,7 +52,7 @@ export function GlobalBar({ switcher, mode, onSearch, statusPill, accountMenu, l
       <button
         type="button"
         onClick={onSearch}
-        className="hidden h-8 min-w-56 items-center gap-2 rounded-xs border border-line bg-surface px-2.5 text-sm text-muted sm:flex"
+        className="hidden h-8 min-w-56 items-center gap-2 rounded-xs border border-line bg-surface px-2.5 text-sm text-muted-foreground sm:flex"
       >
         <Search aria-hidden="true" className="h-4 w-4" />
         <span className="flex-1 text-left">{t("shell.search.placeholder")}</span>

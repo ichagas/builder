@@ -27,7 +27,7 @@ export function UndoBar({ className }: { className?: string }) {
         <button type="button" onClick={trigger} className="rounded-xs px-2 py-1 text-sm font-semibold text-primary">
           {t("shell.undo.undo")}
         </button>
-        <button type="button" onClick={dismiss} aria-label={t("shell.undo.dismiss")} className="rounded-xs px-2 py-1 text-sm text-muted">
+        <button type="button" onClick={dismiss} aria-label={t("shell.undo.dismiss")} className="rounded-xs px-2 py-1 text-sm text-muted-foreground">
           ×
         </button>
       </div>

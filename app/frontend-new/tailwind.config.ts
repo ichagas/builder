@@ -21,9 +21,15 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        // T020 follow-up (WP-F2c): DEFAULT/foreground point straight at the
+        // Blueprint rgb tokens (tokens.css), not the shadcn `--primary`/
+        // `--primary-foreground` HSL vars in index.css — those were removed
+        // there because they collided with tokens.css's own hex `--primary`,
+        // silently overriding it (index.css loads after tokens.css). See
+        // contracts/design-system.md §1.1.
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "rgb(var(--primary-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--primary-foreground-rgb) / <alpha-value>)",
           hover: "hsl(var(--primary-hover))",
         },
         secondary: {
@@ -34,9 +40,15 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        // T020 follow-up (WP-F2c): DEFAULT -> Blueprint --surface-2 (shadcn's
+        // `--secondary`/`--muted` mapping), foreground -> Blueprint --muted
+        // (the muted-ink token), per contracts/design-system.md §1.1. Points
+        // at the rgb tokens directly rather than the removed `--muted` HSL
+        // var, which collided with tokens.css's own hex `--muted` (a
+        // different color: muted *ink*, not the muted *background*).
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "rgb(var(--surface-2-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--muted-rgb) / <alpha-value>)",
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",

@@ -91,7 +91,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
               type="button"
               onClick={() => setExpanded(true)}
               title={node.sub}
-              className="flex shrink-0 flex-col items-center justify-center rounded-xs px-2.5 py-1 text-xs text-muted hover:bg-surface-2"
+              className="flex shrink-0 flex-col items-center justify-center rounded-xs px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-2"
             >
               <span className="font-semibold">{node.label}</span>
               {node.sub ? <span>{node.sub}</span> : null}
@@ -110,7 +110,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
               onClick={() => onSelect(node.id)}
               className={cn(
                 "flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-xs px-2.5 py-1 text-xs",
-                isSelected ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface-2",
+                isSelected ? "bg-primary-soft text-primary" : "text-muted-foreground hover:bg-surface-2",
               )}
             >
               <span className="flex items-center gap-1 font-mono font-semibold">
@@ -124,7 +124,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
                 key={flag.label}
                 className={cn(
                   "flex shrink-0 items-center gap-1 self-center rounded-xs border border-line px-2 py-1 text-xs",
-                  flag.pending ? "text-muted" : "text-ok",
+                  flag.pending ? "text-muted-foreground" : "text-ok",
                 )}
               >
                 <Flag aria-hidden="true" className="h-3.5 w-3.5" />
@@ -138,7 +138,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
         <button
           type="button"
           onClick={() => setExpanded(false)}
-          className="shrink-0 rounded-xs px-2.5 py-1 text-xs text-muted hover:bg-surface-2"
+          className="shrink-0 rounded-xs px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-2"
         >
           Fewer
         </button>
