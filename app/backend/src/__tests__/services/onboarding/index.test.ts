@@ -9,6 +9,7 @@
 jest.mock("../../../utils/logger", () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
+import { logger } from "../../../utils/logger";
 
 jest.mock("../../../utils/database", () => {
   const queryFn = jest.fn();
@@ -653,6 +654,28 @@ describe("startRun", () => {
     expect(mockUpdateRun).toHaveBeenNthCalledWith(2, RUN_ID, { callbackSecretRef: null });
   });
 
+  it("cancel/dispatch race, interleaving 1: cancelRun lands between dispatch and the post-dispatch write — startRun stops the job and cleans up its own secrets (fix round 2, item B)", async () => {
+    const dispatcher = controlledDispatcher();
+    setJobDispatcher(dispatcher);
+
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "draft" })) // startRun's own access check
+      .mockResolvedValueOnce(baseRun({ status: "cancelled" })); // startRun's re-read after losing the guarded write
+    mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    mockClaimRunTransition
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" })) // draft -> running claim succeeds
+      .mockResolvedValueOnce(null); // guarded post-dispatch write: cancelRun already flipped status away from "running"
+
+    const view = await onboarding.startRun(USER_ID, RUN_ID);
+
+    // The job that was just started must not be left running...
+    expect(dispatcher.cancel).toHaveBeenCalledWith("job-exec-1");
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("was cancelled between dispatch and recording its job execution"));
+    // No exception — the caller simply sees the run's current (cancelled)
+    // state, exactly as if they'd called GET right after cancelRun won.
+    expect(view.status).toBe("cancelled");
+  });
+
   it("409s a second concurrent start once the first has already claimed the run (no second job dispatch)", async () => {
     const dispatcher = controlledDispatcher();
     setJobDispatcher(dispatcher);
@@ -660,8 +683,14 @@ describe("startRun", () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
     mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
     // First caller's claim succeeds; a second, concurrent caller's claim
-    // (racing on the same `WHERE status = 'draft'`) finds 0 rows.
-    mockClaimRunTransition.mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" })).mockResolvedValueOnce(null);
+    // (racing on the same `WHERE status = 'draft'`) finds 0 rows. The first
+    // caller then goes on to its own second claimRunTransition call (fix
+    // round 2, item B's guarded post-dispatch write), which also succeeds
+    // here (no cancelRun in this test).
+    mockClaimRunTransition
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" }))
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
     mockUpdateRun.mockResolvedValue(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
 
     const [first, second] = await Promise.allSettled([
@@ -673,6 +702,9 @@ describe("startRun", () => {
     expect(second.status).toBe("rejected");
     expect((second as PromiseRejectedResult).reason).toMatchObject({ statusCode: 409 });
     expect(dispatcher.dispatch).toHaveBeenCalledTimes(1);
+    // The winning caller's own guarded post-dispatch write succeeded (no
+    // concurrent cancelRun here), so it must not think its job was orphaned.
+    expect(dispatcher.cancel).not.toHaveBeenCalled();
   });
 
   it("dispatches the sandbox job and moves the run to running/sandbox", async () => {
@@ -681,14 +713,19 @@ describe("startRun", () => {
 
     mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
     mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
-    mockClaimRunTransition.mockResolvedValue(baseRun({ status: "running", step: "sandbox" }));
-    mockUpdateRun.mockResolvedValue(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
+    mockClaimRunTransition
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" })) // draft -> running claim
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" })); // fix round 2, item B: guarded post-dispatch write
 
     const view = await onboarding.startRun(USER_ID, RUN_ID);
 
     expect(dispatcher.dispatch).toHaveBeenCalled();
-    expect(mockUpdateRun).toHaveBeenCalledWith(
+    // The post-dispatch write is a guarded claimRunTransition, not a plain
+    // updateRun (fix round 2, item B) — only the callback secret ref write
+    // (before dispatch) goes through updateRun now.
+    expect(mockClaimRunTransition).toHaveBeenLastCalledWith(
       RUN_ID,
+      "running",
       expect.objectContaining({ jobExecutionId: "job-exec-1", sandboxSecretNames: expect.any(Array) })
     );
     expect(view.status).toBe("running");
@@ -1754,6 +1791,35 @@ describe("cancelRun", () => {
     await onboarding.cancelRun(USER_ID, RUN_ID);
 
     expect(dispatcher.cancel).not.toHaveBeenCalled();
+  });
+
+  it("cancel/dispatch race, interleaving 2: startRun's job execution/secrets land AFTER cancelRun's initial read — the re-read before cleanup picks them up (fix round 2, item B)", async () => {
+    const dispatcher = { dispatch: jest.fn(), cancel: jest.fn(async () => {}) };
+    setJobDispatcher(dispatcher as any);
+
+    // requireRunAccess's read: still no job execution (startRun hasn't
+    // landed its guarded write yet).
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "running", job_execution_id: null, callback_secret_ref: null, sandbox_secret_names: [] }))
+      // The re-read right before acting on job_execution_id/secrets: by now
+      // startRun's own guarded write DID land (it ran first on the row).
+      .mockResolvedValueOnce(
+        baseRun({
+          status: "cancelled",
+          job_execution_id: "job-exec-1",
+          callback_secret_ref: "callback-secret-1",
+          sandbox_secret_names: ["repo-auth-secret-1"],
+        })
+      );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "cancelled" }));
+
+    const view = await onboarding.cancelRun(USER_ID, RUN_ID);
+
+    // Using the stale first read would have skipped this entirely (its
+    // job_execution_id was null) — the re-read is what makes this work.
+    expect(dispatcher.cancel).toHaveBeenCalledWith("job-exec-1");
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
+    expect(view.status).toBe("cancelled");
   });
 
   it("cleans up the run's sandbox vault secrets on cancel (fix round 1, item 2)", async () => {

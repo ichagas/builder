@@ -485,13 +485,36 @@ export async function startRun(userId: string, runId: string): Promise<Onboardin
     throw err;
   }
   const { jobExecutionId, sandboxSecretNames } = dispatchResult;
+  const allSecretNames = [...(sandboxSecretNames ?? []), callbackSecretRef];
 
-  const updated = await updateRun(runId, {
-    jobExecutionId,
-    sandboxSecretNames: [...(sandboxSecretNames ?? []), callbackSecretRef],
-  });
+  // Fix round 2, item B: a guarded write, not a plain updateRun — only
+  // takes effect while the run's status is STILL "running" at the moment
+  // Postgres applies it (same atomic-claim pattern as claimRunTransition's
+  // own docstring). If cancelRun ran concurrently between our earlier claim
+  // (top of this function) and here, this returns null: the row's status
+  // is already "cancelled", and if we wrote jobExecutionId/sandboxSecretNames
+  // onto it anyway, cancelRun's own (already-completed, or about to run)
+  // cleanup would have nothing to go on — the job would keep running and
+  // its secrets would never be cleaned up until their TTL. Instead, THIS
+  // call is the one that notices and handles it immediately.
+  const recorded = await claimRunTransition(runId, "running", { jobExecutionId, sandboxSecretNames: allSecretNames });
+  if (!recorded) {
+    logger.warn(
+      `[onboarding] run ${runId} was cancelled between dispatch and recording its job execution — stopping the job and cleaning up its secrets now`
+    );
+    try {
+      await dispatcher.cancel(jobExecutionId);
+    } catch (err: any) {
+      logger.warn(`[onboarding] failed to cancel orphaned job execution ${jobExecutionId} for run ${runId}: ${err.message}`);
+    }
+    await cleanupSandboxSecrets(allSecretNames);
+    const current = await getRunById(runId);
+    if (!current) throw Errors.notFound("Onboarding run");
+    return toView(current);
+  }
+
   logger.info(`[onboarding] sandbox job dispatched (run=${runId}, jobExecutionId=${jobExecutionId})`);
-  return toView(updated);
+  return toView(recorded);
 }
 
 /**
@@ -1063,16 +1086,27 @@ export async function cancelRun(userId: string, runId: string): Promise<Onboardi
     throw Errors.conflict(describeInvalidTransition(run.status, "cancelled"));
   }
 
-  if (run.job_execution_id) {
+  const updated = await updateRun(runId, { status: "cancelled" });
+  logger.info(`[onboarding] run cancelled (run=${runId})`);
+
+  // Fix round 2, item B: re-read right before acting on job_execution_id/
+  // secrets — the `run` fetched above (by requireRunAccess) can be stale if
+  // startRun's dispatch landed its own jobExecutionId/sandboxSecretNames
+  // write in between that read and this point (startRun's own guarded write
+  // — see its claimRunTransition(runId, "running", ...) — handles the
+  // opposite ordering, where our status write above lands first; acting on
+  // the stale `run` here would silently skip cancelling that execution and
+  // leak its secrets until their TTL).
+  const current = (await getRunById(runId)) ?? updated;
+
+  if (current.job_execution_id) {
     try {
-      await getJobDispatcher().cancel(run.job_execution_id);
+      await getJobDispatcher().cancel(current.job_execution_id);
     } catch (err: any) {
-      logger.warn(`[onboarding] failed to cancel job execution ${run.job_execution_id} for run ${runId}: ${err.message}`);
+      logger.warn(`[onboarding] failed to cancel job execution ${current.job_execution_id} for run ${runId}: ${err.message}`);
     }
   }
 
-  const updated = await updateRun(runId, { status: "cancelled" });
-  logger.info(`[onboarding] run cancelled (run=${runId})`);
-  await cleanupRunSandboxSecrets(run);
+  await cleanupRunSandboxSecrets(current);
   return toView(updated);
 }
