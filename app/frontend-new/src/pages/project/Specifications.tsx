@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
-import { ProjectPageHeader } from "@/components/layout/ProjectPageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +24,8 @@ import { useRealtimeSpecifications } from "@/hooks/useRealtimeSpecifications";
 import { useRealtimeArtifacts } from "@/hooks/useRealtimeArtifacts";
 import { getEdgeFunctionName } from "@/config/aiModels";
 import { getAccessToken } from "@/lib/apiClient";
+import { usePublishSpecificationsPrimaryAction } from "./specifications.primaryAction";
+import { useLongTask } from "@/lib/state/useLongTask";
 
 interface Agent {
   id: string;
@@ -51,7 +51,6 @@ export default function Specifications() {
   const { projectId } = useParams();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const [projectName, setProjectName] = useState<string>("project");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [projectSettings, setProjectSettings] = useState<any>(null);
   const [selectedContent, setSelectedContent] = useState<ProjectSelectionResult | null>(null);
@@ -76,6 +75,12 @@ export default function Specifications() {
 
   // Use artifacts hook for proper broadcast when saving artifacts
   const { addArtifact, updateArtifact } = useRealtimeArtifacts(projectId, shareToken, isTokenSet);
+
+  // T047 (WP-G2), recipe step 6: generation is a long-running fetch/stream
+  // (not one of the agent/audit/deploy sessions the F5 bridge already
+  // wires up), so register it with useLongTask explicitly so it shows in
+  // the shell's status pill.
+  const { start: startLongTask } = useLongTask();
 
   // Track currently selected/viewed version for each agent
   const [selectedVersions, setSelectedVersions] = useState<Record<string, SavedSpecification>>({});
@@ -156,34 +161,6 @@ export default function Specifications() {
     loadData();
   }, [projectId, shareToken, isTokenSet]);
 
-  if (tokenMissing) {
-    return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <TokenRecoveryMessage />
-      </div>
-    );
-  }
-
-  if (shareToken && !isTokenSet) {
-    return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <div className="flex relative">
-          <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-          <main className="flex-1 w-full flex items-center justify-center">
-            <p>Loading...</p>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  const handleProjectSelection = (selection: ProjectSelectionResult) => {
-    setSelectedContent(selection);
-    toast.success(`Selected ${getTotalSelectedCount(selection)} items`);
-  };
-
   const getTotalSelectedCount = (selection: ProjectSelectionResult) => {
     return (
       (selection.projectMetadata ? 1 : 0) +
@@ -207,6 +184,48 @@ export default function Specifications() {
 
   const isAnyAgentProcessing = () => {
     return agentResults.some(r => r.status === "pending" || r.status === "streaming");
+  };
+
+  // T047 (WP-G2): mirror legacy's "Generate Analysis" main button as the
+  // page's primary action (see specifications.primaryAction.ts). Published
+  // every render, before any early return, per the rules-of-hooks note in
+  // requirements.primaryAction.ts.
+  usePublishSpecificationsPrimaryAction(
+    projectId
+      ? {
+          label: "Generate specification",
+          onClick: () => { void generateSpecifications(); },
+          disabled: !hasSelectedContent() || selectedAgents.length === 0 || isAnyAgentProcessing(),
+          disabledReason: isAnyAgentProcessing()
+            ? "Generating…"
+            : !hasSelectedContent()
+              ? "Select project content first"
+              : selectedAgents.length === 0
+                ? "Select at least one agent"
+                : undefined,
+        }
+      : undefined
+  );
+
+  if (tokenMissing) {
+    return (
+      <div className="p-4 md:p-6">
+        <TokenRecoveryMessage />
+      </div>
+    );
+  }
+
+  if (shareToken && !isTokenSet) {
+    return (
+      <div className="flex min-h-full items-center justify-center p-6">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  const handleProjectSelection = (selection: ProjectSelectionResult) => {
+    setSelectedContent(selection);
+    toast.success(`Selected ${getTotalSelectedCount(selection)} items`);
   };
 
   const toggleAgent = (agentId: string) => {
@@ -430,6 +449,12 @@ export default function Specifications() {
     });
     setActiveAgentView(selectedAgents[0]);
 
+    const task = startLongTask({
+      id: `specifications-generate-${projectId}`,
+      label: `Generating ${selectedAgents.length} specification${selectedAgents.length === 1 ? "" : "s"}…`,
+    });
+    let hadError = false;
+
     const promises = selectedAgents.map(async (agentId) => {
       const agent = agents.find(a => a.id === agentId);
       if (!agent) return;
@@ -437,22 +462,23 @@ export default function Specifications() {
       try {
         const response = await generateForAgent(agent, userPrompt);
         const result = await streamAgentResponse(agentId, response);
-        
+
         // Auto-save after streaming completes
         if (result && result.content) {
           const savedSpec = await saveSpecification(result.agentId, agent.title, result.content);
           if (savedSpec) {
-            setAgentResults(prev => prev.map(r => 
-              r.agentId === agentId 
+            setAgentResults(prev => prev.map(r =>
+              r.agentId === agentId
                 ? { ...r, specificationId: savedSpec.id, version: savedSpec.version, savedAt: savedSpec.created_at }
                 : r
             ));
           }
         }
       } catch (error) {
+        hadError = true;
         console.error(`Error generating for ${agentId}:`, error);
-        setAgentResults(prev => prev.map(r => 
-          r.agentId === agentId 
+        setAgentResults(prev => prev.map(r =>
+          r.agentId === agentId
             ? { ...r, status: "error", error: error instanceof Error ? error.message : "Unknown error" }
             : r
         ));
@@ -460,6 +486,11 @@ export default function Specifications() {
     });
 
     await Promise.all(promises);
+    if (hadError) {
+      task.fail();
+    } else {
+      task.done();
+    }
     toast.success("All specifications generated and saved!");
   };
 
@@ -890,19 +921,14 @@ export default function Specifications() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      <div className="flex relative">
-        <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        <main className="flex-1 w-full overflow-auto">
-          <div className="px-4 md:px-6 py-6 md:py-8">
-            <ProjectPageHeader 
-              title="Project Specifications" 
-              subtitle="Generate comprehensive documentation and analysis for your project"
-              onMenuClick={() => setIsSidebarOpen(true)} 
-            />
-            
-            <div className="space-y-6">
+    <div className="flex min-h-full flex-col">
+      <PageHeader crumb="Design" />
+      <div className="flex-1 overflow-auto px-4 py-6 md:px-6 md:py-8">
+        <p className="mb-6 text-sm text-muted-foreground">
+          Generate comprehensive documentation and analysis for your project
+        </p>
+
+        <div className="space-y-6">
             {/* Select Project Content */}
             <Card>
               <CardHeader>
@@ -1263,9 +1289,7 @@ export default function Specifications() {
                 />
               </CardContent>
             </Card>
-            </div>
-          </div>
-        </main>
+        </div>
       </div>
 
       {/* Project Selector Dialog */}
