@@ -23,6 +23,7 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Mesh agents | `--m-green #16A34A`, `--m-yellow #CA8A04`, `--m-red #DC2626`, `--m-blue #2563EB` |
 | Mode band | `--mode-building #4C8DFF`, `--mode-released #2FBF71`, `--mode-connected #A78BFA` |
 | Chrome | `--rail-bg #102040`, `--rail-ink`, `--rail-muted`, `--rail-hover`, `--rail-line`, `--rail-active`, `--gbar-bg #0B1830` |
+| IDE surface | `--ide-*`, see §1.2 |
 | Type | `--font "IBM Plex Sans"`, `--mono "IBM Plex Mono"` (identifiers only), `--fs 14px`, `--h1 26px/600`, `--h2 14px/600` |
 | Shape | `--radius 4px`, `--radius-s 3px`, `--radius-pill 3px` |
 | Density | `--row 48px` (min target 44px), `--pad 14px`, `--gap 14px` |
@@ -67,6 +68,39 @@ Codemod mapping for hard-coded Tailwind colors (T031). Unmapped cases are listed
 | `text-(gray|slate)-7xx–9xx` | `text-foreground` |
 | `bg-(gray|slate)-50–200`, `border-(gray|slate)-200–300` | `bg-surface-2`, `border-line` |
 | hex values in `style={}` or `stroke`/`fill` | the nearest token via `var(--…)`, charts via the `--chart-*` tokens |
+
+### 1.2 IDE-surface tokens (`--ide-*`, T031)
+
+Fixed "VS Code Dark+"-style palette for the code/file-browsing widgets — file trees, the code editor and its markdown/diff preview, commit log, SQL editor, search results — so they read like a familiar developer tool rather than the app's own light/dark theme. **Deliberately constant in both app themes**: these aren't semantic app-status/phase colors, so they're defined once on `:root` and not re-pointed under `.dark`/`[data-theme="dark"]`. Allowed **only** inside the IDE-style widgets listed above — not for general app chrome or status legends, which use the tokens in §1.
+
+| Token | Value | Purpose |
+|---|---|---|
+| `--ide-bg` | `#1e1e1e` | Editor/panel background |
+| `--ide-panel` | `#252526` | Secondary panel background (sidebar, tabs) |
+| `--ide-panel-2` | `#313335` | Tertiary panel background |
+| `--ide-hover` | `#2a2d2e` | Row/item hover background |
+| `--ide-border` | `#3e3e42` | Panel/divider borders |
+| `--ide-tab-border` | `#37373d` | Tab strip border |
+| `--ide-input` | `#3c3c3c` | Input/field background |
+| `--ide-input-alt` | `#2d2d2d` | Secondary input background |
+| `--ide-ink` | `#cccccc` | Default text |
+| `--ide-ink-bright` | `#ffffff` | Emphasized text |
+| `--ide-ink-bright-2` | `#e6e6e6` | Secondary emphasized text |
+| `--ide-default-text` | `#d4d4d4` | Editor body text |
+| `--ide-muted` | `#858585` | Muted/secondary text |
+| `--ide-muted-2` | `#808080` | Muted/secondary text (alt) |
+| `--ide-scrollbar` | `#4e4e52` | Scrollbar thumb |
+| `--ide-selection` | `#264f78` | Text/row selection background |
+| `--ide-accent` | `#007acc` | Primary accent (links, active state) |
+| `--ide-accent-hover` | `#1177bb` | Accent hover state |
+| `--ide-accent-active` | `#0e639c` | Accent active/pressed state |
+| `--ide-folder` | `#dcb67a` | Folder icon color |
+| `--ide-type` | `#4ec9b0` | Syntax: type names |
+| `--ide-string` | `#ce9178` | Syntax: string literals |
+| `--ide-variable` | `#9cdcfe` | Syntax: variable names |
+| `--ide-diff-add-bg` | `#1e2a3a` | Diff "added" line background |
+| `--ide-diff-add-border` | `#3e5a7a` | Diff "added" line border |
+| `--ide-link` | `#60a5fa` | Inline link color in editor/preview surfaces |
 
 ## 2. Shell components (`src/components/shell/`)
 
