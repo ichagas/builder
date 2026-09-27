@@ -9,6 +9,7 @@
 jest.mock("../../../utils/logger", () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
+import { logger } from "../../../utils/logger";
 
 jest.mock("../../../utils/database", () => {
   const queryFn = jest.fn();
@@ -332,6 +333,33 @@ describe("getRun / access control", () => {
     const view = await onboarding.getRun(USER_ID, RUN_ID);
     expect(view.warnings).toEqual(["goa/permits-api: could not open the pull request (see server logs for details)"]);
   });
+
+  it("surfaces a persisted per-repository sandboxError as a warning (fix round 1, item 3)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun());
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockListRepos.mockResolvedValue([
+      { id: "r1", full_name: "goa/broken-repo", review: { sandboxError: "clone failed: repository not found" } },
+      { id: "r2", full_name: "goa/health-portal", review: {} },
+    ]);
+
+    const view = await onboarding.getRun(USER_ID, RUN_ID);
+    expect(view.warnings).toEqual(["goa/broken-repo: clone failed: repository not found"]);
+  });
+
+  it("prefers prError over sandboxError when both are present (a later, more specific failure)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun());
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockListRepos.mockResolvedValue([
+      {
+        id: "r1",
+        full_name: "goa/repo",
+        review: { sandboxError: "clone failed", prError: "could not open the pull request (see server logs for details)" },
+      },
+    ]);
+
+    const view = await onboarding.getRun(USER_ID, RUN_ID);
+    expect(view.warnings).toEqual(["goa/repo: could not open the pull request (see server logs for details)"]);
+  });
 });
 
 describe("listImportableGitHubRepositories — fix round 1, item 6 (cross-org isolation)", () => {
@@ -609,6 +637,45 @@ describe("startRun", () => {
     expect(mockClaimRunTransition).not.toHaveBeenCalled();
   });
 
+  it("cleans up the just-minted callback secret when dispatch() itself throws (fix round 1, item 2)", async () => {
+    const dispatcher = { dispatch: jest.fn(async () => { throw new Error("ARM unreachable"); }), cancel: jest.fn() };
+    setJobDispatcher(dispatcher);
+
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    mockClaimRunTransition.mockResolvedValue(baseRun({ status: "running", step: "sandbox" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "running" }));
+
+    await expect(onboarding.startRun(USER_ID, RUN_ID)).rejects.toThrow("ARM unreachable");
+
+    // First call: mints and persists the callback secret ref before
+    // dispatch(). Second call (after the throw): clears it again.
+    expect(mockUpdateRun).toHaveBeenNthCalledWith(1, RUN_ID, { callbackSecretRef: expect.any(String) });
+    expect(mockUpdateRun).toHaveBeenNthCalledWith(2, RUN_ID, { callbackSecretRef: null });
+  });
+
+  it("cancel/dispatch race, interleaving 1: cancelRun lands between dispatch and the post-dispatch write — startRun stops the job and cleans up its own secrets (fix round 2, item B)", async () => {
+    const dispatcher = controlledDispatcher();
+    setJobDispatcher(dispatcher);
+
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "draft" })) // startRun's own access check
+      .mockResolvedValueOnce(baseRun({ status: "cancelled" })); // startRun's re-read after losing the guarded write
+    mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    mockClaimRunTransition
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" })) // draft -> running claim succeeds
+      .mockResolvedValueOnce(null); // guarded post-dispatch write: cancelRun already flipped status away from "running"
+
+    const view = await onboarding.startRun(USER_ID, RUN_ID);
+
+    // The job that was just started must not be left running...
+    expect(dispatcher.cancel).toHaveBeenCalledWith("job-exec-1");
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("was cancelled between dispatch and recording its job execution"));
+    // No exception — the caller simply sees the run's current (cancelled)
+    // state, exactly as if they'd called GET right after cancelRun won.
+    expect(view.status).toBe("cancelled");
+  });
+
   it("409s a second concurrent start once the first has already claimed the run (no second job dispatch)", async () => {
     const dispatcher = controlledDispatcher();
     setJobDispatcher(dispatcher);
@@ -616,8 +683,14 @@ describe("startRun", () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
     mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
     // First caller's claim succeeds; a second, concurrent caller's claim
-    // (racing on the same `WHERE status = 'draft'`) finds 0 rows.
-    mockClaimRunTransition.mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" })).mockResolvedValueOnce(null);
+    // (racing on the same `WHERE status = 'draft'`) finds 0 rows. The first
+    // caller then goes on to its own second claimRunTransition call (fix
+    // round 2, item B's guarded post-dispatch write), which also succeeds
+    // here (no cancelRun in this test).
+    mockClaimRunTransition
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" }))
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
     mockUpdateRun.mockResolvedValue(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
 
     const [first, second] = await Promise.allSettled([
@@ -629,6 +702,9 @@ describe("startRun", () => {
     expect(second.status).toBe("rejected");
     expect((second as PromiseRejectedResult).reason).toMatchObject({ statusCode: 409 });
     expect(dispatcher.dispatch).toHaveBeenCalledTimes(1);
+    // The winning caller's own guarded post-dispatch write succeeded (no
+    // concurrent cancelRun here), so it must not think its job was orphaned.
+    expect(dispatcher.cancel).not.toHaveBeenCalled();
   });
 
   it("dispatches the sandbox job and moves the run to running/sandbox", async () => {
@@ -637,13 +713,21 @@ describe("startRun", () => {
 
     mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
     mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
-    mockClaimRunTransition.mockResolvedValue(baseRun({ status: "running", step: "sandbox" }));
-    mockUpdateRun.mockResolvedValue(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" }));
+    mockClaimRunTransition
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox" })) // draft -> running claim
+      .mockResolvedValueOnce(baseRun({ status: "running", step: "sandbox", job_execution_id: "job-exec-1" })); // fix round 2, item B: guarded post-dispatch write
 
     const view = await onboarding.startRun(USER_ID, RUN_ID);
 
     expect(dispatcher.dispatch).toHaveBeenCalled();
-    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { jobExecutionId: "job-exec-1" });
+    // The post-dispatch write is a guarded claimRunTransition, not a plain
+    // updateRun (fix round 2, item B) — only the callback secret ref write
+    // (before dispatch) goes through updateRun now.
+    expect(mockClaimRunTransition).toHaveBeenLastCalledWith(
+      RUN_ID,
+      "running",
+      expect.objectContaining({ jobExecutionId: "job-exec-1", sandboxSecretNames: expect.any(Array) })
+    );
     expect(view.status).toBe("running");
   });
 
@@ -704,6 +788,73 @@ describe("startRun", () => {
 
     expect(mockUpdateRepo).not.toHaveBeenCalled();
     expect(mockUpdateRun).not.toHaveBeenCalled();
+  });
+
+  it("cleans up the run's sandbox vault secrets once the job reaches ready (fix round 1, item 2)", async () => {
+    mockGetRunById.mockResolvedValue(
+      baseRun({ status: "running", callback_secret_ref: "callback-secret-1", sandbox_secret_names: ["repo-auth-secret-1"] })
+    );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({ runId: RUN_ID, status: "ready", repositories: [] });
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
+  });
+
+  it("cleans up the run's sandbox vault secrets when the job reports failed (fix round 1, item 2)", async () => {
+    mockGetRunById.mockResolvedValue(
+      baseRun({ status: "running", callback_secret_ref: "callback-secret-1", sandbox_secret_names: ["repo-auth-secret-1"] })
+    );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "failed" }));
+
+    await onboarding.applySandboxResult({ runId: RUN_ID, status: "failed", repositories: [], error: "boom" });
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
+  });
+
+  it("persists a per-repository sandbox error into review.sandboxError (fix round 1, item 3)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({
+      runId: RUN_ID,
+      status: "ready",
+      repositories: [{ fullName: "goa/broken-repo", error: "could not read the clone credential from the sandbox vault: 403" }],
+    });
+
+    expect(mockUpdateRepo).toHaveBeenCalledWith(
+      RUN_ID,
+      "goa/broken-repo",
+      expect.objectContaining({
+        review: { sandboxError: "could not read the clone credential from the sandbox vault: 403" },
+      })
+    );
+  });
+
+  it("preserves the rest of review when persisting a per-repository sandbox error", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({
+      runId: RUN_ID,
+      status: "ready",
+      repositories: [{ fullName: "goa/broken-repo", review: { someNote: "kept" }, error: "boom" }],
+    });
+
+    expect(mockUpdateRepo).toHaveBeenCalledWith(
+      RUN_ID,
+      "goa/broken-repo",
+      expect.objectContaining({ review: { someNote: "kept", sandboxError: "boom" } })
+    );
+  });
+
+  it("skips the cleanup update entirely when the run has no sandbox secrets to clean up", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running", callback_secret_ref: null, sandbox_secret_names: [] }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({ runId: RUN_ID, status: "ready", repositories: [] });
+
+    expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
   });
 });
 
@@ -1017,6 +1168,39 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ fullName: "goa/permits-api" }));
     expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "prs_open", step: "prs" });
     expect(view.status).toBe("prs_open");
+  });
+
+  it("uses the repository's own sandbox error, not the generic message, when it has no generated files because the sandbox failed for it (fix round 1, item 3)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      },
+      {
+        full_name: "goa/broken-repo",
+        selected: true,
+        pr_number: null,
+        generated_manifest: [],
+        review: { sandboxError: "could not read the clone credential from the sandbox vault: 403" },
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    expect(mockUpdateRepo).toHaveBeenCalledWith(
+      RUN_ID,
+      "goa/broken-repo",
+      expect.objectContaining({
+        review: expect.objectContaining({ prError: "could not read the clone credential from the sandbox vault: 403" }),
+      })
+    );
+    expect(view.warnings).toContain("goa/broken-repo: could not read the clone credential from the sandbox vault: 403");
   });
 
   it("partial failure: one repo's PR call throws, the other succeeds — run still advances (207-style partial success)", async () => {
@@ -1607,5 +1791,105 @@ describe("cancelRun", () => {
     await onboarding.cancelRun(USER_ID, RUN_ID);
 
     expect(dispatcher.cancel).not.toHaveBeenCalled();
+  });
+
+  it("cancel/dispatch race, interleaving 2: startRun's job execution/secrets land AFTER cancelRun's initial read — the re-read before cleanup picks them up (fix round 2, item B)", async () => {
+    const dispatcher = { dispatch: jest.fn(), cancel: jest.fn(async () => {}) };
+    setJobDispatcher(dispatcher as any);
+
+    // requireRunAccess's read: still no job execution (startRun hasn't
+    // landed its guarded write yet).
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ status: "running", job_execution_id: null, callback_secret_ref: null, sandbox_secret_names: [] }))
+      // The re-read right before acting on job_execution_id/secrets: by now
+      // startRun's own guarded write DID land (it ran first on the row).
+      .mockResolvedValueOnce(
+        baseRun({
+          status: "cancelled",
+          job_execution_id: "job-exec-1",
+          callback_secret_ref: "callback-secret-1",
+          sandbox_secret_names: ["repo-auth-secret-1"],
+        })
+      );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "cancelled" }));
+
+    const view = await onboarding.cancelRun(USER_ID, RUN_ID);
+
+    // Using the stale first read would have skipped this entirely (its
+    // job_execution_id was null) — the re-read is what makes this work.
+    expect(dispatcher.cancel).toHaveBeenCalledWith("job-exec-1");
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
+    expect(view.status).toBe("cancelled");
+  });
+
+  it("cleans up the run's sandbox vault secrets on cancel (fix round 1, item 2)", async () => {
+    mockGetRunById.mockResolvedValue(
+      baseRun({ status: "running", callback_secret_ref: "callback-secret-1", sandbox_secret_names: ["repo-auth-secret-1"] })
+    );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "cancelled" }));
+    mockListRepos.mockResolvedValue([]);
+
+    await onboarding.cancelRun(USER_ID, RUN_ID);
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
+  });
+});
+
+describe("handleJobCallback (WP-BE6, T141)", () => {
+  const { mintCallbackToken } = jest.requireActual("../../../services/onboarding/callbackAuth");
+
+  it("401s for an unknown run before even looking at the token", async () => {
+    mockGetRunById.mockResolvedValue(null);
+    await expect(onboarding.handleJobCallback(RUN_ID, "whatever", { type: "progress", event: { type: "log" } })).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it("401s when no token is given", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: "some-ref" }));
+    await expect(onboarding.handleJobCallback(RUN_ID, undefined, { type: "progress", event: { type: "log" } })).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it("401s for a token minted for a different run", async () => {
+    const { token, secretRef } = await mintCallbackToken("some-other-run");
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: secretRef }));
+    await expect(onboarding.handleJobCallback(RUN_ID, token, { type: "progress", event: { type: "log" } })).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it("broadcasts a valid progress event on the run's realtime channel", async () => {
+    const { token, secretRef } = await mintCallbackToken(RUN_ID);
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: secretRef }));
+
+    await onboarding.handleJobCallback(RUN_ID, token, { type: "progress", event: { type: "log", message: "cloning" } });
+
+    expect(broadcastOnboardingProgress).toHaveBeenCalledWith(RUN_ID, { type: "log", message: "cloning" });
+  });
+
+  it("applies a valid result via applySandboxResult (status -> ready)", async () => {
+    const { token, secretRef } = await mintCallbackToken(RUN_ID);
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ callback_secret_ref: secretRef })) // handleJobCallback's own lookup
+      .mockResolvedValueOnce(baseRun({ status: "running", callback_secret_ref: secretRef })); // applySandboxResult's lookup
+    mockUpdateRepo.mockResolvedValue(null);
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    const result: JobResult = {
+      runId: RUN_ID,
+      status: "ready",
+      repositories: [{ fullName: "goa/permits-api", detectedProfile: "node" }],
+    };
+    await onboarding.handleJobCallback(RUN_ID, token, { type: "result", result });
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ status: "ready", step: "output" }));
+  });
+
+  it("rejects a payload with neither 'progress' nor 'result'", async () => {
+    const { token, secretRef } = await mintCallbackToken(RUN_ID);
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: secretRef }));
+    await expect(onboarding.handleJobCallback(RUN_ID, token, { type: "nonsense" } as any)).rejects.toMatchObject({ statusCode: 422 });
   });
 });

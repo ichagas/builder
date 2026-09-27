@@ -1518,3 +1518,94 @@ variable "extra_tags" {
   type        = map(string)
   default     = {}
 }
+
+# -----------------------------------------------------------------------------
+# Onboarding Sandbox Job (spec 007, epic B3, WP-BE6, T141)
+# -----------------------------------------------------------------------------
+# A manually-triggered Azure Container Apps Job running
+# infra/onboarding-sandbox/: read-only, shallow clones of a run's selected
+# repositories, CI-provider/stack detection, mesh CI manifest generation.
+# Runs in its OWN Container App Environment (module.onboarding_sandbox_environment,
+# below), on a dedicated subnet, so its egress can be restricted independently
+# of the API's/frontend's shared environment.
+
+variable "onboarding_sandbox_subnet_id" {
+  description = <<-EOT
+    Infrastructure subnet ID for the onboarding sandbox's OWN Container App
+    Environment (requires /21 or larger, delegated to Microsoft.App/environments,
+    and distinct from every other delegated subnet in this VNet — Azure allows
+    only one Managed Environment per delegated subnet). Null (the default)
+    means "not deployed to this environment yet" — the job, its environment
+    and its NSG are only created when this is set (BLOCKED-EXTERNAL: provision
+    the subnet in each environment's VNet, per specs/007-frontend-new's rollout
+    notes; see infra/onboarding-sandbox/README.md's "Egress restriction"
+    section for what the attached NSG allow-lists once it exists).
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "onboarding_sandbox_github_cidrs" {
+  description = <<-EOT
+    IP ranges to allow outbound HTTPS to for GitHub (github.com/api.github.com)
+    from the onboarding sandbox's NSG. GitHub publishes its current ranges at
+    https://api.github.com/meta ("git"/"api"/"web" keys) — there is no Azure
+    NSG service tag for GitHub, so this list must be refreshed by an operator
+    when GitHub rotates its ranges (documented operational gap; the default
+    below is illustrative, not guaranteed current — verify before relying on
+    it in a real environment).
+  EOT
+  type        = list(string)
+  default     = ["140.82.112.0/20", "143.55.64.0/20", "20.200.245.0/24", "20.205.243.0/24"]
+}
+
+variable "onboarding_sandbox_api_egress_cidr" {
+  description = <<-EOT
+    CIDR (or single IP with /32) the onboarding sandbox's NSG allows outbound
+    HTTPS to for calling POST /onboarding/runs/:id/callback back to the API.
+    Null (the default) means this rule is omitted — the sandbox environment's
+    NSG then has no route back to the API at all, which is safe (fails
+    closed: the job simply can't report back) but not useful; set this to
+    the API's stable egress address (e.g. its Application Gateway/Front
+    Door/APIM public IP) once known for the target environment
+    (BLOCKED-EXTERNAL — depends on that environment's network layout).
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "onboarding_sandbox_container_image" {
+  description = "Container image for the onboarding sandbox job (infra/onboarding-sandbox/). Defaults to a public placeholder for first apply, before the real image is built and pushed (BLOCKED-EXTERNAL, mirroring the frontend/frontend_new bootstrap pattern)."
+  type        = string
+  default     = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+}
+
+variable "onboarding_sandbox_cpu" {
+  description = "CPU cores for the onboarding sandbox job's container"
+  type        = number
+  default     = 0.5
+}
+
+variable "onboarding_sandbox_memory" {
+  description = "Memory for the onboarding sandbox job's container (e.g. '1Gi')"
+  type        = string
+  default     = "1Gi"
+}
+
+variable "onboarding_sandbox_replica_timeout_seconds" {
+  description = "Maximum seconds a single job execution may run before Azure terminates it"
+  type        = number
+  default     = 1800
+}
+
+variable "onboarding_sandbox_api_url" {
+  description = "Value baked into the generated manifest's pronghorn_api_url/pronghornApiUrl parameter (the API's public base URL). Distinct from onboarding_sandbox_api_egress_cidr, which is the NSG rule's destination."
+  type        = string
+  default     = ""
+}
+
+variable "onboarding_sandbox_parallelism" {
+  description = "Number of parallel replicas per job execution (kept at 1: the entrypoint itself loops over every selected repository in one process)"
+  type        = number
+  default     = 1
+}

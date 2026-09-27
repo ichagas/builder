@@ -64,7 +64,11 @@ router.use("/packs", authMiddleware, packsRouter);
 // routes/mesh.ts.
 router.use("/mesh", optionalAuthMiddleware, meshRouter);
 router.use("/admin/integrations", authMiddleware, adminIntegrationsRouter);
-router.use("/onboarding", authMiddleware, onboardingRouter);
+// Mixed auth (WP-BE6, T141): POST /onboarding/runs/:id/callback authenticates
+// via a per-run bearer token (services/onboarding/callbackAuth.ts, no user
+// session — the sandbox job calls it), every other /onboarding route
+// requires req.user — see routes/onboarding.ts.
+router.use("/onboarding", optionalAuthMiddleware, onboardingRouter);
 
 // - db is protected (require auth)
 // - rpc and functions use optional auth (some calls allow anonymous)

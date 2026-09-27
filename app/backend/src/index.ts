@@ -76,6 +76,12 @@ import { swaggerSpec, getOpenApiSpec } from "./swagger";
 import { initWebSocket, getWsStats } from "./websocket";
 import { initRepoBlobStore } from "./utils/repoBlobStore";
 import {
+  createJobDispatcherFromEnv,
+  setJobDispatcher,
+  FailClosedJobDispatcher,
+  JobDispatcherConfigurationError,
+} from "./services/onboarding/jobDispatcher";
+import {
   startDockerDeploymentPoller,
   stopDockerDeploymentPoller,
 } from "./services/deployment/docker/poller";
@@ -179,6 +185,37 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// `POST /api/v1/onboarding/runs/:id/callback` (spec 007, WP-BE6, T141, fix
+// round 1 item 6): unauthenticated by user session (see routes/onboarding.ts
+// and routes/v1/index.ts's mount comment) — it would otherwise be parsed by
+// the global 50mb express.json() below before its own bearer-token check
+// ever runs, letting an unauthenticated caller push up to 50MB through the
+// JSON parser. Route-scoped, tight limit instead (sized from the worst case:
+// MAX_REPOSITORIES_PER_RUN=200 repositories, each a small generated-YAML
+// manifest of a few KB — comfortably under 2MB), rejected at the parsing
+// stage itself (413) before any handler — or the auth check — runs. Mirrors
+// `meshIngestRawBody` above; unlike it, this uses express.json() (not
+// .raw()) since callback auth is header-based, not a signature over the raw
+// body.
+const ONBOARDING_CALLBACK_PATH_RE = /^\/api\/v1\/onboarding\/runs\/[^/]+\/callback$/;
+function onboardingCallbackJsonBody(req: Request, res: Response, next: NextFunction): void {
+  express.json({ limit: "2mb" })(req, res, (err: any) => {
+    if (err) {
+      err.statusCode = err.statusCode || err.status || 500;
+      next(err);
+      return;
+    }
+    next();
+  });
+}
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.method === "POST" && ONBOARDING_CALLBACK_PATH_RE.test(req.path)) {
+    onboardingCallbackJsonBody(req, res, next);
+    return;
+  }
+  next();
+});
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -259,6 +296,22 @@ app.use(errorHandler);
 
 export async function startServer() {
   initRepoBlobStore();
+
+  // Onboarding sandbox job dispatcher (spec 007, WP-BE6, T141): resolved
+  // once from ONBOARDING_JOB_DISPATCHER. A misconfigured production deploy
+  // never crashes startup (mirrors services/integrations/secretStore.ts) —
+  // it's logged here, and every /onboarding/runs/:id/start call gets a
+  // clear 503 (FailClosedJobDispatcher) instead of silently running sandbox
+  // jobs in-memory.
+  try {
+    setJobDispatcher(createJobDispatcherFromEnv());
+  } catch (err) {
+    logger.error(
+      "Onboarding job dispatcher is not configured — POST /onboarding/runs/:id/start will 503 until it is (see .env.example's Onboarding Sandbox Job section)",
+      { error: (err as Error).message },
+    );
+    setJobDispatcher(new FailClosedJobDispatcher(err as JobDispatcherConfigurationError));
+  }
 
   // Run database migrations before accepting traffic (controlled by RUN_MIGRATIONS_ON_STARTUP env var)
   const runMigrationsFlag = (

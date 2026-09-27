@@ -844,6 +844,443 @@ module "frontend_new" {
 }
 
 # =============================================================================
+# Onboarding Sandbox Job (spec 007, epic B3, WP-BE6, T141)
+# =============================================================================
+# A manually-triggered Azure Container Apps Job (infra/onboarding-sandbox/):
+# read-only, shallow clones of a run's selected repositories, CI-provider/
+# stack detection, mesh CI manifest generation. Runs in its OWN Container App
+# Environment on a dedicated subnet (var.onboarding_sandbox_subnet_id) so its
+# egress can be restricted independently of the API's/frontend's shared
+# environment — see infra/onboarding-sandbox/README.md's "Egress restriction"
+# section for what's enforced here and what isn't (NSGs are IP-range, not
+# FQDN — a real FQDN-aware filter needs an Azure Firewall, not present here;
+# documented gap).
+#
+# Everything below is only created once var.onboarding_sandbox_subnet_id is
+# set (BLOCKED-EXTERNAL: provision that subnet per environment) — code is
+# complete, but nothing here is provisioned until then.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# NSG: restricted egress for the sandbox's dedicated subnet.
+# Allows outbound HTTPS to GitHub (var.onboarding_sandbox_github_cidrs — no
+# Azure NSG service tag exists for GitHub, see that variable's docstring),
+# Azure DevOps (the "AzureDevOps" service tag), the API (optional,
+# var.onboarding_sandbox_api_egress_cidr), and the platform/ACR endpoints
+# every Container Apps Environment with VNet integration needs regardless of
+# workload (Azure Container Registry, Azure Monitor/Log Analytics, and Azure
+# AD for the environment's own managed identity token requests — all via the
+# "AzureContainerRegistry", "AzureMonitor" and "AzureActiveDirectory" service
+# tags). Denies everything else outbound. DNS (UDP/TCP 53) is allowed to
+# "VirtualNetwork" only — the sandbox never needs to resolve anything but the
+# hosts above and Azure's own platform DNS.
+# -----------------------------------------------------------------------------
+
+resource "azurerm_network_security_group" "onboarding_sandbox" {
+  count               = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name                = "nsg-${var.project_name}-onboarding-sandbox"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = local.common_tags
+
+  security_rule {
+    name                         = "AllowGitHubHttpsOutbound"
+    priority                     = 100
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "443"
+    source_address_prefix        = "*"
+    destination_address_prefixes = var.onboarding_sandbox_github_cidrs
+  }
+
+  security_rule {
+    name                       = "AllowAzureDevOpsHttpsOutbound"
+    priority                   = 110
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzureDevOps"
+  }
+
+  dynamic "security_rule" {
+    for_each = var.onboarding_sandbox_api_egress_cidr != null ? [var.onboarding_sandbox_api_egress_cidr] : []
+    content {
+      name                       = "AllowApiCallbackOutbound"
+      priority                   = 120
+      direction                  = "Outbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "443"
+      source_address_prefix      = "*"
+      destination_address_prefix = security_rule.value
+    }
+  }
+
+  security_rule {
+    name                       = "AllowContainerRegistryOutbound"
+    priority                   = 130
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzureContainerRegistry"
+  }
+
+  security_rule {
+    name                         = "AllowAzurePlatformOutbound"
+    priority                     = 140
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_ranges      = ["443"]
+    source_address_prefix        = "*"
+    destination_address_prefixes = ["AzureMonitor", "AzureActiveDirectory"]
+  }
+
+  # Fix round 1, item 1: the job fetches its per-run secrets (callback HMAC
+  # key, clone credentials) from the dedicated onboarding sandbox Key Vault
+  # at startup — it needs outbound HTTPS to it. The vault itself may be
+  # public (AzureKeyVault service tag, sufficient for the IP-range filtering
+  # this NSG already does) or, in an environment with tighter requirements,
+  # reachable only via a private endpoint on this same subnet (in which case
+  # this rule is redundant but harmless — traffic to a private endpoint on
+  # the local subnet doesn't traverse this NSG's outbound rules to leave the
+  # VNet in the first place). See README.md's "Egress restriction".
+  security_rule {
+    name                       = "AllowKeyVaultOutbound"
+    priority                   = 145
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzureKeyVault"
+  }
+
+  security_rule {
+    name                       = "AllowVnetDnsOutbound"
+    priority                   = 150
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "53"
+    source_address_prefix      = "*"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "DenyAllOutbound"
+    priority                   = 4096
+    direction                  = "Outbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "onboarding_sandbox" {
+  count                     = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  subnet_id                 = var.onboarding_sandbox_subnet_id
+  network_security_group_id = azurerm_network_security_group.onboarding_sandbox[0].id
+}
+
+# -----------------------------------------------------------------------------
+# Dedicated Container App Environment (own subnet -> own egress boundary)
+# -----------------------------------------------------------------------------
+
+module "onboarding_sandbox_environment" {
+  count  = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  source = "./modules/workload-environment"
+
+  subscription_id            = var.subscription_id
+  resource_group_name        = var.resource_group_name
+  location                   = var.location
+  environment_name           = "${local.onboarding_sandbox_job_name}-env"
+  log_analytics_workspace_id = module.logging.log_analytics_id
+
+  infrastructure_subnet_id       = var.onboarding_sandbox_subnet_id
+  internal_load_balancer_enabled = true
+
+  tags = local.common_tags
+
+  depends_on = [
+    time_sleep.wait_for_resource_group,
+    azurerm_subnet_network_security_group_association.onboarding_sandbox,
+  ]
+}
+
+# -----------------------------------------------------------------------------
+# UAMI + AcrPull (mirrors the frontend/frontend_new identity pattern above)
+# -----------------------------------------------------------------------------
+
+resource "azurerm_user_assigned_identity" "onboarding_sandbox" {
+  count               = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name                = "${local.onboarding_sandbox_job_name}-identity"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = local.common_tags
+
+  depends_on = [time_sleep.wait_for_resource_group]
+}
+
+resource "azurerm_role_assignment" "onboarding_sandbox_uami_acr_pull" {
+  count                = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope                = local.acr_id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.onboarding_sandbox[0].principal_id
+}
+
+# -----------------------------------------------------------------------------
+# Dedicated onboarding sandbox Key Vault (fix round 1, item 1 — security).
+#
+# The Container Apps Jobs "start" REST call cannot carry secrets (its body
+# is a JobExecutionTemplate; any `configuration.secrets` block is silently
+# dropped), and job-level secrets are shared across every execution, so
+# writing them per run would race concurrent runs. Every per-run secret
+# (the callback HMAC key, and each selected repository's clone credential —
+# AzureContainerAppsJobDispatcher, jobDispatcher.ts) instead goes here, with
+# an expiry, and the job fetches each value itself at startup with its own
+# UAMI. RBAC (Azure role assignments, not legacy access policies, matching
+# ./modules/keyvault's convention):
+#  - the sandbox job's UAMI: a CUSTOM role with only
+#    `Microsoft.KeyVault/vaults/secrets/getSecret/action` (fix round 2, item
+#    A — below) — deliberately NOT the built-in "Key Vault Secrets User",
+#    which also grants `secrets/readMetadata/action` (list/enumerate every
+#    secret name in the vault, including every OTHER run's, across every
+#    organization). A compromised execution can only fetch the exact secret
+#    it was handed the name of; it can never discover what else is there.
+#  - the API's identity: "Key Vault Secrets Officer" (read/write/delete) —
+#    it mints secrets at dispatch and deletes them at every terminal state
+#    (services/onboarding/sandbox/sandboxSecretStore.ts#cleanupSandboxSecrets).
+# Purge protection mirrors the platform vault's own setting
+# (var.keyvault_purge_protection_enabled) — same convention, not a new one.
+# -----------------------------------------------------------------------------
+
+module "onboarding_sandbox_keyvault" {
+  count  = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  source = "./modules/keyvault"
+
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  key_vault_name      = "kv-${var.project_name}-onboard-${random_string.suffix.result}"
+
+  sku_name                   = var.keyvault_sku
+  soft_delete_retention_days = var.keyvault_soft_delete_retention_days
+  purge_protection_enabled   = var.keyvault_purge_protection_enabled
+
+  # Same network posture as the platform vault by default; a dedicated
+  # private endpoint can be layered on later without touching this module
+  # call (private_endpoint_subnet_id/private_dns_zone_id are both optional).
+  public_network_access_enabled = var.keyvault_public_network_access
+  network_default_action        = var.keyvault_network_default_action
+  allowed_ip_ranges             = var.keyvault_allowed_ip_ranges
+  allowed_subnet_ids            = [var.onboarding_sandbox_subnet_id]
+
+  # No secrets_user_principal_ids here (deliberately) — the built-in "Key
+  # Vault Secrets User" role includes secrets/readMetadata/action (list),
+  # not just get. The sandbox job's UAMI instead gets a custom, get-only
+  # role below (fix round 2, item A).
+
+  tags = local.common_tags
+
+  depends_on = [time_sleep.wait_for_resource_group]
+}
+
+# The API's identity writes/deletes per-run secrets here — Officer, not
+# just Secrets User (the module's own `deployer` role assignment is scoped
+# to whoever runs `terraform apply`, not the running API).
+resource "azurerm_role_assignment" "api_onboarding_sandbox_keyvault_officer" {
+  count                = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope                = module.onboarding_sandbox_keyvault[0].id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = module.container_apps.principal_id
+}
+
+# -----------------------------------------------------------------------------
+# Sandbox job's Key Vault access: get-only, never list (fix round 2, item A
+# — security). The built-in "Key Vault Secrets User" role bundles
+# `Microsoft.KeyVault/vaults/secrets/readMetadata/action`, which lets its
+# holder enumerate every secret name in the vault (list), not merely read
+# the one it was handed. Every per-run secret in this vault belongs to some
+# organization's onboarding run — across every organization, since this is
+# ONE shared sandbox vault for the whole platform — so a compromised
+# execution able to list would be able to discover, and then fetch (its
+# `getSecret` right is real, not merely latent), another run's callback key
+# or clone credential. This custom role has exactly one dataAction, no list.
+#
+# Residual risk (accepted, documented per fix round 2 item A):
+#  - A compromised execution can still read the small, FIXED set of secret
+#    names it was itself handed via its own env — its own run's callback
+#    key and its own selected repositories' clone credentials. It cannot
+#    discover or read any other run's secrets: secret names are
+#    `onboarding-<prefix>-<uuidv4>` (sandboxSecretStore.ts#generateSecretName),
+#    and a UUIDv4 carries 122 bits of cryptographic randomness
+#    (crypto.randomUUID(), Node's CSPRNG) — brute-forcing or guessing
+#    another run's name is not a practical attack.
+#  - Each secret's TTL (sandboxVaultUrl's ttlSeconds — roughly the job
+#    timeout plus margin) bounds how long even ITS OWN credentials remain
+#    valid if cleanup never runs (a crash); cleanupSandboxSecrets deletes
+#    them immediately at every terminal state in the normal path.
+#  - Every clone credential this role could ever fetch is itself read-only
+#    at the provider (GitHub: `contents: read` only; Azure Repos: whatever
+#    the configured PAT allows, never broader than the connection an
+#    organization's own admin configured) — even a fully exfiltrated
+#    credential grants no write access to the repository it names.
+# -----------------------------------------------------------------------------
+
+resource "azurerm_role_definition" "onboarding_sandbox_kv_secret_getter" {
+  count       = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name        = "${local.onboarding_sandbox_job_name}-kv-secret-getter"
+  scope       = module.onboarding_sandbox_keyvault[0].id
+  description = "Get (never list/enumerate) secrets in the onboarding sandbox Key Vault — the sandbox job may only read the exact secret name(s) it was given (T141, fix round 2, item A)."
+
+  permissions {
+    data_actions = [
+      "Microsoft.KeyVault/vaults/secrets/getSecret/action",
+    ]
+  }
+
+  assignable_scopes = [module.onboarding_sandbox_keyvault[0].id]
+}
+
+resource "azurerm_role_assignment" "onboarding_sandbox_uami_kv_secret_getter" {
+  count              = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope              = module.onboarding_sandbox_keyvault[0].id
+  role_definition_id = azurerm_role_definition.onboarding_sandbox_kv_secret_getter[0].role_definition_resource_id
+  principal_id       = azurerm_user_assigned_identity.onboarding_sandbox[0].principal_id
+}
+
+# -----------------------------------------------------------------------------
+# The job itself (manual trigger only — started by
+# services/onboarding/jobDispatcher.ts's AzureContainerAppsJobDispatcher, one
+# execution per onboarding run).
+# -----------------------------------------------------------------------------
+
+resource "azurerm_container_app_job" "onboarding_sandbox" {
+  count                        = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name                         = local.onboarding_sandbox_job_name
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = module.onboarding_sandbox_environment[0].environment_id
+
+  replica_timeout_in_seconds = var.onboarding_sandbox_replica_timeout_seconds
+  replica_retry_limit        = 0
+
+  manual_trigger_config {
+    parallelism              = var.onboarding_sandbox_parallelism
+    replica_completion_count = var.onboarding_sandbox_parallelism
+  }
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.onboarding_sandbox[0].id]
+  }
+
+  registry {
+    server   = local.acr_login_server
+    identity = azurerm_user_assigned_identity.onboarding_sandbox[0].id
+  }
+
+  template {
+    container {
+      name   = "sandbox"
+      image  = var.onboarding_sandbox_container_image
+      cpu    = var.onboarding_sandbox_cpu
+      memory = var.onboarding_sandbox_memory
+
+      # Per-run env (PRONGHORN_RUN_ID, PRONGHORN_CALLBACK_URL,
+      # PRONGHORN_VAULT_URI, PRONGHORN_CALLBACK_PAYLOAD,
+      # PRONGHORN_CALLBACK_KEY_SECRET_NAME, PRONGHORN_REPOSITORIES, and every
+      # PRONGHORN_REPO_CLONE_URL_<n>/PRONGHORN_REPO_AUTH_SECRET_NAME_<n>) is
+      # set per execution by the "start" ARM call
+      # (AzureContainerAppsJobDispatcher) — never a secret VALUE, and never
+      # baked into this template. This container block only carries what's
+      # the same for every run.
+      env {
+        name  = "PRONGHORN_API_URL"
+        value = var.onboarding_sandbox_api_url
+      }
+
+      # Fix round 1, item 1: which user-assigned identity to request an IMDS
+      # token for (infra/onboarding-sandbox/src/keyvault.ts) — static per
+      # job, so it belongs in the template, not the per-run "start" env.
+      env {
+        name  = "PRONGHORN_IDENTITY_CLIENT_ID"
+        value = azurerm_user_assigned_identity.onboarding_sandbox[0].client_id
+      }
+    }
+  }
+
+  tags = local.common_tags
+
+  depends_on = [
+    time_sleep.wait_for_resource_group,
+    azurerm_role_assignment.onboarding_sandbox_uami_acr_pull,
+    module.onboarding_sandbox_keyvault,
+  ]
+
+  lifecycle {
+    # AzureContainerAppsJobDispatcher's "start" call overrides this template's
+    # env/secrets per execution (ARM's job "start" action) — Terraform must
+    # not fight that by planning to revert it on every apply.
+    ignore_changes = [template]
+  }
+}
+
+# -----------------------------------------------------------------------------
+# API identity permission to start/stop job executions (research T141; fix
+# round 1, item 4 — least privilege): a **custom role**, scoped to this one
+# job resource, limited to exactly what AzureContainerAppsJobDispatcher
+# needs — starting an execution, stopping one, and reading the job/its
+# executions (to resolve an execution's name after "start", and for the
+# `stop` call cancel() makes). Deliberately NOT "Contributor" (which would
+# also let this identity delete or reconfigure the job) — narrower than the
+# pre-existing api_workload_env_contributor/api_subscription_contributor
+# grants above, which would already cover this job too; this is the
+# explicit, minimal, self-documenting grant for it.
+# -----------------------------------------------------------------------------
+
+resource "azurerm_role_definition" "onboarding_sandbox_job_operator" {
+  count       = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name        = "${local.onboarding_sandbox_job_name}-operator"
+  scope       = azurerm_container_app_job.onboarding_sandbox[0].id
+  description = "Start/stop executions of the onboarding sandbox Container Apps Job and read its executions — nothing else (T141, fix round 1 item 4)."
+
+  permissions {
+    actions = [
+      "Microsoft.App/jobs/read",
+      "Microsoft.App/jobs/start/action",
+      "Microsoft.App/jobs/stop/action",
+      "Microsoft.App/jobs/executions/read",
+    ]
+    not_actions = []
+  }
+
+  assignable_scopes = [azurerm_container_app_job.onboarding_sandbox[0].id]
+}
+
+resource "azurerm_role_assignment" "api_onboarding_sandbox_job_operator" {
+  count              = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope              = azurerm_container_app_job.onboarding_sandbox[0].id
+  role_definition_id = azurerm_role_definition.onboarding_sandbox_job_operator[0].role_definition_resource_id
+  principal_id       = module.container_apps.principal_id
+}
+
+# =============================================================================
 # Entra ID App Registration (optional – controlled by create_entra_app_registration)
 # =============================================================================
 

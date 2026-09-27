@@ -37,6 +37,8 @@ import {
 import { canTransition, describeInvalidTransition, isTerminal } from "./stateMachine";
 import { getJobDispatcher } from "./jobDispatcher";
 import type { JobResult, JobProgressEvent } from "./jobDispatcher";
+import { mintCallbackToken, verifyCallbackToken } from "./callbackAuth";
+import { cleanupSandboxSecrets } from "./sandbox/sandboxSecretStore";
 import { broadcastOnboardingProgress } from "./realtime";
 import { listGitHubRepositories, ImportableRepository } from "./githubImport";
 import { listAzureDevOpsRepositories, ImportableAzureRepository } from "./azureImport";
@@ -91,8 +93,13 @@ export const APPLICATION_LINK_BLOCKED_WARNING =
 export const REPOSITORY_OUT_OF_SCOPE_WARNING = "outside this organization's configured repository scope";
 
 function repositoryWarning(repo: OnboardingRunRepositoryRow): string | null {
-  const review = (repo.review ?? {}) as { prError?: string; applicationLinkWarning?: string };
-  const message = review.prError || review.applicationLinkWarning;
+  const review = (repo.review ?? {}) as { prError?: string; applicationLinkWarning?: string; sandboxError?: string };
+  // Fix round 1, item 3: a repository-level sandbox failure is surfaced too
+  // — prError (a failed PR attempt) and applicationLinkWarning take
+  // precedence since they're about a later, more specific step, but a
+  // repository that never even reached "generated files" should still show
+  // *why*, not just "no generated files" (openPullRequests's fallback).
+  const message = review.prError || review.applicationLinkWarning || review.sandboxError;
   return typeof message === "string" && message.length > 0 ? `${repo.full_name}: ${message}` : null;
 }
 
@@ -367,6 +374,7 @@ export async function applySandboxResult(result: JobResult): Promise<void> {
   if (result.status === "failed") {
     await updateRun(result.runId, { status: "failed", logBlob: result.logBlob ?? null });
     logger.warn(`[onboarding] sandbox run failed (run=${result.runId}): ${result.error ?? "unknown error"}`);
+    await cleanupRunSandboxSecrets(run);
     return;
   }
 
@@ -377,7 +385,14 @@ export async function applySandboxResult(result: JobResult): Promise<void> {
       detectedBuild: repo.detectedBuild ?? null,
       detectedCi: repo.detectedCi ?? null,
       part: repo.part ?? null,
-      review: repo.review ?? {},
+      // Fix round 1, item 3: a per-repository sandbox error (this repo's
+      // own clone/detect/generate step failed, distinct from the whole run
+      // failing) is carried in review.sandboxError so it survives to the
+      // run output's warnings and openPullRequests's per-repository
+      // warning (repositoryWarning/buildPrFailureReason below), instead of
+      // silently vanishing (the sandbox job's JobRepoResult.error used to
+      // have nowhere to go).
+      review: repo.error ? { ...(repo.review ?? {}), sandboxError: repo.error } : repo.review ?? {},
       generatedManifest: repo.generatedManifest ?? [],
       baselineCounts: repo.baselineCounts ?? {},
     });
@@ -385,6 +400,26 @@ export async function applySandboxResult(result: JobResult): Promise<void> {
 
   await updateRun(result.runId, { status: "ready", step: "output", logBlob: result.logBlob ?? null });
   logger.info(`[onboarding] sandbox run ready (run=${result.runId})`);
+  await cleanupRunSandboxSecrets(run);
+}
+
+/**
+ * Best-effort delete of every sandbox Key Vault secret this run's dispatch
+ * wrote (fix round 1, item 2): `run.sandbox_secret_names` plus
+ * `run.callback_secret_ref` (kept as a single list so cleanup never misses
+ * one because it forgot to check both columns), and clears both columns.
+ * Called once the sandbox job itself reaches a terminal state — `ready` or
+ * `failed` in {@link applySandboxResult}, {@link cancelRun}, or a dispatch
+ * failure in {@link startRun} — never on a run whose sandbox job never
+ * started (nothing to clean up). Never throws; logs and moves on. Each
+ * secret's own `expiresOn` (set at creation,
+ * `sandbox/sandboxSecretStore.ts`) is the backstop if this never runs.
+ */
+async function cleanupRunSandboxSecrets(run: Pick<OnboardingRunRow, "id" | "callback_secret_ref" | "sandbox_secret_names">): Promise<void> {
+  const names = [...(run.sandbox_secret_names ?? []), run.callback_secret_ref];
+  if (names.every((n) => !n)) return;
+  await cleanupSandboxSecrets(names);
+  await updateRun(run.id, { callbackSecretRef: null, sandboxSecretNames: [] });
 }
 
 export async function startRun(userId: string, runId: string): Promise<OnboardingRunView> {
@@ -406,20 +441,126 @@ export async function startRun(userId: string, runId: string): Promise<Onboardin
     throw Errors.conflict(describeInvalidTransition(run.status, "running"));
   }
 
+  const organizationId = await getTeamOrgId(run.team_id);
+  if (!organizationId) throw Errors.notFound("Team");
+
+  // WP-BE6 (T141): a real (out-of-process) dispatcher reports back over
+  // POST /onboarding/runs/:id/callback, authenticated by a fresh, per-run,
+  // short-lived HMAC token (callbackAuth.ts) — minted here, before dispatch,
+  // never reused across runs. The in-process dispatchers (InMemory, Local)
+  // simply ignore callbackUrl/callbackToken.
+  const { token: callbackToken, secretRef: callbackSecretRef } = await mintCallbackToken(runId);
+  await updateRun(runId, { callbackSecretRef });
+
   const dispatcher = getJobDispatcher();
   // Fix round 2, item 6: forward the dispatcher's progress onto this run's
   // `onboarding-{runId}` realtime channel (contracts/api.md), so the wizard
   // sees log/step/done events as the sandbox job runs, not just the final
   // ready/failed state.
-  const { jobExecutionId } = await dispatcher.dispatch(
-    { runId, teamId: run.team_id, packVersion: run.pack_version, repositories: selected.map((r) => ({ fullName: r.full_name })) },
-    applySandboxResult,
-    (event: JobProgressEvent) => broadcastOnboardingProgress(runId, event)
-  );
+  let dispatchResult: { jobExecutionId: string; sandboxSecretNames?: string[] };
+  try {
+    dispatchResult = await dispatcher.dispatch(
+      {
+        runId,
+        teamId: run.team_id,
+        organizationId,
+        connectionId: run.connection_id,
+        packVersion: run.pack_version,
+        repositories: selected.map((r) => ({ fullName: r.full_name })),
+        callbackUrl: buildOnboardingCallbackUrl(runId),
+        callbackToken,
+        callbackSecretRef,
+      },
+      applySandboxResult,
+      (event: JobProgressEvent) => broadcastOnboardingProgress(runId, event)
+    );
+  } catch (err) {
+    // Fix round 1, item 2: the callback secret was already minted in the
+    // sandbox vault above — a dispatch failure (e.g. the ARM "start" call
+    // itself failed) leaves nothing to clean it up otherwise until its own
+    // expiry. AzureContainerAppsJobDispatcher already cleans up any
+    // per-repository secrets it wrote before rethrowing.
+    await cleanupSandboxSecrets([callbackSecretRef]);
+    await updateRun(runId, { callbackSecretRef: null });
+    throw err;
+  }
+  const { jobExecutionId, sandboxSecretNames } = dispatchResult;
+  const allSecretNames = [...(sandboxSecretNames ?? []), callbackSecretRef];
 
-  const updated = await updateRun(runId, { jobExecutionId });
+  // Fix round 2, item B: a guarded write, not a plain updateRun — only
+  // takes effect while the run's status is STILL "running" at the moment
+  // Postgres applies it (same atomic-claim pattern as claimRunTransition's
+  // own docstring). If cancelRun ran concurrently between our earlier claim
+  // (top of this function) and here, this returns null: the row's status
+  // is already "cancelled", and if we wrote jobExecutionId/sandboxSecretNames
+  // onto it anyway, cancelRun's own (already-completed, or about to run)
+  // cleanup would have nothing to go on — the job would keep running and
+  // its secrets would never be cleaned up until their TTL. Instead, THIS
+  // call is the one that notices and handles it immediately.
+  const recorded = await claimRunTransition(runId, "running", { jobExecutionId, sandboxSecretNames: allSecretNames });
+  if (!recorded) {
+    logger.warn(
+      `[onboarding] run ${runId} was cancelled between dispatch and recording its job execution — stopping the job and cleaning up its secrets now`
+    );
+    try {
+      await dispatcher.cancel(jobExecutionId);
+    } catch (err: any) {
+      logger.warn(`[onboarding] failed to cancel orphaned job execution ${jobExecutionId} for run ${runId}: ${err.message}`);
+    }
+    await cleanupSandboxSecrets(allSecretNames);
+    const current = await getRunById(runId);
+    if (!current) throw Errors.notFound("Onboarding run");
+    return toView(current);
+  }
+
   logger.info(`[onboarding] sandbox job dispatched (run=${runId}, jobExecutionId=${jobExecutionId})`);
-  return toView(updated);
+  return toView(recorded);
+}
+
+/**
+ * The absolute URL the sandbox job POSTs progress/results back to. Built
+ * from `ONBOARDING_API_BASE_URL` (or `API_BASE_URL`, shared with other
+ * outbound-URL construction in this codebase) — never guessed from the
+ * inbound request, since the job calls in from outside any request context.
+ */
+function buildOnboardingCallbackUrl(runId: string): string {
+  const base = (process.env.ONBOARDING_API_BASE_URL || process.env.API_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
+  return `${base}/api/v1/onboarding/runs/${runId}/callback`;
+}
+
+// ---------------------------------------------------------------------------
+// POST /onboarding/runs/:id/callback (WP-BE6, T141)
+// ---------------------------------------------------------------------------
+
+export type JobCallbackPayload =
+  | { type: "result"; result: JobResult }
+  | { type: "progress"; event: JobProgressEvent };
+
+/**
+ * Handles one call from the sandbox job to
+ * `POST /onboarding/runs/:id/callback`. No user session — authenticated
+ * solely by `token` (verified against this run's own
+ * `callback_secret_ref`, constant-time, per {@link verifyCallbackToken}).
+ * Every failure (wrong run, expired, tampered, unknown run) is reported
+ * identically by the caller (a generic 401) so nothing here leaks which
+ * check failed.
+ */
+export async function handleJobCallback(runId: string, token: string | undefined, payload: JobCallbackPayload): Promise<void> {
+  const run = await getRunById(runId);
+  if (!run) throw Errors.unauthorized();
+
+  const ok = await verifyCallbackToken(runId, run.callback_secret_ref, token);
+  if (!ok) throw Errors.unauthorized();
+
+  if (payload?.type === "progress") {
+    broadcastOnboardingProgress(runId, payload.event);
+    return;
+  }
+  if (payload?.type === "result") {
+    await applySandboxResult(payload.result);
+    return;
+  }
+  throw Errors.validation({ type: 'must be "progress" or "result"' });
 }
 
 // ---------------------------------------------------------------------------
@@ -803,7 +944,12 @@ export async function openPullRequests(
       }
       const files = (repo.generated_manifest ?? []) as Array<{ path: string; content: string }>;
       if (files.length === 0) {
-        await markRepoError(repo, "no generated files to open a PR from");
+        // Fix round 1, item 3: when the sandbox itself failed for this
+        // repository, say so — more useful than the generic "no generated
+        // files", and the same message toView/repositoryWarning already
+        // surfaces from review.sandboxError.
+        const sandboxError = (repo.review as { sandboxError?: string } | null)?.sandboxError;
+        await markRepoError(repo, sandboxError || "no generated files to open a PR from");
         continue;
       }
 
@@ -940,15 +1086,27 @@ export async function cancelRun(userId: string, runId: string): Promise<Onboardi
     throw Errors.conflict(describeInvalidTransition(run.status, "cancelled"));
   }
 
-  if (run.job_execution_id) {
+  const updated = await updateRun(runId, { status: "cancelled" });
+  logger.info(`[onboarding] run cancelled (run=${runId})`);
+
+  // Fix round 2, item B: re-read right before acting on job_execution_id/
+  // secrets — the `run` fetched above (by requireRunAccess) can be stale if
+  // startRun's dispatch landed its own jobExecutionId/sandboxSecretNames
+  // write in between that read and this point (startRun's own guarded write
+  // — see its claimRunTransition(runId, "running", ...) — handles the
+  // opposite ordering, where our status write above lands first; acting on
+  // the stale `run` here would silently skip cancelling that execution and
+  // leak its secrets until their TTL).
+  const current = (await getRunById(runId)) ?? updated;
+
+  if (current.job_execution_id) {
     try {
-      await getJobDispatcher().cancel(run.job_execution_id);
+      await getJobDispatcher().cancel(current.job_execution_id);
     } catch (err: any) {
-      logger.warn(`[onboarding] failed to cancel job execution ${run.job_execution_id} for run ${runId}: ${err.message}`);
+      logger.warn(`[onboarding] failed to cancel job execution ${current.job_execution_id} for run ${runId}: ${err.message}`);
     }
   }
 
-  const updated = await updateRun(runId, { status: "cancelled" });
-  logger.info(`[onboarding] run cancelled (run=${runId})`);
+  await cleanupRunSandboxSecrets(current);
   return toView(updated);
 }
