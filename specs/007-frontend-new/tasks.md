@@ -59,7 +59,7 @@
 
 Each task applies the **move and restyle recipe** (plan.md) to one page: remove the page's own nav, add route metadata + primary action, put tabs in the URL, finish the token fixes, adjust for 390px, register long runs, and pass its regression rows at 1440 and 390 + axe (no new violations).
 
-- [ ] T040 [P] [US1] (WP-P2) Projects home — `FE/src/pages/Dashboard.tsx` → route `/projects`. PR-01.
+- [x] T040 [P] [US1] (WP-P2) Projects home — `FE/src/pages/Dashboard.tsx` → route `/projects`. PR-01.
 - [x] T041 [US1] (WP-P3) `ProjectLayout` loader (project, role, current version) + Project settings `FE/src/pages/project/ProjectSettings.tsx` + access banner in the shell. PR-02, PR-03.
 - [ ] T042 [P] [US2] (WP-D1) Requirements `pages/project/Requirements.tsx`. PR-04.
 - [ ] T043 [P] [US2] (WP-D2) Project standards `pages/project/Standards.tsx`. PR-05.
