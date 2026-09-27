@@ -72,21 +72,21 @@ const Deploy = () => {
           {/* Header with tabs and buttons - responsive */}
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <TabsList className="w-full lg:w-auto flex-shrink-0 h-auto flex-wrap">
-              <TabsTrigger value="cloud" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <TabsTrigger value="cloud" aria-label="Cloud" className="flex items-center gap-1.5 text-xs sm:text-sm">
                 <Cloud className="h-4 w-4" />
                 <span className="hidden sm:inline">Cloud</span>
               </TabsTrigger>
-              <TabsTrigger value="local" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <TabsTrigger value="local" aria-label="Local" className="flex items-center gap-1.5 text-xs sm:text-sm">
                 <Laptop className="h-4 w-4" />
                 <span className="hidden sm:inline">Local</span>
               </TabsTrigger>
-              <TabsTrigger value="dedicated-vm" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <TabsTrigger value="dedicated-vm" aria-label="VMs (coming soon)" className="flex items-center gap-1.5 text-xs sm:text-sm">
                 <Server className="h-4 w-4" />
                 <span className="hidden sm:inline">VMs</span>
                 <Badge variant="secondary" className="text-[10px] px-1">Soon</Badge>
               </TabsTrigger>
               {isSuperAdmin && (
-                <TabsTrigger value="manage" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <TabsTrigger value="manage" aria-label="Manage" className="flex items-center gap-1.5 text-xs sm:text-sm">
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Manage</span>
                 </TabsTrigger>
@@ -99,6 +99,7 @@ const Deploy = () => {
                 size="sm"
                 onClick={refresh}
                 disabled={isRefreshing}
+                aria-label={isRefreshing ? "Refreshing..." : "Refresh"}
                 className="flex-1 sm:flex-none"
               >
                 <RefreshCw className={`h-4 w-4 sm:mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
