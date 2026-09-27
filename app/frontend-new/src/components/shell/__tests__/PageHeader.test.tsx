@@ -1,9 +1,12 @@
+import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { PageHeader } from "../PageHeader";
 import { PrimaryActionProvider } from "../PrimaryActionContext";
 import { PrimaryActionSlot } from "../PrimaryActionSlot";
+import type { RouteHandle } from "../types";
 
 describe("PageHeader", () => {
   it("renders the crumb, title and primary action", async () => {
@@ -44,5 +47,74 @@ describe("PageHeader", () => {
     const button = screen.getByRole("button", { name: "Deploy" });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("title", "No changes staged");
+  });
+});
+
+describe("PageHeader defaults from the route registry (T033/T027, usePageRoute)", () => {
+  function renderAtRoute(handle: RouteHandle) {
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: (
+            <PrimaryActionProvider>
+              <PageHeader />
+            </PrimaryActionProvider>
+          ),
+          handle,
+        },
+      ],
+      { initialEntries: ["/"] },
+    );
+    return render(<RouterProvider router={router} />);
+  }
+
+  it("reads the title and primary action off the matched route's handle when no props are given", () => {
+    const onClick = vi.fn();
+    renderAtRoute({ title: "Requirements", phase: "define", tool: "requirements", usePrimaryAction: () => ({ label: "Add requirement", onClick }) });
+    expect(screen.getByRole("heading", { name: "Requirements" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add requirement" })).toBeInTheDocument();
+  });
+
+  it("falls back to an empty title and no primary action when the route has no handle", () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: (
+            <PrimaryActionProvider>
+              <PageHeader />
+            </PrimaryActionProvider>
+          ),
+        },
+      ],
+      { initialEntries: ["/"] },
+    );
+    render(<RouterProvider router={router} />);
+    expect(screen.getByRole("heading").textContent).toBe("");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("lets an explicit title/primary prop override the route registry's", () => {
+    const registryOnClick = vi.fn();
+    const overrideOnClick = vi.fn();
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: (
+            <PrimaryActionProvider>
+              <PageHeader title="Overridden title" primary={{ label: "Overridden action", onClick: overrideOnClick }} />
+            </PrimaryActionProvider>
+          ),
+          handle: { title: "Requirements", usePrimaryAction: () => ({ label: "Add requirement", onClick: registryOnClick }) } as RouteHandle,
+        },
+      ],
+      { initialEntries: ["/"] },
+    );
+    render(<RouterProvider router={router} />);
+    expect(screen.getByRole("heading", { name: "Overridden title" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Overridden action" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add requirement" })).not.toBeInTheDocument();
   });
 });

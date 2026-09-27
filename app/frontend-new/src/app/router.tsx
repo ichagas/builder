@@ -86,8 +86,12 @@ export const router = createBrowserRouter([
       {
         element: <RootLayout />,
         children: [
-          ...ROOT_ROUTES.map((route) => ({ path: route.path, element: <route.Component /> })),
-          ...LIBRARY_ROUTES.map((route) => ({ path: `library/${route.path}`, element: <route.Component /> })),
+          ...ROOT_ROUTES.map((route) => ({ path: route.path, element: <route.Component />, handle: route })),
+          ...LIBRARY_ROUTES.map((route) => ({
+            path: `library/${route.path}`,
+            element: <route.Component />,
+            handle: route,
+          })),
           { path: "*", element: <NotFound /> },
         ],
       },
@@ -99,6 +103,7 @@ export const router = createBrowserRouter([
           ...PROJECT_TOOL_ROUTES.map((route) => ({
             path: `v/current/${route.phase}/${route.tool}`,
             element: <route.Component />,
+            handle: route,
           })),
         ],
       },

@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { ActionSpec, PhaseNodeState } from "@/components/shell/types";
+import type { PhaseNodeState, UsePrimaryAction } from "@/components/shell/types";
 
 /**
  * Route metadata registry (T033). See plan.md "the move and restyle
@@ -17,7 +17,7 @@ import type { ActionSpec, PhaseNodeState } from "@/components/shell/types";
  */
 export type Phase = "define" | "design" | "build" | "ship";
 
-export type UsePrimaryAction = () => ActionSpec | undefined;
+export type { UsePrimaryAction };
 
 export const useNoPrimaryAction: UsePrimaryAction = () => undefined;
 
