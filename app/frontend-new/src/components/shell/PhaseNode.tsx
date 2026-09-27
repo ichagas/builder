@@ -40,7 +40,7 @@ export function PhaseNode({ phase, collapsed }: PhaseNodeProps) {
         className={cn(
           "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
           phase.state === "done" && "text-ok",
-          phase.state === "skipped" && "text-muted",
+          phase.state === "skipped" && "text-muted-foreground",
           phase.state === "active" && "text-primary",
         )}
       >

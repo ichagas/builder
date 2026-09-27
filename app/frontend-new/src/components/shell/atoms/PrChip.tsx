@@ -13,7 +13,7 @@ const STATE_CLASSES: Record<PrChipState, string> = {
   // tint close to --c-define; reuse that token (with an opacity modifier for
   // the tint) rather than adding a raw color.
   merged: "border-transparent bg-define/10 text-define",
-  none: "border-line-2 text-muted",
+  none: "border-line-2 text-muted-foreground",
 };
 
 export interface PrChipProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, "children"> {

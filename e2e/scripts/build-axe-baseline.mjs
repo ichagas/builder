@@ -3,6 +3,15 @@
 // recordAxeBaseline() in e2e/fixtures.ts) into e2e/baselines/axe-legacy.json
 // -- one row per (pageId, viewport), each the max serious/critical count seen
 // across retries. Run automatically at the end of `npm run test:legacy`.
+//
+// T020 (WP-F2c): accepts an optional `--out <filename>` so a manual "new"
+// app axe run (e.g. `node scripts/build-axe-baseline.mjs --out
+// axe-new-f2c.json`) writes its own baselines/<filename> instead of always
+// clobbering axe-legacy.json -- previously the only way to keep a "new" run
+// was to copy axe-legacy.json elsewhere and `git checkout` it back
+// afterward. The raw NDJSON input (axe-legacy.raw.jsonl) is unaffected: it's
+// just the fixed name `recordAxeBaseline()` in fixtures.ts appends to
+// per-test, regardless of which app is under test.
 import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -10,7 +19,14 @@ import path from "node:path";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const baselinesDir = path.resolve(dir, "..", "baselines");
 const rawPath = path.join(baselinesDir, "axe-legacy.raw.jsonl");
-const outPath = path.join(baselinesDir, "axe-legacy.json");
+
+const outFlagIndex = process.argv.indexOf("--out");
+const outFileName = outFlagIndex !== -1 ? process.argv[outFlagIndex + 1] : "axe-legacy.json";
+if (outFlagIndex !== -1 && !outFileName) {
+  console.error("[build-axe-baseline] --out requires a filename");
+  process.exit(1);
+}
+const outPath = path.join(baselinesDir, outFileName);
 
 if (!existsSync(rawPath)) {
   console.log(`[build-axe-baseline] no raw records at ${rawPath}, skipping`);
@@ -35,7 +51,10 @@ writeFileSync(
   JSON.stringify(
     {
       recordedAt: new Date().toISOString(),
-      note: "Baseline violation counts for app/frontend (legacy). Not a pass/fail gate -- WP-F6 records these so page-task agents can later assert app/frontend-new introduces no NEW serious/critical violations per page.",
+      note:
+        outFileName === "axe-legacy.json"
+          ? "Baseline violation counts for app/frontend (legacy). Not a pass/fail gate -- WP-F6 records these so page-task agents can later assert app/frontend-new introduces no NEW serious/critical violations per page."
+          : `Baseline violation counts recorded via --out ${outFileName}. See other files in this directory for what app/run they cover.`,
       pages: rows,
     },
     null,

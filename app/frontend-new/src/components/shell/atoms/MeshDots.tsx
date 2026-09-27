@@ -54,7 +54,7 @@ const STATUS_CLASSES: Record<MeshAgentStatus, string> = {
   warn: "ring-2 ring-warn ring-offset-2 ring-offset-surface",
   fail: "ring-2 ring-bad ring-offset-2 ring-offset-surface",
   skip: "opacity-30",
-  none: "border border-dashed border-line-2 bg-surface-2 text-muted",
+  none: "border border-dashed border-line-2 bg-surface-2 text-muted-foreground",
 };
 
 export interface MeshDotsProps extends React.HTMLAttributes<HTMLSpanElement> {

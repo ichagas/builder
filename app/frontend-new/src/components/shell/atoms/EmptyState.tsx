@@ -18,7 +18,7 @@ export function EmptyState({ title, description, cta, size = "default", classNam
   return (
     <div
       className={cn(
-        "grid justify-items-center gap-1.5 text-center text-muted",
+        "grid justify-items-center gap-1.5 text-center text-muted-foreground",
         size === "small" ? "p-4" : "p-9 px-6",
         className,
       )}

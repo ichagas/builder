@@ -35,11 +35,11 @@ export function RepoRow({ name, note, stack, findings, mesh, pr, className, ...p
     >
       <span>
         <code className="font-mono text-[13px] font-semibold text-ink">{name}</code>
-        {note ? <span className="block text-[12.5px] text-muted">{note}</span> : null}
+        {note ? <span className="block text-[12.5px] text-muted-foreground">{note}</span> : null}
       </span>
       <StackBadge profile={stack.profile} label={stack.label} />
       {findings ? (
-        <span className="text-[12.5px] text-muted max-[900px]:col-span-full">{findings}</span>
+        <span className="text-[12.5px] text-muted-foreground max-[900px]:col-span-full">{findings}</span>
       ) : (
         <span className="max-[900px]:col-span-full" />
       )}

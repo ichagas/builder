@@ -42,7 +42,7 @@ export function PageHeader({ crumb, title, primary, className }: PageHeaderProps
   return (
     <div className={cn("flex items-start justify-between gap-3 border-b border-line bg-surface px-4 py-3", className)}>
       <div className="min-w-0">
-        {crumb ? <div className="truncate text-xs font-medium uppercase tracking-wide text-muted">{crumb}</div> : null}
+        {crumb ? <div className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{crumb}</div> : null}
         <h1 className="truncate text-xl font-bold text-ink">{resolvedTitle}</h1>
       </div>
       {resolvedPrimary ? (

@@ -309,7 +309,7 @@ function CanvasFlow() {
       .map((edge) => ({
         ...edge,
         style: edge.style || {
-          stroke: "hsl(var(--primary))",
+          stroke: "var(--primary)",
           strokeWidth: 2,
         },
         labelStyle: edge.labelStyle || { 
@@ -348,7 +348,7 @@ function CanvasFlow() {
         sourceHandle: params.sourceHandle,
         targetHandle: params.targetHandle,
         style: {
-          stroke: "hsl(var(--primary))",
+          stroke: "var(--primary)",
           strokeWidth: 2,
         },
         labelStyle: { 
@@ -863,7 +863,7 @@ function CanvasFlow() {
               type: edgeType, // Use normalized type
               label: genEdge.relationship,
               style: {
-                stroke: "hsl(var(--primary))",
+                stroke: "var(--primary)",
                 strokeWidth: 2,
               },
               labelStyle: { 

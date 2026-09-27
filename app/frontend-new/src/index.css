@@ -32,16 +32,27 @@ contracts/design-system.md for the mapping table.
     --popover: 0 0% 100%;
     --popover-foreground: 218 56% 13%;
 
-    /* Primary -> Blueprint --primary */
-    --primary: 225 71% 49%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary -> Blueprint --primary. `--primary`/`--primary-foreground`
+     * themselves are NOT redefined here: they collided with tokens.css's own
+     * hex `--primary`/`--primary-foreground` (loaded first, T020), and this
+     * block's HSL triplet silently won because it loads later. Tailwind's
+     * `bg-primary`/`text-primary-foreground` now read the Blueprint rgb
+     * tokens directly (tailwind.config.ts), so no local var is needed. See
+     * contracts/design-system.md §1.1.
+     */
     --primary-hover: 225 71% 43%;
 
-    /* Secondary / muted -> --surface-2, muted-foreground -> --muted */
+    /* Secondary / muted -> --surface-2, muted-foreground -> --muted.
+     * `--muted` itself is NOT redefined here for the same reason as
+     * `--primary` above: it collided with tokens.css's own hex `--muted`
+     * (which means muted *ink*, not this muted *background*). Tailwind's
+     * `bg-muted`/`text-muted-foreground` read the Blueprint rgb tokens
+     * directly (tailwind.config.ts). `--muted-foreground` has no such
+     * collision (tokens.css doesn't define it), so it stays here.
+     */
     --secondary: 214 37% 96%;
     --secondary-foreground: 218 56% 13%;
 
-    --muted: 214 37% 96%;
     --muted-foreground: 217 21% 39%;
 
     /* Accent -> --primary-soft, foreground -> --primary */
@@ -55,7 +66,11 @@ contracts/design-system.md for the mapping table.
     --input: 215 28% 86%;
     --ring: 225 71% 49%;
 
-    --radius: 4px;
+    /* --radius is NOT redefined here: it collided with tokens.css's own
+     * `--radius: 4px` (T020), which is the single source of truth shadcn's
+     * `rounded-lg/md/sm` (tailwind.config.ts, calc(var(--radius) ...)) read
+     * from already. See contracts/design-system.md §1.1.
+     */
 
     /* Status colors -> --ok / --warn / --primary */
     --success: 143 74% 29%;
@@ -89,14 +104,11 @@ contracts/design-system.md for the mapping table.
     --popover: 219 46% 15%;
     --popover-foreground: 219 47% 94%;
 
-    --primary: 224 100% 71%;
-    --primary-foreground: 219 63% 12%;
     --primary-hover: 224 100% 75%;
 
     --secondary: 217 47% 18%;
     --secondary-foreground: 219 47% 94%;
 
-    --muted: 217 47% 18%;
     --muted-foreground: 217 31% 71%;
 
     --accent: 222 52% 22%;
@@ -161,10 +173,10 @@ contracts/design-system.md for the mapping table.
 
 /* React Flow custom styles for selected nodes */
 .react-flow__node.selected {
-  outline: 3px solid hsl(var(--primary)) !important;
+  outline: 3px solid var(--primary) !important;
   outline-offset: 2px;
 }
 
 .react-flow__node.selected .react-flow__handle {
-  background: hsl(var(--primary));
+  background: var(--primary);
 }

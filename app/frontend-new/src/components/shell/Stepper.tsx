@@ -42,7 +42,7 @@ export function Stepper({ steps, current, onSelect, className }: StepperProps) {
               title={step.note}
               className={cn(
                 "flex w-full flex-col items-start gap-1 rounded-xs border-b-2 px-2.5 py-2 text-left text-xs",
-                isCurrent ? "border-primary text-ink" : "border-transparent text-muted",
+                isCurrent ? "border-primary text-ink" : "border-transparent text-muted-foreground",
                 isFuture && "cursor-not-allowed opacity-50",
               )}
             >
@@ -50,13 +50,13 @@ export function Stepper({ steps, current, onSelect, className }: StepperProps) {
                 {step.state === "done" ? (
                   <Check aria-hidden="true" className="h-3.5 w-3.5 text-ok" />
                 ) : (
-                  <span aria-hidden="true" className="text-[10px] text-muted">
+                  <span aria-hidden="true" className="text-[10px] text-muted-foreground">
                     {index + 1}.
                   </span>
                 )}
                 {step.label}
               </span>
-              {step.note ? <span className="truncate text-muted">{step.note}</span> : null}
+              {step.note ? <span className="truncate text-muted-foreground">{step.note}</span> : null}
             </button>
           </li>
         );
