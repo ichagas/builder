@@ -15,6 +15,7 @@ import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage"
 import { useRealtimeCanvas } from "@/hooks/useRealtimeCanvas";
 import { useRealtimeLayers } from "@/hooks/useRealtimeLayers";
 import { useNodeTypes } from "@/hooks/useNodeTypes";
+import { getMiniMapNodeColor } from "@/pages/project/miniMapNodeColor";
 import { connectionLogic, getXPosition } from "@/lib/connectionLogic";
 import apiClient from "@/lib/apiClient";
 import ReactFlow, { Background, Controls, MiniMap, Connection, Edge, Node, NodeChange, ReactFlowProvider, getNodesBounds } from "reactflow";
@@ -1724,15 +1725,11 @@ function CanvasFlow() {
                 <Background />
                 <Controls />
                 <MiniMap
-                  nodeColor={(node) => {
-                    const colors: Record<string, string> = {
-                      COMPONENT: "#3b82f6",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- MiniMap node-type legend rendered via react-flow's SVG minimap, kept as a fixed categorical palette to match CanvasNode.tsx's own node-type colors 1:1
-                      API: "#10b981",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- MiniMap node-type legend (see line 1729)
-                      DATABASE: "#a855f7",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- MiniMap node-type legend (see line 1729)
-                      SERVICE: "#f97316",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- MiniMap node-type legend (see line 1729)
-                    };
-                    return colors[node.data.type] || "#6b7280";
-                  }}
+                  // See src/pages/project/miniMapNodeColor.ts (WP-F2b fix
+                  // round 1): node-type legend colors from the categorical
+                  // palette tokens, matching CanvasNode.tsx's node-type
+                  // colors and following theme changes automatically.
+                  nodeColor={(node) => getMiniMapNodeColor(node.data.type)}
                   className="bg-card border border-border"
                 />
                 {isLassoActive && <Lasso partial={true} setNodes={setNodes} />}
