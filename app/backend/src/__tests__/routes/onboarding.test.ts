@@ -26,6 +26,7 @@ jest.mock("../../services/onboarding", () => ({
   getRunOutput: jest.fn(),
   openPullRequests: jest.fn(),
   cancelRun: jest.fn(),
+  handleJobCallback: jest.fn(),
 }));
 
 import * as onboarding from "../../services/onboarding";
@@ -300,5 +301,36 @@ describe("POST /onboarding/runs/:id/cancel", () => {
     const res = await request(createApp(USER_ID)).post("/onboarding/runs/run-1/cancel");
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("cancelled");
+  });
+});
+
+describe("POST /onboarding/runs/:id/callback (WP-BE6, T141)", () => {
+  it("does not require an authenticated user (the sandbox job has no user session)", async () => {
+    mocked.handleJobCallback.mockResolvedValue(undefined);
+    const res = await request(createApp()) // no user
+      .post("/onboarding/runs/run-1/callback")
+      .set("Authorization", "Bearer sometoken")
+      .send({ type: "progress", event: { type: "log", message: "cloning" } });
+
+    expect(res.status).toBe(204);
+    expect(mocked.handleJobCallback).toHaveBeenCalledWith("run-1", "sometoken", {
+      type: "progress",
+      event: { type: "log", message: "cloning" },
+    });
+  });
+
+  it("passes undefined when there is no Authorization header", async () => {
+    mocked.handleJobCallback.mockResolvedValue(undefined);
+    await request(createApp()).post("/onboarding/runs/run-1/callback").send({ type: "progress", event: { type: "done" } });
+    expect(mocked.handleJobCallback).toHaveBeenCalledWith("run-1", undefined, { type: "progress", event: { type: "done" } });
+  });
+
+  it("401s (via the service's uniform failure) for a bad token", async () => {
+    mocked.handleJobCallback.mockRejectedValue(Errors.unauthorized());
+    const res = await request(createApp())
+      .post("/onboarding/runs/run-1/callback")
+      .set("Authorization", "Bearer wrong")
+      .send({ type: "progress", event: { type: "log" } });
+    expect(res.status).toBe(401);
   });
 });

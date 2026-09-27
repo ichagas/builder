@@ -1609,3 +1609,62 @@ describe("cancelRun", () => {
     expect(dispatcher.cancel).not.toHaveBeenCalled();
   });
 });
+
+describe("handleJobCallback (WP-BE6, T141)", () => {
+  const { mintCallbackToken } = jest.requireActual("../../../services/onboarding/callbackAuth");
+
+  it("401s for an unknown run before even looking at the token", async () => {
+    mockGetRunById.mockResolvedValue(null);
+    await expect(onboarding.handleJobCallback(RUN_ID, "whatever", { type: "progress", event: { type: "log" } })).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it("401s when no token is given", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: "some-ref" }));
+    await expect(onboarding.handleJobCallback(RUN_ID, undefined, { type: "progress", event: { type: "log" } })).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it("401s for a token minted for a different run", async () => {
+    const { token, secretRef } = await mintCallbackToken("some-other-run");
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: secretRef }));
+    await expect(onboarding.handleJobCallback(RUN_ID, token, { type: "progress", event: { type: "log" } })).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it("broadcasts a valid progress event on the run's realtime channel", async () => {
+    const { token, secretRef } = await mintCallbackToken(RUN_ID);
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: secretRef }));
+
+    await onboarding.handleJobCallback(RUN_ID, token, { type: "progress", event: { type: "log", message: "cloning" } });
+
+    expect(broadcastOnboardingProgress).toHaveBeenCalledWith(RUN_ID, { type: "log", message: "cloning" });
+  });
+
+  it("applies a valid result via applySandboxResult (status -> ready)", async () => {
+    const { token, secretRef } = await mintCallbackToken(RUN_ID);
+    mockGetRunById
+      .mockResolvedValueOnce(baseRun({ callback_secret_ref: secretRef })) // handleJobCallback's own lookup
+      .mockResolvedValueOnce(baseRun({ status: "running", callback_secret_ref: secretRef })); // applySandboxResult's lookup
+    mockUpdateRepo.mockResolvedValue(null);
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    const result: JobResult = {
+      runId: RUN_ID,
+      status: "ready",
+      repositories: [{ fullName: "goa/permits-api", detectedProfile: "node" }],
+    };
+    await onboarding.handleJobCallback(RUN_ID, token, { type: "result", result });
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ status: "ready", step: "output" }));
+  });
+
+  it("rejects a payload with neither 'progress' nor 'result'", async () => {
+    const { token, secretRef } = await mintCallbackToken(RUN_ID);
+    mockGetRunById.mockResolvedValue(baseRun({ callback_secret_ref: secretRef }));
+    await expect(onboarding.handleJobCallback(RUN_ID, token, { type: "nonsense" } as any)).rejects.toMatchObject({ statusCode: 422 });
+  });
+});
