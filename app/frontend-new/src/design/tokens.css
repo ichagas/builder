@@ -95,6 +95,21 @@
   --gbar-ink: #EAF0FA; --gbar-ink-rgb: 234 240 250;
   --gbar-line: #22365F; --gbar-line-rgb: 34 54 95;
 
+  /* Categorical palette (WP-F2b fix round 1). Non-semantic — for legends
+   * over a fixed, unordered set (agent kind, schema-object kind, canvas
+   * node type) where color means only "different kind of thing," never
+   * status/phase. See contracts/design-system.md §1.2. Contrast ≥ 3:1
+   * against --surface/--surface-2/--bg in both themes is verified by
+   * src/design/__tests__/contrast.test.ts ("categorical palette" block). */
+  --cat-1: #4F46E5; --cat-1-rgb: 79 70 229;
+  --cat-2: #0F766E; --cat-2-rgb: 15 118 110;
+  --cat-3: #A21CAF; --cat-3-rgb: 162 28 175;
+  --cat-4: #A16207; --cat-4-rgb: 161 98 7;
+  --cat-5: #BE185D; --cat-5-rgb: 190 24 93;
+  --cat-6: #155E75; --cat-6-rgb: 21 94 117;
+  --cat-7: #4D7C0F; --cat-7-rgb: 77 124 15;
+  --cat-8: #9A3412; --cat-8-rgb: 154 52 18;
+
   /* Charts (derived from the phase/status palette, for the T031 hex codemod) */
   --chart-1: var(--primary); --chart-1-rgb: var(--primary-rgb);
   --chart-2: var(--ok); --chart-2-rgb: var(--ok-rgb);
@@ -232,4 +247,15 @@
   --gbar-line: #22365F; --gbar-line-rgb: 34 54 95;
 
   --shadow-pop: 0 10px 28px rgba(0, 0, 0, .5);
+
+  /* Categorical palette: lighter/more saturated so each hue still clears
+   * >= 3:1 against the dark surfaces. */
+  --cat-1: #8B85F5; --cat-1-rgb: 139 133 245;
+  --cat-2: #2DD4BF; --cat-2-rgb: 45 212 191;
+  --cat-3: #E879F9; --cat-3-rgb: 232 121 249;
+  --cat-4: #EAB308; --cat-4-rgb: 234 179 8;
+  --cat-5: #FB7185; --cat-5-rgb: 251 113 133;
+  --cat-6: #38BDF8; --cat-6-rgb: 56 189 248;
+  --cat-7: #A3E635; --cat-7-rgb: 163 230 53;
+  --cat-8: #FB923C; --cat-8-rgb: 251 146 60;
 }

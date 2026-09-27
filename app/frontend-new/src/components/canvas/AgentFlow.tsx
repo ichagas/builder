@@ -27,18 +27,23 @@ interface AgentDefinition {
 
 // Custom agent node component with connection handles
 function AgentNode({ data, id, selected }: { data: any; id: string; selected: boolean }) {
-  // Color mapping from Tailwind classes to actual colors
+  // Color mapping from Tailwind classes to actual colors. This is a
+  // categorical legend (each agent kind gets its own color, no
+  // status/phase meaning), so it maps to the non-semantic --cat-* palette
+  // rather than status/phase tokens (WP-F2b fix round 1,
+  // contracts/design-system.md §1.2) — a purple-500 agent isn't "define
+  // phase" and a red-500 agent isn't "broken".
   const colorMap: Record<string, string> = {
-    "bg-blue-500": "var(--primary)",
-    "bg-green-500": "var(--ok)",
-    "bg-red-500": "var(--bad)",
-    "bg-purple-500": "var(--c-define)",
-    "bg-orange-500": "var(--warn)",
-    "bg-cyan-500": "var(--c-design)",
-    "bg-pink-500": "var(--bad)",
-    "bg-yellow-500": "var(--warn)",
-    "bg-indigo-500": "var(--primary)",
-    "bg-teal-500": "var(--c-design)",
+    "bg-blue-500": "var(--cat-1)",
+    "bg-green-500": "var(--cat-7)",
+    "bg-red-500": "var(--cat-5)",
+    "bg-purple-500": "var(--cat-3)",
+    "bg-orange-500": "var(--cat-8)",
+    "bg-cyan-500": "var(--cat-6)",
+    "bg-pink-500": "var(--cat-5)",
+    "bg-yellow-500": "var(--cat-4)",
+    "bg-indigo-500": "var(--cat-1)",
+    "bg-teal-500": "var(--cat-2)",
     "bg-gray-600": "var(--muted)",
   };
 

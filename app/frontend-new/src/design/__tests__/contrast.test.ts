@@ -10,6 +10,14 @@ const LIGHT = {
   bg: "#E8EDF4",
   surface: "#FFFFFF",
   surface2: "#F2F5F9",
+  cat1: "#4F46E5",
+  cat2: "#0F766E",
+  cat3: "#A21CAF",
+  cat4: "#A16207",
+  cat5: "#BE185D",
+  cat6: "#155E75",
+  cat7: "#4D7C0F",
+  cat8: "#9A3412",
   ink: "#0F1D35",
   muted: "#4F5F78",
   primary: "#2451D6",
@@ -41,6 +49,14 @@ const DARK = {
   bg: "#0E1626",
   surface: "#142036",
   surface2: "#182842",
+  cat1: "#8B85F5",
+  cat2: "#2DD4BF",
+  cat3: "#E879F9",
+  cat4: "#EAB308",
+  cat5: "#FB7185",
+  cat6: "#38BDF8",
+  cat7: "#A3E635",
+  cat8: "#FB923C",
   ink: "#E9EEF7",
   muted: "#9FB0CC",
   primary: "#6C93FF",
@@ -129,5 +145,30 @@ describe("domain-atom token pairs (WCAG AA, ratio >= 4.5:1)", () => {
     ["dark primary-foreground/mesh-blue (MeshDots)", DARK.primaryForeground, DARK.mBlue],
   ])("%s >= 4.5:1", (_label, fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+});
+
+/**
+ * WCAG 1.4.11 (non-text contrast): the categorical palette (`--cat-1..8`,
+ * WP-F2b fix round 1, contracts/design-system.md §1.2) is used for legend
+ * swatches and icon colors, not body text, so the bar is 3:1 rather than
+ * 4.5:1. Verified against every surface a legend can sit on.
+ */
+const AA_NON_TEXT = 3;
+
+describe("categorical palette contrast (WCAG 1.4.11, ratio >= 3:1)", () => {
+  const cats = ["cat1", "cat2", "cat3", "cat4", "cat5", "cat6", "cat7", "cat8"] as const;
+
+  it.each(
+    cats.flatMap((cat) => [
+      [`light ${cat}/surface`, LIGHT[cat], LIGHT.surface],
+      [`light ${cat}/surface2`, LIGHT[cat], LIGHT.surface2],
+      [`light ${cat}/bg`, LIGHT[cat], LIGHT.bg],
+      [`dark ${cat}/surface`, DARK[cat], DARK.surface],
+      [`dark ${cat}/surface2`, DARK[cat], DARK.surface2],
+      [`dark ${cat}/bg`, DARK[cat], DARK.bg],
+    ])
+  )("%s >= 3:1", (_label, fg, bg) => {
+    expect(contrastRatio(fg as string, bg as string)).toBeGreaterThanOrEqual(AA_NON_TEXT);
   });
 });

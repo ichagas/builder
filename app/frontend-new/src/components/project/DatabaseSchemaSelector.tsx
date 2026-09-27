@@ -420,17 +420,23 @@ export function DatabaseSchemaSelector({
     onSelectionChange(new Set());
   };
 
+  // Categorical legend: each schema-object kind gets its own color with no
+  // status/phase meaning, so this maps to the non-semantic --cat-* palette
+  // rather than ok/warn/bad/define/design (WP-F2b fix round 1,
+  // contracts/design-system.md §1.2) — an "index" isn't a warning and a
+  // "type" definition isn't broken. The icon (already distinct per case)
+  // remains the primary differentiator.
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "table": return <Table2 className="h-4 w-4 text-primary" />;
-      case "view": return <Eye className="h-4 w-4 text-define" />;
-      case "function": return <FunctionSquare className="h-4 w-4 text-ok" />;
-      case "trigger": return <Zap className="h-4 w-4 text-warn" />;
-      case "index": return <Key className="h-4 w-4 text-warn" />;
-      case "sequence": return <Hash className="h-4 w-4 text-design" />;
-      case "type": return <List className="h-4 w-4 text-bad" />;
-      case "savedQuery": return <FileText className="h-4 w-4 text-ok" />;
-      case "migration": return <History className="h-4 w-4 text-warn" />;
+      case "table": return <Table2 className="h-4 w-4 text-cat-1" />;
+      case "view": return <Eye className="h-4 w-4 text-cat-3" />;
+      case "function": return <FunctionSquare className="h-4 w-4 text-cat-2" />;
+      case "trigger": return <Zap className="h-4 w-4 text-cat-4" />;
+      case "index": return <Key className="h-4 w-4 text-cat-8" />;
+      case "sequence": return <Hash className="h-4 w-4 text-cat-6" />;
+      case "type": return <List className="h-4 w-4 text-cat-5" />;
+      case "savedQuery": return <FileText className="h-4 w-4 text-cat-7" />;
+      case "migration": return <History className="h-4 w-4 text-cat-4" />;
       default: return <Columns3 className="h-4 w-4 text-muted-foreground" />;
     }
   };

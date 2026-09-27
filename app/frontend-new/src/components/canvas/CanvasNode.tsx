@@ -78,31 +78,40 @@ const legacyNodeIcons: Record<string, LucideIcon> = {
   OTHER: MoreHorizontal,
 };
 
-// Legacy fallback colors (for backward compatibility)
+// Legacy fallback colors (for backward compatibility). Categorical legend:
+// each canvas node *type* gets its own color with no status/phase meaning
+// (a TABLE node isn't "broken", a WEBHOOK isn't "broken" either — they
+// just used to share --bad by coincidence), so this maps to the
+// non-semantic --cat-* palette rather than ok/warn/bad/define/design
+// (WP-F2b fix round 1, contracts/design-system.md §1.2). 23 node types
+// against 8 hues means hues are reused across unrelated types — the
+// per-type Lucide icon above is what actually disambiguates them.
+// Neutral/unknown types (API_UTIL, TECH_STACK, OTHER) keep the existing
+// surface-2/muted styling rather than being forced onto a hue.
 const legacyNodeColors: Record<string, string> = {
-  PROJECT: "bg-design/10 border-design/50 text-design",
-  PAGE: "bg-design/10 border-design/50 text-design",
-  COMPONENT: "bg-primary/10 border-primary/50 text-primary",
-  WEB_COMPONENT: "bg-primary/10 border-primary/50 text-primary",
-  HOOK_COMPOSABLE: "bg-define/10 border-define/50 text-define",
-  API: "bg-ok/10 border-ok/50 text-ok",
-  API_SERVICE: "bg-ok/10 border-ok/50 text-ok",
-  API_ROUTER: "bg-ok/10 border-ok/50 text-ok",
-  API_MIDDLEWARE: "bg-warn/10 border-warn/50 text-warn",
-  API_CONTROLLER: "bg-ok/10 border-ok/50 text-ok",
+  PROJECT: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  PAGE: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  COMPONENT: "bg-cat-2/10 border-cat-2/50 text-cat-2",
+  WEB_COMPONENT: "bg-cat-2/10 border-cat-2/50 text-cat-2",
+  HOOK_COMPOSABLE: "bg-cat-3/10 border-cat-3/50 text-cat-3",
+  API: "bg-cat-4/10 border-cat-4/50 text-cat-4",
+  API_SERVICE: "bg-cat-4/10 border-cat-4/50 text-cat-4",
+  API_ROUTER: "bg-cat-4/10 border-cat-4/50 text-cat-4",
+  API_MIDDLEWARE: "bg-cat-5/10 border-cat-5/50 text-cat-5",
+  API_CONTROLLER: "bg-cat-4/10 border-cat-4/50 text-cat-4",
   API_UTIL: "bg-surface-2/10 border-line-2/50 text-foreground dark:text-muted-foreground",
-  DATABASE: "bg-define/10 border-define/50 text-define",
-  SCHEMA: "bg-define/10 border-define/50 text-define",
-  TABLE: "bg-bad/10 border-bad/50 text-bad",
-  SERVICE: "bg-warn/10 border-warn/50 text-warn",
-  EXTERNAL_SERVICE: "bg-warn/10 border-warn/50 text-warn",
-  WEBHOOK: "bg-bad/10 border-bad/50 text-bad",
-  FIREWALL: "bg-bad/10 border-bad/50 text-bad",
-  SECURITY: "bg-warn/10 border-warn/50 text-warn",
-  REQUIREMENT: "bg-primary/10 border-primary/50 text-primary",
-  STANDARD: "bg-design/10 border-design/50 text-design",
+  DATABASE: "bg-cat-6/10 border-cat-6/50 text-cat-6",
+  SCHEMA: "bg-cat-6/10 border-cat-6/50 text-cat-6",
+  TABLE: "bg-cat-7/10 border-cat-7/50 text-cat-7",
+  SERVICE: "bg-cat-8/10 border-cat-8/50 text-cat-8",
+  EXTERNAL_SERVICE: "bg-cat-8/10 border-cat-8/50 text-cat-8",
+  WEBHOOK: "bg-cat-7/10 border-cat-7/50 text-cat-7",
+  FIREWALL: "bg-cat-7/10 border-cat-7/50 text-cat-7",
+  SECURITY: "bg-cat-8/10 border-cat-8/50 text-cat-8",
+  REQUIREMENT: "bg-cat-1/10 border-cat-1/50 text-cat-1",
+  STANDARD: "bg-cat-1/10 border-cat-1/50 text-cat-1",
   TECH_STACK: "bg-surface-2/10 border-line-2/50 text-foreground dark:text-muted-foreground",
-  AGENT: "bg-design/10 border-design/50 text-design",
+  AGENT: "bg-cat-1/10 border-cat-1/50 text-cat-1",
   OTHER: "bg-surface-2/10 border-line-2/50 text-foreground dark:text-muted-foreground",
 };
 

@@ -23,7 +23,8 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Mesh agents | `--m-green #16A34A`, `--m-yellow #CA8A04`, `--m-red #DC2626`, `--m-blue #2563EB` |
 | Mode band | `--mode-building #4C8DFF`, `--mode-released #2FBF71`, `--mode-connected #A78BFA` |
 | Chrome | `--rail-bg #102040`, `--rail-ink`, `--rail-muted`, `--rail-hover`, `--rail-line`, `--rail-active`, `--gbar-bg #0B1830` |
-| IDE surface | `--ide-*`, see §1.2 |
+| Categorical | `--cat-1..--cat-8` (+ `-rgb`), see §1.2 |
+| IDE surface | `--ide-*`, see §1.3 |
 | Type | `--font "IBM Plex Sans"`, `--mono "IBM Plex Mono"` (identifiers only), `--fs 14px`, `--h1 26px/600`, `--h2 14px/600` |
 | Shape | `--radius 4px`, `--radius-s 3px`, `--radius-pill 3px` |
 | Density | `--row 48px` (min target 44px), `--pad 14px`, `--gap 14px` |
@@ -69,9 +70,37 @@ Codemod mapping for hard-coded Tailwind colors (T031). Unmapped cases are listed
 | `bg-(gray|slate)-50–200`, `border-(gray|slate)-200–300` | `bg-surface-2`, `border-line` |
 | hex values in `style={}` or `stroke`/`fill` | the nearest token via `var(--…)`, charts via the `--chart-*` tokens |
 
-### 1.2 IDE-surface tokens (`--ide-*`, T031)
+### 1.2 Categorical palette (WP-F2b fix round 1)
 
-Fixed "VS Code Dark+"-style palette for the code/file-browsing widgets — file trees, the code editor and its markdown/diff preview, commit log, SQL editor, search results — so they read like a familiar developer tool rather than the app's own light/dark theme. **Deliberately constant in both app themes**: these aren't semantic app-status/phase colors, so they're defined once on `:root` and not re-pointed under `.dark`/`[data-theme="dark"]`. Allowed **only** inside the IDE-style widgets listed above — not for general app chrome or status legends, which use the tokens in §1.
+`--chart-1..6` are *not* a categorical palette: they alias `--primary`/`--ok`/`--warn`/`--bad`/`--c-define`/`--c-design`, i.e. status and phase semantics. Using them (or the status/phase tokens directly) to color a legend that has no status or phase meaning — an agent-type color map, a database-object-type icon, a canvas node-type badge — makes the color lie: a node colored `--bad` reads as "broken", not "this is a webhook."
+
+`--cat-1..--cat-8` are a dedicated, non-semantic categorical palette for exactly that case: coloring items in a fixed, unordered set (agent kind, schema-object kind, canvas node type) where the color's only job is "these are different kinds of thing," never "this is good/bad/in-progress." Rules:
+
+- Never imply status, severity or phase. Don't reuse `--ok`/`--warn`/`--bad`/`--run`/`--c-*`/`--chart-*` for a categorical legend, and don't add new status-colored entries to this palette.
+- Color is never the only differentiator — pair every categorical color with a distinct icon or label (WCAG 1.4.1). This matters most here: 8 hues covering more than 8 categories (e.g. CanvasNode's ~23 node types) must reuse hues, so the icon carries the distinction the color can't.
+- Each hue clears **≥ 3:1** contrast against `--surface`, `--surface-2` and `--bg` in both themes (WCAG 1.4.11, non-text/graphical objects — the bar for a legend swatch or icon, not body text's 4.5:1).
+- Mapping approach for a set larger than 8: assign hues by a stable, deterministic rule (e.g. index into the palette by category, or a fixed lookup table keyed by type), and never rely on hue alone past 8 categories — the icon must already disambiguate.
+
+| Token | Light | Dark | Suggested use |
+|---|---|---|---|
+| `--cat-1` | `#4F46E5` (indigo) | `#8B85F5` | e.g. component / feature agent |
+| `--cat-2` | `#0F766E` (teal) | `#2DD4BF` | e.g. API / service |
+| `--cat-3` | `#A21CAF` (fuchsia) | `#E879F9` | e.g. database / schema |
+| `--cat-4` | `#A16207` (gold) | `#EAB308` | e.g. external service |
+| `--cat-5` | `#BE185D` (rose) | `#FB7185` | e.g. security / firewall |
+| `--cat-6` | `#155E75` (cyan) | `#38BDF8` | e.g. requirement / doc |
+| `--cat-7` | `#4D7C0F` (olive) | `#A3E635` | e.g. tech stack / util |
+| `--cat-8` | `#9A3412` (brown) | `#FB923C` | e.g. agent / orchestration |
+
+Measured contrast ratios (`src/design/__tests__/contrast.test.ts`, "categorical palette" block): every `--cat-N` clears ≥ 3:1 against `--surface`, `--surface-2` and `--bg` in both themes; worst case is light `--cat-2` at 4.65:1 on `--bg` (all others ≥ 4.9:1 light, ≥ 4.77:1 dark) — comfortable margin over the 3:1 floor.
+
+Tailwind: `bg-cat-1`..`bg-cat-8` (and `text-`/`border-`), via `--cat-N-rgb` in `tailwind-preset.ts`, same `rgb(var(--x-rgb) / <alpha-value>)` pattern as the other color groups.
+
+Applied in WP-F2b fix round 1: `AgentFlow.tsx`'s agent `colorMap`, `DatabaseSchemaSelector.tsx`'s `getTypeIcon` (table/view/function/trigger/index/sequence/type/savedQuery/migration), and `CanvasNode.tsx`'s `legacyNodeColors` (23 node types, hues reused with distinct Lucide icons per type) — previously mapped to `ok`/`warn`/`bad`/`define`/`design`, none of which have status or phase meaning in those contexts.
+
+### 1.3 IDE-surface tokens (`--ide-*`, T031)
+
+Fixed "VS Code Dark+"-style palette for the code/file-browsing widgets — file trees, the code editor and its markdown/diff preview, commit log, SQL editor, search results — so they read like a familiar developer tool rather than the app's own light/dark theme. **Deliberately constant in both app themes**: these aren't semantic app-status/phase colors, so they're defined once on `:root` and not re-pointed under `.dark`/`[data-theme="dark"]`. Allowed **only** inside the IDE-style widgets listed above — not for general app chrome or status/categorical legends, which use the tokens in §1/§1.2.
 
 | Token | Value | Purpose |
 |---|---|---|

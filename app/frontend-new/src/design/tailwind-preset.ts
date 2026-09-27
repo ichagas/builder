@@ -117,6 +117,21 @@ export const designSystemPreset = {
           5: themeColor("--chart-5-rgb"),
           6: themeColor("--chart-6-rgb"),
         },
+
+        // Categorical palette (WP-F2b fix round 1): non-semantic legend
+        // colors for a fixed, unordered set of kinds (agent kind,
+        // schema-object kind, canvas node type) — see design-system.md §1.2.
+        // Never status/phase; use ok/warn/bad/c-* for that instead.
+        cat: {
+          1: themeColor("--cat-1-rgb"),
+          2: themeColor("--cat-2-rgb"),
+          3: themeColor("--cat-3-rgb"),
+          4: themeColor("--cat-4-rgb"),
+          5: themeColor("--cat-5-rgb"),
+          6: themeColor("--cat-6-rgb"),
+          7: themeColor("--cat-7-rgb"),
+          8: themeColor("--cat-8-rgb"),
+        },
       },
 
       fontFamily: {
