@@ -70,7 +70,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [ ] T048 [P] [US2] (WP-B1) Build agent `pages/project/Build.tsx` (full-bleed, resizable panels kept, tabs in the URL). PR-10.
 - [ ] T049 [P] [US2] (WP-B2) Repository `pages/project/Repository.tsx`. PR-11.
 - [ ] T050 [P] [US2] (WP-B3) Database `pages/project/Database.tsx` (import wizard unchanged). PR-12.
-- [ ] T051 [P] [US2] (WP-S1) Deploy → Environments `pages/project/Deploy.tsx`. PR-13.
+- [x] T051 [P] [US2] (WP-S1) Deploy → Environments `pages/project/Deploy.tsx`. PR-13.
 - [ ] T052 [P] [US2] (WP-S2) Audit `pages/project/Audit.tsx`. PR-14.
 - [x] T053 [P] [US2] (WP-S3) Present `pages/project/Present.tsx`. PR-15.
 
