@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** 2 (PAUSED by the user on 2026-09-26 after the third spend-limit reset; resume only on instruction). Remote `origin` = ichagas/builder
+- **Wave:** 2 (resumed 2026-09-26 evening on a local macOS machine). Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -37,6 +37,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T102, T104 | done | 910f589, 74aefe9, ad830f7, 968742d, 6779f30, 7533733 | WP-BE2. Fix round 1: release() gated by releaseChecks, advisory lock + FOR UPDATE, carry-over reuses version by name, staging partitioned by branch (migration 018), branch-scoped unstage/discard. Follow-up (low): release and WI-key advisory locks share the hashtext(projectId) key space |
 | T016, T017 | done | ef1b586, 98e9221, 83759f7, 4efeb81, 96282a1 | WP-F6. PR-01..PR-21 54/54 green on legacy (1440 + 390), twice on a fresh stack; axe-legacy.json baseline (46 rows; 2 rows ±1 node run to run). Specs are app-agnostic (routes.ts urlPattern helpers). T037 still open (after F3) |
 | T121 | done | f0f9c98 | WP-BE3. Portfolio query 3.9–15.8 ms on 15-repo seed. Team membership CRUD not in api.md; not built |
+| T140 | done | a9bed2a, 499abc6, 903cb5e, 1a3376f, d60bc7e, 9d74be6 (+ rounds 1–2) | WP-BE5. Opus escalation (round 3). Migrations 015, 019, 020, 021. Org repository scope enforced at selection, before PRs, and at the credential boundary. Reviewer APPROVE, security PASS (no findings) |
 
 ## Escalations to Opus 5.5
 
@@ -101,3 +102,4 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - **2026-09-26 (evening): RESUMED on a local macOS machine** (not the container). Docker daemon is up (E2E harness via compose works); no native Postgres (use a Docker postgres:16 for migration checks); no Azure CLI (irrelevant: cloud steps stay BLOCKED-EXTERNAL). Worktrees now at `/Users/igorchagas/ideas/PRONGHORN-BLUE-wt/<WP>` (F2b, F3, BE5); merged WPs' worktrees removed. Goal restated by the user: replace the legacy frontend with the new one (cutover, T070–T074). Dispatched: F2b fix round 1 (Sonnet), F3 pre-merge follow-ups (Sonnet), BE5 round 3 items 3–7 incl. the setRunRepositories owner check (Opus, continuing the escalation).
 - **Spend limit hit a fourth time (HTTP 429)** right after dispatch; no work lost (worktrees clean). All three resumed via SendMessage.
 - BE5 round 3 (Opus) finished items 3–7: 903cb5e (blocked link via RETURNING + tests), 1a3376f (migration 020, one github_app per org, 23505→409), d60bc7e (security: org repository scope at selection → 403, before PRs, and at the credential boundary in pullRequests.ts; new services/onboarding/repositoryScope.ts; Azure gap closed too), 9d74be6 (migration 021, case-insensitive full_name via lower() unique index). Verified by orchestrator: BE build OK, **1110 tests**. Migrations 001–021 apply on postgres:16-alpine. **Next free migration: 022.** Reviewer + security re-check dispatched.
+- **Merged WP-BE5** (reviewer APPROVE round 3, security PASS no findings; merged cleanly; verified on feature: BE build OK, **1110 tests**). BE6 (T141) unblocked (BE5 + BE7 merged) → dispatched early. F2b fix round 1 done (4e4a908, de38b9b, 9778267, 2f11dad: --ide-* documented, categorical palette --cat-1..8 with contrast tests, MiniMap via var(--cat-N), Landing gradient stops; verified: lint 0 errors, tsc OK, 465 FE tests, build OK) → re-review.
