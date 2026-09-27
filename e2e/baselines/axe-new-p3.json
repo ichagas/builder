@@ -1,0 +1,103 @@
+{
+  "recordedAt": "2026-09-27T17:53:25.734Z",
+  "note": "Baseline violation counts recorded via --out axe-new-p3.json. See other files in this directory for what app/run they cover.",
+  "pages": [
+    {
+      "pageId": "pr-02",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 3,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 3
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-02",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 3,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 3
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-03-viewer",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-03-viewer",
+      "viewport": "mobile",
+      "serious": 1,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "nodes": 1
+        }
+      ]
+    }
+  ]
+}

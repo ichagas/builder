@@ -1,5 +1,5 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
-import { useNoPrimaryAction, type ProjectToolRoute } from "./types";
+import { useNoPrimaryAction, type ProjectToolRoute, type SimpleRoute } from "./types";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -15,6 +15,22 @@ const Database = lazyWithRetry(() => import("@/pages/project/Database"));
 const Deploy = lazyWithRetry(() => import("@/pages/project/Deploy"));
 const Audit = lazyWithRetry(() => import("@/pages/project/Audit"));
 const Present = lazyWithRetry(() => import("@/pages/project/Present"));
+const ProjectSettings = lazyWithRetry(() => import("@/pages/project/ProjectSettings"));
+
+/**
+ * Project settings row (T041, WP-P3). See contracts/routes.md §1:
+ * `/p/:id/settings`. Lives outside `PROJECT_TOOL_ROUTES` (it isn't a
+ * phase/tool under `v/current/...`), so `app/router.tsx` mounts it as its
+ * own child route of `ProjectLayout` with this as its `handle` -- the same
+ * `{path, element, handle}` shape as every other registry row, just spread
+ * individually instead of via `.map()`.
+ */
+export const PROJECT_SETTINGS_ROUTE: SimpleRoute = {
+  path: "settings",
+  title: "Project Settings",
+  usePrimaryAction: useNoPrimaryAction,
+  Component: ProjectSettings,
+};
 
 /**
  * Project tool routes (T033). See contracts/routes.md §1:

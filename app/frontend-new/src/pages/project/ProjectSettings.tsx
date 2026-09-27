@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
-import { ProjectPageHeader } from "@/components/layout/ProjectPageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +49,6 @@ export default function ProjectSettings() {
   const [maxTokens, setMaxTokens] = useState(32768);
   const [thinkingEnabled, setThinkingEnabled] = useState(false);
   const [thinkingBudget, setThinkingBudget] = useState(-1);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Fetch artifacts for splash image selector
   const { artifacts } = useRealtimeArtifacts(projectId, shareToken, isTokenSet);
@@ -236,26 +233,13 @@ export default function ProjectSettings() {
   
   // Show token recovery message if token is missing
   if (tokenMissing) {
-    return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <TokenRecoveryMessage />
-      </div>
-    );
+    return <TokenRecoveryMessage />;
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      <div className="flex relative">
-        <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        <main className="flex-1 overflow-auto w-full">
-          <div className="px-4 md:px-6 py-6 md:py-8">
-            <ProjectPageHeader
-              title="Project Settings"
-              subtitle="Configure your project settings and sharing options"
-              onMenuClick={() => setIsSidebarOpen(true)}
-            />
+    <div className="min-h-full bg-background">
+      <PageHeader crumb="Settings" />
+      <div className="px-4 md:px-6 py-6 md:py-8">
             <div className="space-y-6">
               {/* Show TokenManagement for owners, AccessLevelBanner for non-owners */}
                 {isOwner ? (
@@ -607,8 +591,6 @@ export default function ProjectSettings() {
                 )}
               </div>
           </div>
-        </main>
-      </div>
     </div>
   );
 }
