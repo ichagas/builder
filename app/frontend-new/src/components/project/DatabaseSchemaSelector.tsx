@@ -749,7 +749,7 @@ export function DatabaseSchemaSelector({
             </span>
           )}
           {isExternal && (
-            <span className="text-[10px] text-define bg-define dark:bg-define/30 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-define bg-define/10 dark:bg-define/30 px-1.5 py-0.5 rounded">
               External
             </span>
           )}

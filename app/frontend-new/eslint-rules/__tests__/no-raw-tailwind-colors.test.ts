@@ -39,6 +39,22 @@ describe("no-raw-tailwind-colors", () => {
       // whole-file Property visitor (added for the class-lookup-table case)
       // doesn't over-fire on ordinary object literals.
       `const el = <div className="p-2" />; const copy = { label: "Send message", id: "not-a-class-string" };`,
+
+      // WP-F2b fix round 2, item 1 (same-token text-X/bg-X): the
+      // established "-soft" pairing is fine — different token, not a
+      // collision.
+      `const el = <div className="text-ok bg-ok-soft" />;`,
+      // A bg with its own opacity modifier is fine even with the same base
+      // color as the text (this is the DeltaChip/TypeChip pattern).
+      `const el = <div className="text-warn bg-warn/10" />;`,
+      // Different colors entirely.
+      `const el = <div className="text-primary-foreground bg-primary" />;`,
+      // Mutually-exclusive && branches (one active state at a time) must
+      // NOT be merged across strings — each string is checked on its own.
+      `const el = cn("border-2", isActive && "bg-primary text-primary-foreground", isDone && "bg-primary/20 text-primary");`,
+      // Non-legend tokens (surface/ink/line/etc.) pairing with themselves
+      // isn't this bug — restricted to the fixed color-group list.
+      `const el = <div className="border-line text-line" />;`,
     ],
     invalid: [
       {
@@ -149,6 +165,32 @@ describe("no-raw-tailwind-colors", () => {
       {
         code: `const el = <div style={{ color: "#ff0000" }} />;`,
         errors: [{ messageId: "rawHexColor", data: { hex: "#ff0000" } }],
+      },
+      // WP-F2b fix round 2, item 1: the actual reviewer-found bug
+      // (DatabaseSchemaSelector.tsx's "External" badge) — bg-define with no
+      // opacity modifier paired with text-define makes the text invisible
+      // against its own background.
+      {
+        code: `const el = <span className="text-[10px] text-define bg-define dark:bg-define/30" />;`,
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "bg-define / text-define" } }],
+      },
+      // Reversed order (text- before bg-) is caught the same way.
+      {
+        code: `const el = <div className="bg-warn text-warn" />;`,
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "bg-warn / text-warn" } }],
+      },
+      // A dark: variant collides only with a dark: text of the same token —
+      // the light-mode (unprefixed) text-cat-3 is a different variant and
+      // doesn't collide with dark:bg-cat-3.
+      {
+        code: `const el = <div className="text-cat-3 dark:bg-cat-3 dark:text-cat-3" />;`,
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "dark:bg-cat-3 / dark:text-cat-3" } }],
+      },
+      // Works through cn() and template literals too, not just a plain
+      // className string.
+      {
+        code: "const el = cn(`p-2 bg-bad text-bad`);",
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "bg-bad / text-bad" } }],
       },
     ],
   });

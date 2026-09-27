@@ -93,6 +93,82 @@ function findHexColors(text) {
   return matches ?? [];
 }
 
+// WP-F2b fix round 2, item 1: design-token color groups that carry legend/
+// status meaning (contracts/design-system.md §1/§1.2). A `bg-X` with no
+// opacity modifier and a `text-X` of the *same* X in one class string means
+// the text is the exact color of its own background — invisible (1:1
+// contrast). This bit the "External" badge
+// (`text-define bg-define dark:bg-define/30`, WP-F2b fix round 2 review):
+// the light-mode pairing had no modifier on `bg-define` at all. Deliberately
+// a fixed list, not "any custom identifier" — Tailwind's own utility names
+// (bg-transparent, text-current, etc.) and neutral tokens (ink/muted/surface/
+// line/border) aren't legend colors and pairing them with themselves isn't
+// this bug (e.g. a hypothetical `border-line text-line` isn't a contrast
+// hazard the way `bg-warn text-warn` is).
+const SAME_TOKEN_COLOR_NAMES = [
+  "ok",
+  "warn",
+  "bad",
+  "run",
+  "primary",
+  "define",
+  "design",
+  "build",
+  "ship",
+  "t-bug",
+  "t-feat",
+  "t-enh",
+  "t-base",
+  "mesh-green",
+  "mesh-yellow",
+  "mesh-red",
+  "mesh-blue",
+  "mode-building",
+  "mode-released",
+  "mode-connected",
+  "cat-1",
+  "cat-2",
+  "cat-3",
+  "cat-4",
+  "cat-5",
+  "cat-6",
+  "cat-7",
+  "cat-8",
+].join("|");
+
+// Captures an optional variant-prefix chain (dark:, hover:, group-hover: …)
+// so `dark:bg-X` only collides with a `text-X` under the *same* prefix, and
+// the color name itself, so `bg-ok-soft` doesn't collide with `text-ok`
+// (different, deliberately unmodified, token).
+const BG_SAME_TOKEN = new RegExp(`([\\w-]*:)?bg-(${SAME_TOKEN_COLOR_NAMES})(?![\\w-])`, "g");
+const TEXT_SAME_TOKEN = new RegExp(`([\\w-]*:)?text-(${SAME_TOKEN_COLOR_NAMES})(?![\\w-])`, "g");
+
+/**
+ * Same-string, same-variant-prefix `bg-X`(no modifier)/`text-X` collisions.
+ * Restricted to one string/template-quasi at a time (never merged across
+ * cn() arguments or ternary branches) so mutually exclusive conditional
+ * branches — e.g. `isActive && "bg-primary text-primary-foreground"` next to
+ * `isCompleted && "bg-primary/20 text-primary"` — are never combined into a
+ * false positive: each is its own string and is checked on its own.
+ */
+function findSameTokenTextBgCollisions(text) {
+  const bgMatches = [...text.matchAll(BG_SAME_TOKEN)];
+  if (!bgMatches.length) return [];
+  const textMatches = [...text.matchAll(TEXT_SAME_TOKEN)];
+  if (!textMatches.length) return [];
+
+  const hits = [];
+  for (const bm of bgMatches) {
+    const after = text.slice(bm.index + bm[0].length, bm.index + bm[0].length + 1);
+    if (after === "/") continue; // bg has its own opacity modifier: not this bug
+    const prefix = bm[1] || "";
+    const token = bm[2];
+    const collides = textMatches.some((tm) => (tm[1] || "") === prefix && tm[2] === token);
+    if (collides) hits.push(`${prefix}bg-${token}` + " / " + `${prefix}text-${token}`);
+  }
+  return hits;
+}
+
 /**
  * @param {import('eslint').Rule.RuleContext} context
  * @param {import('estree').Node} node
@@ -129,6 +205,21 @@ function reportInString(context, node, text, opts = {}) {
         node,
         messageId: "rawHexColor",
         data: { hex },
+      });
+    }
+  }
+
+  // WP-F2b fix round 2, item 1: same-token text-X/bg-X (no modifier)
+  // collision — see findSameTokenTextBgCollisions. Runs for both
+  // Tailwind-class strings and hex-only `style={{}}` strings would be
+  // meaningless for the latter (style values aren't Tailwind classes), so
+  // gate on `allowTailwind` the same way the raw-Tailwind-token check does.
+  if (allowTailwind) {
+    for (const pair of findSameTokenTextBgCollisions(text)) {
+      context.report({
+        node,
+        messageId: "sameTokenTextBg",
+        data: { pair },
       });
     }
   }
@@ -225,6 +316,8 @@ const noRawTailwindColorsRule = {
         'Raw Tailwind color class "{{token}}" bypasses the design token layer. Use a design token (see src/design/) instead.',
       rawHexColor:
         'Raw hex color literal "{{hex}}" bypasses the design token layer. Use a design token (see src/design/) instead.',
+      sameTokenTextBg:
+        'Text and background use the same token with no opacity modifier ("{{pair}}") — the text is invisible against its own background. Add an opacity modifier (e.g. "bg-X/10") or a "-soft" background variant.',
     },
   },
   create(context) {
