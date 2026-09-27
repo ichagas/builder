@@ -9,7 +9,13 @@ import { useTranslation } from "react-i18next";
  * and links to Projects and Assurance | Root | WP-F3." Renders inside
  * RootLayout's AppShell, so it already has the GlobalBar's ⌘K search — this
  * page adds an inline search field for people who land here without a
- * keyboard shortcut in mind, plus direct links to the two top-level areas.
+ * keyboard shortcut in mind, plus a direct link to Projects.
+ *
+ * The Assurance link from that routes.md row is dropped for now: none of
+ * `/assurance/*` (WP-A1…A6, US5/US6) is wired into the router yet
+ * (AssuranceLayout is only a scaffold — see app/layouts/AssuranceLayout.tsx),
+ * so linking to it here would be a second dead link on the 404 page. Add it
+ * back once an assurance route actually exists to land on.
  */
 export function NotFound() {
   const { t } = useTranslation();
@@ -45,9 +51,6 @@ export function NotFound() {
       <div className="flex gap-4 text-sm font-semibold">
         <a href="/projects" className="text-primary underline-offset-2 hover:underline">
           {t("shell.notFound.projectsLink")}
-        </a>
-        <a href="/assurance/all" className="text-primary underline-offset-2 hover:underline">
-          {t("shell.notFound.assuranceLink")}
         </a>
       </div>
     </div>

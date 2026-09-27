@@ -30,8 +30,7 @@
       "title": "Page not found",
       "body": "The page you're looking for doesn't exist or may have moved.",
       "searchPlaceholder": "Search projects and tools",
-      "projectsLink": "Go to Projects",
-      "assuranceLink": "Go to Assurance"
+      "projectsLink": "Go to Projects"
     }
   },
   "commandPalette": {

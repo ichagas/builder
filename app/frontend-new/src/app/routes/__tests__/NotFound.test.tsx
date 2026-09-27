@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { NotFound } from "../NotFound";
 
 describe("NotFound (contracts/routes.md §1 '*' row)", () => {
-  it("renders a search field and links to Projects and Assurance", () => {
+  it("renders a search field and a link to Projects, and no dead Assurance link", () => {
     render(
       <MemoryRouter>
         <NotFound />
@@ -13,7 +13,9 @@ describe("NotFound (contracts/routes.md §1 '*' row)", () => {
     );
     expect(screen.getByRole("searchbox")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Projects/i })).toHaveAttribute("href", "/projects");
-    expect(screen.getByRole("link", { name: /Assurance/i })).toHaveAttribute("href", "/assurance/all");
+    // /assurance/* isn't wired into the router yet (WP-A1…A6) — the dead
+    // link here was removed until an assurance route exists to land on.
+    expect(screen.queryByRole("link", { name: /Assurance/i })).not.toBeInTheDocument();
   });
 
   it("submitting the search navigates to /projects with a query", async () => {
