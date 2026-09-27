@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** 2 (resumed 2026-09-26 evening on a local macOS machine). Remote `origin` = ichagas/builder
+- **Wave:** 3 (restyles), batch 2 in flight. Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -48,6 +48,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T042 | done | 16ff737 | WP-D1. Requirements; aria-labels on RequirementsTree icon buttons; axe 0 critical/serious (legacy 7+3) |
 | T060 | done | b82567e | WP-L1. Standards Library; primary action focuses the inline admin input, hidden for non-admins |
 | T061 | done | 1b9d241, bb6ded6 | WP-L2. Tech Stacks; same pattern; review fix: hidden for non-admins |
+| T020/T024/T027/T037 follow-ups (F3b) | done | 1dd6db8, 252ad7b, 5b90860 | WP-F3b. `createPrimaryActionStore` (src/lib/state), TimelineStrip in nav[aria-label=Versions] (axe `region` gone), mobile-reach checks the real primary-action slot. Shell suite 105/0 |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
 ## Escalations to Opus 5.5
@@ -140,3 +141,5 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - Reviewer recommendation adopted: one shared primary-action store helper in `src/lib/state/` (D1's shape: the page publishes an `ActionSpec`, the route hook reads it via useSyncExternalStore), extracted by foundation **WP-F3b** together with the TimelineStrip landmark fix; P2 and D1 migrate to it. Batch 2 waits for F3b. Then a batch regression run on feature (PR-01..04, 16, 17 + shell suite + axe).
 - WP-F3b done (1dd6db8 `createPrimaryActionStore` helper in src/lib/state + D1 migrated + usage in frontend-new.instructions.md; 252ad7b TimelineStrip in `<nav aria-label="Versions">`, axe pr-04 = no violations; 714 FE tests; PR-01/04 green). Finishing: stale mobile-reach assertion → real primary-action slot check. Then merge.
 - **Wave 3 batch 2 dispatched** (branched from wp/F3b 252ad7b so they get the helper): D2 (T043), D3 (T044, must fix pr-06 mobile button-name), D4 (T045, chat toggle aria-label), G2 (T047), S1 (T051), S3 (T053). FE ports 8140–8145, F3b on 8146.
+- **Merged WP-F3b** (orchestrator reviewed the helper: shallow-equal publish, clears on unmount, no stale handler; verified on feature: lint 0 errors, tsc OK, **714 FE tests**, build OK).
+- **2026-09-27: spend limit hit a seventh time (HTTP 429)** mid batch 2. State: S1 committed 2f12b22 (restyle done, E2E pending: app/backend npm ci was missing); D2, D3, D4, G2, S3 have uncommitted work in their worktrees (D3 had 718 unit tests passing, G2 was about to run PR-09 with its stack up). All six resumed via SendMessage.
