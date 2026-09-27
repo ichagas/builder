@@ -12,7 +12,7 @@ import { createPrimaryActionStore } from "@/lib/state/createPrimaryActionStore";
  * flow, already exposed in-page as several buttons (the collapsed sidebar's
  * icon button labeled "New Chat", the expanded sidebar's "New Chat" button,
  * and the empty state's "Start New Chat" button -- all kept, unchanged, as
- * the recipe requires). The label here is "Start new chat" rather than
+ * the recipe requires). The label here is "Start a conversation" rather than
  * "New Chat" so it doesn't collide (case-insensitive substring, per
  * `getByRole(..., { name })`) with those existing in-page button names that
  * `e2e/regression/pr-07.spec.ts` locates by role/name.
@@ -20,7 +20,7 @@ import { createPrimaryActionStore } from "@/lib/state/createPrimaryActionStore";
 const chatPrimaryActionStore = createPrimaryActionStore();
 
 /**
- * Called by `Chat.tsx` with its current "start new chat" action on every
+ * Called by `Chat.tsx` with its current "start a conversation" action on every
  * render, and cleared on unmount so a stale action never lingers after
  * navigating away.
  */

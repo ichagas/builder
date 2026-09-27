@@ -178,12 +178,12 @@ export default function Chat() {
     }
   };
 
-  // T045 (WP-D4): "Start new chat" is the page's primary action, declared in
+  // T045 (WP-D4): "Start a conversation" is the page's primary action, declared in
   // the route registry (app/routes/project.tsx) and rendered by PageHeader.
   // It's the same new-session flow as the in-page "New Chat" buttons (kept
   // unchanged below) -- see chat.primaryAction.ts for why the label differs.
   usePublishChatPrimaryAction(
-    projectId && isTokenSet ? { label: "Start new chat", onClick: handleNewChat } : undefined
+    projectId && isTokenSet ? { label: "Start a conversation", onClick: handleNewChat } : undefined
   );
 
   const handleSummarizeChat = async () => {
@@ -819,7 +819,7 @@ export default function Chat() {
           {/* Sessions Sidebar */}
           <div
             className={`border-r border-border bg-card transition-all duration-300 flex flex-col ${
-              isSidebarCollapsed ? "w-12" : "w-64"
+              isMobile || isSidebarCollapsed ? "w-12" : "w-64"
             }`}
           >
             {/* Collapse Toggle */}

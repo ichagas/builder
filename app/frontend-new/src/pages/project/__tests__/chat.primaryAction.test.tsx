@@ -22,29 +22,29 @@ describe("chat primary action store (T045, WP-D4)", () => {
   it("reads the page's published action, including updates across renders", () => {
     const { rerender } = render(
       <>
-        <Publisher label="Start new chat" />
+        <Publisher label="Start a conversation" />
         <Reader />
       </>,
     );
-    expect(screen.getByTestId("reader").textContent).toBe("Start new chat:enabled");
+    expect(screen.getByTestId("reader").textContent).toBe("Start a conversation:enabled");
 
     rerender(
       <>
-        <Publisher label="Start new chat" disabled />
+        <Publisher label="Start a conversation" disabled />
         <Reader />
       </>,
     );
-    expect(screen.getByTestId("reader").textContent).toBe("Start new chat:disabled");
+    expect(screen.getByTestId("reader").textContent).toBe("Start a conversation:disabled");
   });
 
   it("clears the action when the publisher unmounts", () => {
     const { rerender } = render(
       <>
-        <Publisher label="Start new chat" />
+        <Publisher label="Start a conversation" />
         <Reader />
       </>,
     );
-    expect(screen.getByTestId("reader").textContent).toBe("Start new chat:enabled");
+    expect(screen.getByTestId("reader").textContent).toBe("Start a conversation:enabled");
 
     rerender(<Reader />);
     expect(screen.getByTestId("reader").textContent).toBe("none");
@@ -53,7 +53,7 @@ describe("chat primary action store (T045, WP-D4)", () => {
   it("fires the published onClick", () => {
     const onClick = vi.fn();
     function PublisherWithClick() {
-      usePublishChatPrimaryAction({ label: "Start new chat", onClick });
+      usePublishChatPrimaryAction({ label: "Start a conversation", onClick });
       return null;
     }
     let captured: (() => void) | undefined;
