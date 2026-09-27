@@ -69,7 +69,7 @@ neither shape gets the same generic 401 as an unknown repository.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/admin/integrations` | Platform GitHub App status (`githubApp`) + this organization's `github_app` connections (`githubAppConnections`) + Azure DevOps connections (`azureDevOps`) with status |
-| POST | `/admin/integrations` | `{ provider: "github_app", displayName, owners: string[] }` to configure the organization's GitHub import scope (see below; 409 if the organization already has one — use PATCH), or (default/omitted `provider`) add an Azure DevOps connection (service connection or PAT — the secret goes to Key Vault) |
+| POST | `/admin/integrations` | `{ provider: "github_app", displayName, owners: string[] }` to configure the organization's GitHub import scope (see below; 409 if the organization already has one — use PATCH; enforced by a partial unique index, migration 020, so concurrent creates also 409), or (default/omitted `provider`) add an Azure DevOps connection (service connection or PAT — the secret goes to Key Vault) |
 | PATCH | `/admin/integrations/:id` | Update `displayName` and/or (a `github_app` connection only) `owners` |
 | POST | `/admin/integrations/:id/test` | Test the connection: for `github_app`, confirms the installation can see at least one repository under every configured owner; for Azure DevOps, the existing org-URL/credential check |
 | DELETE | `/admin/integrations/:id` | Remove it (blocked while repositories use it) |

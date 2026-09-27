@@ -41,6 +41,7 @@ import {
   updateConnectionTestResult,
   isConnectionInUse,
   deleteConnection,
+  isGitHubAppPerOrgUniqueViolation,
   IntegrationConnectionRow,
 } from "../../services/integrations/connectionRepository";
 import { getSecretStore } from "../../services/integrations/secretStore";
@@ -109,6 +110,25 @@ router.get("/", async (req: Request, res: Response) => {
   return res.json({ githubApp, githubAppConnections, azureDevOps });
 });
 
+const GITHUB_APP_ALREADY_CONFIGURED =
+  "This organization already has a GitHub connection configured; update it instead of creating another";
+
+/**
+ * Runs a connection insert/update, mapping the database's
+ * one-`github_app`-connection-per-organization guarantee (migration 020's
+ * partial unique index, Postgres 23505) to the same 409 the route's
+ * pre-check returns — the pre-check alone can be raced by two concurrent
+ * POSTs. Any other error is rethrown unchanged.
+ */
+async function withGitHubAppUniqueness<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write();
+  } catch (err) {
+    if (isGitHubAppPerOrgUniqueViolation(err)) throw Errors.conflict(GITHUB_APP_ALREADY_CONFIGURED);
+    throw err;
+  }
+}
+
 const MAX_GITHUB_OWNERS = 50;
 
 /**
@@ -174,24 +194,26 @@ router.post("/", async (req: Request, res: Response) => {
     // (services/onboarding#listImportableGitHubRepositories reads "the"
     // organization's connection via getDefaultConnectionForProvider), so a
     // second one would just be confusing dead configuration. Update the
-    // existing one (PATCH) instead of creating another.
+    // existing one (PATCH) instead of creating another. Fix round 3: the
+    // database enforces it too (migration 020), so a concurrent POST that
+    // passes this pre-check still gets the same 409, not a 500.
     const existing = await getDefaultConnectionForProvider(orgId, "github_app");
     if (existing) {
-      throw Errors.conflict(
-        "This organization already has a GitHub connection configured; update it instead of creating another"
-      );
+      throw Errors.conflict(GITHUB_APP_ALREADY_CONFIGURED);
     }
 
     const owners = normalizeAndValidateOwners(body.owners);
 
-    const connection = await createConnection({
-      organizationId: orgId,
-      provider: "github_app",
-      authType: "app_installation",
-      displayName: body.displayName,
-      secretRef: null,
-      scope: { owners },
-    });
+    const connection = await withGitHubAppUniqueness(() =>
+      createConnection({
+        organizationId: orgId,
+        provider: "github_app",
+        authType: "app_installation",
+        displayName: body.displayName as string,
+        secretRef: null,
+        scope: { owners },
+      })
+    );
 
     logger.info(
       `[admin/integrations] GitHub App connection created (id=${connection.id}, org=${orgId}, owners=${owners.length})`
@@ -288,7 +310,10 @@ router.patch("/:id", async (req: Request, res: Response) => {
     fields.scope = { ...connection.scope, owners };
   }
 
-  const updated = await updateConnectionFields(id, fields);
+  // Provider/organization aren't editable here, so this can't normally
+  // trip migration 020's index — mapped anyway so it could never surface as
+  // a raw 500.
+  const updated = await withGitHubAppUniqueness(() => updateConnectionFields(id, fields));
 
   logger.info(`[admin/integrations] Connection updated (id=${id}, org=${orgId})`);
 

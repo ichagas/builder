@@ -201,6 +201,8 @@ Migration `016_integrations.sql`
 | last_tested_at | timestamptz null | |
 | status | text check in (`ok`,`failing`,`untested`) | |
 
+At most **one `github_app` connection per organization** (migration `020_github_app_connection_unique.sql`: partial unique index `uq_integration_connections_github_app_per_org` on `organization_id WHERE provider = 'github_app'`; the API maps its 23505 to 409). Azure DevOps connections are not limited.
+
 `application_repositories` and `onboarding_runs` reference the connection used (`connection_id`). `mesh_policy` gains `cyber_risk_sandbox boolean default false` at repository or application scope (D-17).
 
 ## Realtime channels (new)

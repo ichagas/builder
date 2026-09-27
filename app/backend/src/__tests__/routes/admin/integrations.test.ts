@@ -595,6 +595,66 @@ describe("POST /admin/integrations — github_app connections (fix round 1 follo
 
     expect(other.status).toBe(201);
   });
+
+  describe("database uniqueness (migration 020, fix round 3 item 5)", () => {
+    function uniqueViolation(constraint: string) {
+      return Object.assign(new Error(`duplicate key value violates unique constraint "${constraint}"`), {
+        code: "23505",
+        constraint,
+      });
+    }
+    function failInsertWith(err: Error) {
+      const fixture = mockDbQuery.getMockImplementation()!;
+      mockDbQuery.mockImplementation(async (sql: string, params?: any[]) => {
+        if (sql.includes("INSERT INTO public.integration_connections")) throw err;
+        return fixture(sql, params);
+      });
+    }
+
+    it("409s (not 500) when a concurrent POST wins the race past the pre-check and the unique index rejects the insert", async () => {
+      // Pre-check sees no github_app connection; the insert then hits the
+      // partial unique index because another request inserted first.
+      failInsertWith(uniqueViolation("uq_integration_connections_github_app_per_org"));
+
+      const res = await request(createApp(ADMIN_USER_ID))
+        .post("/admin/integrations")
+        .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa"] });
+
+      expect(res.status).toBe(409);
+      expect(JSON.stringify(res.body)).toContain("already has a GitHub connection configured");
+      // The raw Postgres error text is never echoed.
+      expect(JSON.stringify(res.body)).not.toContain("duplicate key");
+    });
+
+    it("does not map an unrelated 23505 to 409", async () => {
+      failInsertWith(uniqueViolation("some_other_unique_index"));
+
+      const res = await request(createApp(ADMIN_USER_ID))
+        .post("/admin/integrations")
+        .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa"] });
+
+      expect(res.status).toBe(500);
+    });
+
+    it("maps the same violation to 409 on PATCH", async () => {
+      const created = await request(createApp(ADMIN_USER_ID))
+        .post("/admin/integrations")
+        .send({ provider: "github_app", displayName: "GitHub import scope", owners: ["goa"] });
+      const fixture = mockDbQuery.getMockImplementation()!;
+      mockDbQuery.mockImplementation(async (sql: string, params?: any[]) => {
+        if (sql.includes("UPDATE public.integration_connections") && sql.includes("display_name = $")) {
+          throw uniqueViolation("uq_integration_connections_github_app_per_org");
+        }
+        return fixture(sql, params);
+      });
+
+      const res = await request(createApp(ADMIN_USER_ID))
+        .patch(`/admin/integrations/${created.body.id}`)
+        .send({ displayName: "Renamed" });
+
+      expect(res.status).toBe(409);
+    });
+  });
 });
 
 describe("PATCH /admin/integrations/:id — github_app owners", () => {

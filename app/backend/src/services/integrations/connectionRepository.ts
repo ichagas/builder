@@ -89,6 +89,23 @@ export async function getDefaultConnectionForProvider(
   return rows[0] ?? null;
 }
 
+/**
+ * Partial unique index (migration 020) allowing at most one `github_app`
+ * connection per organization.
+ */
+export const GITHUB_APP_PER_ORG_UNIQUE_INDEX = "uq_integration_connections_github_app_per_org";
+
+/**
+ * Whether `err` is Postgres' unique violation (23505) on
+ * {@link GITHUB_APP_PER_ORG_UNIQUE_INDEX} — i.e. a second `github_app`
+ * connection for the same organization got past the API's pre-check (two
+ * concurrent POSTs). Other 23505s are not matched.
+ */
+export function isGitHubAppPerOrgUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: unknown; constraint?: unknown } | null;
+  return e?.code === "23505" && e?.constraint === GITHUB_APP_PER_ORG_UNIQUE_INDEX;
+}
+
 export interface CreateConnectionInput {
   organizationId: string;
   provider: IntegrationProvider;
