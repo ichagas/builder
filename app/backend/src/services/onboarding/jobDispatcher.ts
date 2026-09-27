@@ -230,7 +230,11 @@ export class AzureContainerAppsJobDispatcher implements JobDispatcher {
     return getAzureTokenForScope(AzureScope.ARM);
   }
 
-  async dispatch(input: DispatchJobInput): Promise<DispatchJobOutput> {
+  async dispatch(
+    input: DispatchJobInput,
+    _onComplete?: JobResultCallback,
+    _onProgress?: JobProgressCallback
+  ): Promise<DispatchJobOutput> {
     if (!input.organizationId) {
       throw new Error("AzureContainerAppsJobDispatcher requires DispatchJobInput.organizationId");
     }
