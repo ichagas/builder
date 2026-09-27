@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
+import { useEffect, useState, useMemo } from "react";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { useCreateProjectDialogOpen } from "@/pages/dashboard.primaryAction";
+import { useUrlState } from "@/lib/state/useUrlState";
 import { ProjectCard } from "@/components/dashboard/ProjectCard";
 import { LinkedProjectCard } from "@/components/dashboard/LinkedProjectCard";
 import { EnhancedCreateProjectDialog } from "@/components/dashboard/EnhancedCreateProjectDialog";
@@ -49,8 +51,13 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const { projects: anonymousProjects, removeProject } = useAnonymousProjects();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("my-projects");
+  const [activeTab, setActiveTab] = useUrlState("tab", "my-projects");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [createOpen, setCreateOpen] = useCreateProjectDialogOpen();
+
+  // Reset the shared create-project-dialog store on unmount so no state
+  // leaks into the next time Dashboard mounts (see dashboard.primaryAction.ts).
+  useEffect(() => () => setCreateOpen(false), [setCreateOpen]);
   
   // Gallery-specific state
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -259,25 +266,10 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Skip Navigation */}
-      <a 
-        href="#main-content" 
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-foreground focus:text-background focus:rounded-lg"
-      >
-        Skip to main content
-      </a>
-      <PrimaryNav />
-      <main role="main" id="main-content" className="container px-4 md:px-6 py-6 md:py-8">
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6 md:mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Dashboard</h1>
-            <p className="text-sm md:text-base text-muted-foreground">Manage your projects</p>
-          </div>
-          <div className="w-full md:w-auto">
-            <EnhancedCreateProjectDialog />
-          </div>
-        </div>
+    <div className="bg-background">
+      <PageHeader />
+      <div className="container px-4 md:px-6 py-6 md:py-8">
+        <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8">Manage your projects</p>
 
         {user && (projects.length > 0 || linkedProjects.length > 0 || publishedProjects.length > 0) && (
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -608,7 +600,10 @@ export default function Dashboard() {
             )}
           </>
         )}
-      </main>
+      </div>
+
+      {/* Create Project Dialog -- opened via the shell's primary action (PageHeader / PrimaryActionSlot) */}
+      <EnhancedCreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       {/* Gallery Preview Dialog */}
       {previewProject && (

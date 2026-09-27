@@ -26,12 +26,29 @@ import { useAnonymousProjects } from "@/hooks/useAnonymousProjects";
 import { StandardsTreeSelector } from "@/components/standards/StandardsTreeSelector";
 import { TechStackTreeSelector } from "@/components/techstack/TechStackTreeSelector";
 
-export function EnhancedCreateProjectDialog() {
+export interface EnhancedCreateProjectDialogProps {
+  /**
+   * Controlled open state (T040/WP-P2). When provided, the dialog's own
+   * trigger button is not rendered -- the caller (Dashboard.tsx) drives
+   * `open` from the shell's primary action instead, so there is a single
+   * "Create New Project" affordance (PageHeader / PrimaryActionSlot)
+   * instead of a duplicate one owned by this component. When omitted, the
+   * component falls back to its original uncontrolled behavior with its
+   * own trigger button.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function EnhancedCreateProjectDialog({ open: openProp, onOpenChange: onOpenChangeProp }: EnhancedCreateProjectDialogProps = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { addProject: addAnonymousProject } = useAnonymousProjects();
-  const [open, setOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = isControlled ? (onOpenChangeProp ?? (() => {})) : setInternalOpen;
   const [isCreating, setIsCreating] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [createdProject, setCreatedProject] = useState<{ id: string; shareToken: string } | null>(null);
@@ -236,12 +253,14 @@ export function EnhancedCreateProjectDialog() {
   return (
     <>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="lg" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create New Project
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size="lg" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create New Project
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="w-[90vw] h-[90vh] max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Create New Project</DialogTitle>
