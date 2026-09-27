@@ -13,7 +13,7 @@ import { RootLayout } from "./layouts/RootLayout";
 import { ProjectLayout } from "./layouts/ProjectLayout";
 import { ROOT_ROUTES } from "./routes/root";
 import { LIBRARY_ROUTES } from "./routes/library";
-import { PROJECT_TOOL_ROUTES } from "./routes/project";
+import { PROJECT_TOOL_ROUTES, PROJECT_SETTINGS_ROUTE } from "./routes/project";
 import { NotFound } from "./routes/NotFound";
 import { buildLegacyRedirectRoutes } from "./redirects";
 
@@ -28,7 +28,6 @@ const GitHubCallback = lazyWithRetry(() => import("@/pages/GitHubCallback"));
 const Terms = lazyWithRetry(() => import("@/pages/Terms"));
 const Privacy = lazyWithRetry(() => import("@/pages/Privacy"));
 const License = lazyWithRetry(() => import("@/pages/License"));
-const ProjectSettings = lazyWithRetry(() => import("@/pages/project/ProjectSettings"));
 
 /** `/` shows Landing when signed out, and redirects to `/projects` when signed in (contracts/routes.md §1). */
 function RootIndex() {
@@ -99,7 +98,11 @@ export const router = createBrowserRouter([
         path: "p/:projectId",
         element: <ProjectLayout />,
         children: [
-          { path: "settings", element: <ProjectSettings /> },
+          {
+            path: PROJECT_SETTINGS_ROUTE.path,
+            element: <PROJECT_SETTINGS_ROUTE.Component />,
+            handle: PROJECT_SETTINGS_ROUTE,
+          },
           ...PROJECT_TOOL_ROUTES.map((route) => ({
             path: `v/current/${route.phase}/${route.tool}`,
             element: <route.Component />,
