@@ -55,11 +55,12 @@ async function setTheme(page: Page, theme: Theme) {
 
 /**
  * Shell chrome landmarks (GlobalBar's <header>, Rail/MobileTabBar's
- * <nav aria-label="Project">, and any open Radix dialog — CommandPalette,
- * StatusCenter's popover) — see file header for why this is `.include()`,
- * not `.exclude("#page")`.
+ * <nav aria-label="Project">, ProjectLayout's TimelineStrip wrapped by
+ * AppShell in <nav aria-label="Versions"> (T024, WP-F3b), and any open
+ * Radix dialog — CommandPalette, StatusCenter's popover) — see file header
+ * for why this is `.include()`, not `.exclude("#page")`.
  */
-const SHELL_LANDMARK_SELECTORS = ["header", 'nav[aria-label="Project"]', '[role="dialog"]'];
+const SHELL_LANDMARK_SELECTORS = ["header", 'nav[aria-label="Project"]', 'nav[aria-label="Versions"]', '[role="dialog"]'];
 
 /**
  * Runs axe scoped to shell chrome only — see SHELL_LANDMARK_SELECTORS.

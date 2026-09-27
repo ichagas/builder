@@ -27,6 +27,19 @@ This is the new frontend from spec `specs/007-frontend-new/`. It starts as a cop
 ## Restyle work (existing pages)
 - **Behavior must not change.** Keep page logic, data calls, dialogs and toasts. Change only layout, navigation, tabs-in-URL, tokens and phone layout. Deeper changes are Phase R (research D-14).
 - Apply the recipe in `plan.md`, and pass the page's regression rows (`PR-xx`) at 1440 and 390 with axe.
+- **Declaring a live primary action.** The route registry's `usePrimaryAction` (`app/routes/types.ts`) is a plain no-arg hook, so a page can't pass it per-render state (dirty/pending/disabled) as an argument, and the registry can't call the page's own data hooks a second time without duplicating fetches. When the action depends on the page's own render, use `createPrimaryActionStore` (`src/lib/state/createPrimaryActionStore.ts`) instead of hand-rolling a `useSyncExternalStore`:
+
+  ```ts
+  // <page>.primaryAction.ts
+  const store = createPrimaryActionStore();
+  export const usePublishXPrimaryAction = store.usePublishPrimaryAction;
+  export const useXPrimaryAction = store.usePrimaryAction; // referenced from the route registry
+
+  // Inside the page component, on every render:
+  usePublishXPrimaryAction(canAdd ? { label: "Add thing", onClick: addThing } : undefined);
+  ```
+
+  If the action is a constant (no page state involved, e.g. it just opens a dialog), skip the store and export a plain `UsePrimaryAction` hook instead — see `pages/dashboard.primaryAction.ts`.
 
 ## New screens
 - Inline feedback through `ActionButton`, `UndoBar` and `StatusCenter`. Use a toast only for events with no place on screen.

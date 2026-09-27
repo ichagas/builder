@@ -1,8 +1,8 @@
-import * as React from "react";
-import type { ActionSpec } from "@/components/shell/types";
+import { createPrimaryActionStore } from "@/lib/state/createPrimaryActionStore";
 
 /**
- * Requirements primary action (T042, WP-D1). See plan.md "the move and
+ * Requirements primary action (T042, WP-D1; store extracted to
+ * `createPrimaryActionStore` in T027, WP-F3b). See plan.md "the move and
  * restyle recipe" step 2 and contracts/design-system.md §2 (`PageHeader`):
  * the route registry (`app/routes/project.tsx`) declares `usePrimaryAction`
  * next to the page it belongs to, and `PageHeader` (rendered inside
@@ -16,45 +16,19 @@ import type { ActionSpec } from "@/components/shell/types";
  * `useRealtimeRequirements` a second time here would open a second
  * realtime channel for the same project -- a change to the page's data
  * fetching the restyle recipe rules out. Instead `Requirements.tsx`
- * publishes its current "Add epic" action into a tiny external store on
- * every render (the same subscribe/getSnapshot shape
- * `components/shell/PrimaryActionContext.tsx` uses for the opposite
- * direction -- page render, not new React state, stays the source of
- * truth) and `useRequirementsPrimaryAction` reads it back via
- * `useSyncExternalStore`.
+ * publishes its current "Add epic" action into `createPrimaryActionStore`'s
+ * tiny external store on every render (page render, not new React state,
+ * stays the source of truth) and `useRequirementsPrimaryAction` reads it
+ * back via that store's `usePrimaryAction`.
  */
-let currentAction: ActionSpec | undefined;
-const listeners = new Set<() => void>();
-
-function setAction(action: ActionSpec | undefined) {
-  currentAction = action;
-  listeners.forEach((listener) => listener());
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function getSnapshot(): ActionSpec | undefined {
-  return currentAction;
-}
+const requirementsPrimaryActionStore = createPrimaryActionStore();
 
 /**
  * Called by `Requirements.tsx` with its current "Add epic" action
  * (label/onClick/disabled) on every render, and cleared on unmount so a
  * stale action never lingers after navigating away.
  */
-export function usePublishRequirementsPrimaryAction(action: ActionSpec | undefined): void {
-  React.useEffect(() => {
-    setAction(action);
-  });
-  React.useEffect(() => {
-    return () => setAction(undefined);
-  }, []);
-}
+export const usePublishRequirementsPrimaryAction = requirementsPrimaryActionStore.usePublishPrimaryAction;
 
 /** Referenced from the `requirements` row in `app/routes/project.tsx`. */
-export function useRequirementsPrimaryAction(): ActionSpec | undefined {
-  return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
+export const useRequirementsPrimaryAction = requirementsPrimaryActionStore.usePrimaryAction;

@@ -22,6 +22,13 @@ import { PrimaryActionSlot } from "./PrimaryActionSlot";
  * navigating between tools inside a project must not remount this component
  * (only `<Outlet/>`'s content changes), so `useUiPrefs`/`useLongTask` state
  * that lives above the outlet survives tool switches.
+ *
+ * The `timeline` slot (T024/T026, landmark fix T024 WP-F3b) is wrapped in
+ * `<nav aria-label="Versions">` when present: `TimelineStrip` (role=
+ * "tablist") otherwise sits directly between `rail` and `<main>` with no
+ * enclosing landmark, which axe flags as `region` (moderate) on every
+ * project page (the rail and `<main>` are already landmarks; the timeline
+ * strip wasn't).
  */
 export interface AppShellProps {
   globalBar: React.ReactNode;
@@ -74,7 +81,7 @@ export function AppShell({
         <div className="flex min-h-0 flex-1">
           {rail}
           <div className="flex min-w-0 flex-1 flex-col">
-            {timeline}
+            {timeline ? <nav aria-label="Versions">{timeline}</nav> : null}
             <main ref={mainRef} id="page" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto focus:outline-none">
               {children ?? <Outlet />}
             </main>

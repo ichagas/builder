@@ -19,6 +19,25 @@ describe("AppShell", () => {
     expect(screen.getByTestId("content")).toBeInTheDocument();
   });
 
+  it("wraps a given timeline slot in a 'Versions' nav landmark (T024, WP-F3b)", () => {
+    render(
+      <MemoryRouter>
+        <AppShell globalBar={<div />} timeline={<div role="tablist" aria-label="Version timeline" data-testid="timeline" />} />
+      </MemoryRouter>,
+    );
+    const nav = screen.getByRole("navigation", { name: "Versions" });
+    expect(nav).toContainElement(screen.getByTestId("timeline"));
+  });
+
+  it("renders no 'Versions' landmark when no timeline slot is given", () => {
+    render(
+      <MemoryRouter>
+        <AppShell globalBar={<div />} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("navigation", { name: "Versions" })).not.toBeInTheDocument();
+  });
+
   it("has a skip link targeting the main content region", () => {
     render(
       <MemoryRouter>
