@@ -14,6 +14,7 @@
  * Swap the dispatcher with {@link setJobDispatcher} (e.g. at process start,
  * once BE6's implementation exists, or in a test).
  */
+import { logger } from "../../utils/logger";
 
 export type DetectedCiProvider = "github_actions" | "azure_pipelines";
 
@@ -47,8 +48,28 @@ export interface JobResult {
 export interface DispatchJobInput {
   runId: string;
   teamId: string;
+  /**
+   * The team's organization (WP-BE6): scopes clone-credential minting and
+   * repository-scope checks. Optional only for backward compatibility with
+   * the pre-BE6 in-memory dispatcher's tests, which never resolve real
+   * credentials; every real dispatcher requires it.
+   */
+  organizationId?: string;
+  /** The integration connection PR opening/import used for this run, if any (D-18). */
+  connectionId?: string | null;
   packVersion?: string | null;
   repositories: Array<{ fullName: string }>;
+  /**
+   * Where the sandbox job reports progress/results back
+   * (`POST {callbackUrl}` — `routes/onboarding.ts`'s
+   * `/runs/:id/callback`), and the short-lived, per-run bearer token
+   * authenticating those calls (`callbackAuth.ts`). Both are set by
+   * `services/onboarding/index.ts#startRun` before dispatch; a dispatcher
+   * that never talks to the job out-of-process (e.g. an in-process
+   * `LocalJobDispatcher` runner) simply doesn't use them.
+   */
+  callbackUrl?: string;
+  callbackToken?: string;
 }
 
 export interface DispatchJobOutput {
@@ -151,6 +172,367 @@ export class InMemoryJobDispatcher implements JobDispatcher {
   async cancel(_jobExecutionId: string): Promise<void> {
     // Nothing to cancel — the in-memory job already resolved.
   }
+}
+
+// ---------------------------------------------------------------------------
+// Azure Container Apps Job dispatcher (WP-BE6, T141)
+// ---------------------------------------------------------------------------
+
+/**
+ * Config for {@link AzureContainerAppsJobDispatcher}, read from the
+ * environment by {@link createJobDispatcherFromEnv} — kept as an explicit
+ * interface (rather than reading `process.env` inside the class) so tests
+ * can construct one directly with fake values and a mocked `fetch`.
+ */
+export interface AzureContainerAppsJobConfig {
+  subscriptionId: string;
+  resourceGroup: string;
+  jobName: string;
+  /** ARM API version for the Container Apps Jobs "start"/"stop" operations. */
+  apiVersion?: string;
+  /** The container name inside the job's template to override env on. */
+  containerName?: string;
+}
+
+/** ARM REST base for a Container Apps Job resource. */
+function jobResourceUrl(config: AzureContainerAppsJobConfig): string {
+  return `https://management.azure.com/subscriptions/${config.subscriptionId}/resourceGroups/${config.resourceGroup}/providers/Microsoft.App/jobs/${config.jobName}`;
+}
+
+/**
+ * Real dispatcher: starts one execution of the `infra/onboarding-sandbox/`
+ * Container Apps Job (manual trigger type) per run, via the ARM REST API
+ * with the API's own managed identity (`utils/azureCredential.ts` — no
+ * `@azure/arm-appcontainers` dependency needed for the two calls this uses).
+ *
+ * The job is a separate process running outside this one, so `onComplete`/
+ * `onProgress` passed to {@link dispatch} are **not** invoked by this class —
+ * they exist only for the in-process dispatchers (`InMemoryJobDispatcher`,
+ * `LocalJobDispatcher`). The real completion path is
+ * `POST {runId}/callback` (`routes/onboarding.ts`), authenticated by the
+ * per-run token this class mints and passes to the job as an env var
+ * (`callbackAuth.ts`); that route calls
+ * `services/onboarding/index.ts#applySandboxResult`/`broadcastOnboardingProgress`
+ * directly, regardless of which `dispatch()` call started the run — so a
+ * backend restart between dispatch and the job finishing loses nothing.
+ *
+ * Read-only, per-repository clone credentials (`sandbox/credentials.ts`) are
+ * resolved here, right before dispatch, and passed to the job as env vars —
+ * never baked into the image, never logged (this class only ever reads
+ * `.authorizationHeader` to place it in an env var value, never in a log
+ * line or thrown error message).
+ */
+export class AzureContainerAppsJobDispatcher implements JobDispatcher {
+  constructor(private readonly config: AzureContainerAppsJobConfig) {}
+
+  private async armToken(): Promise<string> {
+    const { getAzureTokenForScope, AzureScope } = await import("../../utils/azureCredential");
+    return getAzureTokenForScope(AzureScope.ARM);
+  }
+
+  async dispatch(input: DispatchJobInput): Promise<DispatchJobOutput> {
+    if (!input.organizationId) {
+      throw new Error("AzureContainerAppsJobDispatcher requires DispatchJobInput.organizationId");
+    }
+    const { resolveCloneCredential } = await import("./sandbox/credentials");
+
+    // Resolve one repo-scoped, read-only credential per repository up front
+    // — a repository whose credential can't be minted (out of scope, or an
+    // Azure DevOps service-connection with no clonable credential, see
+    // sandbox/credentials.ts) is dropped from the job input with a logged
+    // reason rather than failing the whole run.
+    const repoCredentials: Array<{ fullName: string; cloneUrl: string; authorizationHeader: string }> = [];
+    for (const repo of input.repositories) {
+      try {
+        const cred = await resolveCloneCredential(input.organizationId, input.connectionId, repo.fullName);
+        repoCredentials.push({ fullName: repo.fullName, cloneUrl: cred.cloneUrl, authorizationHeader: cred.authorizationHeader });
+      } catch (err: any) {
+        logger.warn(`[onboarding/jobDispatcher] could not mint a clone credential for ${repo.fullName}: ${err.message}`);
+      }
+    }
+
+    const env = [
+      { name: "PRONGHORN_RUN_ID", value: input.runId },
+      { name: "PRONGHORN_CALLBACK_URL", value: input.callbackUrl ?? "" },
+      // secretRef, not the value: Container Apps Jobs support `secretRef`
+      // env entries backed by the job's own Key Vault-referenced secrets, so
+      // the per-run callback token is passed as a job secret, never a plain
+      // env value — see infra/onboarding-sandbox/main.tf's `secrets` block.
+      { name: "PRONGHORN_CALLBACK_TOKEN", secretRef: "callback-token" },
+      { name: "PRONGHORN_PACK_VERSION", value: input.packVersion ?? "" },
+      { name: "PRONGHORN_REPOSITORIES", value: JSON.stringify(repoCredentials.map((r) => ({ fullName: r.fullName }))) },
+      // One JSON blob per repository's clone credential, keyed by an index
+      // env var per repo (Container Apps env values are strings; the
+      // entrypoint reads PRONGHORN_REPO_CREDENTIAL_<n>). Never logged.
+      ...repoCredentials.flatMap((r, i) => [
+        { name: `PRONGHORN_REPO_CLONE_URL_${i}`, value: r.cloneUrl },
+        { name: `PRONGHORN_REPO_AUTH_${i}`, secretRef: `repo-auth-${i}` },
+      ]),
+    ];
+
+    const token = await this.armToken();
+    const secrets = [
+      { name: "callback-token", value: input.callbackToken ?? "" },
+      ...repoCredentials.map((r, i) => ({ name: `repo-auth-${i}`, value: r.authorizationHeader })),
+    ];
+
+    const res = await fetch(
+      `${jobResourceUrl(this.config)}/start?api-version=${this.config.apiVersion ?? "2024-03-01"}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template: {
+            containers: [{ name: this.config.containerName ?? "sandbox", env }],
+          },
+          // Container Apps Jobs' start operation only accepts overriding a
+          // job's own template env — secrets referenced by `secretRef` must
+          // already exist on the job resource. Since this run's callback
+          // token/repo credentials are per-run, this dispatcher sets them as
+          // job-level secrets (a small ARM PATCH) immediately before
+          // starting the execution, so `secretRef` above resolves.
+          configuration: { secrets },
+        }),
+      }
+    );
+
+    // "start" is async: 202 with a Location/Azure-AsyncOperation header
+    // pointing at the new execution. Best-effort resolve the execution name
+    // for cancel() to use later; a run that can't resolve one still
+    // proceeds (the callback route, keyed by runId, is the source of truth
+    // for completion either way) but cancel() will be a no-op for it.
+    if (!res.ok && res.status !== 202) {
+      const text = await res.text();
+      throw new Error(`Could not start Container Apps Job execution: ${res.status} ${text.slice(0, 300)}`);
+    }
+
+    let jobExecutionId = `azure-pending-${input.runId}`;
+    const location = res.headers.get("location") ?? res.headers.get("azure-asyncoperation");
+    if (location) {
+      try {
+        const opRes = await fetch(location, { headers: { Authorization: `Bearer ${token}` } });
+        if (opRes.ok) {
+          const opData = (await opRes.json()) as { name?: string; properties?: { name?: string } };
+          jobExecutionId = opData.name ?? opData.properties?.name ?? jobExecutionId;
+        }
+      } catch (err: any) {
+        logger.warn(`[onboarding/jobDispatcher] could not resolve the job execution id for run ${input.runId}: ${err.message}`);
+      }
+    }
+
+    logger.info(`[onboarding/jobDispatcher] started Container Apps Job execution (run=${input.runId}, execution=${jobExecutionId})`);
+    return { jobExecutionId };
+  }
+
+  async cancel(jobExecutionId: string): Promise<void> {
+    if (jobExecutionId.startsWith("azure-pending-")) {
+      logger.warn(`[onboarding/jobDispatcher] cannot cancel execution "${jobExecutionId}": its real execution name was never resolved`);
+      return;
+    }
+    const token = await this.armToken();
+    const res = await fetch(
+      `${jobResourceUrl(this.config)}/executions/${jobExecutionId}/stop?api-version=${this.config.apiVersion ?? "2024-03-01"}`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok && res.status !== 202 && res.status !== 404) {
+      const text = await res.text();
+      throw new Error(`Could not stop Container Apps Job execution "${jobExecutionId}": ${res.status} ${text.slice(0, 300)}`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Local / mock dispatcher (dev and tests, WP-BE6)
+// ---------------------------------------------------------------------------
+
+/**
+ * One repository's sandbox work, abstracted so {@link LocalJobDispatcher} can
+ * run it either against a real, shallow git clone (`DockerSandboxRunner`,
+ * for local dev — shells the built `infra/onboarding-sandbox` image via
+ * `docker run`) or a test fixture directory (`FixtureSandboxRunner`, no
+ * network, no Docker — see
+ * `__tests__/services/onboarding/sandbox/localDispatcher.e2e.test.ts`).
+ */
+export interface SandboxRunner {
+  runRepository(input: { fullName: string; organizationId: string; connectionId?: string | null }): Promise<JobRepoResult>;
+}
+
+/**
+ * Runs the real `infra/onboarding-sandbox` image with `docker run`,
+ * mounting no volumes and writing nothing back — the container clones
+ * read-only into its own filesystem, detects, generates, and prints its
+ * `JobRepoResult` as one line of JSON on stdout, which this runner parses.
+ * Suitable for local development (docker must be running); not used by
+ * unit/CI tests (see `FixtureSandboxRunner`).
+ */
+export class DockerSandboxRunner implements SandboxRunner {
+  constructor(private readonly image: string = process.env.ONBOARDING_SANDBOX_IMAGE || "pronghorn-onboarding-sandbox:local") {}
+
+  async runRepository(input: { fullName: string; organizationId: string; connectionId?: string | null }): Promise<JobRepoResult> {
+    const { resolveCloneCredential } = await import("./sandbox/credentials");
+    const cred = await resolveCloneCredential(input.organizationId, input.connectionId, input.fullName);
+
+    const { spawn } = await import("child_process");
+    return new Promise<JobRepoResult>((resolve, reject) => {
+      const child = spawn(
+        "docker",
+        [
+          "run",
+          "--rm",
+          "--network",
+          "bridge",
+          "-e",
+          "PRONGHORN_REPO_FULL_NAME",
+          "-e",
+          "PRONGHORN_REPO_CLONE_URL",
+          "-e",
+          "PRONGHORN_REPO_AUTH",
+          this.image,
+        ],
+        {
+          env: {
+            ...process.env,
+            PRONGHORN_REPO_FULL_NAME: input.fullName,
+            PRONGHORN_REPO_CLONE_URL: cred.cloneUrl,
+            // Never logged: passed only via the child's environment, never
+            // as a CLI argument (so it doesn't appear in `ps`).
+            PRONGHORN_REPO_AUTH: cred.authorizationHeader,
+          },
+        }
+      );
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => (stdout += d.toString()));
+      child.stderr.on("data", (d) => (stderr += d.toString()));
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code !== 0) {
+          reject(new Error(`onboarding sandbox container exited ${code}: ${stderr.slice(0, 500)}`));
+          return;
+        }
+        try {
+          const lastLine = stdout.trim().split("\n").pop() ?? "{}";
+          resolve(JSON.parse(lastLine) as JobRepoResult);
+        } catch (err: any) {
+          reject(new Error(`could not parse onboarding sandbox output: ${err.message}`));
+        }
+      });
+    });
+  }
+}
+
+/**
+ * Dispatcher used for local development (real `docker run`s, by default) and
+ * as a drop-in for tests (inject a `FixtureSandboxRunner`). Runs entirely
+ * in-process from the API's point of view: {@link dispatch} resolves once
+ * every repository's runner has finished, then calls `onComplete` directly
+ * — no HTTP callback, no `callbackAuth` token needed, since there is no
+ * out-of-process hop to authenticate.
+ */
+export class LocalJobDispatcher implements JobDispatcher {
+  constructor(private readonly runner: SandboxRunner = new DockerSandboxRunner()) {}
+
+  async dispatch(
+    input: DispatchJobInput,
+    onComplete: JobResultCallback,
+    onProgress?: JobProgressCallback
+  ): Promise<DispatchJobOutput> {
+    const jobExecutionId = `local-${input.runId}`;
+
+    queueMicrotask(async () => {
+      const repositories: JobRepoResult[] = [];
+      try {
+        for (const repo of input.repositories) {
+          onProgress?.({ type: "log", message: `Running the sandbox for ${repo.fullName}` });
+          const result = await this.runner.runRepository({
+            fullName: repo.fullName,
+            organizationId: input.organizationId ?? "",
+            connectionId: input.connectionId,
+          });
+          repositories.push(result);
+        }
+        onProgress?.({ type: "step", step: "sandbox", message: "Sandbox run complete" });
+        await onComplete({ runId: input.runId, status: "ready", repositories });
+        onProgress?.({ type: "done" });
+      } catch (err: any) {
+        logger.error(`[onboarding/jobDispatcher] local sandbox run failed (run=${input.runId}): ${err.message}`);
+        await onComplete({ runId: input.runId, status: "failed", error: err.message, repositories }).catch(() => {});
+        onProgress?.({ type: "done" });
+      }
+    });
+
+    return { jobExecutionId };
+  }
+
+  async cancel(_jobExecutionId: string): Promise<void> {
+    // Best-effort only: an in-flight docker run finishes on its own; there
+    // is no execution registry to cancel it by id in this simple runner.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Selection from environment (WP-BE6): fail closed in production
+// ---------------------------------------------------------------------------
+
+export class JobDispatcherConfigurationError extends Error {
+  statusCode = 503;
+  code = "JOB_DISPATCHER_NOT_CONFIGURED";
+}
+
+/**
+ * Builds the process-wide dispatcher from `ONBOARDING_JOB_DISPATCHER`
+ * (`azure` | `local` | `memory`) and the matching config env vars — mirrors
+ * `services/integrations/secretStore.ts`'s fail-closed selection:
+ *
+ *  - `azure` needs `ONBOARDING_JOB_SUBSCRIPTION_ID`,
+ *    `ONBOARDING_JOB_RESOURCE_GROUP`, `ONBOARDING_JOB_NAME`.
+ *  - `local` and `memory` are always available (no cloud config), but are
+ *    only *selected by default* outside production.
+ *  - Deliberately NOT defaulted to `local`/`memory` when `NODE_ENV` is
+ *    unset or `production`: an unconfigured production deploy throws
+ *    (logged at error level) rather than silently running onboarding
+ *    sandbox jobs in-process/locally.
+ */
+export function createJobDispatcherFromEnv(): JobDispatcher {
+  const selection = (process.env.ONBOARDING_JOB_DISPATCHER || "").toLowerCase();
+  const nodeEnv = process.env.NODE_ENV;
+  const isProduction = nodeEnv === "production" || nodeEnv === undefined;
+
+  if (selection === "azure") {
+    const subscriptionId = process.env.ONBOARDING_JOB_SUBSCRIPTION_ID;
+    const resourceGroup = process.env.ONBOARDING_JOB_RESOURCE_GROUP;
+    const jobName = process.env.ONBOARDING_JOB_NAME;
+    if (!subscriptionId || !resourceGroup || !jobName) {
+      throw new JobDispatcherConfigurationError(
+        "ONBOARDING_JOB_DISPATCHER=azure requires ONBOARDING_JOB_SUBSCRIPTION_ID, ONBOARDING_JOB_RESOURCE_GROUP and ONBOARDING_JOB_NAME"
+      );
+    }
+    return new AzureContainerAppsJobDispatcher({ subscriptionId, resourceGroup, jobName });
+  }
+
+  if (selection === "local") {
+    return new LocalJobDispatcher();
+  }
+
+  if (selection === "memory") {
+    if (isProduction) {
+      logger.warn(
+        "[onboarding/jobDispatcher] ONBOARDING_JOB_DISPATCHER=memory in production — sandbox runs will be simulated, not real. Only intended for staging smoke tests."
+      );
+    }
+    return new InMemoryJobDispatcher();
+  }
+
+  if (isProduction) {
+    throw new JobDispatcherConfigurationError(
+      `No onboarding job dispatcher is configured for production (NODE_ENV=${nodeEnv ?? "unset"}). ` +
+        'Set ONBOARDING_JOB_DISPATCHER=azure (with ONBOARDING_JOB_SUBSCRIPTION_ID/ONBOARDING_JOB_RESOURCE_GROUP/ONBOARDING_JOB_NAME), or explicitly opt into "local"/"memory" for a non-production environment.'
+    );
+  }
+
+  // Development/test default when unset: the in-memory placeholder, exactly
+  // as before WP-BE6 — no behavior change for anyone who hasn't opted in.
+  return new InMemoryJobDispatcher();
 }
 
 let activeDispatcher: JobDispatcher = new InMemoryJobDispatcher();

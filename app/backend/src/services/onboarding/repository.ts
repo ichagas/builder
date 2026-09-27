@@ -26,6 +26,13 @@ export interface OnboardingRunRow {
   job_execution_id: string | null;
   log_blob: string | null;
   connection_id: string | null;
+  /**
+   * Key Vault secret name (never the secret itself) holding this run's HMAC
+   * key for `POST /onboarding/runs/:id/callback` (WP-BE6, migration 022).
+   * Null before the run is dispatched, or for a dispatcher that never needs
+   * an out-of-process callback.
+   */
+  callback_secret_ref: string | null;
   started_by: string;
   /**
    * Set (a few minutes in the future) while a POST .../pull-requests call is
@@ -66,7 +73,8 @@ export interface OnboardingRunRepositoryRow {
 
 const RUN_COLUMNS = `
   id, team_id, application_name, application_id, pack_version, status, step,
-  job_execution_id, log_blob, connection_id, started_by, pr_lease_until, pr_lease_owner, created_at, updated_at
+  job_execution_id, log_blob, connection_id, callback_secret_ref, started_by,
+  pr_lease_until, pr_lease_owner, created_at, updated_at
 `;
 
 const REPO_COLUMNS = `
@@ -114,6 +122,7 @@ export interface UpdateRunFields {
   logBlob?: string | null;
   applicationId?: string | null;
   connectionId?: string | null;
+  callbackSecretRef?: string | null;
 }
 
 function buildRunUpdateSets(fields: UpdateRunFields): { sets: string[]; values: unknown[]; next: number } {
@@ -144,6 +153,10 @@ function buildRunUpdateSets(fields: UpdateRunFields): { sets: string[]; values: 
   if (fields.connectionId !== undefined) {
     sets.push(`connection_id = $${i++}`);
     values.push(fields.connectionId);
+  }
+  if (fields.callbackSecretRef !== undefined) {
+    sets.push(`callback_secret_ref = $${i++}`);
+    values.push(fields.callbackSecretRef);
   }
 
   sets.push(`updated_at = now()`);

@@ -37,6 +37,7 @@ import {
 import { canTransition, describeInvalidTransition, isTerminal } from "./stateMachine";
 import { getJobDispatcher } from "./jobDispatcher";
 import type { JobResult, JobProgressEvent } from "./jobDispatcher";
+import { mintCallbackToken, verifyCallbackToken } from "./callbackAuth";
 import { broadcastOnboardingProgress } from "./realtime";
 import { listGitHubRepositories, ImportableRepository } from "./githubImport";
 import { listAzureDevOpsRepositories, ImportableAzureRepository } from "./azureImport";
@@ -406,13 +407,33 @@ export async function startRun(userId: string, runId: string): Promise<Onboardin
     throw Errors.conflict(describeInvalidTransition(run.status, "running"));
   }
 
+  const organizationId = await getTeamOrgId(run.team_id);
+  if (!organizationId) throw Errors.notFound("Team");
+
+  // WP-BE6 (T141): a real (out-of-process) dispatcher reports back over
+  // POST /onboarding/runs/:id/callback, authenticated by a fresh, per-run,
+  // short-lived HMAC token (callbackAuth.ts) — minted here, before dispatch,
+  // never reused across runs. The in-process dispatchers (InMemory, Local)
+  // simply ignore callbackUrl/callbackToken.
+  const { token: callbackToken, secretRef: callbackSecretRef } = await mintCallbackToken(runId);
+  await updateRun(runId, { callbackSecretRef });
+
   const dispatcher = getJobDispatcher();
   // Fix round 2, item 6: forward the dispatcher's progress onto this run's
   // `onboarding-{runId}` realtime channel (contracts/api.md), so the wizard
   // sees log/step/done events as the sandbox job runs, not just the final
   // ready/failed state.
   const { jobExecutionId } = await dispatcher.dispatch(
-    { runId, teamId: run.team_id, packVersion: run.pack_version, repositories: selected.map((r) => ({ fullName: r.full_name })) },
+    {
+      runId,
+      teamId: run.team_id,
+      organizationId,
+      connectionId: run.connection_id,
+      packVersion: run.pack_version,
+      repositories: selected.map((r) => ({ fullName: r.full_name })),
+      callbackUrl: buildOnboardingCallbackUrl(runId),
+      callbackToken,
+    },
     applySandboxResult,
     (event: JobProgressEvent) => broadcastOnboardingProgress(runId, event)
   );
@@ -420,6 +441,52 @@ export async function startRun(userId: string, runId: string): Promise<Onboardin
   const updated = await updateRun(runId, { jobExecutionId });
   logger.info(`[onboarding] sandbox job dispatched (run=${runId}, jobExecutionId=${jobExecutionId})`);
   return toView(updated);
+}
+
+/**
+ * The absolute URL the sandbox job POSTs progress/results back to. Built
+ * from `ONBOARDING_API_BASE_URL` (or `API_BASE_URL`, shared with other
+ * outbound-URL construction in this codebase) — never guessed from the
+ * inbound request, since the job calls in from outside any request context.
+ */
+function buildOnboardingCallbackUrl(runId: string): string {
+  const base = (process.env.ONBOARDING_API_BASE_URL || process.env.API_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
+  return `${base}/api/v1/onboarding/runs/${runId}/callback`;
+}
+
+// ---------------------------------------------------------------------------
+// POST /onboarding/runs/:id/callback (WP-BE6, T141)
+// ---------------------------------------------------------------------------
+
+export type JobCallbackPayload =
+  | { type: "result"; result: JobResult }
+  | { type: "progress"; event: JobProgressEvent };
+
+/**
+ * Handles one call from the sandbox job to
+ * `POST /onboarding/runs/:id/callback`. No user session — authenticated
+ * solely by `token` (verified against this run's own
+ * `callback_secret_ref`, constant-time, per {@link verifyCallbackToken}).
+ * Every failure (wrong run, expired, tampered, unknown run) is reported
+ * identically by the caller (a generic 401) so nothing here leaks which
+ * check failed.
+ */
+export async function handleJobCallback(runId: string, token: string | undefined, payload: JobCallbackPayload): Promise<void> {
+  const run = await getRunById(runId);
+  if (!run) throw Errors.unauthorized();
+
+  const ok = await verifyCallbackToken(runId, run.callback_secret_ref, token);
+  if (!ok) throw Errors.unauthorized();
+
+  if (payload?.type === "progress") {
+    broadcastOnboardingProgress(runId, payload.event);
+    return;
+  }
+  if (payload?.type === "result") {
+    await applySandboxResult(payload.result);
+    return;
+  }
+  throw Errors.validation({ type: 'must be "progress" or "result"' });
 }
 
 // ---------------------------------------------------------------------------
