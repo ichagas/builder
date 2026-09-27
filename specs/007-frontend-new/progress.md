@@ -52,6 +52,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T053 | done | e9cfd80, 6f0c600, d6cd4b3 | WP-S3. Present; tabs in URL; New Presentation only on the list tab (review fix). PR-15 green 1440/390; axe 0 serious/critical |
 | T047 | done | 3a4945d, 9705e66 | WP-G2. Specifications; title "Project Specifications" (PR-09); spec generation via useLongTask. PR-09 green new+legacy 1440/390; axe subset of legacy (nested-interactive ×10 pre-existing) |
 | T043 | done | ef51039, 63f703e | WP-D2. Project Standards; "Save Changes" as the primary action (createPrimaryActionStore). PR-05 green 1440/390; axe strictly fewer than legacy |
+| T044 | done | d9bf548, f5557b8 | WP-D3. Artifacts; "Add artifact" primary action; mobile icon buttons labelled. PR-06 green 1440/390; axe **0 violations** both viewports |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
 ## Escalations to Opus 5.5
@@ -155,3 +156,4 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - **Merged WP-S3** (E2E PR-15 green at 1440/390, axe better than legacy; verified on feature: lint 0 errors, tsc OK, **722 FE tests**, build OK). G2 E2E running (serial).
 - **Merged WP-G2** (route-file conflict auto-resolved; verified on feature: lint 0 errors, tsc OK, **726 FE tests**, build OK). D2 E2E running.
 - **Merged WP-D2** (verified on feature: lint 0 errors, tsc OK, **730 FE tests**, build OK). D3 E2E running.
+- **Merged WP-D3** (verified on feature: lint 0 errors, tsc OK, **734 FE tests**, build OK). D4 E2E running.
