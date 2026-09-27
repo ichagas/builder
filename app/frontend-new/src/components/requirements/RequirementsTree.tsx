@@ -154,11 +154,12 @@ function RequirementNode({ requirement, level = 0, projectId, shareToken, expand
             {/* Expand button and icon */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {hasChildren ? (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 p-0 flex-shrink-0" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-0 flex-shrink-0"
                   onClick={() => setIsExpanded(!isExpanded)}
+                  aria-label={isExpanded ? `Collapse ${requirement.title}` : `Expand ${requirement.title}`}
                 >
                   {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                 </Button>
@@ -212,8 +213,9 @@ function RequirementNode({ requirement, level = 0, projectId, shareToken, expand
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-7 w-7 flex-shrink-0" 
+                      className="h-7 w-7 flex-shrink-0"
                       onClick={() => setIsEditing(true)}
+                      aria-label={`Edit ${requirement.title}`}
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
@@ -235,8 +237,9 @@ function RequirementNode({ requirement, level = 0, projectId, shareToken, expand
                       variant="ghost" 
                       size="icon" 
                       className="h-7 w-7 flex-shrink-0" 
-                      onClick={handleAIExpand} 
+                      onClick={handleAIExpand}
                       disabled={isExpanding}
+                      aria-label={`AI expand ${requirement.title}`}
                     >
                       {isExpanding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                     </Button>
@@ -249,8 +252,9 @@ function RequirementNode({ requirement, level = 0, projectId, shareToken, expand
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-7 w-7 flex-shrink-0" 
+                      className="h-7 w-7 flex-shrink-0"
                       onClick={() => onLinkStandard?.(requirement.id, requirement.title)}
+                      aria-label={`Link standards to ${requirement.title}`}
                     >
                       <LinkIcon className="h-3.5 w-3.5" />
                     </Button>
@@ -264,8 +268,9 @@ function RequirementNode({ requirement, level = 0, projectId, shareToken, expand
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-7 w-7 flex-shrink-0" 
+                        className="h-7 w-7 flex-shrink-0"
                         onClick={handleAddChild}
+                        aria-label={`Add child requirement to ${requirement.title}`}
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </Button>
@@ -279,8 +284,9 @@ function RequirementNode({ requirement, level = 0, projectId, shareToken, expand
                      <Button 
                        variant="ghost" 
                        size="icon" 
-                       className="h-7 w-7 flex-shrink-0 text-destructive hover:bg-destructive/10" 
+                       className="h-7 w-7 flex-shrink-0 text-destructive hover:bg-destructive/10"
                        onClick={() => onDelete?.(requirement.id)}
+                       aria-label={`Delete ${requirement.title}`}
                      >
                        <Trash2 className="h-3.5 w-3.5" />
                      </Button>
