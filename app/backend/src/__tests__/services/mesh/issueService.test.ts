@@ -160,7 +160,7 @@ describe("openIssueForNewFindings", () => {
   });
 
   it("uses the injected AzureDevOpsClientProvider for azure_devops repositories", async () => {
-    mockDbQuery.mockResolvedValueOnce({ rows: [runRow({ provider: "azure_devops", full_name: "MyProject" })] });
+    mockDbQuery.mockResolvedValueOnce({ rows: [runRow({ provider: "azure_devops", full_name: "x/MyProject/permits-api" })] });
     const mockCreateWorkItem = jest.fn().mockResolvedValue({ id: 5678, url: "https://dev.azure.com/x/5678" });
     const provider: AzureDevOpsClientProvider = {
       getClient: jest.fn().mockResolvedValue({ createWorkItem: mockCreateWorkItem }),
@@ -171,14 +171,14 @@ describe("openIssueForNewFindings", () => {
     const result = await openIssueForNewFindings("run-1");
 
     expect(result.created).toBe(true);
-    expect(result.issueRef).toBe("azure_devops:MyProject#5678");
+    expect(result.issueRef).toBe("azure_devops:x/MyProject/permits-api#5678");
     expect(mockCreateWorkItem).toHaveBeenCalledWith(
-      expect.objectContaining({ project: "MyProject" }),
+      expect.objectContaining({ adoOrg: "x", project: "MyProject" }),
     );
   });
 
   it("no-ops for azure_devops when no connection is configured for the organization", async () => {
-    mockDbQuery.mockResolvedValueOnce({ rows: [runRow({ provider: "azure_devops", full_name: "MyProject" })] });
+    mockDbQuery.mockResolvedValueOnce({ rows: [runRow({ provider: "azure_devops", full_name: "x/MyProject/permits-api" })] });
     // Default provider in effect (no setAzureDevOpsClientProvider call) — it
     // asks services/integrations for a client, which throws when nothing is
     // configured for the organization.
@@ -197,7 +197,7 @@ describe("openIssueForNewFindings — default Azure DevOps provider (services/in
       rows: [
         runRow({
           provider: "azure_devops",
-          full_name: "MyProject/my-repo",
+          full_name: "x/MyProject/my-repo",
           organization_id: "org-1",
           connection_id: "conn-1",
         }),
@@ -214,9 +214,10 @@ describe("openIssueForNewFindings — default Azure DevOps provider (services/in
 
     expect(mockGetAzureDevOpsClient).toHaveBeenCalledWith("org-1", "conn-1");
     expect(result.created).toBe(true);
-    expect(result.issueRef).toBe("azure_devops:MyProject/my-repo#789");
+    expect(result.issueRef).toBe("azure_devops:x/MyProject/my-repo#789");
 
-    // Filed against the Azure DevOps project (the full_name's first segment)
+    // Filed against the Azure DevOps project (the full_name's MIDDLE segment
+    // — "<adoOrg>/<project>/<repo>" — never the ADO organization)
     // using the "add" work-item API with a minimal JSON Patch body.
     const [path, init] = mockRequest.mock.calls[0];
     expect(path).toContain("/MyProject/_apis/wit/workitems/$Task");
@@ -232,7 +233,7 @@ describe("openIssueForNewFindings — default Azure DevOps provider (services/in
 
   it("returns a failure result (not a throw) when Azure DevOps rejects the work item creation", async () => {
     mockDbQuery.mockResolvedValueOnce({
-      rows: [runRow({ provider: "azure_devops", full_name: "MyProject/my-repo", organization_id: "org-1" })],
+      rows: [runRow({ provider: "azure_devops", full_name: "x/MyProject/my-repo", organization_id: "org-1" })],
     });
     const mockRequest = jest.fn().mockResolvedValue({ ok: false, status: 401, text: async () => "unauthorized" });
     mockGetAzureDevOpsClient.mockResolvedValue({ organizationUrl: "https://dev.azure.com/x", request: mockRequest });
@@ -241,6 +242,48 @@ describe("openIssueForNewFindings — default Azure DevOps provider (services/in
 
     expect(result.created).toBe(false);
     expect(result.message).toEqual(expect.stringContaining("401"));
+  });
+});
+
+describe("openIssueForNewFindings — full_name parsing (fix round 3)", () => {
+  it("refuses a stale 2-segment Azure full_name instead of filing against the wrong segment", async () => {
+    mockDbQuery.mockResolvedValueOnce({
+      rows: [runRow({ provider: "azure_devops", full_name: "MyProject/my-repo", organization_id: "org-1" })],
+    });
+    const mockRequest = jest.fn();
+    mockGetAzureDevOpsClient.mockResolvedValue({ organizationUrl: "https://dev.azure.com/x", request: mockRequest });
+
+    const result = await openIssueForNewFindings("run-1");
+
+    expect(result.created).toBe(false);
+    expect(result.message).toEqual(expect.stringContaining("adoOrg"));
+    expect(mockRequest).not.toHaveBeenCalled();
+    // Never recorded as opened.
+    expect(mockDbQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses to file through a connection for a different Azure DevOps organization", async () => {
+    mockDbQuery.mockResolvedValueOnce({
+      rows: [runRow({ provider: "azure_devops", full_name: "other-org/MyProject/my-repo", organization_id: "org-1" })],
+    });
+    const mockRequest = jest.fn();
+    mockGetAzureDevOpsClient.mockResolvedValue({ organizationUrl: "https://dev.azure.com/x", request: mockRequest });
+
+    const result = await openIssueForNewFindings("run-1");
+
+    expect(result.created).toBe(false);
+    expect(mockRequest).not.toHaveBeenCalled();
+  });
+
+  it("refuses an Azure-shaped full_name on a github repository row", async () => {
+    mockDbQuery.mockResolvedValueOnce({ rows: [runRow({ provider: "github", full_name: "x/MyProject/my-repo" })] });
+    mockIsGitHubAppConfigured.mockReturnValue(true);
+
+    const result = await openIssueForNewFindings("run-1");
+
+    expect(result.created).toBe(false);
+    expect(mockGetInstallationTokenForRepo).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });
 

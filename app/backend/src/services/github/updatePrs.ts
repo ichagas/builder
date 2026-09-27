@@ -19,6 +19,7 @@
  */
 import { logger } from "../../utils/logger";
 import { getInstallationTokenForRepo, isGitHubAppConfigured } from "../../utils/githubAppAuth";
+import { parseRepositoryFullName } from "../repositories/fullName";
 
 const MANIFEST_PATH = "pronghorn.standards.yml";
 const GITHUB_ACTIONS_WORKFLOW_PATH = ".github/workflows/assurance-mesh.yml";
@@ -126,6 +127,10 @@ export async function openUpdatePr(repo: RepoToUpdate, target: UpdatePrTarget): 
   if (!isGitHubAppConfigured()) {
     return { repositoryId: repo.id, opened: false, reason: "GitHub App is not configured" };
   }
+
+  // `repo.fullName` is interpolated into every GitHub API path below —
+  // validate it's a well-formed "<owner>/<repo>" first (throws otherwise).
+  parseRepositoryFullName("github", repo.fullName);
 
   // Scoped to this one repository and the minimal permissions needed
   // (read/write file contents to bump the manifest, and open a pull

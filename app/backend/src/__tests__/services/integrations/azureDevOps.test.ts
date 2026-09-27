@@ -5,6 +5,7 @@ import {
   validateAzureDevOpsOrgUrl,
   testAzureDevOpsConnection,
   createAzureDevOpsClient,
+  extractAzureDevOpsOrgLogin,
 } from "../../../services/integrations/providers/azureDevOps";
 
 jest.mock("../../../utils/logger", () => ({
@@ -201,5 +202,27 @@ describe("createAzureDevOpsClient", () => {
     const [, init] = fetchMock.mock.calls[0];
     const headers = init.headers as Headers;
     expect(headers.get("Authorization")).toBe(`Basic ${Buffer.from(":my-pat").toString("base64")}`);
+  });
+});
+
+describe("extractAzureDevOpsOrgLogin (fix round 2, item 1)", () => {
+  it("extracts the org from a dev.azure.com URL", () => {
+    expect(extractAzureDevOpsOrgLogin("https://dev.azure.com/goa-standards")).toBe("goa-standards");
+  });
+
+  it("extracts the org from a dev.azure.com URL with a trailing slash", () => {
+    expect(extractAzureDevOpsOrgLogin("https://dev.azure.com/goa-standards/")).toBe("goa-standards");
+  });
+
+  it("extracts the org from a *.visualstudio.com URL", () => {
+    expect(extractAzureDevOpsOrgLogin("https://goa-standards.visualstudio.com")).toBe("goa-standards");
+  });
+
+  it("returns null for an unrecognized host", () => {
+    expect(extractAzureDevOpsOrgLogin("https://example.com/goa-standards")).toBeNull();
+  });
+
+  it("returns null for a malformed URL", () => {
+    expect(extractAzureDevOpsOrgLogin("not-a-url")).toBeNull();
   });
 });

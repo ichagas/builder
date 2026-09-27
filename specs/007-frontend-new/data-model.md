@@ -87,7 +87,7 @@ Roles follow GitHub: `owner` or `member` per team. Organization admins (the exis
 |---|---|---|
 | application_id | uuid FK → applications ON DELETE CASCADE | |
 | provider | text check in (`github`,`azure_devops`) | |
-| full_name | text | `goa/permits-api`, unique |
+| full_name | text | `goa/permits-api`, unique. For `provider = azure_devops`, `<adoOrg>/<project>/<repo>` (fix round 2, item 1 — superseding fix round 1's `<project>/<repo>`: that collided across different Azure DevOps organizations since this column is globally unique, not per-provider-unique; `adoOrg` is the Azure DevOps organization login, derived from the connection's validated organization URL). **Canonical form, everywhere** (fix round 3): GitHub is exactly 2 segments, Azure Repos exactly 3, so the provider is recoverable from the shape; the backend builds/splits it only through `services/repositories/fullName.ts#parseRepositoryFullName` (strict: segment count, no empty/dot segments, provider character rules), and the mesh CI templates send this exact string as the report's `repository` (the ingest API matches it case-insensitively, no other normalization — see contracts/api.md `POST /mesh/runs`). **Case-insensitive identity** (fix round 3, migration `021_repository_full_name_ci.sql`): stored as written (display case) but unique on `lower(full_name)` (`application_repositories_full_name_lower_key`), and every lookup/upsert (mesh ingest, onboarding registration and its `ON CONFLICT ((lower(full_name)))`) compares `lower()` — both providers' names are case-insensitive, so `goa/x` and `GOA/x` are one repository. Same convention for `onboarding_run_repositories.full_name` (§3). |
 | default_branch | text default 'main' | main, master, develop… the mesh runs on PRs targeting it |
 | ci_provider | text check in (`github_actions`,`azure_pipelines`) | where the mesh CI was generated (D-12) |
 | profile | text check in (`dotnet`,`node`,`java`,`python`) | stack profile |
@@ -197,9 +197,11 @@ Migration `016_integrations.sql`
 | auth_type | text check in (`app_installation`,`service_connection`,`pat`) | Azure DevOps choice left to admins |
 | display_name | text | |
 | secret_ref | text | Key Vault secret name. **Never** the secret itself |
-| scope | jsonb | org URL, projects or installation id |
+| scope | jsonb | org URL, projects or installation id. For `provider = github_app`: `{owners: string[]}`, the GitHub user/organization logins this organization's onboarding import may draw from (fix round 1 follow-up — `auth_type = app_installation`, `secret_ref` always null: the App's credentials are platform-wide, not per-connection) |
 | last_tested_at | timestamptz null | |
 | status | text check in (`ok`,`failing`,`untested`) | |
+
+At most **one `github_app` connection per organization** (migration `020_github_app_connection_unique.sql`: partial unique index `uq_integration_connections_github_app_per_org` on `organization_id WHERE provider = 'github_app'`; the API maps its 23505 to 409). Azure DevOps connections are not limited.
 
 `application_repositories` and `onboarding_runs` reference the connection used (`connection_id`). `mesh_policy` gains `cyber_risk_sandbox boolean default false` at repository or application scope (D-17).
 

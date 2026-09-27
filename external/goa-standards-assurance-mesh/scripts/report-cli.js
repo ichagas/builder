@@ -24,6 +24,7 @@ const path = require('node:path');
 const { buildReport, serializeReport } = require('./lib/report');
 const { postReport } = require('./lib/post');
 const { evaluatePolicy } = require('./lib/policy');
+const { resolveRepositoryFullName } = require('./lib/repository');
 
 function parseArgs(argv) {
   const args = { policy: {} };
@@ -62,7 +63,9 @@ async function main(argv) {
   const allFindings = [...green.findings, ...yellow.findings, ...red.findings, ...blue.findings];
 
   const { report } = buildReport({
-    repositoryFullName: args.repository,
+    // Canonical Pronghorn full_name (see lib/repository.js): "<owner>/<repo>"
+    // for GitHub, "<adoOrg>/<project>/<repo>" for Azure Repos.
+    repositoryFullName: resolveRepositoryFullName(args),
     commitSha: args.commit,
     prNumber: args['pr-number'] && args['pr-number'] !== 'true' ? Number(args['pr-number']) : null,
     baseBranch: args['base-branch'],

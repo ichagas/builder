@@ -2051,6 +2051,7 @@ router.post("/:functionName", async (req: Request, res: Response) => {
         p_old_content,
         p_new_content,
         p_old_path,
+        p_branch,
       } = params;
       const result = await stageFileChangeWithToken(
         p_repo_id,
@@ -2060,6 +2061,10 @@ router.post("/:functionName", async (req: Request, res: Response) => {
         p_old_content ?? null,
         p_new_content ?? null,
         p_old_path ?? null,
+        // Staging branch dimension (D-9 / WP-BE2 T104): routes this staged
+        // change to a real Git branch when the caller names one; defaults
+        // to 'main' (legacy behaviour) when omitted.
+        p_branch || null,
       );
       // Get project_id for staging broadcast
       const stageRepoLookup = await db.query(
@@ -2124,6 +2129,9 @@ router.post("/:functionName", async (req: Request, res: Response) => {
           operationType: file.operation_type,
           newContent: file.new_content ?? null,
           oldPath: file.old_path ?? null,
+          // Per-file branch override; batch_stage_files_with_token also
+          // accepts a top-level p_branch applied to every file (D-9).
+          branch: file.branch || params.p_branch || null,
         });
       }
 
@@ -2152,14 +2160,17 @@ router.post("/:functionName", async (req: Request, res: Response) => {
     }
 
     case "unstage_file_with_token": {
-      const { p_repo_id, p_file_path } = params;
+      // Branch-scoped (D-9): only clears this file's staged row on the
+      // named branch (default 'main'), so unstaging one change's file
+      // never touches another change's staged edit to the same path.
+      const { p_repo_id, p_file_path, p_branch } = params;
       const unstageRepoLookup = await db.query(
         "SELECT project_id FROM project_repos WHERE id = $1",
         [p_repo_id],
       );
       const unstageProjectId = unstageRepoLookup.rows[0]?.project_id;
-      const sql = "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 RETURNING id";
-      const result = await db.query(sql, [p_repo_id, p_file_path]);
+      const sql = "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3 RETURNING id";
+      const result = await db.query(sql, [p_repo_id, p_file_path, p_branch || "main"]);
       if (unstageProjectId) {
         try {
           await getRepoBlobStore().deleteStaged(
@@ -2183,14 +2194,18 @@ router.post("/:functionName", async (req: Request, res: Response) => {
     }
 
     case "get_staged_changes_with_token": {
-      const { p_repo_id } = params;
-      const sql = "SELECT * FROM repo_staging WHERE repo_id = $1 ORDER BY created_at";
-      const result = await db.query(sql, [p_repo_id]);
+      // Staging branch dimension (D-9 / WP-BE2 T104): scoped to a single
+      // branch — default 'main' — so a change's own staged files don't mix
+      // with another change's staged files on a different branch.
+      const { p_repo_id, p_branch } = params;
+      const sql = "SELECT * FROM repo_staging WHERE repo_id = $1 AND branch = $2 ORDER BY created_at";
+      const result = await db.query(sql, [p_repo_id, p_branch || "main"]);
       return res.json({ data: result.rows, error: null });
     }
 
     case "get_staged_file_content_with_token": {
-      const { p_repo_id, p_file_path } = params;
+      const { p_repo_id, p_file_path, p_branch } = params;
+      const branch = p_branch || "main";
 
       if (!p_repo_id) {
         return res
@@ -2204,8 +2219,8 @@ router.post("/:functionName", async (req: Request, res: Response) => {
       }
 
       const stagingRow = await db.query(
-        "SELECT operation_type, is_binary FROM repo_staging WHERE repo_id = $1 AND file_path = $2",
-        [p_repo_id, p_file_path],
+        "SELECT operation_type, is_binary FROM repo_staging WHERE repo_id = $1 AND file_path = $2 AND branch = $3",
+        [p_repo_id, p_file_path, branch],
       );
       if (stagingRow.rows.length === 0) {
         return res.json({ data: null, error: null });
@@ -2224,7 +2239,7 @@ router.post("/:functionName", async (req: Request, res: Response) => {
       }
 
       // Delegate to StagedContentStore facade — blob is the canonical source of truth
-      const staged = await getStagedContent(p_repo_id, p_file_path);
+      const staged = await getStagedContent(p_repo_id, p_file_path, branch);
       if (!staged) {
         return res.json({ data: null, error: null });
       }
@@ -2340,12 +2355,14 @@ router.post("/:functionName", async (req: Request, res: Response) => {
     }
 
     case "get_staged_changes_metadata_with_token": {
-      const { p_repo_id } = params;
-      const sql = `SELECT id, repo_id, file_path, operation_type, old_path, content_length, is_binary, created_at
+      // Branch-scoped (D-9 / WP-BE2 T104): default 'main', identical to
+      // legacy (pre-branch-dimension) behaviour when the caller names none.
+      const { p_repo_id, p_branch } = params;
+      const sql = `SELECT id, repo_id, file_path, operation_type, old_path, content_length, is_binary, branch, created_at
         FROM repo_staging
-        WHERE repo_id = $1
+        WHERE repo_id = $1 AND branch = $2
         ORDER BY file_path`;
-      const result = await db.query(sql, [p_repo_id]);
+      const result = await db.query(sql, [p_repo_id, p_branch || "main"]);
       return res.json({ data: result.rows, error: null });
     }
 
@@ -2415,18 +2432,23 @@ router.post("/:functionName", async (req: Request, res: Response) => {
         return res.json({ data: null, error: "Repository not found" });
       }
       const projectId = commitRepoLookup.rows[0].project_id;
+      // Staging branch dimension (D-9 / WP-BE2 T104): commit only the
+      // staged rows on the branch being committed (default 'main', legacy
+      // behaviour) — never another change's staged edits on a different
+      // branch, even to the same file path.
+      const commitBranch = p_branch || "main";
       try {
         await client.query("BEGIN");
 
         // Get staged changes
         const stagedResult = selectedFilePaths
           ? await client.query(
-              "SELECT * FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2)",
-              [p_repo_id, selectedFilePaths],
+              "SELECT * FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3",
+              [p_repo_id, selectedFilePaths, commitBranch],
             )
           : await client.query(
-              "SELECT * FROM repo_staging WHERE repo_id = $1",
-              [p_repo_id],
+              "SELECT * FROM repo_staging WHERE repo_id = $1 AND branch = $2",
+              [p_repo_id, commitBranch],
             );
         const staged = stagedResult.rows;
         commitFilesCount = staged.length;
@@ -2562,15 +2584,18 @@ router.post("/:functionName", async (req: Request, res: Response) => {
           }
         }
 
-        // Clear staging
+        // Clear staging — scoped to this branch only (D-9): another
+        // change's staged edit to the same path on a different branch must
+        // survive this commit.
         if (selectedFilePaths) {
           await client.query(
-            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2)",
-            [p_repo_id, selectedFilePaths],
+            "DELETE FROM repo_staging WHERE repo_id = $1 AND file_path = ANY($2) AND branch = $3",
+            [p_repo_id, selectedFilePaths, commitBranch],
           );
         } else {
-          await client.query("DELETE FROM repo_staging WHERE repo_id = $1", [
+          await client.query("DELETE FROM repo_staging WHERE repo_id = $1 AND branch = $2", [
             p_repo_id,
+            commitBranch,
           ]);
         }
 
