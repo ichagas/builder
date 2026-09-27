@@ -1182,18 +1182,42 @@ resource "azurerm_container_app_job" "onboarding_sandbox" {
 }
 
 # -----------------------------------------------------------------------------
-# API identity permission to start/stop job executions (research T141):
-# scoped to this one job resource, not the whole resource group/subscription
-# — narrower than the pre-existing api_workload_env_contributor/
-# api_subscription_contributor grants above, which would already cover this
-# job too; this is the explicit, self-documenting grant for it.
+# API identity permission to start/stop job executions (research T141; fix
+# round 1, item 4 — least privilege): a **custom role**, scoped to this one
+# job resource, limited to exactly what AzureContainerAppsJobDispatcher
+# needs — starting an execution, stopping one, and reading the job/its
+# executions (to resolve an execution's name after "start", and for the
+# `stop` call cancel() makes). Deliberately NOT "Contributor" (which would
+# also let this identity delete or reconfigure the job) — narrower than the
+# pre-existing api_workload_env_contributor/api_subscription_contributor
+# grants above, which would already cover this job too; this is the
+# explicit, minimal, self-documenting grant for it.
 # -----------------------------------------------------------------------------
 
-resource "azurerm_role_assignment" "api_onboarding_sandbox_job_contributor" {
-  count                = var.onboarding_sandbox_subnet_id != null ? 1 : 0
-  scope                = azurerm_container_app_job.onboarding_sandbox[0].id
-  role_definition_name = "Contributor"
-  principal_id         = module.container_apps.principal_id
+resource "azurerm_role_definition" "onboarding_sandbox_job_operator" {
+  count       = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name        = "${local.onboarding_sandbox_job_name}-operator"
+  scope       = azurerm_container_app_job.onboarding_sandbox[0].id
+  description = "Start/stop executions of the onboarding sandbox Container Apps Job and read its executions — nothing else (T141, fix round 1 item 4)."
+
+  permissions {
+    actions = [
+      "Microsoft.App/jobs/read",
+      "Microsoft.App/jobs/start/action",
+      "Microsoft.App/jobs/stop/action",
+      "Microsoft.App/jobs/executions/read",
+    ]
+    not_actions = []
+  }
+
+  assignable_scopes = [azurerm_container_app_job.onboarding_sandbox[0].id]
+}
+
+resource "azurerm_role_assignment" "api_onboarding_sandbox_job_operator" {
+  count              = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope              = azurerm_container_app_job.onboarding_sandbox[0].id
+  role_definition_id = azurerm_role_definition.onboarding_sandbox_job_operator[0].role_definition_resource_id
+  principal_id       = module.container_apps.principal_id
 }
 
 # =============================================================================
