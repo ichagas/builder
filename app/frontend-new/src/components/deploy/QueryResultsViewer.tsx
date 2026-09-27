@@ -380,7 +380,7 @@ export function QueryResultsViewer({
                         className={cn(
                           "px-3 py-1.5 font-mono max-w-[300px] truncate cursor-pointer hover:bg-muted/50",
                           isNull && "text-muted-foreground italic",
-                          isObject && "text-blue-500"
+                          isObject && "text-primary"
                         )}
                         onClick={() => handleCopyCell(value, cellId)}
                         title={displayValue}
@@ -388,7 +388,7 @@ export function QueryResultsViewer({
                         <div className="flex items-center gap-1">
                           <span className="truncate">{displayValue}</span>
                           {copiedCell === cellId && (
-                            <Check className="h-3 w-3 text-green-500 shrink-0" />
+                            <Check className="h-3 w-3 text-ok shrink-0" />
                           )}
                         </div>
                       </td>

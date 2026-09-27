@@ -45,7 +45,7 @@ export function AnonymousProjectWarning({
           <DialogTitle className="flex items-center gap-2">
             {user ? (
               <>
-                <CheckCircle className="h-5 w-5 text-green-500" />
+                <CheckCircle className="h-5 w-5 text-ok" />
                 Project Created Successfully!
               </>
             ) : (

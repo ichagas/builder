@@ -38,11 +38,11 @@ const getNodeStyles = (status: NodeStatus) => {
 const getStatusIcon = (status: NodeStatus) => {
   switch (status) {
     case "new":
-      return <Plus className="h-3 w-3 text-green-500" />;
+      return <Plus className="h-3 w-3 text-ok" />;
     case "insert":
-      return <ArrowDownToLine className="h-3 w-3 text-blue-500" />;
+      return <ArrowDownToLine className="h-3 w-3 text-primary" />;
     case "conflict":
-      return <AlertTriangle className="h-3 w-3 text-amber-500" />;
+      return <AlertTriangle className="h-3 w-3 text-warn" />;
     case "unaffected":
       return <Minus className="h-3 w-3 text-muted-foreground" />;
   }
@@ -90,7 +90,7 @@ const TableNode = ({ data }: { data: TableNodeData }) => {
       <div className="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-border">
         {getStatusIcon(data.status)}
         <span className="font-semibold text-xs truncate flex-1">{data.label}</span>
-        {data.isImport && <Key className="h-3 w-3 text-amber-500" />}
+        {data.isImport && <Key className="h-3 w-3 text-warn" />}
       </div>
       
       {/* Status badge */}
@@ -120,8 +120,8 @@ const TableNode = ({ data }: { data: TableNodeData }) => {
       
       {/* Conflict indicator */}
       {data.matchInfo && data.matchInfo.conflicts > 0 && (
-        <div className="mt-1.5 pt-1.5 border-t border-amber-500/30">
-          <span className="text-[10px] text-amber-600 dark:text-amber-400">
+        <div className="mt-1.5 pt-1.5 border-t border-warn/30">
+          <span className="text-[10px] text-warn">
             {data.matchInfo.conflicts} type conflict{data.matchInfo.conflicts > 1 ? "s" : ""}
           </span>
         </div>
@@ -129,7 +129,7 @@ const TableNode = ({ data }: { data: TableNodeData }) => {
       
       {/* Missing columns indicator */}
       {data.matchInfo && data.matchInfo.missingCols > 0 && (
-        <div className="text-[10px] text-blue-600 dark:text-blue-400">
+        <div className="text-[10px] text-primary">
           +{data.matchInfo.missingCols} new column{data.matchInfo.missingCols > 1 ? "s" : ""}
         </div>
       )}
@@ -478,15 +478,15 @@ export const DatabaseErdView: React.FC<DatabaseErdViewProps> = ({
       {showLegend && (
         <div className="absolute top-2 left-2 z-10 flex gap-2 flex-wrap p-2 bg-background/90 rounded-lg border shadow-sm">
           <div className="flex items-center gap-1 text-xs">
-            <div className="w-3 h-3 rounded border-2 border-green-500 bg-green-500/20" />
+            <div className="w-3 h-3 rounded border-2 border-ok bg-ok/20" />
             <span>New</span>
           </div>
           <div className="flex items-center gap-1 text-xs">
-            <div className="w-3 h-3 rounded border-2 border-blue-500 bg-blue-500/20" />
+            <div className="w-3 h-3 rounded border-2 border-primary bg-primary/20" />
             <span>Insert</span>
           </div>
           <div className="flex items-center gap-1 text-xs">
-            <div className="w-3 h-3 rounded border-2 border-amber-500 bg-amber-500/20" />
+            <div className="w-3 h-3 rounded border-2 border-warn bg-warn/20" />
             <span>Conflict</span>
           </div>
           <div className="flex items-center gap-1 text-xs">

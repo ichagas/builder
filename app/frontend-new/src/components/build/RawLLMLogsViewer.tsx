@@ -173,7 +173,7 @@ export function RawLLMLogsViewer({ projectId, shareToken, agentType }: RawLLMLog
 
   const getStatusIcon = (wasSuccess: boolean) => {
     return wasSuccess 
-      ? <CheckCircle className="h-4 w-4 text-green-500" />
+      ? <CheckCircle className="h-4 w-4 text-ok" />
       : <XCircle className="h-4 w-4 text-destructive" />;
   };
 

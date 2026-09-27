@@ -49,11 +49,11 @@ interface DeployInfo {
 }
 
 const logTypeConfig: Record<string, { icon: React.ReactNode; className: string }> = {
-  info: { icon: <Info className="h-3 w-3" />, className: "text-blue-500" },
-  warning: { icon: <AlertTriangle className="h-3 w-3" />, className: "text-yellow-500" },
-  error: { icon: <AlertCircle className="h-3 w-3" />, className: "text-red-500" },
-  build: { icon: <Hammer className="h-3 w-3" />, className: "text-purple-500" },
-  deploy: { icon: <Rocket className="h-3 w-3" />, className: "text-green-500" },
+  info: { icon: <Info className="h-3 w-3" />, className: "text-primary" },
+  warning: { icon: <AlertTriangle className="h-3 w-3" />, className: "text-warn" },
+  error: { icon: <AlertCircle className="h-3 w-3" />, className: "text-bad" },
+  build: { icon: <Hammer className="h-3 w-3" />, className: "text-define" },
+  deploy: { icon: <Rocket className="h-3 w-3" />, className: "text-ok" },
 };
 
 const deployStatusConfig: Record<string, { icon: React.ReactNode; variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
@@ -286,7 +286,7 @@ const DeploymentLogsDialog = ({
                         deploy.status === "build_failed" || deploy.status === "update_failed" 
                           ? "border-destructive/50 bg-destructive/10" 
                           : deploy.status === "live"
-                            ? "border-green-500/50 bg-green-500/10"
+                            ? "border-ok/50 bg-ok/10"
                             : "bg-muted/50"
                       }`}>
                         <div className="flex items-center justify-between mb-2">
@@ -349,7 +349,7 @@ const DeploymentLogsDialog = ({
                     return (
                       <div 
                         key={idx} 
-                        className={`${isError ? "text-destructive" : isWarning ? "text-yellow-500" : ""}`}
+                        className={`${isError ? "text-destructive" : isWarning ? "text-warn" : ""}`}
                       >
                         {line}
                       </div>

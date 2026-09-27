@@ -163,8 +163,8 @@ function TreeItem({
   const itemButton = (
     <button
       className={cn(
-        "w-full text-left px-2 py-1 text-sm flex items-center gap-1.5 transition-colors text-[#858585] hover:text-[#cccccc] hover:bg-[#2a2d2e]/50",
-        (type === "table" || type === "view" || type === "saved_query" || type === "migration") && "hover:bg-[#264f78]/30"
+        "w-full text-left px-2 py-1 text-sm flex items-center gap-1.5 transition-colors text-[var(--ide-muted)] hover:text-[var(--ide-ink)] hover:bg-[var(--ide-hover)]/50",
+        (type === "table" || type === "view" || type === "saved_query" || type === "migration") && "hover:bg-[var(--ide-selection)]/30"
       )}
       style={{ paddingLeft: `${level * 16 + 8}px` }}
       onClick={handleClick}
@@ -172,18 +172,18 @@ function TreeItem({
       {hasChildren ? (
         <span onClick={handleChevronClick} className="shrink-0">
           {isOpen ? (
-            <ChevronDown className="h-3.5 w-3.5 text-[#858585]" />
+            <ChevronDown className="h-3.5 w-3.5 text-[var(--ide-muted)]" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 text-[#858585]" />
+            <ChevronRight className="h-3.5 w-3.5 text-[var(--ide-muted)]" />
           )}
         </span>
       ) : (
         <span className="w-3.5" />
       )}
       {icon}
-      <span className="truncate flex-1 text-[#cccccc]">{label}</span>
+      <span className="truncate flex-1 text-[var(--ide-ink)]">{label}</span>
       {count !== undefined && (
-        <span className="text-xs text-[#858585]">({count})</span>
+        <span className="text-xs text-[var(--ide-muted)]">({count})</span>
       )}
     </button>
   );
@@ -356,7 +356,7 @@ export function DatabaseSchemaTree({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-[#858585]">
+      <div className="flex items-center justify-center h-full text-[var(--ide-muted)]">
         <div className="text-center space-y-2">
           <Database className="h-8 w-8 animate-pulse mx-auto" />
           <p className="text-sm">Loading schema...</p>
@@ -367,7 +367,7 @@ export function DatabaseSchemaTree({
 
   if (schemas.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-[#858585]">
+      <div className="flex items-center justify-center h-full text-[var(--ide-muted)]">
         <p className="text-sm">No schema data available</p>
       </div>
     );
@@ -375,14 +375,14 @@ export function DatabaseSchemaTree({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="p-2 border-b border-[#3e3e42] shrink-0">
+      <div className="p-2 border-b border-[var(--ide-border)] shrink-0">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[#858585]" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--ide-muted)]" />
           <Input
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-sm bg-[#3c3c3c] border-[#3e3e42] text-[#cccccc] placeholder:text-[#858585] focus-visible:ring-[#007acc]"
+            className="pl-8 h-8 text-sm bg-[var(--ide-input)] border-[var(--ide-border)] text-[var(--ide-ink)] placeholder:text-[var(--ide-muted)] focus-visible:ring-[var(--ide-accent)]"
           />
         </div>
       </div>
@@ -393,7 +393,7 @@ export function DatabaseSchemaTree({
             <TreeItem
               label="Saved Queries"
               type="category"
-              icon={<Bookmark className="h-4 w-4 text-amber-500" />}
+              icon={<Bookmark className="h-4 w-4 text-warn" />}
               level={0}
               count={savedQueries.length}
               isOpen={openStates["saved_queries"] ?? true}
@@ -404,7 +404,7 @@ export function DatabaseSchemaTree({
                   key={query.id}
                   label={query.name}
                   type="saved_query"
-                  icon={<FileCode className="h-4 w-4 text-amber-400" />}
+                  icon={<FileCode className="h-4 w-4 text-warn" />}
                   level={1}
                   schema=""
                   name={query.name}
@@ -420,7 +420,7 @@ export function DatabaseSchemaTree({
           <TreeItem
             label="Migrations"
             type="category_migrations"
-            icon={<GitBranch className="h-4 w-4 text-emerald-500" />}
+            icon={<GitBranch className="h-4 w-4 text-ok" />}
             level={0}
             count={migrations.length}
             isOpen={openStates["migrations"] ?? false}
@@ -429,7 +429,7 @@ export function DatabaseSchemaTree({
             contextMenuProps={contextMenuProps}
           >
             {migrations.length === 0 ? (
-              <div className="px-2 py-1 text-xs text-[#858585]" style={{ paddingLeft: "24px" }}>
+              <div className="px-2 py-1 text-xs text-[var(--ide-muted)]" style={{ paddingLeft: "24px" }}>
                 No migrations yet
               </div>
             ) : (
@@ -441,7 +441,7 @@ export function DatabaseSchemaTree({
                       variant="ghost"
                       size="sm"
                       onClick={onDownloadAllMigrations}
-                      className="h-6 text-xs text-[#858585] hover:text-[#cccccc] hover:bg-[#2a2d2e]/50 w-full justify-start gap-1.5"
+                      className="h-6 text-xs text-[var(--ide-muted)] hover:text-[var(--ide-ink)] hover:bg-[var(--ide-hover)]/50 w-full justify-start gap-1.5"
                     >
                       <Download className="h-3 w-3" />
                       Download All Migrations
@@ -453,7 +453,7 @@ export function DatabaseSchemaTree({
                     key={migration.id}
                     label={`${migration.sequence_number}. ${migration.name || `${migration.statement_type} ${migration.object_type}`}`}
                     type="migration"
-                    icon={<GitBranch className="h-4 w-4 text-emerald-400" />}
+                    icon={<GitBranch className="h-4 w-4 text-ok" />}
                     level={1}
                     schema={migration.object_schema || ""}
                     name={migration.name || ""}
@@ -474,7 +474,7 @@ export function DatabaseSchemaTree({
                 key={schema.name}
                 label={schema.name}
                 type="schema"
-                icon={<FolderClosed className="h-4 w-4 text-yellow-500" />}
+                icon={<FolderClosed className="h-4 w-4 text-warn" />}
                 level={0}
                 isOpen={openStates[schemaKey] ?? schema.name === "public"}
                 onToggle={(v) => toggleOpen(schemaKey, v)}
@@ -487,7 +487,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Tables"
                     type="category_tables"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={schema.tables.length}
                     isOpen={openStates[`${schemaKey}_tables`] ?? schema.name === "public"}
@@ -501,7 +501,7 @@ export function DatabaseSchemaTree({
                         key={table}
                         label={table}
                         type="table"
-                        icon={<Table2 className="h-4 w-4 text-blue-500" />}
+                        icon={<Table2 className="h-4 w-4 text-primary" />}
                         level={2}
                         schema={schema.name}
                         name={table}
@@ -520,7 +520,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Views"
                     type="category_views"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={schema.views.length}
                     isOpen={openStates[`${schemaKey}_views`]}
@@ -534,7 +534,7 @@ export function DatabaseSchemaTree({
                         key={view}
                         label={view}
                         type="view"
-                        icon={<Eye className="h-4 w-4 text-purple-500" />}
+                        icon={<Eye className="h-4 w-4 text-define" />}
                         level={2}
                         schema={schema.name}
                         name={view}
@@ -553,7 +553,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Functions"
                     type="category_functions"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={schema.functions.length}
                     isOpen={openStates[`${schemaKey}_functions`]}
@@ -567,7 +567,7 @@ export function DatabaseSchemaTree({
                         key={func}
                         label={func}
                         type="function"
-                        icon={<Zap className="h-4 w-4 text-orange-500" />}
+                        icon={<Zap className="h-4 w-4 text-warn" />}
                         level={2}
                         schema={schema.name}
                         name={func}
@@ -586,7 +586,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Triggers"
                     type="category_triggers"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={schema.triggers.length}
                     isOpen={openStates[`${schemaKey}_triggers`]}
@@ -600,7 +600,7 @@ export function DatabaseSchemaTree({
                         key={trigger.name}
                         label={`${trigger.name} (${trigger.table})`}
                         type="trigger"
-                        icon={<Clock className="h-4 w-4 text-green-500" />}
+                        icon={<Clock className="h-4 w-4 text-ok" />}
                         level={2}
                         schema={schema.name}
                         name={trigger.name}
@@ -620,7 +620,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Indexes"
                     type="category_indexes"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={schema.indexes.length}
                     isOpen={openStates[`${schemaKey}_indexes`]}
@@ -634,7 +634,7 @@ export function DatabaseSchemaTree({
                         key={index.name}
                         label={`${index.name} (${index.table})`}
                         type="index"
-                        icon={<Search className="h-4 w-4 text-cyan-500" />}
+                        icon={<Search className="h-4 w-4 text-design" />}
                         level={2}
                         schema={schema.name}
                         name={index.name}
@@ -654,7 +654,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Sequences"
                     type="category_sequences"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={schema.sequences.length}
                     isOpen={openStates[`${schemaKey}_sequences`]}
@@ -668,7 +668,7 @@ export function DatabaseSchemaTree({
                         key={seq}
                         label={seq}
                         type="sequence"
-                        icon={<Hash className="h-4 w-4 text-pink-500" />}
+                        icon={<Hash className="h-4 w-4 text-bad" />}
                         level={2}
                         schema={schema.name}
                         name={seq}
@@ -687,7 +687,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Types"
                     type="category_types"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={schema.types.length}
                     isOpen={openStates[`${schemaKey}_types`]}
@@ -701,7 +701,7 @@ export function DatabaseSchemaTree({
                         key={type.name}
                         label={`${type.name} (${type.type})`}
                         type="type"
-                        icon={<Type className="h-4 w-4 text-indigo-500" />}
+                        icon={<Type className="h-4 w-4 text-primary" />}
                         level={2}
                         schema={schema.name}
                         name={type.name}
@@ -721,7 +721,7 @@ export function DatabaseSchemaTree({
                   <TreeItem
                     label="Constraints"
                     type="category_constraints"
-                    icon={<FolderClosed className="h-4 w-4 text-[#858585]" />}
+                    icon={<FolderClosed className="h-4 w-4 text-[var(--ide-muted)]" />}
                     level={1}
                     count={(schema.constraints || []).length}
                     isOpen={openStates[`${schemaKey}_constraints`]}
@@ -735,7 +735,7 @@ export function DatabaseSchemaTree({
                         key={constraint.name}
                         label={`${constraint.name} (${constraint.type})`}
                         type="constraint"
-                        icon={<KeyRound className="h-4 w-4 text-red-500" />}
+                        icon={<KeyRound className="h-4 w-4 text-bad" />}
                         level={2}
                         schema={schema.name}
                         name={constraint.name}

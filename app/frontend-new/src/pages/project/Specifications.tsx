@@ -866,13 +866,13 @@ export default function Specifications() {
   const getStatusIcon = (status: AgentResult["status"]) => {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+        return <CheckCircle2 className="h-5 w-5 text-ok" />;
       case "error":
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+        return <AlertCircle className="h-5 w-5 text-bad" />;
       case "streaming":
-        return <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-warn animate-spin" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-gray-400" />;
+        return <Clock className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
@@ -1083,7 +1083,7 @@ export default function Specifications() {
                                       </Badge>
                                     )}
                                     {result.savedAt && (
-                                      <Badge variant="outline" className="text-xs text-green-600">
+                                      <Badge variant="outline" className="text-xs text-ok">
                                         <Save className="h-3 w-3 mr-1" />
                                         Saved
                                       </Badge>
@@ -1098,7 +1098,7 @@ export default function Specifications() {
                                 <div>Status: <span className="font-medium capitalize">{result.status}</span></div>
                                 <div>Length: <span className="font-medium">{result.contentLength.toLocaleString()} chars</span></div>
                                 {result.error && (
-                                  <div className="text-red-600 text-xs mt-2">{result.error}</div>
+                                  <div className="text-bad text-xs mt-2">{result.error}</div>
                                 )}
                                 {result.status === "error" && (
                                   <Button
@@ -1171,7 +1171,7 @@ export default function Specifications() {
                           !versions.find(v => v.version === activeResult.version)?.is_latest;
                         
                         return (
-                          <Card className={isHistorical ? "border-amber-500/30" : ""}>
+                          <Card className={isHistorical ? "border-warn/30" : ""}>
                             <CardHeader>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <CardTitle className="flex items-center gap-2">
@@ -1183,14 +1183,14 @@ export default function Specifications() {
                                   </Badge>
                                 )}
                                 {isHistorical && (
-                                  <Badge variant="outline" className="text-amber-600 border-amber-500/50 bg-amber-500/10 text-xs">
+                                  <Badge variant="outline" className="text-warn border-warn/50 bg-warn/10 text-xs">
                                     <History className="h-3 w-3 mr-1" />
                                     Viewing Historical Version
                                   </Badge>
                                 )}
                               </div>
                               {isHistorical && (
-                                <p className="text-xs text-amber-600 mt-1">
+                                <p className="text-xs text-warn mt-1">
                                   This is an older version. Downloads will include this version.
                                 </p>
                               )}

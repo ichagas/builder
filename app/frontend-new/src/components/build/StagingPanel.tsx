@@ -379,13 +379,13 @@ export function StagingPanel({ projectId, shareToken, onViewDiff, autoCommit, on
     switch (type) {
       case "add":
       case "create":
-        return <FilePlus className="w-4 h-4 text-green-500" />;
+        return <FilePlus className="w-4 h-4 text-ok" />;
       case "edit":
-        return <FilePenLine className="w-4 h-4 text-blue-500" />;
+        return <FilePenLine className="w-4 h-4 text-primary" />;
       case "delete":
-        return <FileX className="w-4 h-4 text-red-500" />;
+        return <FileX className="w-4 h-4 text-bad" />;
       case "rename":
-        return <FileText className="w-4 h-4 text-yellow-500" />;
+        return <FileText className="w-4 h-4 text-warn" />;
       default:
         return <FileText className="w-4 h-4" />;
     }

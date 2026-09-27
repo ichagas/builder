@@ -152,16 +152,16 @@ export const NotesNode = memo(({ data, selected, id }: NodeProps<NotesNodeData>)
       <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-primary" />
       
       <div 
-        className="h-full w-full rounded-lg border bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 shadow-sm overflow-hidden flex flex-col"
+        className="h-full w-full rounded-lg border bg-warn-soft/80 dark:bg-warn/30 border-warn-soft dark:border-warn shadow-sm overflow-hidden flex flex-col"
         onDoubleClick={handleDoubleClick}
       >
-        <div className="px-2 py-1 bg-amber-100/80 dark:bg-amber-900/50 border-b border-amber-200 dark:border-amber-800 text-xs font-medium text-amber-800 dark:text-amber-200 flex flex-col shrink-0">
+        <div className="px-2 py-1 bg-warn-soft/80 dark:bg-warn/50 border-b border-warn-soft dark:border-warn text-xs font-medium text-warn dark:text-warn-soft flex flex-col shrink-0">
           <div className="flex items-center gap-1.5">
             <span>📝</span>
             <span>{data.label || "Notes"}</span>
           </div>
           {data.subtitle && (
-            <div className="text-[10px] text-amber-600 dark:text-amber-400 opacity-80 pl-5 truncate">
+            <div className="text-[10px] text-warn opacity-80 pl-5 truncate">
               {data.subtitle}
             </div>
           )}

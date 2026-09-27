@@ -1002,7 +1002,7 @@ export default function Present() {
                                   key={slide.id || idx} 
                                   className={`relative border rounded overflow-hidden aspect-video ${
                                     slide.content?.length > 0 
-                                      ? "border-green-500/50 bg-background" 
+                                      ? "border-ok/50 bg-background" 
                                       : "border-muted opacity-60 bg-muted/20"
                                   }`}
                                 >
@@ -1024,7 +1024,7 @@ export default function Present() {
                                   </div>
                                   {slide.content?.length > 0 && (
                                     <div className="absolute top-1 right-1">
-                                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                                      <div className="w-2 h-2 rounded-full bg-ok" />
                                     </div>
                                   )}
                                 </div>
@@ -1053,7 +1053,7 @@ export default function Present() {
                           {slides.length} slides • {selectedPresentation.mode}
                         </span>
                         {hasUnsavedChanges && (
-                          <span className="text-sm text-amber-500">Unsaved changes</span>
+                          <span className="text-sm text-warn">Unsaved changes</span>
                         )}
                       </div>
                       {/* Actions row */}

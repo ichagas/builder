@@ -210,12 +210,12 @@ function ArtifactNode({
         {/* Icon */}
         {isFolder ? (
           isExpanded ? (
-            <FolderOpen className="h-4 w-4 flex-shrink-0 text-amber-500" />
+            <FolderOpen className="h-4 w-4 flex-shrink-0 text-warn" />
           ) : (
-            <Folder className="h-4 w-4 flex-shrink-0 text-amber-500" />
+            <Folder className="h-4 w-4 flex-shrink-0 text-warn" />
           )
         ) : hasImage ? (
-          <Image className="h-4 w-4 flex-shrink-0 text-blue-500" />
+          <Image className="h-4 w-4 flex-shrink-0 text-primary" />
         ) : (
           <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         )}

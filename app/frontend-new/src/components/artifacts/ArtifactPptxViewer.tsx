@@ -342,7 +342,7 @@ export function ArtifactPptxViewer({
         <>
           {/* File header */}
           <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30 shrink-0">
-            <Presentation className="h-5 w-5 text-orange-500 shrink-0" />
+            <Presentation className="h-5 w-5 text-warn shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{pptxData.filename}</p>
               <p className="text-xs text-muted-foreground">

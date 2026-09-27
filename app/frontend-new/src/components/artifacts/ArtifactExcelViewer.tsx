@@ -507,7 +507,7 @@ export function ArtifactExcelViewer({
         {/* Header with file info */}
         <div className="flex items-center justify-between gap-2 px-1 shrink-0">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4 text-green-600" />
+            <FileSpreadsheet className="h-4 w-4 text-ok" />
             <span className="font-medium text-sm truncate">{excelData.fileName}</span>
             <Badge variant="secondary" className="text-xs">
               {excelData.sheets.length} sheet{excelData.sheets.length !== 1 ? "s" : ""}
@@ -659,7 +659,7 @@ export function ArtifactExcelViewer({
           </Tooltip>
 
           {filtersActive && (
-            <Badge variant="secondary" className="ml-2 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+            <Badge variant="secondary" className="ml-2 text-xs bg-warn-soft text-warn dark:bg-warn/30 dark:text-warn-soft">
               Filters Active
             </Badge>
           )}
@@ -769,7 +769,7 @@ export function ArtifactExcelViewer({
                           key={colIdx}
                           className={cn(
                             "p-0 border-b border-r relative min-w-[100px]",
-                            isCellSelected && !isEditing && "bg-blue-100 dark:bg-blue-900/30"
+                            isCellSelected && !isEditing && "bg-primary-soft dark:bg-primary/30"
                           )}
                           onMouseDown={() => handleMouseDown(originalIndex, colIdx)}
                           onMouseMove={() => handleMouseMove(originalIndex, colIdx)}
@@ -817,13 +817,13 @@ export function ArtifactExcelViewer({
                 className={cn(
                   "px-3 py-1.5 text-sm rounded whitespace-nowrap flex items-center gap-2 transition-colors",
                   isActive
-                    ? "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium"
+                    ? "bg-ok-soft dark:bg-ok/40 text-ok dark:text-ok-soft font-medium"
                     : "bg-background hover:bg-muted text-muted-foreground"
                 )}
               >
                 {sheet.name}
                 {count > 0 && (
-                  <Badge variant="secondary" className="text-xs h-5 px-1.5 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200">
+                  <Badge variant="secondary" className="text-xs h-5 px-1.5 bg-ok-soft dark:bg-ok text-ok dark:text-ok-soft">
                     {count}
                   </Badge>
                 )}

@@ -184,9 +184,9 @@ export default function JsonNormalizationSelector({
 
           {/* Icon */}
           {isArray ? (
-            <List className="h-4 w-4 text-blue-500" />
+            <List className="h-4 w-4 text-primary" />
           ) : (
-            <Braces className="h-4 w-4 text-amber-500" />
+            <Braces className="h-4 w-4 text-warn" />
           )}
 
           {/* Name and type */}
@@ -303,17 +303,17 @@ export default function JsonNormalizationSelector({
             <div className="flex flex-col">
               {schemaStats.typeConflicts.length > 0 ? (
                 <>
-                  <span className="text-2xl font-bold text-amber-500">{schemaStats.typeConflicts.length}</span>
+                  <span className="text-2xl font-bold text-warn">{schemaStats.typeConflicts.length}</span>
                   <span className="text-muted-foreground flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                    <AlertTriangle className="h-3 w-3 text-warn" />
                     type conflict{schemaStats.typeConflicts.length !== 1 ? "s" : ""}
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="text-2xl font-bold text-green-500">0</span>
+                  <span className="text-2xl font-bold text-ok">0</span>
                   <span className="text-muted-foreground flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    <CheckCircle2 className="h-3 w-3 text-ok" />
                     type conflicts
                   </span>
                 </>
@@ -322,7 +322,7 @@ export default function JsonNormalizationSelector({
           </div>
           {schemaStats.typeConflicts.length > 0 && (
             <div className="pt-2 border-t border-border">
-              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+              <p className="text-xs text-warn flex items-start gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                 <span>
                   Some fields have mixed types across documents: {schemaStats.typeConflicts.slice(0, 3).join(", ")}

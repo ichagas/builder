@@ -77,12 +77,12 @@ const resourceTypeLabels = {
 };
 
 const resourceTypeColors = {
-  file: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  website: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  youtube: "bg-red-500/10 text-red-600 border-red-500/20",
-  image: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-  repo: "bg-gray-500/10 text-gray-600 border-gray-500/20",
-  library: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  file: "bg-primary/10 text-primary border-primary/20",
+  website: "bg-ok/10 text-ok border-ok/20",
+  youtube: "bg-bad/10 text-bad border-bad/20",
+  image: "bg-define/10 text-define border-define/20",
+  repo: "bg-surface-2/10 text-muted-foreground border-line-2/20",
+  library: "bg-warn/10 text-warn border-warn/20",
 };
 
 const resourceTypePlaceholders = {
@@ -357,7 +357,7 @@ export function ResourceManager({ entityType, entityId, onResourcesChange }: Res
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-bad flex items-center justify-center">
                         <Play className="h-5 w-5 text-white ml-0.5" fill="white" />
                       </div>
                     </div>

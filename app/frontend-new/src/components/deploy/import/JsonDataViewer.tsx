@@ -228,7 +228,7 @@ export default function JsonDataViewer({
                         ) : typeof cell === "object" ? (
                           <span className="text-muted-foreground font-mono text-xs">{JSON.stringify(cell)}</span>
                         ) : typeof cell === "boolean" ? (
-                          <span className={cell ? "text-green-600" : "text-red-600"}>{String(cell)}</span>
+                          <span className={cell ? "text-ok" : "text-bad"}>{String(cell)}</span>
                         ) : (
                           String(cell)
                         )}

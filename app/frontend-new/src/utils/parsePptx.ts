@@ -625,7 +625,12 @@ function parseColor(element: Element | null): string | undefined {
       if (resolved) return resolved;
     }
 
-    // Fallback map if theme parsing didn't work
+    // Fallback map if theme parsing didn't work. These are PowerPoint's
+    // own default OOXML theme colors (Office theme "tx1"/"bg1"/"accent1"...
+    // scheme slots), not app UI — parsing a .pptx file's own color scheme,
+    // never rendered through our design tokens (T031, WP-F2b).
+    /* eslint-disable token-lint/no-raw-tailwind-colors -- PowerPoint OOXML
+     * default theme color scheme, not app UI (see comment above). */
     const schemeMap: Record<string, string> = {
       tx1: "#000000",
       tx2: "#44546A",
@@ -642,6 +647,7 @@ function parseColor(element: Element | null): string | undefined {
       dk1: "#000000",
       dk2: "#44546A",
     };
+    /* eslint-enable token-lint/no-raw-tailwind-colors */
     if (val && schemeMap[val]) return schemeMap[val];
   }
 

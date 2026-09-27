@@ -47,7 +47,7 @@ export function DiffViewer({ oldContent, newContent, filePath }: DiffViewerProps
       </CardHeader>
       <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="bg-[#1e1e1e] text-[#cccccc]">
+          <div className="bg-[var(--ide-bg)] text-[var(--ide-ink)]">
             {diff.map((change, index) => renderLine(change, index))}
           </div>
         </ScrollArea>

@@ -140,11 +140,11 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
   const getStatusBadge = () => {
     const statusColors: Record<string, string> = {
       pending: "bg-muted text-muted-foreground",
-      creating: "bg-blue-500/20 text-blue-400",
-      available: "bg-green-500/20 text-green-400",
-      suspended: "bg-yellow-500/20 text-yellow-400",
-      restarting: "bg-blue-500/20 text-blue-400",
-      updating: "bg-blue-500/20 text-blue-400",
+      creating: "bg-primary/20 text-primary",
+      available: "bg-ok/20 text-ok",
+      suspended: "bg-warn/20 text-warn",
+      restarting: "bg-primary/20 text-primary",
+      updating: "bg-primary/20 text-primary",
       failed: "bg-destructive/20 text-destructive",
       deleted: "bg-muted text-muted-foreground",
     };

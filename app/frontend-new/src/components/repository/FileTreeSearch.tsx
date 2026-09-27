@@ -16,14 +16,14 @@ export function FileTreeSearch({
   contentSearchEnabled = true,
 }: FileTreeSearchProps) {
   return (
-    <div className="px-3 py-2 border-b border-[#3e3e42] bg-[#252526] space-y-2">
+    <div className="px-3 py-2 border-b border-[var(--ide-border)] bg-[var(--ide-panel)] space-y-2">
       <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#858585]" />
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--ide-muted)]" />
         <Input
           placeholder="Filter by filename..."
           value={fileNameFilter}
           onChange={(e) => onFileNameFilterChange(e.target.value)}
-          className="h-7 pl-7 bg-[#3c3c3c] border-[#3e3e42] text-[#cccccc] text-xs placeholder:text-[#858585] focus-visible:ring-[#007acc]"
+          className="h-7 pl-7 bg-[var(--ide-input)] border-[var(--ide-border)] text-[var(--ide-ink)] text-xs placeholder:text-[var(--ide-muted)] focus-visible:ring-[var(--ide-accent)]"
         />
       </div>
       {contentSearchEnabled && (
@@ -31,7 +31,7 @@ export function FileTreeSearch({
           variant="outline"
           size="sm"
           onClick={onContentSearch}
-          className="w-full h-7 gap-1.5 bg-[#2a2d2e] text-[#cccccc] border-[#3e3e42] hover:bg-[#313335] text-xs"
+          className="w-full h-7 gap-1.5 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)] text-xs"
         >
           <FileSearch className="h-3 w-3" />
           Search in Files

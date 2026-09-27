@@ -487,8 +487,8 @@ function NavItem({
     } else {
       // Standards
       return hasChildren 
-        ? <FolderTree className="h-4 w-4 text-amber-500 shrink-0" />
-        : <FileText className="h-4 w-4 text-blue-500 shrink-0" />;
+        ? <FolderTree className="h-4 w-4 text-warn shrink-0" />
+        : <FileText className="h-4 w-4 text-primary shrink-0" />;
     }
   };
 
@@ -568,8 +568,8 @@ function MobileNavItem({
     } else {
       // Standards
       return hasChildren 
-        ? <FolderTree className="h-4 w-4 text-amber-500 shrink-0" />
-        : <FileText className="h-4 w-4 text-blue-500 shrink-0" />;
+        ? <FolderTree className="h-4 w-4 text-warn shrink-0" />
+        : <FileText className="h-4 w-4 text-primary shrink-0" />;
     }
   };
 

@@ -38,9 +38,9 @@ interface FindingsTableProps {
 
 const severityColors = {
   CRITICAL: "bg-destructive/10 text-destructive hover:bg-destructive/20",
-  HIGH: "bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-500/20",
-  MEDIUM: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20",
-  LOW: "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20",
+  HIGH: "bg-warn/10 text-warn hover:bg-warn/20",
+  MEDIUM: "bg-warn/10 text-warn hover:bg-warn/20",
+  LOW: "bg-primary/10 text-primary hover:bg-primary/20",
 };
 
 export function FindingsTable({ findings, onRowClick }: FindingsTableProps) {

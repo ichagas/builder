@@ -161,7 +161,7 @@ export default function AuthCallback() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-ok" />
           <h2 className="text-xl font-semibold mb-2">Welcome, {user.name}!</h2>
           <p className="text-muted-foreground">Redirecting to your dashboard...</p>
         </div>

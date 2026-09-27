@@ -160,19 +160,19 @@ export function AddResourceDropdown({ parentId, parentType, onResourceAdded }: A
             onClick={() => document.getElementById(`file-upload-${parentId}`)?.click()}
             disabled={isSubmitting}
           >
-            <FileUp className="h-4 w-4 mr-2 text-blue-500" />
+            <FileUp className="h-4 w-4 mr-2 text-primary" />
             Upload File
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleOpenDialog("website")}>
-            <Globe className="h-4 w-4 mr-2 text-green-500" />
+            <Globe className="h-4 w-4 mr-2 text-ok" />
             Add Website Link
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleOpenDialog("youtube")}>
-            <Youtube className="h-4 w-4 mr-2 text-red-500" />
+            <Youtube className="h-4 w-4 mr-2 text-bad" />
             Add YouTube Video
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleOpenDialog("image")}>
-            <Image className="h-4 w-4 mr-2 text-purple-500" />
+            <Image className="h-4 w-4 mr-2 text-define" />
             Add Image URL
           </DropdownMenuItem>
         </DropdownMenuContent>

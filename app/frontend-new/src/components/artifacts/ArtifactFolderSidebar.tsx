@@ -179,9 +179,9 @@ function FolderNode({
           <div className="w-4 flex-shrink-0" />
         )}
         {isExpanded ? (
-          <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+          <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-warn" />
         ) : (
-          <Folder className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+          <Folder className="h-3.5 w-3.5 flex-shrink-0 text-warn" />
         )}
         {isRenaming ? (
           <Input

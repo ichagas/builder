@@ -33,6 +33,38 @@ describe("no-raw-tailwind-colors", () => {
       // design token source files are exempt at the config level (see
       // eslint.config.js `ignores`), not inside the rule itself — the rule
       // has no file-path awareness, so this case only documents intent.
+
+      // T031 (WP-F2b): a non-class string property value (no colon-shaped
+      // class regex match) is never flagged — sanity check that the new
+      // whole-file Property visitor (added for the class-lookup-table case)
+      // doesn't over-fire on ordinary object literals.
+      `const el = <div className="p-2" />; const copy = { label: "Send message", id: "not-a-class-string" };`,
+
+      // WP-F2b fix round 2, item 1 (same-token text-X/bg-X): the
+      // established "-soft" pairing is fine — different token, not a
+      // collision.
+      `const el = <div className="text-ok bg-ok-soft" />;`,
+      // A bg with its own opacity modifier is fine even with the same base
+      // color as the text (this is the DeltaChip/TypeChip pattern).
+      `const el = <div className="text-warn bg-warn/10" />;`,
+      // Different colors entirely.
+      `const el = <div className="text-primary-foreground bg-primary" />;`,
+      // Mutually-exclusive && branches (one active state at a time) must
+      // NOT be merged across strings — each string is checked on its own.
+      `const el = cn("border-2", isActive && "bg-primary text-primary-foreground", isDone && "bg-primary/20 text-primary");`,
+      // Non-legend tokens (surface/ink/line/etc.) pairing with themselves
+      // isn't this bug — restricted to the fixed color-group list.
+      `const el = <div className="border-line text-line" />;`,
+
+      // WP-F2b fix round 2, item 3: an arbitrary value wrapping a design
+      // token (`var(--…)`) is the *correct* way to reach a CSS variable
+      // from a Tailwind arbitrary-value utility and must never be flagged,
+      // for any of the four functional color notations.
+      `const el = <div className="bg-[var(--primary)]" />;`,
+      `const el = <div className="text-[hsl(var(--primary-h),var(--primary-s),var(--primary-l))]" />;`,
+      `const el = <div className="border-[rgb(var(--line-rgb))]" />;`,
+      // A non-color arbitrary value (e.g. an arbitrary width) is unaffected.
+      `const el = <div className="w-[120%] h-[3px]" />;`,
     ],
     invalid: [
       {
@@ -106,6 +138,101 @@ describe("no-raw-tailwind-colors", () => {
         code: `const el = <div className="hover:dark:bg-blue-500/50" />;`,
         errors: [{ messageId: "rawTailwindColor", data: { token: "hover:dark:bg-blue-500/50" } }],
       },
+      // T031 (WP-F2b): object-literal property VALUES used as a status/type
+      // -> classes lookup table, e.g. `const typeColors = { EPIC:
+      // "bg-purple-500/10 ...", ... }`, used later via `className={MAP[key]}`
+      // — not a className value or a class-helper-call argument at the
+      // point the string appears, so this needs its own whole-file check.
+      {
+        code: `const typeColors = { EPIC: "bg-purple-500/10 text-purple-700 border-purple-500/20" };`,
+        errors: [
+          { messageId: "rawTailwindColor", data: { token: "bg-purple-500/10" } },
+          { messageId: "rawTailwindColor", data: { token: "text-purple-700" } },
+          { messageId: "rawTailwindColor", data: { token: "border-purple-500/20" } },
+        ],
+      },
+      // Same shape with a quoted key.
+      {
+        code: `const map = { "IN_PROGRESS": "bg-amber-500" };`,
+        errors: [{ messageId: "rawTailwindColor", data: { token: "bg-amber-500" } }],
+      },
+      // T031 (WP-F2b): a conditional expression living inside a
+      // className={`...${...}`} template-literal interpolation, e.g.
+      // `` className={`p-3 ${cond ? "border-green-500/50 bg-green-500/10" :
+      // "bg-muted/50"}`} `` — previously only the static quasi text was
+      // checked, so the ternary's branches (real, rendered class strings)
+      // were invisible.
+      {
+        code: "const el = <div className={`p-3 ${cond ? \"border-green-500/50 bg-green-500/10\" : \"bg-muted/50\"}`} />;",
+        errors: [
+          { messageId: "rawTailwindColor", data: { token: "border-green-500/50" } },
+          { messageId: "rawTailwindColor", data: { token: "bg-green-500/10" } },
+        ],
+      },
+      // T031 (WP-F2b): a style={{}} color literal must be reported exactly
+      // once even though it is now reachable both via the JSXAttribute
+      // "style" handling and the whole-file Property visitor.
+      {
+        code: `const el = <div style={{ color: "#ff0000" }} />;`,
+        errors: [{ messageId: "rawHexColor", data: { hex: "#ff0000" } }],
+      },
+      // WP-F2b fix round 2, item 1: the actual reviewer-found bug
+      // (DatabaseSchemaSelector.tsx's "External" badge) — bg-define with no
+      // opacity modifier paired with text-define makes the text invisible
+      // against its own background.
+      {
+        code: `const el = <span className="text-[10px] text-define bg-define dark:bg-define/30" />;`,
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "bg-define / text-define" } }],
+      },
+      // Reversed order (text- before bg-) is caught the same way.
+      {
+        code: `const el = <div className="bg-warn text-warn" />;`,
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "bg-warn / text-warn" } }],
+      },
+      // A dark: variant collides only with a dark: text of the same token —
+      // the light-mode (unprefixed) text-cat-3 is a different variant and
+      // doesn't collide with dark:bg-cat-3.
+      {
+        code: `const el = <div className="text-cat-3 dark:bg-cat-3 dark:text-cat-3" />;`,
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "dark:bg-cat-3 / dark:text-cat-3" } }],
+      },
+      // Works through cn() and template literals too, not just a plain
+      // className string.
+      {
+        code: "const el = cn(`p-2 bg-bad text-bad`);",
+        errors: [{ messageId: "sameTokenTextBg", data: { pair: "bg-bad / text-bad" } }],
+      },
+      // WP-F2b fix round 2, item 3: Tailwind arbitrary-value color
+      // utilities in the functional notations, mirroring the Landing.tsx
+      // hits (`bg-[hsl(210,100%,50%)]`).
+      {
+        code: `const el = <div className="bg-[hsl(210,100%,50%)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "bg-[hsl(210,100%,50%)]" } }],
+      },
+      {
+        code: `const el = <div className="bg-[hsl(210,100%,50%)]/20" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "bg-[hsl(210,100%,50%)]/20" } }],
+      },
+      {
+        code: `const el = <div className="text-[rgb(0,122,204)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "text-[rgb(0,122,204)]" } }],
+      },
+      {
+        code: `const el = <div className="border-[rgba(0,0,0,.5)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "border-[rgba(0,0,0,.5)]" } }],
+      },
+      {
+        code: `const el = <div className="ring-[hsla(0,0%,0%,.5)]" />;`,
+        errors: [{ messageId: "rawArbitraryColor", data: { token: "ring-[hsla(0,0%,0%,.5)]" } }],
+      },
+      // Works via cn() too, and a `dark:` variant prefix is preserved in
+      // the reported token.
+      {
+        code: `const el = cn("dark:bg-[hsl(210,100%,50%)]");`,
+        errors: [
+          { messageId: "rawArbitraryColor", data: { token: "dark:bg-[hsl(210,100%,50%)]" } },
+        ],
+      },
     ],
   });
 
@@ -130,6 +257,9 @@ describe("no-raw-tailwind-colors", () => {
 
     expect(tokenLintConfig).toBeDefined();
     expect(tokenLintConfig.ignores).toContain("src/design/**");
-    expect(tokenLintConfig.rules["token-lint/no-raw-tailwind-colors"]).toBe("warn");
+    // T031 (WP-F2b): switched from "warn" to "error" once the codemod
+    // (T030/T031) and this rule's blind-spot fixes closed every real
+    // violation.
+    expect(tokenLintConfig.rules["token-lint/no-raw-tailwind-colors"]).toBe("error");
   });
 });

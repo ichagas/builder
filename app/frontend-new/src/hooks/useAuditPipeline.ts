@@ -742,7 +742,7 @@ export function useAuditPipeline() {
             node_type: "d1_element",
             source_dataset: "dataset1",
             source_element_ids: [element.id],
-            color: "#3b82f6",
+            color: "#3b82f6",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- graph node color data rendered by KnowledgeGraph(WebGL).tsx's canvas/D3-SVG pipeline, which requires literal hex (see the disable comment at the top of those files) (T031, WP-F2b)
             size: 15,
             metadata: {
               category: element.category || "unknown",
@@ -764,7 +764,7 @@ export function useAuditPipeline() {
               node_type: "d2_element",
               source_dataset: "dataset2",
               source_element_ids: [element.id],
-              color: "#22c55e",
+              color: "#22c55e",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- graph node color data rendered by KnowledgeGraph(WebGL).tsx's canvas/D3-SVG pipeline, which requires literal hex (see the disable comment at the top of those files) (T031, WP-F2b)
               size: 15,
               metadata: {
                 category: element.category || "unknown",
@@ -2213,6 +2213,7 @@ export function useAuditPipeline() {
                       source_dataset:
                         element.dataset === "D1" ? "dataset1" : "dataset2",
                       source_element_ids: [element.id],
+                      // eslint-disable-next-line token-lint/no-raw-tailwind-colors -- graph node color data rendered by KnowledgeGraph(WebGL).tsx's canvas/D3-SVG pipeline, which requires literal hex (see the disable comment at the top of those files) (T031, WP-F2b)
                       color: "#06b6d4", // Cyan for enhanced-sort created concepts
                       size: 22,
                       metadata: { enhanced_sort_created: true },
@@ -3021,7 +3022,7 @@ export function useAuditPipeline() {
               node_type: "concept",
               source_dataset: "both",
               source_element_ids: [...concept.d1Ids, ...concept.d2Ids],
-              color: "#a855f7",
+              color: "#a855f7",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- graph node color data rendered by KnowledgeGraph(WebGL).tsx's canvas/D3-SVG pipeline, which requires literal hex (see the disable comment at the top of those files) (T031, WP-F2b)
               size: 25,
               metadata: { merged: true },
             };
@@ -3068,7 +3069,7 @@ export function useAuditPipeline() {
               node_type: "concept",
               source_dataset: "dataset1",
               source_element_ids: concept.elementIds,
-              color: "#ef4444",
+              color: "#ef4444",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- graph node color data rendered by KnowledgeGraph(WebGL).tsx's canvas/D3-SVG pipeline, which requires literal hex (see the disable comment at the top of those files) (T031, WP-F2b)
               size: 22,
               metadata: { gap: true },
             };
@@ -3099,7 +3100,7 @@ export function useAuditPipeline() {
               node_type: "concept",
               source_dataset: "dataset2",
               source_element_ids: concept.elementIds,
-              color: "#f97316",
+              color: "#f97316",  // eslint-disable-line token-lint/no-raw-tailwind-colors -- graph node color data rendered by KnowledgeGraph(WebGL).tsx's canvas/D3-SVG pipeline, which requires literal hex (see the disable comment at the top of those files) (T031, WP-F2b)
               size: 22,
               metadata: { orphan: true },
             };

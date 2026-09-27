@@ -106,10 +106,10 @@ export default function ImportProgressTracker({
             <Loader2 className="h-6 w-6 text-primary animate-spin" />
           )}
           {progress.status === "paused" && (
-            <Pause className="h-6 w-6 text-amber-500" />
+            <Pause className="h-6 w-6 text-warn" />
           )}
           {progress.status === "completed" && (
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
+            <CheckCircle2 className="h-6 w-6 text-ok" />
           )}
           {progress.status === "error" && (
             <XCircle className="h-6 w-6 text-destructive" />
@@ -267,7 +267,7 @@ export default function ImportProgressTracker({
       {progress.status === "completed" && progress.errors.length === 0 && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-3">
-            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+            <CheckCircle2 className="h-16 w-16 text-ok mx-auto" />
             <h3 className="text-xl font-semibold">Import Successful!</h3>
             <p className="text-muted-foreground">
               Successfully imported {progress.rowsCompleted.toLocaleString()} rows in {formatTime(Math.round(elapsedMs / 1000))}

@@ -39,15 +39,15 @@ const statusConfig = {
 const roleConfig = {
   owner: {
     label: "Owner",
-    className: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    className: "bg-warn/10 text-warn border-warn/20",
   },
   editor: {
     label: "Editor",
-    className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    className: "bg-primary/10 text-primary border-primary/20",
   },
   viewer: {
     label: "Viewer",
-    className: "bg-slate-500/10 text-slate-500 border-slate-500/20",
+    className: "bg-surface-2/10 text-muted-foreground border-line-2/20",
   },
 };
 

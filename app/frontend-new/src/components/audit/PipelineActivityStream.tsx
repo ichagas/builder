@@ -27,14 +27,14 @@ interface PipelineActivityStreamProps {
 const STATUS_COLORS: Record<string, string> = {
   pending: "text-muted-foreground",
   running: "text-primary",
-  completed: "text-green-500",
+  completed: "text-ok",
   error: "text-destructive",
 };
 
 const STATUS_BG: Record<string, string> = {
   pending: "bg-muted/30",
   running: "bg-primary/10 border-l-primary",
-  completed: "bg-green-500/10 border-l-green-500",
+  completed: "bg-ok/10 border-l-ok",
   error: "bg-destructive/10 border-l-destructive",
 };
 
@@ -138,7 +138,7 @@ function StepItem({
               {step.status === "completed" && step.progress === 100 && (
                 <Badge 
                   variant="default" 
-                  className="text-xs bg-green-500"
+                  className="text-xs bg-ok"
                 >
                   Complete
                 </Badge>

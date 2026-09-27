@@ -40,6 +40,7 @@ export async function exportPresentationToPdf(
         width: 1920,
         height: 1080,
         pixelRatio: 2,
+        // eslint-disable-next-line token-lint/no-raw-tailwind-colors -- exported PDF slides must render on a fixed background regardless of the current app theme (a portable document, not an in-app view) (T031, WP-F2b)
         backgroundColor: "#1a1f2e", // Match dark theme background
       });
 

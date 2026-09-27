@@ -45,6 +45,13 @@ const ChartContainer = React.forwardRef<
         data-chart={chartId}
         ref={ref}
         className={cn(
+          // The '#ccc'/'#fff' below are Tailwind arbitrary-variant CSS
+          // attribute selectors (`[stroke='#fff']`) matching Recharts' own
+          // hard-coded inline SVG stroke attribute, not a color choice of
+          // ours — see colors-to-tokens.ts's step-5 comment for the same
+          // exclusion in the codemod (T031, WP-F2b: false positive, not a
+          // raw color literal to tokenize).
+          // eslint-disable-next-line token-lint/no-raw-tailwind-colors
           "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
           className,
         )}
