@@ -1,4 +1,6 @@
+import * as React from "react";
 import { act, renderHook } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import { useCreatePresentationDialogOpen, usePresentPrimaryAction } from "../present.primaryAction";
 
@@ -10,15 +12,36 @@ afterEach(() => {
   act(() => result.current[1](false));
 });
 
+function wrapperFor(initialEntries: string[]) {
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return <MemoryRouter initialEntries={initialEntries}>{children}</MemoryRouter>;
+  };
+}
+
 describe("present.primaryAction (T053, WP-S3)", () => {
-  it("usePresentPrimaryAction returns a 'New Presentation' action", () => {
-    const { result } = renderHook(() => usePresentPrimaryAction());
+  it("returns a 'New Presentation' action on the default (list) tab", () => {
+    const { result } = renderHook(() => usePresentPrimaryAction(), { wrapper: wrapperFor(["/p/1/present"]) });
     expect(result.current?.label).toBe("New Presentation");
     expect(result.current?.disabled).toBeUndefined();
   });
 
+  it("returns a 'New Presentation' action when ?tab=list explicitly", () => {
+    const { result } = renderHook(() => usePresentPrimaryAction(), { wrapper: wrapperFor(["/p/1/present?tab=list"]) });
+    expect(result.current?.label).toBe("New Presentation");
+  });
+
+  it("returns undefined on the editor tab, matching legacy (button only lived on the list tab)", () => {
+    const { result } = renderHook(() => usePresentPrimaryAction(), { wrapper: wrapperFor(["/p/1/present?tab=editor"]) });
+    expect(result.current).toBeUndefined();
+  });
+
+  it("returns undefined on the blackboard tab", () => {
+    const { result } = renderHook(() => usePresentPrimaryAction(), { wrapper: wrapperFor(["/p/1/present?tab=blackboard"]) });
+    expect(result.current).toBeUndefined();
+  });
+
   it("clicking the primary action's onClick opens the dialog store", () => {
-    const action = renderHook(() => usePresentPrimaryAction());
+    const action = renderHook(() => usePresentPrimaryAction(), { wrapper: wrapperFor(["/p/1/present"]) });
     const dialog = renderHook(() => useCreatePresentationDialogOpen());
     expect(dialog.result.current[0]).toBe(false);
 

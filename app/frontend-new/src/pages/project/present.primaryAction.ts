@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { UsePrimaryAction } from "@/components/shell/types";
+import { useUrlState } from "@/lib/state/useUrlState";
 
 /**
  * Present's primary action (T053, WP-S3). See plan.md "the move and restyle
@@ -18,12 +19,12 @@ import type { UsePrimaryAction } from "@/components/shell/types";
  * resets it to closed on unmount so no state leaks across navigations or
  * tests.
  *
- * Unlike legacy, the header's primary action is always available (not
- * gated to the "list" tab) -- selecting "New Presentation" from the
- * "editor" or "blackboard" tab simply opens the same dialog on top of
- * whatever tab is active, matching how `PageHeader`'s primary action is a
- * page-level action, not a per-tab one. The dialog itself, its fields and
- * `handleCreatePresentation` are unchanged.
+ * Legacy only ever offered "New Presentation" while the "list" tab was
+ * active (the button lived in that tab's own header row), so this hook
+ * reads the same `?tab=` URL state Present.tsx's tabs use (`useUrlState`,
+ * "tab", default "list") and returns `undefined` -- no primary action --
+ * on "editor"/"blackboard", matching that behavior exactly rather than
+ * making it a page-level action available from every tab.
  */
 type Listener = () => void;
 
@@ -52,9 +53,13 @@ export function useCreatePresentationDialogOpen(): [boolean, (next: boolean) => 
 }
 
 /** Referenced from the "present" row in src/app/routes/project.tsx. */
-export const usePresentPrimaryAction: UsePrimaryAction = () => ({
-  label: "New Presentation",
-  onClick: () => setOpen(true),
-});
+export const usePresentPrimaryAction: UsePrimaryAction = () => {
+  const [tab] = useUrlState("tab", "list");
+  if (tab !== "list") return undefined;
+  return {
+    label: "New Presentation",
+    onClick: () => setOpen(true),
+  };
+};
 
 export default usePresentPrimaryAction;
