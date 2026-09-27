@@ -5,6 +5,7 @@
  * one file at the documented path, referencing the pinned mesh templates,
  * with the run's own profile/build command/pack version — must hold.
  */
+import yaml from "js-yaml";
 import { generateManifest } from "../../../../services/onboarding/sandbox/generateManifest";
 import { isAllowedGeneratedPath } from "../../../../services/onboarding/pathValidation";
 
@@ -56,5 +57,30 @@ describe("generateManifest", () => {
   it("escapes double quotes in the build command", () => {
     const files = generateManifest({ ...BASE, ciProvider: "github_actions", buildCommand: 'echo "hi"' });
     expect(files[0].content).toContain('echo \\"hi\\"');
+  });
+
+  it("emits valid YAML for the GitHub Actions workflow, pinned to the mesh workflow's v3 ref", () => {
+    const files = generateManifest({ ...BASE, ciProvider: "github_actions" });
+    const doc = yaml.load(files[0].content) as any;
+    expect(doc.jobs.mesh.uses).toBe("goa-standards/assurance-mesh/.github/workflows/mesh.yml@v3");
+    expect(doc.on.pull_request.branches).toEqual(["main"]);
+    expect(doc.jobs.mesh.with.profile).toBe("node");
+    expect(doc.jobs.mesh.with.mesh_scripts_ref).toBe(BASE.meshScriptsRef);
+  });
+
+  it("emits valid YAML for the Azure Pipelines manifest, pinned to the mesh templates' v3-released SHA", () => {
+    const files = generateManifest({ ...BASE, ciProvider: "azure_pipelines", profile: "dotnet", buildCommand: "dotnet build" });
+    const doc = yaml.load(files[0].content) as any;
+    expect(doc.resources.repositories[0].name).toBe("goa-standards/assurance-mesh");
+    expect(doc.resources.repositories[0].ref).toBe(BASE.meshScriptsRef);
+    expect(doc.extends.template).toBe("templates/mesh.yml@assuranceMesh");
+    expect(doc.extends.parameters.profile).toBe("dotnet");
+  });
+
+  it("still parses as valid YAML with special characters in the build command", () => {
+    const files = generateManifest({ ...BASE, ciProvider: "github_actions", buildCommand: 'echo "hi: there" && echo \'x\'' });
+    expect(() => yaml.load(files[0].content)).not.toThrow();
+    const doc = yaml.load(files[0].content) as any;
+    expect(doc.jobs.mesh.with.build_command).toBe('echo "hi: there" && echo \'x\'');
   });
 });

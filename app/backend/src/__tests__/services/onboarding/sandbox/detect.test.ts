@@ -31,6 +31,21 @@ describe("detectCiProvider", () => {
   it("falls back to the repository's host when no CI config is found (azure_devops)", () => {
     expect(detectCiProvider(["README.md"], "azure_devops")).toBe("azure_pipelines");
   });
+
+  it("prefers GitHub Actions when both a workflow and an azure-pipelines.yml are present", () => {
+    expect(detectCiProvider([".github/workflows/ci.yml", "azure-pipelines.yml"], "azure_devops")).toBe("github_actions");
+  });
+
+  it("falls back to azure_pipelines for an Azure Repos host with no CI files at all (no README either)", () => {
+    expect(detectCiProvider([], "azure_devops")).toBe("azure_pipelines");
+  });
+
+  it("does not mistake a nested/similarly-named file for the top-level azure-pipelines.yml convention", () => {
+    // "azure-pipelines.yaml" inside a subdirectory, and a file that merely
+    // contains "azure-pipelines" in its name, must not match the top-level
+    // azure-pipelines(-*).yml regex or the .azure-pipelines/ prefix check.
+    expect(detectCiProvider(["docs/azure-pipelines.yml", "my-azure-pipelines.yml"], "github")).toBe("github_actions");
+  });
 });
 
 describe("detectStack", () => {
