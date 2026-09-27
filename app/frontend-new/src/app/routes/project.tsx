@@ -1,6 +1,7 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useNoPrimaryAction, type ProjectToolRoute, type SimpleRoute } from "./types";
 import { useRequirementsPrimaryAction } from "@/pages/project/requirements.primaryAction";
+import { useArtifactsPrimaryAction } from "@/pages/project/artifacts.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -42,7 +43,7 @@ export const PROJECT_SETTINGS_ROUTE: SimpleRoute = {
 export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
   { tool: "requirements", phase: "define", title: "Requirements", usePrimaryAction: useRequirementsPrimaryAction, Component: Requirements },
   { tool: "standards", phase: "define", title: "Standards", usePrimaryAction: useNoPrimaryAction, Component: ProjectStandards },
-  { tool: "artifacts", phase: "define", title: "Artifacts", usePrimaryAction: useNoPrimaryAction, Component: Artifacts },
+  { tool: "artifacts", phase: "define", title: "Artifacts", usePrimaryAction: useArtifactsPrimaryAction, Component: Artifacts },
   { tool: "chat", phase: "define", title: "Chat", usePrimaryAction: useNoPrimaryAction, Component: Chat },
   { tool: "canvas", phase: "design", title: "Canvas", usePrimaryAction: useNoPrimaryAction, Component: Canvas },
   { tool: "specifications", phase: "design", title: "Specifications", usePrimaryAction: useNoPrimaryAction, Component: Specifications },

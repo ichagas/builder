@@ -1,7 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
-import { ProjectPageHeader } from "@/components/layout/ProjectPageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +9,7 @@ import { useShareToken } from "@/hooks/useShareToken";
 import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage";
 import { useRealtimeArtifacts } from "@/hooks/useRealtimeArtifacts";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Search, Trash2, Edit2, Sparkles, LayoutGrid, List, ArrowUpDown, Users, Grid3X3, Link2, X, ScanEye, Wand2, Copy, FolderPlus, TreePine, ChevronRight, PanelLeftClose, PanelLeft, Eye } from "lucide-react";
+import { Search, Trash2, Edit2, Sparkles, LayoutGrid, List, ArrowUpDown, Users, Grid3X3, Link2, X, ScanEye, Wand2, Copy, FolderPlus, TreePine, ChevronRight, PanelLeftClose, PanelLeft, Eye } from "lucide-react";
 import { CreateFolderDialog } from "@/components/artifacts/CreateFolderDialog";
 import { MoveArtifactDialog } from "@/components/artifacts/MoveArtifactDialog";
 import { ArtifactTreeManager } from "@/components/artifacts/ArtifactTreeManager";
@@ -65,6 +63,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { getEdgeFunctionName } from "@/config/aiModels";
+import { usePublishArtifactsPrimaryAction } from "./artifacts.primaryAction";
 
 export default function Artifacts() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -89,7 +88,6 @@ export default function Artifacts() {
   const [summarizingId, setSummarizingId] = useState<string | null>(null);
   const [streamingSummary, setStreamingSummary] = useState<{ [key: string]: string }>({});
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [collaboratingArtifact, setCollaboratingArtifact] = useState<any>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   const [provenanceFilter, setProvenanceFilter] = useState<string | null>(null);
@@ -100,6 +98,23 @@ export default function Artifacts() {
   const [showFolderSidebar, setShowFolderSidebar] = useState(true);
   const [viewingArtifact, setViewingArtifact] = useState<Artifact | null>(null);
   const [editViewMode, setEditViewMode] = useState<"raw" | "markdown">("raw");
+
+  // T044 (WP-D3): "Add artifact" is the page's primary action, declared in
+  // the route registry (app/routes/project.tsx) and rendered by PageHeader.
+  // Publish it here (where isAddDialogOpen/setAddArtifactParentId actually
+  // live) rather than duplicating page state in the route-level hook -- see
+  // artifacts.primaryAction.ts.
+  usePublishArtifactsPrimaryAction(
+    projectId && hasAccessToken
+      ? {
+          label: "Add artifact",
+          onClick: () => {
+            setAddArtifactParentId(null);
+            setIsAddDialogOpen(true);
+          },
+        }
+      : undefined
+  );
 
   /**
    * Fetch full artifact content from the blob-backed REST endpoint.
@@ -377,8 +392,7 @@ ${artifact.content}`;
 
   if (tokenMissing) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
+      <div className="flex min-h-full flex-col">
         <TokenRecoveryMessage />
       </div>
     );
@@ -387,36 +401,25 @@ ${artifact.content}`;
   // Collaboration sub-view
   if (collaboratingArtifact) {
     return (
-      <div className="h-screen bg-background flex flex-col overflow-hidden">
-        <PrimaryNav />
-        <div className="flex flex-1 relative min-h-0">
-          <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-          <main className="flex-1 min-h-0 overflow-hidden">
-            <ArtifactCollaborator
-              projectId={projectId!}
-              artifact={collaboratingArtifact}
-              shareToken={shareToken}
-              onBack={() => setCollaboratingArtifact(null)}
-              onMerged={refresh}
-            />
-          </main>
+      <div className="flex min-h-full flex-col">
+        <PageHeader crumb="Define" />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ArtifactCollaborator
+            projectId={projectId!}
+            artifact={collaboratingArtifact}
+            shareToken={shareToken}
+            onBack={() => setCollaboratingArtifact(null)}
+            onMerged={refresh}
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      <div className="flex relative">
-        <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        <main className="flex-1 overflow-auto w-full">
-          <div className="px-4 md:px-6 py-6 md:py-8">
-            <ProjectPageHeader
-              title="Artifacts"
-              subtitle="Manage reusable knowledge blocks and documentation"
-              onMenuClick={() => setIsSidebarOpen(true)}
-            />
+    <div className="flex min-h-full flex-col">
+      <PageHeader crumb="Define" />
+      <div className="flex-1 overflow-auto px-4 py-6 md:px-6 md:py-8">
             <div className="space-y-4">
               {/* Search and controls */}
               <div className="flex flex-col md:flex-row gap-3">
@@ -477,7 +480,14 @@ ${artifact.content}`;
                       <Grid3X3 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <Button variant="outline" size="icon" className="md:hidden" onClick={() => { setCreateFolderParentId(null); setIsCreateFolderOpen(true); }} title="Create Folder">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="md:hidden"
+                    onClick={() => { setCreateFolderParentId(null); setIsCreateFolderOpen(true); }}
+                    title="Create Folder"
+                    aria-label="Create Folder"
+                  >
                     <FolderPlus className="h-4 w-4" />
                   </Button>
                   <TooltipProvider>
@@ -487,6 +497,7 @@ ${artifact.content}`;
                           variant="outline"
                           size="icon"
                           onClick={() => setSortOrder(sortOrder === "newest" ? "oldest" : "newest")}
+                          aria-label={sortOrder === "newest" ? "Sort: Newest First" : "Sort: Oldest First"}
                         >
                           <ArrowUpDown className="h-4 w-4" />
                         </Button>
@@ -497,7 +508,13 @@ ${artifact.content}`;
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" className="md:hidden" onClick={() => setIsVisualRecognitionOpen(true)}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="md:hidden"
+                          onClick={() => setIsVisualRecognitionOpen(true)}
+                          aria-label="Visual Recognition"
+                        >
                           <ScanEye className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -505,19 +522,17 @@ ${artifact.content}`;
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" className="md:hidden" onClick={() => setIsEnhanceImageOpen(true)}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="md:hidden"
+                          onClick={() => setIsEnhanceImageOpen(true)}
+                          aria-label="Create/Enhance Image"
+                        >
                           <Wand2 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Create/Enhance Image</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="icon" className="md:hidden" onClick={() => setIsAddDialogOpen(true)}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Add Artifact</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   {/* Desktop buttons with text */}
@@ -532,10 +547,6 @@ ${artifact.content}`;
                   <Button variant="outline" className="hidden md:flex" onClick={() => { setCreateFolderParentId(null); setIsCreateFolderOpen(true); }}>
                     <FolderPlus className="h-4 w-4 mr-2" />
                     Create Folder
-                  </Button>
-                  <Button className="hidden md:flex" onClick={() => { setAddArtifactParentId(null); setIsAddDialogOpen(true); }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Artifact
                   </Button>
                   <AddArtifactModal
                     open={isAddDialogOpen}
@@ -1178,8 +1189,6 @@ ${artifact.content}`;
               </div>
             </div>
           </div>
-        </main>
-      </div>
 
       {editingArtifact && (
         <Dialog open={!!editingArtifact} onOpenChange={() => {
