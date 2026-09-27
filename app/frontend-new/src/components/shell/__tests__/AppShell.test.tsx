@@ -1,16 +1,18 @@
 import * as React from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, RouterProvider, createMemoryRouter } from "react-router-dom";
 import { AppShell } from "../AppShell";
 import { usePublishPrimaryAction } from "../PrimaryActionContext";
 
 describe("AppShell", () => {
   it("renders its chrome slots and the outlet content", () => {
     render(
-      <AppShell globalBar={<div data-testid="global-bar" />} rail={<div data-testid="rail" />}>
-        <div data-testid="content">Hello</div>
-      </AppShell>,
+      <MemoryRouter>
+        <AppShell globalBar={<div data-testid="global-bar" />} rail={<div data-testid="rail" />}>
+          <div data-testid="content">Hello</div>
+        </AppShell>
+      </MemoryRouter>,
     );
     expect(screen.getByTestId("global-bar")).toBeInTheDocument();
     expect(screen.getByTestId("rail")).toBeInTheDocument();
@@ -18,7 +20,11 @@ describe("AppShell", () => {
   });
 
   it("has a skip link targeting the main content region", () => {
-    render(<AppShell globalBar={<div />} />);
+    render(
+      <MemoryRouter>
+        <AppShell globalBar={<div />} />
+      </MemoryRouter>,
+    );
     const skip = screen.getByText("Skip to content");
     expect(skip).toHaveAttribute("href", "#page");
     expect(screen.getByRole("main")).toHaveAttribute("id", "page");
@@ -68,6 +74,41 @@ describe("AppShell", () => {
   });
 });
 
+describe("AppShell main content focus (T033)", () => {
+  it("does not focus #page on the initial load, but does on a subsequent route change", async () => {
+    function ToolA() {
+      return <div data-testid="tool">A</div>;
+    }
+    function ToolB() {
+      return <div data-testid="tool">B</div>;
+    }
+
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: <AppShell globalBar={<div data-testid="global-bar" />} />,
+          children: [
+            { path: "a", element: <ToolA /> },
+            { path: "b", element: <ToolB /> },
+          ],
+        },
+      ],
+      { initialEntries: ["/a"] },
+    );
+
+    render(<RouterProvider router={router} />);
+    const main = screen.getByRole("main");
+    expect(document.activeElement).not.toBe(main);
+
+    await act(async () => {
+      await router.navigate("/b");
+    });
+    expect(screen.getByTestId("tool").textContent).toBe("B");
+    expect(document.activeElement).toBe(main);
+  });
+});
+
 describe("AppShell primary action mirroring", () => {
   it("mirrors a published primary action into the mobile PrimaryActionSlot", () => {
     function Page() {
@@ -75,18 +116,22 @@ describe("AppShell primary action mirroring", () => {
       return <div>Requirements</div>;
     }
     render(
-      <AppShell globalBar={<div />}>
-        <Page />
-      </AppShell>,
+      <MemoryRouter>
+        <AppShell globalBar={<div />}>
+          <Page />
+        </AppShell>
+      </MemoryRouter>,
     );
     expect(screen.getByRole("button", { name: "Add requirement" })).toBeInTheDocument();
   });
 
   it("renders nothing in the slot when no page has published an action", () => {
     render(
-      <AppShell globalBar={<div />}>
-        <div>No action here</div>
-      </AppShell>,
+      <MemoryRouter>
+        <AppShell globalBar={<div />}>
+          <div>No action here</div>
+        </AppShell>
+      </MemoryRouter>,
     );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

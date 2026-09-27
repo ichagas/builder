@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { PrimaryActionProvider } from "./PrimaryActionContext";
@@ -46,6 +46,21 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const mainRef = React.useRef<HTMLElement>(null);
+  // T033: move keyboard/screen-reader focus to the main content landmark on
+  // every route change, but not on the initial page load (the browser
+  // already focuses <body> then, and stealing focus on first paint is more
+  // disorienting than helpful). AppShell is mounted once per layout and its
+  // Outlet content changes underneath it (see the remount test above), so
+  // this pathname-change effect is the one place that sees every navigation
+  // without re-running on first mount.
+  const initialPathnameRef = React.useRef(pathname);
+  React.useEffect(() => {
+    if (pathname === initialPathnameRef.current) return;
+    mainRef.current?.focus();
+  }, [pathname]);
+
   return (
     <PrimaryActionProvider>
       <div className={cn("flex min-h-dvh flex-col bg-bg text-ink", className)}>
@@ -60,7 +75,7 @@ export function AppShell({
           {rail}
           <div className="flex min-w-0 flex-1 flex-col">
             {timeline}
-            <main id="page" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto focus:outline-none">
+            <main ref={mainRef} id="page" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto focus:outline-none">
               {children ?? <Outlet />}
             </main>
           </div>
