@@ -6,12 +6,18 @@
  * itself — only a reference. This module resolves that reference to the
  * actual secret value:
  *
- *  - **Production** (`MESH_KEYVAULT_URI` set): the reference is a Key Vault
- *    secret name, read from the vault's data plane using the platform's
- *    Managed Identity / `DefaultAzureCredential` (see `utils/azureCredential.ts`,
- *    the same pattern `services/deployment/docker/genappKeyVault.ts` uses for
- *    per-app vaults).
- *  - **Local dev / CI / tests** (`MESH_KEYVAULT_URI` unset): the reference is
+ *  - **Production** (`KEY_VAULT_URL` or `AZURE_KEY_VAULT_URL` set — fix
+ *    round 2, item 3: the same variables
+ *    `services/integrations/secretStore.ts` (WP-BE8) selects Key Vault mode
+ *    from, since WP-BE5's onboarding mints `report_secret_ref` there):
+ *    the reference is a Key Vault secret name, read from the vault's data
+ *    plane using the platform's Managed Identity / `DefaultAzureCredential`
+ *    (see `utils/azureCredential.ts`, the same pattern
+ *    `services/deployment/docker/genappKeyVault.ts` uses for per-app
+ *    vaults). `MESH_KEYVAULT_URI` is still honored as an optional override
+ *    (checked first) for any deployment that set it before this module read
+ *    `KEY_VAULT_URL`/`AZURE_KEY_VAULT_URL` too.
+ *  - **Local dev / CI / tests** (none of the above set): the reference is
  *    looked up as an environment variable, so `report_secret_ref` can simply
  *    be the env var name (e.g. `MESH_SECRET_PERMITS_API`) during onboarding
  *    dry runs and integration tests.
@@ -76,12 +82,19 @@ let cachedResolver: SecretResolver | null = null;
 
 /**
  * The resolver to use for the current environment. Cached as a singleton;
- * call {@link resetSecretResolverForTests} in tests that change
- * `MESH_KEYVAULT_URI` between cases.
+ * call {@link resetSecretResolverForTests} in tests that change any of
+ * `MESH_KEYVAULT_URI`/`KEY_VAULT_URL`/`AZURE_KEY_VAULT_URL` between cases.
+ *
+ * Fix round 2, item 3: `KEY_VAULT_URL`/`AZURE_KEY_VAULT_URL` (the variables
+ * `services/integrations/secretStore.ts` selects Key Vault mode from) are
+ * now honored here too, so a `report_secret_ref` minted by onboarding
+ * (WP-BE5, via that same secret store) resolves correctly without also
+ * having to set `MESH_KEYVAULT_URI` to the same value. `MESH_KEYVAULT_URI`
+ * is checked first and still works as an explicit override.
  */
 export function getSecretResolver(): SecretResolver {
   if (!cachedResolver) {
-    const vaultUri = process.env.MESH_KEYVAULT_URI;
+    const vaultUri = process.env.MESH_KEYVAULT_URI || process.env.KEY_VAULT_URL || process.env.AZURE_KEY_VAULT_URL;
     cachedResolver = vaultUri
       ? new KeyVaultSecretResolver(vaultUri)
       : new EnvSecretResolver();

@@ -62,7 +62,13 @@ async function computeNextWorkItemKey(client: QueryableClient, projectId: string
  *
  *   1. Primary: the whole allocate-then-insert sequence runs inside a
  *      single transaction that first takes a transaction-scoped advisory
- *      lock keyed by the project id (`pg_advisory_xact_lock(hashtext($1))`).
+ *      lock keyed by the project id, namespaced under the 'work_item_key'
+ *      domain (fix round 2, item 5:
+ *      `pg_advisory_xact_lock(hashtext('work_item_key'), hashtext($1))`) --
+ *      Postgres advisory locks share one global keyspace, so a single-key
+ *      `hashtext($1)` would collide with any other lock keyed by the same
+ *      project id for an unrelated purpose (e.g.
+ *      services/versions/releaseService.ts's 'release' domain).
  *      Concurrent transactions for the *same* project queue up on this lock
  *      and are fully serialized, so each one computes MAX(key) over a
  *      distinct, already-committed state -- no two creates can compute the
@@ -90,7 +96,7 @@ async function createWorkItemWithKey(
   }
 ): Promise<any> {
   return db.transaction(async (client: QueryableClient) => {
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [projectId]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('work_item_key'), hashtext($1))", [projectId]);
 
     let lastError: unknown;
     for (let attempt = 0; attempt < MAX_KEY_ALLOCATION_ATTEMPTS; attempt++) {

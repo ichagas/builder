@@ -30,6 +30,20 @@ export interface GitHubAppStatus {
   error?: string;
 }
 
+// GitHub login rules (users and organizations): 1-39 characters, alphanumeric
+// or single hyphens, never starting or ending with a hyphen and never two
+// hyphens in a row (enforced by requiring every hyphen to be followed by an
+// alphanumeric, which rules out both "at the end" and "followed by another
+// hyphen"). Case-insensitive: GitHub logins aren't case-sensitive, though
+// every owner an admin adds to a `github_app` integration connection's
+// scope is lowercased before this ever runs.
+const GITHUB_LOGIN_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
+
+/** True when `login` is a syntactically valid GitHub user/organization login. */
+export function isValidGitHubLogin(login: unknown): login is string {
+  return typeof login === "string" && GITHUB_LOGIN_RE.test(login);
+}
+
 function createShortLivedAppJwt(): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
   return jwt.sign(
@@ -93,5 +107,65 @@ export async function getGitHubAppStatus(): Promise<GitHubAppStatus> {
   } catch (err: any) {
     logger.error(`[integrations/githubApp] Installation status check error: ${err.message}`);
     return { configured: true, installationId: GITHUB_APP_INSTALLATION_ID, ok: false, error: err.message };
+  }
+}
+
+export interface OwnerRepositoryCheck {
+  owner: string;
+  ok: boolean;
+  error?: string;
+}
+
+interface InstallationRepo {
+  owner?: { login?: string };
+}
+
+/**
+ * Test call for a `github_app` integration connection (Admin -> Integrations,
+ * D-18): confirms the platform's single GitHub App installation can see at
+ * least one repository under each of `owners`. Paginates
+ * `/installation/repositories` once (bounded, same limit as
+ * `services/onboarding/githubImport.ts`) and checks membership locally
+ * rather than issuing one call per owner — GitHub has no
+ * "repositories for this owner within my installation" endpoint.
+ */
+export async function verifyGitHubOwnersHaveRepositories(owners: string[]): Promise<OwnerRepositoryCheck[]> {
+  if (!isGitHubAppConfigured()) {
+    return owners.map((owner) => ({ owner, ok: false, error: "GitHub App is not configured" }));
+  }
+
+  try {
+    const token = await getInstallationToken();
+    const seenOwners = new Set<string>();
+
+    for (let page = 1; page <= 20; page++) {
+      const res = await fetch(`https://api.github.com/installation/repositories?per_page=100&page=${page}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+
+      if (!res.ok) {
+        logger.warn(`[integrations/githubApp] Owner repository check failed: ${res.status}`);
+        const error = `GitHub API returned ${res.status}`;
+        return owners.map((owner) => ({ owner, ok: false, error }));
+      }
+
+      const data = (await res.json()) as { repositories: InstallationRepo[] };
+      for (const repo of data.repositories ?? []) {
+        if (repo.owner?.login) seenOwners.add(repo.owner.login.toLowerCase());
+      }
+      if (!data.repositories || data.repositories.length < 100) break;
+    }
+
+    return owners.map((owner) => {
+      const ok = seenOwners.has(owner.toLowerCase());
+      return { owner, ok, error: ok ? undefined : "No repositories visible to the installation under this owner" };
+    });
+  } catch (err: any) {
+    logger.error(`[integrations/githubApp] Owner repository check error: ${err.message}`);
+    return owners.map((owner) => ({ owner, ok: false, error: err.message }));
   }
 }

@@ -579,7 +579,13 @@ export class DefaultReleaseService implements ReleaseService {
       // here; only one of them proceeds past this point, the other blocks
       // until it commits, then re-reads the now-released version under
       // `FOR UPDATE` and fails cleanly instead of double-releasing.
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [projectId]);
+      //
+      // The two-key form (fix round 2, item 5) namespaces this lock under
+      // the 'release' domain — hashtext($1) alone would collide with any
+      // other advisory lock keyed by the same project id for an unrelated
+      // purpose (e.g. workItems.ts's 'work_item_key' domain), since
+      // Postgres advisory locks share one global keyspace.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('release'), hashtext($1))", [projectId]);
 
       const { rows: lockedVersionRows } = await client.query(
         `SELECT kind FROM versions WHERE id = $1 AND project_id = $2 FOR UPDATE`,
@@ -708,7 +714,7 @@ export class DefaultReleaseService implements ReleaseService {
       // Concurrency guard: see release()'s identical lock for why — two
       // concurrent first-release calls could otherwise both pass the
       // `project.stage !== "released"` check above and both tag/flip stage.
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [projectId]);
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('release'), hashtext($1))", [projectId]);
 
       const { rows: lockedProjectRows } = await client.query(
         `SELECT stage FROM projects WHERE id = $1 FOR UPDATE`,
