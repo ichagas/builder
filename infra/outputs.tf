@@ -335,6 +335,21 @@ output "api_container_env_vars" {
 # Summary Output
 # -----------------------------------------------------------------------------
 
+output "onboarding_sandbox_job_id" {
+  description = "Resource ID of the onboarding sandbox Container Apps Job (null when onboarding_sandbox_subnet_id is not set)"
+  value       = var.onboarding_sandbox_subnet_id != null ? azurerm_container_app_job.onboarding_sandbox[0].id : null
+}
+
+output "onboarding_sandbox_job_name" {
+  description = "Name of the onboarding sandbox Container Apps Job, for ONBOARDING_JOB_NAME (jobDispatcher.ts's createJobDispatcherFromEnv)"
+  value       = local.onboarding_sandbox_job_name
+}
+
+output "onboarding_sandbox_uami_id" {
+  description = "Resource ID of the onboarding sandbox job's User-Assigned Managed Identity (null when onboarding_sandbox_subnet_id is not set)"
+  value       = var.onboarding_sandbox_subnet_id != null ? azurerm_user_assigned_identity.onboarding_sandbox[0].id : null
+}
+
 output "deployment_summary" {
   description = "Summary of the deployed infrastructure"
   sensitive   = true

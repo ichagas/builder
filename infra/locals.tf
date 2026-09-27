@@ -33,8 +33,10 @@ locals {
   container_app_name    = "ca-${var.project_name}-api"
   frontend_app_name     = "ca-${var.project_name}-frontend"
   frontend_new_app_name = "ca-${var.project_name}-frontend-new"
-  apim_name             = "apim-${var.project_name}-${random_string.suffix.result}"
-  frontdoor_name        = "afd-${var.project_name}-${random_string.suffix.result}"
+  # Onboarding sandbox job (spec 007, epic B3, WP-BE6, T141).
+  onboarding_sandbox_job_name = "caj-${var.project_name}-onboarding-sandbox"
+  apim_name                   = "apim-${var.project_name}-${random_string.suffix.result}"
+  frontdoor_name              = "afd-${var.project_name}-${random_string.suffix.result}"
 
   # AI Foundry naming
   ai_foundry_name = "ai-${var.project_name}-${random_string.suffix.result}"

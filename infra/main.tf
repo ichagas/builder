@@ -844,6 +844,267 @@ module "frontend_new" {
 }
 
 # =============================================================================
+# Onboarding Sandbox Job (spec 007, epic B3, WP-BE6, T141)
+# =============================================================================
+# A manually-triggered Azure Container Apps Job (infra/onboarding-sandbox/):
+# read-only, shallow clones of a run's selected repositories, CI-provider/
+# stack detection, mesh CI manifest generation. Runs in its OWN Container App
+# Environment on a dedicated subnet (var.onboarding_sandbox_subnet_id) so its
+# egress can be restricted independently of the API's/frontend's shared
+# environment — see infra/onboarding-sandbox/README.md's "Egress restriction"
+# section for what's enforced here and what isn't (NSGs are IP-range, not
+# FQDN — a real FQDN-aware filter needs an Azure Firewall, not present here;
+# documented gap).
+#
+# Everything below is only created once var.onboarding_sandbox_subnet_id is
+# set (BLOCKED-EXTERNAL: provision that subnet per environment) — code is
+# complete, but nothing here is provisioned until then.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# NSG: restricted egress for the sandbox's dedicated subnet.
+# Allows outbound HTTPS to GitHub (var.onboarding_sandbox_github_cidrs — no
+# Azure NSG service tag exists for GitHub, see that variable's docstring),
+# Azure DevOps (the "AzureDevOps" service tag), the API (optional,
+# var.onboarding_sandbox_api_egress_cidr), and the platform/ACR endpoints
+# every Container Apps Environment with VNet integration needs regardless of
+# workload (Azure Container Registry, Azure Monitor/Log Analytics, and Azure
+# AD for the environment's own managed identity token requests — all via the
+# "AzureContainerRegistry", "AzureMonitor" and "AzureActiveDirectory" service
+# tags). Denies everything else outbound. DNS (UDP/TCP 53) is allowed to
+# "VirtualNetwork" only — the sandbox never needs to resolve anything but the
+# hosts above and Azure's own platform DNS.
+# -----------------------------------------------------------------------------
+
+resource "azurerm_network_security_group" "onboarding_sandbox" {
+  count               = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name                = "nsg-${var.project_name}-onboarding-sandbox"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = local.common_tags
+
+  security_rule {
+    name                         = "AllowGitHubHttpsOutbound"
+    priority                     = 100
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_range       = "443"
+    source_address_prefix        = "*"
+    destination_address_prefixes = var.onboarding_sandbox_github_cidrs
+  }
+
+  security_rule {
+    name                       = "AllowAzureDevOpsHttpsOutbound"
+    priority                   = 110
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzureDevOps"
+  }
+
+  dynamic "security_rule" {
+    for_each = var.onboarding_sandbox_api_egress_cidr != null ? [var.onboarding_sandbox_api_egress_cidr] : []
+    content {
+      name                       = "AllowApiCallbackOutbound"
+      priority                   = 120
+      direction                  = "Outbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "443"
+      source_address_prefix      = "*"
+      destination_address_prefix = security_rule.value
+    }
+  }
+
+  security_rule {
+    name                       = "AllowContainerRegistryOutbound"
+    priority                   = 130
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzureContainerRegistry"
+  }
+
+  security_rule {
+    name                         = "AllowAzurePlatformOutbound"
+    priority                     = 140
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_ranges      = ["443"]
+    source_address_prefix        = "*"
+    destination_address_prefixes = ["AzureMonitor", "AzureActiveDirectory"]
+  }
+
+  security_rule {
+    name                       = "AllowVnetDnsOutbound"
+    priority                   = 150
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "53"
+    source_address_prefix      = "*"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "DenyAllOutbound"
+    priority                   = 4096
+    direction                  = "Outbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "onboarding_sandbox" {
+  count                     = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  subnet_id                 = var.onboarding_sandbox_subnet_id
+  network_security_group_id = azurerm_network_security_group.onboarding_sandbox[0].id
+}
+
+# -----------------------------------------------------------------------------
+# Dedicated Container App Environment (own subnet -> own egress boundary)
+# -----------------------------------------------------------------------------
+
+module "onboarding_sandbox_environment" {
+  count  = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  source = "./modules/workload-environment"
+
+  subscription_id            = var.subscription_id
+  resource_group_name        = var.resource_group_name
+  location                   = var.location
+  environment_name           = "${local.onboarding_sandbox_job_name}-env"
+  log_analytics_workspace_id = module.logging.log_analytics_id
+
+  infrastructure_subnet_id       = var.onboarding_sandbox_subnet_id
+  internal_load_balancer_enabled = true
+
+  tags = local.common_tags
+
+  depends_on = [
+    time_sleep.wait_for_resource_group,
+    azurerm_subnet_network_security_group_association.onboarding_sandbox,
+  ]
+}
+
+# -----------------------------------------------------------------------------
+# UAMI + AcrPull (mirrors the frontend/frontend_new identity pattern above)
+# -----------------------------------------------------------------------------
+
+resource "azurerm_user_assigned_identity" "onboarding_sandbox" {
+  count               = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name                = "${local.onboarding_sandbox_job_name}-identity"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = local.common_tags
+
+  depends_on = [time_sleep.wait_for_resource_group]
+}
+
+resource "azurerm_role_assignment" "onboarding_sandbox_uami_acr_pull" {
+  count                = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope                = local.acr_id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.onboarding_sandbox[0].principal_id
+}
+
+# -----------------------------------------------------------------------------
+# The job itself (manual trigger only — started by
+# services/onboarding/jobDispatcher.ts's AzureContainerAppsJobDispatcher, one
+# execution per onboarding run).
+# -----------------------------------------------------------------------------
+
+resource "azurerm_container_app_job" "onboarding_sandbox" {
+  count                        = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  name                         = local.onboarding_sandbox_job_name
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = module.onboarding_sandbox_environment[0].environment_id
+
+  replica_timeout_in_seconds = var.onboarding_sandbox_replica_timeout_seconds
+  replica_retry_limit        = 0
+
+  manual_trigger_config {
+    parallelism              = var.onboarding_sandbox_parallelism
+    replica_completion_count = var.onboarding_sandbox_parallelism
+  }
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.onboarding_sandbox[0].id]
+  }
+
+  registry {
+    server   = local.acr_login_server
+    identity = azurerm_user_assigned_identity.onboarding_sandbox[0].id
+  }
+
+  template {
+    container {
+      name   = "sandbox"
+      image  = var.onboarding_sandbox_container_image
+      cpu    = var.onboarding_sandbox_cpu
+      memory = var.onboarding_sandbox_memory
+
+      # Per-run env (PRONGHORN_RUN_ID, PRONGHORN_CALLBACK_URL,
+      # PRONGHORN_REPOSITORIES, and every PRONGHORN_REPO_CLONE_URL_<n>) and
+      # secrets (PRONGHORN_CALLBACK_TOKEN, every PRONGHORN_REPO_AUTH_<n>) are
+      # set per execution by the "start" ARM call
+      # (AzureContainerAppsJobDispatcher), never baked into this template —
+      # this container block only carries what's the same for every run.
+      env {
+        name  = "PRONGHORN_API_URL"
+        value = var.onboarding_sandbox_api_url
+      }
+    }
+  }
+
+  tags = local.common_tags
+
+  depends_on = [
+    time_sleep.wait_for_resource_group,
+    azurerm_role_assignment.onboarding_sandbox_uami_acr_pull,
+  ]
+
+  lifecycle {
+    # AzureContainerAppsJobDispatcher's "start" call overrides this template's
+    # env/secrets per execution (ARM's job "start" action) — Terraform must
+    # not fight that by planning to revert it on every apply.
+    ignore_changes = [template]
+  }
+}
+
+# -----------------------------------------------------------------------------
+# API identity permission to start/stop job executions (research T141):
+# scoped to this one job resource, not the whole resource group/subscription
+# — narrower than the pre-existing api_workload_env_contributor/
+# api_subscription_contributor grants above, which would already cover this
+# job too; this is the explicit, self-documenting grant for it.
+# -----------------------------------------------------------------------------
+
+resource "azurerm_role_assignment" "api_onboarding_sandbox_job_contributor" {
+  count                = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope                = azurerm_container_app_job.onboarding_sandbox[0].id
+  role_definition_name = "Contributor"
+  principal_id         = module.container_apps.principal_id
+}
+
+# =============================================================================
 # Entra ID App Registration (optional – controlled by create_entra_app_registration)
 # =============================================================================
 
