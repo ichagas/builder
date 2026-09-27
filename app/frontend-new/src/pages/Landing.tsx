@@ -531,7 +531,7 @@ export default function Landing() {
             {/* Canvas Orchestration Agents */}
             <Card className="public-card p-8 rounded-2xl hover:shadow-xl transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center">
                   <Layout className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -559,7 +559,7 @@ export default function Landing() {
             {/* Coding Agent */}
             <Card className="public-card p-8 rounded-2xl hover:shadow-xl transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-warn to-warn rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-warn to-warn/70 rounded-xl flex items-center justify-center">
                   <Code className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -589,7 +589,7 @@ export default function Landing() {
             {/* Specification Agents */}
             <Card className="public-card p-8 rounded-2xl hover:shadow-xl transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-define to-define rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-define to-define/70 rounded-xl flex items-center justify-center">
                   <FileText className="w-6 h-6 text-white" />
                 </div>
                 <div>
