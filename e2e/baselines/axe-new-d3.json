@@ -1,0 +1,20 @@
+{
+  "recordedAt": "2026-09-27T23:44:28.244Z",
+  "note": "Baseline violation counts recorded via --out axe-new-d3.json. See other files in this directory for what app/run they cover.",
+  "pages": [
+    {
+      "pageId": "pr-06",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    },
+    {
+      "pageId": "pr-06",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    }
+  ]
+}
