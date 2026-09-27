@@ -609,6 +609,23 @@ describe("startRun", () => {
     expect(mockClaimRunTransition).not.toHaveBeenCalled();
   });
 
+  it("cleans up the just-minted callback secret when dispatch() itself throws (fix round 1, item 2)", async () => {
+    const dispatcher = { dispatch: jest.fn(async () => { throw new Error("ARM unreachable"); }), cancel: jest.fn() };
+    setJobDispatcher(dispatcher);
+
+    mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+    mockListRepos.mockResolvedValue([{ full_name: "goa/permits-api", selected: true }]);
+    mockClaimRunTransition.mockResolvedValue(baseRun({ status: "running", step: "sandbox" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "running" }));
+
+    await expect(onboarding.startRun(USER_ID, RUN_ID)).rejects.toThrow("ARM unreachable");
+
+    // First call: mints and persists the callback secret ref before
+    // dispatch(). Second call (after the throw): clears it again.
+    expect(mockUpdateRun).toHaveBeenNthCalledWith(1, RUN_ID, { callbackSecretRef: expect.any(String) });
+    expect(mockUpdateRun).toHaveBeenNthCalledWith(2, RUN_ID, { callbackSecretRef: null });
+  });
+
   it("409s a second concurrent start once the first has already claimed the run (no second job dispatch)", async () => {
     const dispatcher = controlledDispatcher();
     setJobDispatcher(dispatcher);
@@ -643,7 +660,10 @@ describe("startRun", () => {
     const view = await onboarding.startRun(USER_ID, RUN_ID);
 
     expect(dispatcher.dispatch).toHaveBeenCalled();
-    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { jobExecutionId: "job-exec-1" });
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      RUN_ID,
+      expect.objectContaining({ jobExecutionId: "job-exec-1", sandboxSecretNames: expect.any(Array) })
+    );
     expect(view.status).toBe("running");
   });
 
@@ -704,6 +724,37 @@ describe("startRun", () => {
 
     expect(mockUpdateRepo).not.toHaveBeenCalled();
     expect(mockUpdateRun).not.toHaveBeenCalled();
+  });
+
+  it("cleans up the run's sandbox vault secrets once the job reaches ready (fix round 1, item 2)", async () => {
+    mockGetRunById.mockResolvedValue(
+      baseRun({ status: "running", callback_secret_ref: "callback-secret-1", sandbox_secret_names: ["repo-auth-secret-1"] })
+    );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({ runId: RUN_ID, status: "ready", repositories: [] });
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
+  });
+
+  it("cleans up the run's sandbox vault secrets when the job reports failed (fix round 1, item 2)", async () => {
+    mockGetRunById.mockResolvedValue(
+      baseRun({ status: "running", callback_secret_ref: "callback-secret-1", sandbox_secret_names: ["repo-auth-secret-1"] })
+    );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "failed" }));
+
+    await onboarding.applySandboxResult({ runId: RUN_ID, status: "failed", repositories: [], error: "boom" });
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
+  });
+
+  it("skips the cleanup update entirely when the run has no sandbox secrets to clean up", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running", callback_secret_ref: null, sandbox_secret_names: [] }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({ runId: RUN_ID, status: "ready", repositories: [] });
+
+    expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
   });
 });
 
@@ -1607,6 +1658,18 @@ describe("cancelRun", () => {
     await onboarding.cancelRun(USER_ID, RUN_ID);
 
     expect(dispatcher.cancel).not.toHaveBeenCalled();
+  });
+
+  it("cleans up the run's sandbox vault secrets on cancel (fix round 1, item 2)", async () => {
+    mockGetRunById.mockResolvedValue(
+      baseRun({ status: "running", callback_secret_ref: "callback-secret-1", sandbox_secret_names: ["repo-auth-secret-1"] })
+    );
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "cancelled" }));
+    mockListRepos.mockResolvedValue([]);
+
+    await onboarding.cancelRun(USER_ID, RUN_ID);
+
+    expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
   });
 });
 

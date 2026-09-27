@@ -166,6 +166,8 @@ Migration `015_onboarding.sql`
 | step | text check in (`team`,`connect`,`sandbox`,`output`,`prs`) | wizard position (URL mirrors it) |
 | job_execution_id | text null | Container Apps Job execution |
 | log_blob | text null | |
+| callback_secret_ref | text null | Key Vault secret name (never the value) for the sandbox job's per-run callback HMAC key, in the **dedicated onboarding sandbox Key Vault** (WP-BE6, T141, fix round 1 item 1 — separate from the platform's main vault; migrations `022`/`023`). Minted at dispatch, deleted at every terminal state of the sandbox job (`services/onboarding/sandbox/sandboxSecretStore.ts#cleanupSandboxSecrets`). |
+| sandbox_secret_names | text[] | Every other sandbox-vault secret name this run's dispatch wrote (per-repository clone credentials), tracked for the same cleanup. Migration `023`. |
 | started_by | uuid FK → profiles | |
 
 ### `onboarding_run_repositories`

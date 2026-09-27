@@ -71,10 +71,32 @@ export interface DispatchJobInput {
    */
   callbackUrl?: string;
   callbackToken?: string;
+  /**
+   * The sandbox Key Vault secret name backing `callbackToken`'s HMAC key
+   * (`onboarding_runs.callback_secret_ref`, `callbackAuth.ts#mintCallbackToken`'s
+   * `secretRef`) — fix round 1, item 1: `AzureContainerAppsJobDispatcher`
+   * never sends `callbackToken` (or any secret) to the job directly; it
+   * sends this NAME plus the token's plaintext payload, so the job can fetch
+   * the key from the sandbox vault and recompute the exact same token
+   * itself (see `infra/onboarding-sandbox/src/entrypoint.ts`).
+   */
+  callbackSecretRef?: string | null;
 }
 
 export interface DispatchJobOutput {
   jobExecutionId: string;
+  /**
+   * Every secret name this dispatch call wrote to the sandbox Key Vault
+   * (fix round 1, item 1) — currently only per-repository clone
+   * credentials; the callback token's own secret name is already tracked
+   * separately as `callbackSecretRef`/`callback_secret_ref`. Callers persist
+   * these on the run (`onboarding_runs.sandbox_secret_names`) so they can be
+   * deleted at the run's terminal state
+   * (`sandbox/sandboxSecretStore.ts#cleanupSandboxSecrets`). Empty/absent
+   * for dispatchers that never write to the vault (`InMemoryJobDispatcher`,
+   * `LocalJobDispatcher`).
+   */
+  sandboxSecretNames?: string[];
 }
 
 /**
@@ -193,6 +215,15 @@ export interface AzureContainerAppsJobConfig {
   apiVersion?: string;
   /** The container name inside the job's template to override env on. */
   containerName?: string;
+  /**
+   * The dedicated onboarding sandbox Key Vault's URI (fix round 1, item 1;
+   * `infra/main.tf`'s `onboarding_sandbox_keyvault`) — passed to the job as
+   * `PRONGHORN_VAULT_URI` so it can fetch its own per-run secrets at
+   * startup. Required; every secret this dispatcher writes lives here.
+   */
+  sandboxVaultUrl: string;
+  /** Seconds a per-run sandbox-vault secret lives before it expires — a backstop if cleanup never runs. */
+  secretTtlSeconds?: number;
 }
 
 /** ARM REST base for a Container Apps Job resource. */
@@ -218,10 +249,25 @@ function jobResourceUrl(config: AzureContainerAppsJobConfig): string {
  * backend restart between dispatch and the job finishing loses nothing.
  *
  * Read-only, per-repository clone credentials (`sandbox/credentials.ts`) are
- * resolved here, right before dispatch, and passed to the job as env vars —
- * never baked into the image, never logged (this class only ever reads
- * `.authorizationHeader` to place it in an env var value, never in a log
- * line or thrown error message).
+ * resolved here, right before dispatch — never baked into the image, never
+ * logged, never placed directly on the "start" call (fix round 1, item 1:
+ * the Jobs "start" REST body is a `JobExecutionTemplate`, containers/
+ * initContainers only — any `configuration.secrets` block in it is silently
+ * dropped, so `secretRef` env entries pointing at it would never resolve;
+ * and job-level secrets are shared across every execution, so writing them
+ * per run would race concurrent runs). Instead, each credential is written
+ * to the dedicated sandbox Key Vault (`sandbox/sandboxSecretStore.ts`) with
+ * an expiry, and only its secret **name** goes on the job's env — the job
+ * fetches the value itself at startup, using its own UAMI
+ * (`infra/onboarding-sandbox/src/keyvault.ts`).
+ *
+ * The callback token itself is never written to the vault as a second
+ * secret: its HMAC signing key already is (`callbackAuth.ts#mintCallbackToken`,
+ * `input.callbackSecretRef`), so this dispatcher sends only the token's
+ * plaintext payload (`PRONGHORN_CALLBACK_PAYLOAD` — a base64url JSON blob
+ * naming the run id and an expiry, not secret) and the signing key's secret
+ * name; the job fetches the key and recomputes the identical token itself
+ * (same HMAC construction as `callbackAuth.ts`).
  */
 export class AzureContainerAppsJobDispatcher implements JobDispatcher {
   constructor(private readonly config: AzureContainerAppsJobConfig) {}
@@ -240,47 +286,75 @@ export class AzureContainerAppsJobDispatcher implements JobDispatcher {
       throw new Error("AzureContainerAppsJobDispatcher requires DispatchJobInput.organizationId");
     }
     const { resolveCloneCredential } = await import("./sandbox/credentials");
+    const { getSandboxSecretStore } = await import("./sandbox/sandboxSecretStore");
+    const ttlSeconds = this.config.secretTtlSeconds ?? 30 * 60;
+    const sandboxStore = getSandboxSecretStore();
 
-    // Resolve one repo-scoped, read-only credential per repository up front
-    // — a repository whose credential can't be minted (out of scope, or an
-    // Azure DevOps service-connection with no clonable credential, see
+    // Resolve one repo-scoped, read-only credential per repository up front,
+    // and write each straight to the sandbox vault — a repository whose
+    // credential can't be minted (out of scope, or an Azure DevOps
+    // service-connection with no clonable credential, see
     // sandbox/credentials.ts) is dropped from the job input with a logged
     // reason rather than failing the whole run.
-    const repoCredentials: Array<{ fullName: string; cloneUrl: string; authorizationHeader: string }> = [];
-    for (const repo of input.repositories) {
-      try {
-        const cred = await resolveCloneCredential(input.organizationId, input.connectionId, repo.fullName);
-        repoCredentials.push({ fullName: repo.fullName, cloneUrl: cred.cloneUrl, authorizationHeader: cred.authorizationHeader });
-      } catch (err: any) {
-        logger.warn(`[onboarding/jobDispatcher] could not mint a clone credential for ${repo.fullName}: ${err.message}`);
+    const repoEntries: Array<{ fullName: string; cloneUrl: string; authSecretName: string }> = [];
+    const writtenSecretNames: string[] = [];
+    try {
+      for (const repo of input.repositories) {
+        // A credential the caller isn't entitled to (out of scope, or a
+        // D-18 gap — see sandbox/credentials.ts) is per-repository: log and
+        // drop just that repo, dispatch continues.
+        let cred: { cloneUrl: string; authorizationHeader: string };
+        try {
+          cred = await resolveCloneCredential(input.organizationId, input.connectionId, repo.fullName);
+        } catch (err: any) {
+          logger.warn(`[onboarding/jobDispatcher] could not mint a clone credential for ${repo.fullName}: ${err.message}`);
+          continue;
+        }
+        // A failure writing to the sandbox vault itself is systemic, not
+        // per-repository (continuing would just drop every remaining repo
+        // the same way) — let it propagate to the outer catch below, which
+        // cleans up whatever was already written and aborts the dispatch.
+        const authSecretName = await sandboxStore.createSecret("repo-auth", cred.authorizationHeader, ttlSeconds);
+        writtenSecretNames.push(authSecretName);
+        repoEntries.push({ fullName: repo.fullName, cloneUrl: cred.cloneUrl, authSecretName });
       }
+    } catch (err) {
+      // Defense in depth: clean up whatever was already written before
+      // rethrowing (e.g. the sandbox vault itself became unreachable
+      // mid-loop). startRun additionally cleans up the callback secret it
+      // minted before calling dispatch().
+      const { cleanupSandboxSecrets } = await import("./sandbox/sandboxSecretStore");
+      await cleanupSandboxSecrets(writtenSecretNames);
+      throw err;
     }
+
+    // The callback token's payload (runId + expiry) is not secret on its
+    // own — only the HMAC key (already in the vault, referenced by
+    // callbackSecretRef) makes it unforgeable. Extracting it here avoids
+    // ever sending the assembled token (a bearer credential) to the job.
+    const callbackPayloadB64 = (input.callbackToken ?? "").split(".")[0] ?? "";
 
     const env = [
       { name: "PRONGHORN_RUN_ID", value: input.runId },
       { name: "PRONGHORN_CALLBACK_URL", value: input.callbackUrl ?? "" },
-      // secretRef, not the value: Container Apps Jobs support `secretRef`
-      // env entries backed by the job's own Key Vault-referenced secrets, so
-      // the per-run callback token is passed as a job secret, never a plain
-      // env value — see infra/onboarding-sandbox/main.tf's `secrets` block.
-      { name: "PRONGHORN_CALLBACK_TOKEN", secretRef: "callback-token" },
+      { name: "PRONGHORN_VAULT_URI", value: this.config.sandboxVaultUrl },
+      { name: "PRONGHORN_CALLBACK_PAYLOAD", value: callbackPayloadB64 },
+      { name: "PRONGHORN_CALLBACK_KEY_SECRET_NAME", value: input.callbackSecretRef ?? "" },
       { name: "PRONGHORN_PACK_VERSION", value: input.packVersion ?? "" },
-      { name: "PRONGHORN_REPOSITORIES", value: JSON.stringify(repoCredentials.map((r) => ({ fullName: r.fullName }))) },
-      // One JSON blob per repository's clone credential, keyed by an index
-      // env var per repo (Container Apps env values are strings; the
-      // entrypoint reads PRONGHORN_REPO_CREDENTIAL_<n>). Never logged.
-      ...repoCredentials.flatMap((r, i) => [
+      { name: "PRONGHORN_REPOSITORIES", value: JSON.stringify(repoEntries.map((r) => ({ fullName: r.fullName }))) },
+      // Non-secret clone URL plus the secret's NAME only — the job resolves
+      // the value itself from PRONGHORN_VAULT_URI.
+      ...repoEntries.flatMap((r, i) => [
         { name: `PRONGHORN_REPO_CLONE_URL_${i}`, value: r.cloneUrl },
-        { name: `PRONGHORN_REPO_AUTH_${i}`, secretRef: `repo-auth-${i}` },
+        { name: `PRONGHORN_REPO_AUTH_SECRET_NAME_${i}`, value: r.authSecretName },
       ]),
     ];
 
     const token = await this.armToken();
-    const secrets = [
-      { name: "callback-token", value: input.callbackToken ?? "" },
-      ...repoCredentials.map((r, i) => ({ name: `repo-auth-${i}`, value: r.authorizationHeader })),
-    ];
 
+    // No `configuration`/`secrets` block at all (fix round 1, item 1): every
+    // value above is either non-secret or a Key Vault secret NAME, so the
+    // "start" call carries nothing that needs a job-level secret.
     const res = await fetch(
       `${jobResourceUrl(this.config)}/start?api-version=${this.config.apiVersion ?? "2024-03-01"}`,
       {
@@ -290,13 +364,6 @@ export class AzureContainerAppsJobDispatcher implements JobDispatcher {
           template: {
             containers: [{ name: this.config.containerName ?? "sandbox", env }],
           },
-          // Container Apps Jobs' start operation only accepts overriding a
-          // job's own template env — secrets referenced by `secretRef` must
-          // already exist on the job resource. Since this run's callback
-          // token/repo credentials are per-run, this dispatcher sets them as
-          // job-level secrets (a small ARM PATCH) immediately before
-          // starting the execution, so `secretRef` above resolves.
-          configuration: { secrets },
         }),
       }
     );
@@ -308,6 +375,12 @@ export class AzureContainerAppsJobDispatcher implements JobDispatcher {
     // for completion either way) but cancel() will be a no-op for it.
     if (!res.ok && res.status !== 202) {
       const text = await res.text();
+      // The vault secrets written above are now orphaned — the job that
+      // would have consumed and (eventually) had them cleaned up never
+      // started. Best-effort delete them now rather than waiting on their
+      // expiry.
+      const { cleanupSandboxSecrets } = await import("./sandbox/sandboxSecretStore");
+      await cleanupSandboxSecrets(writtenSecretNames);
       throw new Error(`Could not start Container Apps Job execution: ${res.status} ${text.slice(0, 300)}`);
     }
 
@@ -326,7 +399,7 @@ export class AzureContainerAppsJobDispatcher implements JobDispatcher {
     }
 
     logger.info(`[onboarding/jobDispatcher] started Container Apps Job execution (run=${input.runId}, execution=${jobExecutionId})`);
-    return { jobExecutionId };
+    return { jobExecutionId, sandboxSecretNames: writtenSecretNames };
   }
 
   async cancel(jobExecutionId: string): Promise<void> {
@@ -527,12 +600,16 @@ export function createJobDispatcherFromEnv(): JobDispatcher {
     const subscriptionId = process.env.ONBOARDING_JOB_SUBSCRIPTION_ID;
     const resourceGroup = process.env.ONBOARDING_JOB_RESOURCE_GROUP;
     const jobName = process.env.ONBOARDING_JOB_NAME;
-    if (!subscriptionId || !resourceGroup || !jobName) {
+    // Same var sandboxSecretStore.ts reads — one Key Vault URI configures
+    // both the API's write path and the value this dispatcher tells the job
+    // to read from (fix round 1, item 1).
+    const sandboxVaultUrl = process.env.ONBOARDING_SANDBOX_KEYVAULT_URL;
+    if (!subscriptionId || !resourceGroup || !jobName || !sandboxVaultUrl) {
       throw new JobDispatcherConfigurationError(
-        "ONBOARDING_JOB_DISPATCHER=azure requires ONBOARDING_JOB_SUBSCRIPTION_ID, ONBOARDING_JOB_RESOURCE_GROUP and ONBOARDING_JOB_NAME"
+        "ONBOARDING_JOB_DISPATCHER=azure requires ONBOARDING_JOB_SUBSCRIPTION_ID, ONBOARDING_JOB_RESOURCE_GROUP, ONBOARDING_JOB_NAME and ONBOARDING_SANDBOX_KEYVAULT_URL"
       );
     }
-    return new AzureContainerAppsJobDispatcher({ subscriptionId, resourceGroup, jobName });
+    return new AzureContainerAppsJobDispatcher({ subscriptionId, resourceGroup, jobName, sandboxVaultUrl });
   }
 
   if (selection === "local") {

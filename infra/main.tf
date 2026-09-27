@@ -946,6 +946,27 @@ resource "azurerm_network_security_group" "onboarding_sandbox" {
     destination_address_prefixes = ["AzureMonitor", "AzureActiveDirectory"]
   }
 
+  # Fix round 1, item 1: the job fetches its per-run secrets (callback HMAC
+  # key, clone credentials) from the dedicated onboarding sandbox Key Vault
+  # at startup — it needs outbound HTTPS to it. The vault itself may be
+  # public (AzureKeyVault service tag, sufficient for the IP-range filtering
+  # this NSG already does) or, in an environment with tighter requirements,
+  # reachable only via a private endpoint on this same subnet (in which case
+  # this rule is redundant but harmless — traffic to a private endpoint on
+  # the local subnet doesn't traverse this NSG's outbound rules to leave the
+  # VNet in the first place). See README.md's "Egress restriction".
+  security_rule {
+    name                       = "AllowKeyVaultOutbound"
+    priority                   = 145
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzureKeyVault"
+  }
+
   security_rule {
     name                       = "AllowVnetDnsOutbound"
     priority                   = 150
@@ -1024,6 +1045,66 @@ resource "azurerm_role_assignment" "onboarding_sandbox_uami_acr_pull" {
 }
 
 # -----------------------------------------------------------------------------
+# Dedicated onboarding sandbox Key Vault (fix round 1, item 1 — security).
+#
+# The Container Apps Jobs "start" REST call cannot carry secrets (its body
+# is a JobExecutionTemplate; any `configuration.secrets` block is silently
+# dropped), and job-level secrets are shared across every execution, so
+# writing them per run would race concurrent runs. Every per-run secret
+# (the callback HMAC key, and each selected repository's clone credential —
+# AzureContainerAppsJobDispatcher, jobDispatcher.ts) instead goes here, with
+# an expiry, and the job fetches each value itself at startup with its own
+# UAMI. RBAC (Azure role assignments, not legacy access policies, matching
+# ./modules/keyvault's convention):
+#  - the sandbox job's UAMI: "Key Vault Secrets User" (read-only) — it must
+#    never be able to write or enumerate secrets, only read the ones it was
+#    handed the name of.
+#  - the API's identity: "Key Vault Secrets Officer" (read/write/delete) —
+#    it mints secrets at dispatch and deletes them at every terminal state
+#    (services/onboarding/sandbox/sandboxSecretStore.ts#cleanupSandboxSecrets).
+# Purge protection mirrors the platform vault's own setting
+# (var.keyvault_purge_protection_enabled) — same convention, not a new one.
+# -----------------------------------------------------------------------------
+
+module "onboarding_sandbox_keyvault" {
+  count  = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  source = "./modules/keyvault"
+
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  key_vault_name      = "kv-${var.project_name}-onboard-${random_string.suffix.result}"
+
+  sku_name                   = var.keyvault_sku
+  soft_delete_retention_days = var.keyvault_soft_delete_retention_days
+  purge_protection_enabled   = var.keyvault_purge_protection_enabled
+
+  # Same network posture as the platform vault by default; a dedicated
+  # private endpoint can be layered on later without touching this module
+  # call (private_endpoint_subnet_id/private_dns_zone_id are both optional).
+  public_network_access_enabled = var.keyvault_public_network_access
+  network_default_action        = var.keyvault_network_default_action
+  allowed_ip_ranges             = var.keyvault_allowed_ip_ranges
+  allowed_subnet_ids            = [var.onboarding_sandbox_subnet_id]
+
+  # Read-only for the sandbox job's own identity — never Officer.
+  secrets_user_principal_ids = [azurerm_user_assigned_identity.onboarding_sandbox[0].principal_id]
+
+  tags = local.common_tags
+
+  depends_on = [time_sleep.wait_for_resource_group]
+}
+
+# The API's identity writes/deletes per-run secrets here — Officer, not
+# just Secrets User (the module's own `deployer` role assignment is scoped
+# to whoever runs `terraform apply`, not the running API).
+resource "azurerm_role_assignment" "api_onboarding_sandbox_keyvault_officer" {
+  count                = var.onboarding_sandbox_subnet_id != null ? 1 : 0
+  scope                = module.onboarding_sandbox_keyvault[0].id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = module.container_apps.principal_id
+}
+
+# -----------------------------------------------------------------------------
 # The job itself (manual trigger only — started by
 # services/onboarding/jobDispatcher.ts's AzureContainerAppsJobDispatcher, one
 # execution per onboarding run).
@@ -1062,14 +1143,24 @@ resource "azurerm_container_app_job" "onboarding_sandbox" {
       memory = var.onboarding_sandbox_memory
 
       # Per-run env (PRONGHORN_RUN_ID, PRONGHORN_CALLBACK_URL,
-      # PRONGHORN_REPOSITORIES, and every PRONGHORN_REPO_CLONE_URL_<n>) and
-      # secrets (PRONGHORN_CALLBACK_TOKEN, every PRONGHORN_REPO_AUTH_<n>) are
+      # PRONGHORN_VAULT_URI, PRONGHORN_CALLBACK_PAYLOAD,
+      # PRONGHORN_CALLBACK_KEY_SECRET_NAME, PRONGHORN_REPOSITORIES, and every
+      # PRONGHORN_REPO_CLONE_URL_<n>/PRONGHORN_REPO_AUTH_SECRET_NAME_<n>) is
       # set per execution by the "start" ARM call
-      # (AzureContainerAppsJobDispatcher), never baked into this template —
-      # this container block only carries what's the same for every run.
+      # (AzureContainerAppsJobDispatcher) — never a secret VALUE, and never
+      # baked into this template. This container block only carries what's
+      # the same for every run.
       env {
         name  = "PRONGHORN_API_URL"
         value = var.onboarding_sandbox_api_url
+      }
+
+      # Fix round 1, item 1: which user-assigned identity to request an IMDS
+      # token for (infra/onboarding-sandbox/src/keyvault.ts) — static per
+      # job, so it belongs in the template, not the per-run "start" env.
+      env {
+        name  = "PRONGHORN_IDENTITY_CLIENT_ID"
+        value = azurerm_user_assigned_identity.onboarding_sandbox[0].client_id
       }
     }
   }
@@ -1079,6 +1170,7 @@ resource "azurerm_container_app_job" "onboarding_sandbox" {
   depends_on = [
     time_sleep.wait_for_resource_group,
     azurerm_role_assignment.onboarding_sandbox_uami_acr_pull,
+    module.onboarding_sandbox_keyvault,
   ]
 
   lifecycle {

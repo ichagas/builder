@@ -20,6 +20,18 @@ jest.mock("../../../services/onboarding/sandbox/credentials", () => ({
   resolveCloneCredential: (...args: unknown[]) => mockResolveCloneCredential(...args),
 }));
 
+const mockCreateSandboxSecret = jest.fn();
+const mockDeleteSandboxSecret = jest.fn(async (..._args: unknown[]) => {});
+const mockCleanupSandboxSecrets = jest.fn(async (..._args: unknown[]) => {});
+jest.mock("../../../services/onboarding/sandbox/sandboxSecretStore", () => ({
+  getSandboxSecretStore: () => ({
+    createSecret: (...args: unknown[]) => mockCreateSandboxSecret(...args),
+    getSecret: jest.fn(),
+    deleteSecret: (...args: unknown[]) => mockDeleteSandboxSecret(...args),
+  }),
+  cleanupSandboxSecrets: (...args: unknown[]) => mockCleanupSandboxSecrets(...args),
+}));
+
 import {
   AzureContainerAppsJobDispatcher,
   LocalJobDispatcher,
@@ -31,7 +43,12 @@ import {
 } from "../../../services/onboarding/jobDispatcher";
 
 describe("AzureContainerAppsJobDispatcher", () => {
-  const config = { subscriptionId: "sub-1", resourceGroup: "rg-1", jobName: "onboarding-sandbox" };
+  const config = {
+    subscriptionId: "sub-1",
+    resourceGroup: "rg-1",
+    jobName: "onboarding-sandbox",
+    sandboxVaultUrl: "https://kv-onboarding-sandbox.vault.azure.net",
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -40,6 +57,7 @@ describe("AzureContainerAppsJobDispatcher", () => {
       cloneUrl: "https://github.com/goa/permits-api.git",
       authorizationHeader: "Basic super-secret-should-never-appear-in-a-log",
     });
+    mockCreateSandboxSecret.mockImplementation(async (prefix: string) => `${prefix}-secret-name`);
   });
 
   afterEach(() => {
@@ -61,6 +79,10 @@ describe("AzureContainerAppsJobDispatcher", () => {
     (fetchMock.mock.results as any); // no-op, keeps TS happy about usage
     (global as any).fetch = fetchMock;
 
+    // token = base64url(payload).base64url(signature) — only the payload
+    // half is non-secret; the dispatcher must never send the whole thing.
+    const callbackToken = "cGF5bG9hZA.c2lnbmF0dXJl";
+
     const dispatcher = new AzureContainerAppsJobDispatcher(config);
     const result = await dispatcher.dispatch(
       {
@@ -71,37 +93,59 @@ describe("AzureContainerAppsJobDispatcher", () => {
         packVersion: "2026.3",
         repositories: [{ fullName: "goa/permits-api" }],
         callbackUrl: "https://api.pronghorn.example/api/v1/onboarding/runs/run-1/callback",
-        callbackToken: "callback-token-value",
+        callbackToken,
+        callbackSecretRef: "callback-key-secret-name",
       },
       jest.fn()
     );
 
     expect(result.jobExecutionId).toBe("exec-123");
+    expect(result.sandboxSecretNames).toEqual(["repo-auth-secret-name"]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // Fix round 1, item 1: the per-repo credential was written to the
+    // sandbox vault (with a TTL), never sent to ARM at all.
+    expect(mockCreateSandboxSecret).toHaveBeenCalledWith(
+      "repo-auth",
+      "Basic super-secret-should-never-appear-in-a-log",
+      expect.any(Number)
+    );
 
     const startCall = fetchMock.mock.calls[0];
     expect(String(startCall[0])).toContain("/jobs/onboarding-sandbox/start");
     const body = JSON.parse((startCall[1] as any).body);
-    // The credential value only ever appears as a job secret, never a plain env value.
-    const secretNames = body.configuration.secrets.map((s: any) => s.name);
-    expect(secretNames).toContain("callback-token");
-    expect(secretNames).toContain("repo-auth-0");
-    const secretValues = body.configuration.secrets.map((s: any) => s.value);
-    expect(secretValues).toContain("Basic super-secret-should-never-appear-in-a-log");
 
-    const envNames = body.template.containers[0].env.map((e: any) => e.name);
+    // The Jobs "start" REST body is a JobExecutionTemplate — no
+    // `configuration`/`secrets` block exists on it at all (it would be
+    // silently dropped if present), and the raw JSON must contain no secret
+    // value anywhere.
+    expect(body.configuration).toBeUndefined();
+    const bodyText = JSON.stringify(body);
+    expect(bodyText).not.toContain("super-secret-should-never-appear-in-a-log");
+    expect(bodyText).not.toContain(callbackToken);
+
+    const env = body.template.containers[0].env;
+    const envNames = env.map((e: any) => e.name);
     expect(envNames).toContain("PRONGHORN_RUN_ID");
-    expect(envNames).toContain("PRONGHORN_CALLBACK_TOKEN");
-    // The callback token/credential env entries reference a secret, never a plain value.
-    const callbackTokenEnv = body.template.containers[0].env.find((e: any) => e.name === "PRONGHORN_CALLBACK_TOKEN");
-    expect(callbackTokenEnv.secretRef).toBe("callback-token");
-    expect(callbackTokenEnv.value).toBeUndefined();
+    expect(envNames).toContain("PRONGHORN_VAULT_URI");
+    expect(envNames).toContain("PRONGHORN_CALLBACK_PAYLOAD");
+    expect(envNames).toContain("PRONGHORN_CALLBACK_KEY_SECRET_NAME");
+    expect(envNames).toContain("PRONGHORN_REPO_AUTH_SECRET_NAME_0");
+    expect(envNames).not.toContain("PRONGHORN_CALLBACK_TOKEN");
+    expect(envNames).not.toContain("PRONGHORN_REPO_AUTH_0");
+
+    expect(env.find((e: any) => e.name === "PRONGHORN_VAULT_URI").value).toBe(config.sandboxVaultUrl);
+    expect(env.find((e: any) => e.name === "PRONGHORN_CALLBACK_KEY_SECRET_NAME").value).toBe("callback-key-secret-name");
+    // Only the payload half of the token (not secret on its own) is sent.
+    expect(env.find((e: any) => e.name === "PRONGHORN_CALLBACK_PAYLOAD").value).toBe("cGF5bG9hZA");
+    expect(env.find((e: any) => e.name === "PRONGHORN_REPO_AUTH_SECRET_NAME_0").value).toBe("repo-auth-secret-name");
 
     // Never logged, in any log call.
     const allLogText = [...(logger.info as jest.Mock).mock.calls, ...(logger.warn as jest.Mock).mock.calls]
       .flat()
       .join(" ");
     expect(allLogText).not.toContain("super-secret-should-never-appear-in-a-log");
+    expect(allLogText).not.toContain(callbackToken);
   });
 
   it("drops a repository whose clone credential can't be minted, logging why, without failing the whole dispatch", async () => {
@@ -121,16 +165,47 @@ describe("AzureContainerAppsJobDispatcher", () => {
     );
 
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("could not mint a clone credential"));
+    expect(mockCreateSandboxSecret).not.toHaveBeenCalled();
     const body = JSON.parse((fetchMock.mock.calls[0][1] as any).body);
     expect(JSON.parse(body.template.containers[0].env.find((e: any) => e.name === "PRONGHORN_REPOSITORIES").value)).toEqual([]);
   });
 
-  it("throws when the start call fails outright", async () => {
+  it("throws when the start call fails outright, and cleans up the vault secrets it already wrote", async () => {
     (global as any).fetch = jest.fn().mockResolvedValueOnce({ ok: false, status: 500, text: async () => "boom" });
     const dispatcher = new AzureContainerAppsJobDispatcher(config);
     await expect(
-      dispatcher.dispatch({ runId: "run-1", teamId: "team-1", organizationId: "org-1", repositories: [] }, jest.fn())
+      dispatcher.dispatch(
+        { runId: "run-1", teamId: "team-1", organizationId: "org-1", repositories: [{ fullName: "goa/permits-api" }] },
+        jest.fn()
+      )
     ).rejects.toThrow(/Could not start/);
+
+    expect(mockCleanupSandboxSecrets).toHaveBeenCalledWith(["repo-auth-secret-name"]);
+  });
+
+  it("cleans up any vault secrets already written when the vault itself fails mid-loop", async () => {
+    // The vault write (not credential resolution) fails on the second repo
+    // — a systemic failure, not a per-repository scope issue, so it must
+    // abort the whole dispatch rather than being silently dropped.
+    mockResolveCloneCredential.mockReset();
+    mockResolveCloneCredential
+      .mockResolvedValueOnce({ provider: "github", cloneUrl: "https://github.com/a/a.git", authorizationHeader: "Basic a" })
+      .mockResolvedValueOnce({ provider: "github", cloneUrl: "https://github.com/b/b.git", authorizationHeader: "Basic b" });
+    mockCreateSandboxSecret
+      .mockResolvedValueOnce("repo-auth-secret-name-1")
+      .mockRejectedValueOnce(new Error("vault unreachable"));
+
+    (global as any).fetch = jest.fn();
+    const dispatcher = new AzureContainerAppsJobDispatcher(config);
+    await expect(
+      dispatcher.dispatch(
+        { runId: "run-1", teamId: "team-1", organizationId: "org-1", repositories: [{ fullName: "a/a" }, { fullName: "b/b" }] },
+        jest.fn()
+      )
+    ).rejects.toThrow(/vault unreachable/);
+
+    expect(mockCleanupSandboxSecrets).toHaveBeenCalledWith(["repo-auth-secret-name-1"]);
+    expect((global as any).fetch).not.toHaveBeenCalled();
   });
 
   it("cancel() calls the stop endpoint for a resolved execution id", async () => {
@@ -218,6 +293,7 @@ describe("createJobDispatcherFromEnv", () => {
     delete process.env.ONBOARDING_JOB_SUBSCRIPTION_ID;
     delete process.env.ONBOARDING_JOB_RESOURCE_GROUP;
     delete process.env.ONBOARDING_JOB_NAME;
+    delete process.env.ONBOARDING_SANDBOX_KEYVAULT_URL;
   });
 
   afterAll(() => {
@@ -229,12 +305,21 @@ describe("createJobDispatcherFromEnv", () => {
     process.env.ONBOARDING_JOB_SUBSCRIPTION_ID = "sub-1";
     process.env.ONBOARDING_JOB_RESOURCE_GROUP = "rg-1";
     process.env.ONBOARDING_JOB_NAME = "onboarding-sandbox";
+    process.env.ONBOARDING_SANDBOX_KEYVAULT_URL = "https://kv-onboarding-sandbox.vault.azure.net";
 
     expect(createJobDispatcherFromEnv()).toBeInstanceOf(AzureContainerAppsJobDispatcher);
   });
 
   it("fails closed when azure is selected but not fully configured", () => {
     process.env.ONBOARDING_JOB_DISPATCHER = "azure";
+    expect(() => createJobDispatcherFromEnv()).toThrow(JobDispatcherConfigurationError);
+  });
+
+  it("fails closed when azure is selected but the sandbox vault URL is missing", () => {
+    process.env.ONBOARDING_JOB_DISPATCHER = "azure";
+    process.env.ONBOARDING_JOB_SUBSCRIPTION_ID = "sub-1";
+    process.env.ONBOARDING_JOB_RESOURCE_GROUP = "rg-1";
+    process.env.ONBOARDING_JOB_NAME = "onboarding-sandbox";
     expect(() => createJobDispatcherFromEnv()).toThrow(JobDispatcherConfigurationError);
   });
 

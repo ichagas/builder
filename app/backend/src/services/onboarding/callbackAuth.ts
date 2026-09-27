@@ -16,19 +16,25 @@
  *    comfortably longer than a two-repository sandbox run, per the
  *    acceptance target, but far short of the run's own lifetime).
  *  - **HMAC, constant-time verified**: the signing key is a per-run secret
- *    minted in the platform's secret store (Key Vault in production) when
+ *    minted in the **dedicated onboarding sandbox Key Vault**
+ *    (`sandbox/sandboxSecretStore.ts` — fix round 1, item 1; separate from
+ *    `services/integrations/secretStore.ts`'s platform store, which holds
+ *    longer-lived integration/report secrets, not per-run job material) when
  *    the run is dispatched — never a long-lived, shared key baked into the
  *    job image or checked into config. Only the secret's *name*
  *    (`onboarding_runs.callback_secret_ref`) is ever persisted; the value is
  *    read back from the store to verify, and compared with
  *    `crypto.timingSafeEqual`, mirroring `services/mesh/ingest.ts`'s
- *    `verifySignature`.
+ *    `verifySignature`. `AzureContainerAppsJobDispatcher` never sends the
+ *    assembled token to the job — only this secret's name plus the token's
+ *    plaintext payload, so the job can fetch the key and recompute the same
+ *    token itself (see `infra/onboarding-sandbox/src/entrypoint.ts`).
  *
  * Token shape (deliberately not a JWT library dependency for something this
  * small): `base64url(JSON.stringify({runId, exp})) + "." + base64url(hmac)`.
  */
 import crypto from "crypto";
-import { getSecretStore } from "../integrations/secretStore";
+import { getSandboxSecretStore } from "./sandbox/sandboxSecretStore";
 
 export interface CallbackTokenPayload {
   runId: string;
@@ -58,7 +64,7 @@ export async function mintCallbackToken(
   ttlSeconds: number = CALLBACK_TOKEN_TTL_SECONDS
 ): Promise<{ token: string; secretRef: string }> {
   const secretValue = crypto.randomBytes(32).toString("hex");
-  const secretRef = await getSecretStore().createSecret("onboarding-callback", secretValue);
+  const secretRef = await getSandboxSecretStore().createSecret("onboarding-callback", secretValue, ttlSeconds);
 
   const payload: CallbackTokenPayload = { runId, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
   const payloadB64 = base64url(Buffer.from(JSON.stringify(payload)));
@@ -111,7 +117,7 @@ export async function verifyCallbackToken(
 
   let secretValue: string;
   try {
-    secretValue = await getSecretStore().getSecret(secretRef);
+    secretValue = await getSandboxSecretStore().getSecret(secretRef);
   } catch {
     return false;
   }

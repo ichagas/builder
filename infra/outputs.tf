@@ -350,6 +350,11 @@ output "onboarding_sandbox_uami_id" {
   value       = var.onboarding_sandbox_subnet_id != null ? azurerm_user_assigned_identity.onboarding_sandbox[0].id : null
 }
 
+output "onboarding_sandbox_keyvault_uri" {
+  description = "URI of the dedicated onboarding sandbox Key Vault (fix round 1, item 1), for ONBOARDING_SANDBOX_KEYVAULT_URL on the API (jobDispatcher.ts's createJobDispatcherFromEnv, sandboxSecretStore.ts, callbackAuth.ts). Null when onboarding_sandbox_subnet_id is not set."
+  value       = var.onboarding_sandbox_subnet_id != null ? module.onboarding_sandbox_keyvault[0].vault_uri : null
+}
+
 output "deployment_summary" {
   description = "Summary of the deployed infrastructure"
   sensitive   = true

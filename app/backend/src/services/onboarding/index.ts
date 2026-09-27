@@ -38,6 +38,7 @@ import { canTransition, describeInvalidTransition, isTerminal } from "./stateMac
 import { getJobDispatcher } from "./jobDispatcher";
 import type { JobResult, JobProgressEvent } from "./jobDispatcher";
 import { mintCallbackToken, verifyCallbackToken } from "./callbackAuth";
+import { cleanupSandboxSecrets } from "./sandbox/sandboxSecretStore";
 import { broadcastOnboardingProgress } from "./realtime";
 import { listGitHubRepositories, ImportableRepository } from "./githubImport";
 import { listAzureDevOpsRepositories, ImportableAzureRepository } from "./azureImport";
@@ -368,6 +369,7 @@ export async function applySandboxResult(result: JobResult): Promise<void> {
   if (result.status === "failed") {
     await updateRun(result.runId, { status: "failed", logBlob: result.logBlob ?? null });
     logger.warn(`[onboarding] sandbox run failed (run=${result.runId}): ${result.error ?? "unknown error"}`);
+    await cleanupRunSandboxSecrets(run);
     return;
   }
 
@@ -386,6 +388,26 @@ export async function applySandboxResult(result: JobResult): Promise<void> {
 
   await updateRun(result.runId, { status: "ready", step: "output", logBlob: result.logBlob ?? null });
   logger.info(`[onboarding] sandbox run ready (run=${result.runId})`);
+  await cleanupRunSandboxSecrets(run);
+}
+
+/**
+ * Best-effort delete of every sandbox Key Vault secret this run's dispatch
+ * wrote (fix round 1, item 2): `run.sandbox_secret_names` plus
+ * `run.callback_secret_ref` (kept as a single list so cleanup never misses
+ * one because it forgot to check both columns), and clears both columns.
+ * Called once the sandbox job itself reaches a terminal state — `ready` or
+ * `failed` in {@link applySandboxResult}, {@link cancelRun}, or a dispatch
+ * failure in {@link startRun} — never on a run whose sandbox job never
+ * started (nothing to clean up). Never throws; logs and moves on. Each
+ * secret's own `expiresOn` (set at creation,
+ * `sandbox/sandboxSecretStore.ts`) is the backstop if this never runs.
+ */
+async function cleanupRunSandboxSecrets(run: Pick<OnboardingRunRow, "id" | "callback_secret_ref" | "sandbox_secret_names">): Promise<void> {
+  const names = [...(run.sandbox_secret_names ?? []), run.callback_secret_ref];
+  if (names.every((n) => !n)) return;
+  await cleanupSandboxSecrets(names);
+  await updateRun(run.id, { callbackSecretRef: null, sandboxSecretNames: [] });
 }
 
 export async function startRun(userId: string, runId: string): Promise<OnboardingRunView> {
@@ -423,22 +445,39 @@ export async function startRun(userId: string, runId: string): Promise<Onboardin
   // `onboarding-{runId}` realtime channel (contracts/api.md), so the wizard
   // sees log/step/done events as the sandbox job runs, not just the final
   // ready/failed state.
-  const { jobExecutionId } = await dispatcher.dispatch(
-    {
-      runId,
-      teamId: run.team_id,
-      organizationId,
-      connectionId: run.connection_id,
-      packVersion: run.pack_version,
-      repositories: selected.map((r) => ({ fullName: r.full_name })),
-      callbackUrl: buildOnboardingCallbackUrl(runId),
-      callbackToken,
-    },
-    applySandboxResult,
-    (event: JobProgressEvent) => broadcastOnboardingProgress(runId, event)
-  );
+  let dispatchResult: { jobExecutionId: string; sandboxSecretNames?: string[] };
+  try {
+    dispatchResult = await dispatcher.dispatch(
+      {
+        runId,
+        teamId: run.team_id,
+        organizationId,
+        connectionId: run.connection_id,
+        packVersion: run.pack_version,
+        repositories: selected.map((r) => ({ fullName: r.full_name })),
+        callbackUrl: buildOnboardingCallbackUrl(runId),
+        callbackToken,
+        callbackSecretRef,
+      },
+      applySandboxResult,
+      (event: JobProgressEvent) => broadcastOnboardingProgress(runId, event)
+    );
+  } catch (err) {
+    // Fix round 1, item 2: the callback secret was already minted in the
+    // sandbox vault above — a dispatch failure (e.g. the ARM "start" call
+    // itself failed) leaves nothing to clean it up otherwise until its own
+    // expiry. AzureContainerAppsJobDispatcher already cleans up any
+    // per-repository secrets it wrote before rethrowing.
+    await cleanupSandboxSecrets([callbackSecretRef]);
+    await updateRun(runId, { callbackSecretRef: null });
+    throw err;
+  }
+  const { jobExecutionId, sandboxSecretNames } = dispatchResult;
 
-  const updated = await updateRun(runId, { jobExecutionId });
+  const updated = await updateRun(runId, {
+    jobExecutionId,
+    sandboxSecretNames: [...(sandboxSecretNames ?? []), callbackSecretRef],
+  });
   logger.info(`[onboarding] sandbox job dispatched (run=${runId}, jobExecutionId=${jobExecutionId})`);
   return toView(updated);
 }
@@ -1017,5 +1056,6 @@ export async function cancelRun(userId: string, runId: string): Promise<Onboardi
 
   const updated = await updateRun(runId, { status: "cancelled" });
   logger.info(`[onboarding] run cancelled (run=${runId})`);
+  await cleanupRunSandboxSecrets(run);
   return toView(updated);
 }

@@ -97,6 +97,7 @@ see.
 | GET | `/onboarding/runs/:id/output` | Review, generated files, baselines per repo |
 | POST | `/onboarding/runs/:id/pull-requests` | Open one PR per repo: GitHub (GitHub App) or Azure Repos, with the generated CI for that platform |
 | POST | `/onboarding/runs/:id/cancel` | Cancel |
+| **POST** | **`/onboarding/runs/:id/callback`** | **Sandbox job → API progress/result (WP-BE6, T141). No user session — a per-run, short-lived bearer token (`Authorization: Bearer <token>`), constant-time verified against this run's own HMAC key in the dedicated onboarding sandbox Key Vault (`callbackAuth.ts`). Body: `{type:"progress", event:{...}}` or `{type:"result", result:{...JobResult}}`. Same 401 for every failure (wrong run, expired, tampered, unknown run).** |
 
 `GET /onboarding/github/repos` takes `teamId`, not a client-supplied `org`
 (fix round 1, item 6): the organization is derived from the team

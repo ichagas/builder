@@ -19,7 +19,7 @@
 import { getInstallationTokenForRepo } from "../../../utils/githubAppAuth";
 import { getConnection } from "../../integrations";
 import { getSecretStore } from "../../integrations/secretStore";
-import { parseRepositoryFullName, RepositoryProvider } from "../../repositories/fullName";
+import { inferRepositoryProvider, parseRepositoryFullName, RepositoryProvider } from "../../repositories/fullName";
 import { assertRepositoryInOrgScope } from "../repositoryScope";
 
 export interface CloneCredential {
@@ -55,10 +55,14 @@ export async function resolveCloneCredential(
 ): Promise<CloneCredential> {
   await assertRepositoryInOrgScope(organizationId, connectionId, fullName);
 
-  const provider: RepositoryProvider = parseRepositoryFullName(
-    fullName.split("/").length === 2 ? "github" : "azure_devops",
-    fullName
-  ).provider;
+  // Fix round 1, item 5: the ONE place a full_name's provider is inferred
+  // (services/repositories/fullName.ts) — never a local `split("/")`, which
+  // would silently misclassify a malformed or unexpected-shape name instead
+  // of failing loudly.
+  const provider = inferRepositoryProvider(fullName);
+  if (!provider) {
+    throw new Error(`"${fullName}" is not a valid GitHub or Azure Repos full name`);
+  }
 
   if (provider === "github") {
     const { owner, repo } = parseRepositoryFullName("github", fullName);
