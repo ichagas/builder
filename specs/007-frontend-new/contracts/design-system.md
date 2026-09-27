@@ -70,7 +70,7 @@ Codemod mapping for hard-coded Tailwind colors (T031). Unmapped cases are listed
 | `bg-(gray|slate)-50–200`, `border-(gray|slate)-200–300` | `bg-surface-2`, `border-line` |
 | hex values in `style={}` or `stroke`/`fill` | the nearest token via `var(--…)`, charts via the `--chart-*` tokens |
 
-### 1.2 Categorical palette (WP-F2b fix round 1)
+### 1.2 Categorical palette (WP-F2b fix round 1, hues adjusted fix round 2)
 
 `--chart-1..6` are *not* a categorical palette: they alias `--primary`/`--ok`/`--warn`/`--bad`/`--c-define`/`--c-design`, i.e. status and phase semantics. Using them (or the status/phase tokens directly) to color a legend that has no status or phase meaning — an agent-type color map, a database-object-type icon, a canvas node-type badge — makes the color lie: a node colored `--bad` reads as "broken", not "this is a webhook."
 
@@ -79,6 +79,7 @@ Codemod mapping for hard-coded Tailwind colors (T031). Unmapped cases are listed
 - Never imply status, severity or phase. Don't reuse `--ok`/`--warn`/`--bad`/`--run`/`--c-*`/`--chart-*` for a categorical legend, and don't add new status-colored entries to this palette.
 - Color is never the only differentiator — pair every categorical color with a distinct icon or label (WCAG 1.4.1). This matters most here: 8 hues covering more than 8 categories (e.g. CanvasNode's ~23 node types) must reuse hues, so the icon carries the distinction the color can't.
 - Each hue clears **≥ 3:1** contrast against `--surface`, `--surface-2` and `--bg` in both themes (WCAG 1.4.11, non-text/graphical objects — the bar for a legend swatch or icon, not body text's 4.5:1).
+- Each hue sits **≥ ~25°** away from `--ok`/`--warn`/`--bad` on the color wheel, in both themes, so a categorical swatch never reads as a status color by coincidence (fix round 2, item 2 — see the note below).
 - Mapping approach for a set larger than 8: assign hues by a stable, deterministic rule (e.g. index into the palette by category, or a fixed lookup table keyed by type), and never rely on hue alone past 8 categories — the icon must already disambiguate.
 
 | Token | Light | Dark | Suggested use |
@@ -86,13 +87,15 @@ Codemod mapping for hard-coded Tailwind colors (T031). Unmapped cases are listed
 | `--cat-1` | `#4F46E5` (indigo) | `#8B85F5` | e.g. component / feature agent |
 | `--cat-2` | `#0F766E` (teal) | `#2DD4BF` | e.g. API / service |
 | `--cat-3` | `#A21CAF` (fuchsia) | `#E879F9` | e.g. database / schema |
-| `--cat-4` | `#A16207` (gold) | `#EAB308` | e.g. external service |
-| `--cat-5` | `#BE185D` (rose) | `#FB7185` | e.g. security / firewall |
+| `--cat-4` | `#184EAA` (blue) | `#689BF3` | e.g. external service |
+| `--cat-5` | `#6920B6` (violet) | `#B67EF1` | e.g. security / firewall |
 | `--cat-6` | `#155E75` (cyan) | `#38BDF8` | e.g. requirement / doc |
 | `--cat-7` | `#4D7C0F` (olive) | `#A3E635` | e.g. tech stack / util |
-| `--cat-8` | `#9A3412` (brown) | `#FB923C` | e.g. agent / orchestration |
+| `--cat-8` | `#981B62` (magenta) | `#EF6CB6` | e.g. agent / orchestration |
 
-Measured contrast ratios (`src/design/__tests__/contrast.test.ts`, "categorical palette" block): every `--cat-N` clears ≥ 3:1 against `--surface`, `--surface-2` and `--bg` in both themes; worst case is light `--cat-2` at 4.65:1 on `--bg` (all others ≥ 4.9:1 light, ≥ 4.77:1 dark) — comfortable margin over the 3:1 floor.
+Measured contrast ratios (`src/design/__tests__/contrast.test.ts`, "categorical palette" block): every `--cat-N` clears ≥ 3:1 against `--surface`, `--surface-2` and `--bg` in both themes; worst case is light `--cat-7`/`--bg` at 4.24:1 (all other light pairs ≥ 4.57:1, all dark pairs ≥ 4.77:1) — comfortable margin over the 3:1 floor.
+
+Fix round 2, item 2: `--cat-4` (was `#A16207` gold, hue ~35°) and `--cat-8` (was `#9A3412` brown, hue ~15°) sat inside the warn (~26°/36°)/bad (~357°/2°) orange-red band — only ~9-18° away in both themes, well under the ≥25° floor, so either could misread as a warning or error color. Generalizing the check to every `--cat-N` (`src/design/__tests__/contrast.test.ts`, "categorical palette hue separation" block) found `--cat-5` (was `#BE185D` rose, hue ~335°/351°) had the same problem against `--bad` (~10-22° away). All three were re-hued away from that band — `--cat-4` to blue (~218°), `--cat-5` to violet (~269°), `--cat-8` to magenta (~326°) — keeping ≥ 3:1 contrast (now ≥ 5.3:1 in the worst case, better than before) and landing every `--cat-N` ≥ 25° from `--ok`/`--warn`/`--bad` in both themes (minimum observed: light `--cat-8`/`--bad` at 31.4°, dark `--cat-2`/`--ok` at 25.7°). `AgentFlow.tsx`'s executing-state `ring-4 ring-warn` on a categorical card is unaffected by this — the ring sits outside the card's own `--cat-N` fill/border, so there was never a same-token collision there, only the risk of a *different* cat hue reading as "warning" by coincidence, which the hue-separation floor now rules out.
 
 Tailwind: `bg-cat-1`..`bg-cat-8` (and `text-`/`border-`), via `--cat-N-rgb` in `tailwind-preset.ts`, same `rgb(var(--x-rgb) / <alpha-value>)` pattern as the other color groups.
 

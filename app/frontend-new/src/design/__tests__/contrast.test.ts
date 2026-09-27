@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AA_TEXT, contrastRatio } from "../contrast";
+import { AA_TEXT, contrastRatio, hueDegrees, hueDistance } from "../contrast";
 
 /**
  * T020 acceptance: contrast OK in light and dark. Hex values below are a
@@ -13,11 +13,13 @@ const LIGHT = {
   cat1: "#4F46E5",
   cat2: "#0F766E",
   cat3: "#A21CAF",
-  cat4: "#A16207",
-  cat5: "#BE185D",
+  // Fix round 2, item 2: cat4/cat5/cat8 re-hued away from the warn/bad
+  // orange-red band (see contracts/design-system.md §1.2's note).
+  cat4: "#184EAA",
+  cat5: "#6920B6",
   cat6: "#155E75",
   cat7: "#4D7C0F",
-  cat8: "#9A3412",
+  cat8: "#981B62",
   ink: "#0F1D35",
   muted: "#4F5F78",
   primary: "#2451D6",
@@ -52,11 +54,11 @@ const DARK = {
   cat1: "#8B85F5",
   cat2: "#2DD4BF",
   cat3: "#E879F9",
-  cat4: "#EAB308",
-  cat5: "#FB7185",
+  cat4: "#689BF3",
+  cat5: "#B67EF1",
   cat6: "#38BDF8",
   cat7: "#A3E635",
-  cat8: "#FB923C",
+  cat8: "#EF6CB6",
   ink: "#E9EEF7",
   muted: "#9FB0CC",
   primary: "#6C93FF",
@@ -170,5 +172,37 @@ describe("categorical palette contrast (WCAG 1.4.11, ratio >= 3:1)", () => {
     ])
   )("%s >= 3:1", (_label, fg, bg) => {
     expect(contrastRatio(fg as string, bg as string)).toBeGreaterThanOrEqual(AA_NON_TEXT);
+  });
+});
+
+/**
+ * WP-F2b fix round 2, item 2: a categorical swatch must never read as a
+ * status color by coincidence. `--cat-4` (gold, ~35°) and `--cat-8` (brown,
+ * ~15°) originally sat inside the `--warn` (~26°/36°) / `--bad` (~357°/2°)
+ * orange-red band; generalizing this check to every `--cat-N` also caught
+ * `--cat-5` (rose, ~335°/351°) against `--bad`. All three were re-hued (see
+ * contracts/design-system.md §1.2's note); this asserts every `--cat-N`
+ * clears the floor in both themes, for all of them, not just the three that
+ * needed fixing.
+ */
+const MIN_HUE_SEPARATION = 25;
+
+describe("categorical palette hue separation (>= 25° from ok/warn/bad)", () => {
+  const cats = ["cat1", "cat2", "cat3", "cat4", "cat5", "cat6", "cat7", "cat8"] as const;
+  const statusKeys = ["ok", "warn", "bad"] as const;
+
+  it.each(
+    (["LIGHT", "DARK"] as const).flatMap((themeName) => {
+      const theme = themeName === "LIGHT" ? LIGHT : DARK;
+      return cats.flatMap((cat) =>
+        statusKeys.map((status) => [
+          `${themeName.toLowerCase()} ${cat} vs ${status}`,
+          hueDegrees(theme[cat]),
+          hueDegrees(theme[status]),
+        ] as const)
+      );
+    })
+  )("%s >= 25°", (_label, catHue, statusHue) => {
+    expect(hueDistance(catHue, statusHue)).toBeGreaterThanOrEqual(MIN_HUE_SEPARATION);
   });
 });
