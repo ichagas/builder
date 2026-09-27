@@ -1,4 +1,5 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
+import { useTechStacksPrimaryAction } from "@/pages/techStacks.primaryAction";
 import { useNoPrimaryAction, type SimpleRoute } from "./types";
 
 const Gallery = lazyWithRetry(() => import("@/pages/Gallery"));
@@ -11,7 +12,7 @@ const BuildBookEditor = lazyWithRetry(() => import("@/pages/BuildBookEditor"));
 /** Library routes (T033). See contracts/routes.md §1, "Layout: Library". */
 export const LIBRARY_ROUTES: SimpleRoute[] = [
   { path: "standards", title: "Standards library", usePrimaryAction: useNoPrimaryAction, Component: Standards },
-  { path: "tech-stacks", title: "Tech stacks", usePrimaryAction: useNoPrimaryAction, Component: TechStacks },
+  { path: "tech-stacks", title: "Tech stacks", usePrimaryAction: useTechStacksPrimaryAction, Component: TechStacks },
   { path: "build-books", title: "Build books", usePrimaryAction: useNoPrimaryAction, Component: BuildBooks },
   { path: "build-books/new", title: "New build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
   { path: "build-books/:id", title: "Build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookDetail },
