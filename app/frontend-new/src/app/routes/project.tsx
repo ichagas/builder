@@ -1,6 +1,7 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useNoPrimaryAction, type ProjectToolRoute, type SimpleRoute } from "./types";
 import { useRequirementsPrimaryAction } from "@/pages/project/requirements.primaryAction";
+import { useDeployPrimaryAction } from "@/pages/project/deploy.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -49,7 +50,12 @@ export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
   { tool: "agent", phase: "build", title: "Build agent", usePrimaryAction: useNoPrimaryAction, Component: Build },
   { tool: "repository", phase: "build", title: "Repository", usePrimaryAction: useNoPrimaryAction, Component: Repository },
   { tool: "database", phase: "build", title: "Database", usePrimaryAction: useNoPrimaryAction, Component: Database },
-  { tool: "environments", phase: "ship", title: "Environments", usePrimaryAction: useNoPrimaryAction, Component: Deploy },
+  // T051 (WP-S1): title "Deploy", not "Environments", to match legacy's
+  // ProjectPageHeader heading exactly -- PR-13's regression spec asserts
+  // getByRole("heading", { name: "Deploy", exact: true }) unchanged (same
+  // approach WP-L1 used for Standards: keep the row's title matching
+  // legacy's heading text so the existing regression spec stays green).
+  { tool: "environments", phase: "ship", title: "Deploy", usePrimaryAction: useDeployPrimaryAction, Component: Deploy },
   { tool: "audit", phase: "ship", title: "Audit", usePrimaryAction: useNoPrimaryAction, Component: Audit },
   { tool: "present", phase: "ship", title: "Present", usePrimaryAction: useNoPrimaryAction, Component: Present },
 ];
