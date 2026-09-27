@@ -130,7 +130,11 @@ string[]` field (fix round 1, item 10): one generic message per repository
 whose most recent `pull-requests` confirm could not open a PR for it (no
 generated files, a disallowed generated path, or an upstream GitHub/Azure
 DevOps failure — never the raw upstream error text, which is logged
-server-side only). Empty once every selected repository has an open PR.
+server-side only). A repository whose **sandbox run itself failed** (a
+per-repository `error` on the job's result — WP-BE6, T141, fix round 1 item
+3) surfaces that specific reason here too (`review.sandboxError`), once the
+run reaches `ready`, not only after a later failed PR attempt. Empty once
+every selected repository has an open PR.
 It also carries a **blocked** warning (`"<full_name>: already onboarded to
 another application; not registered under this one"`) for a repository whose
 PR opened but which is already registered (`application_repositories`) to a

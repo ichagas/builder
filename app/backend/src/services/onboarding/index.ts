@@ -93,8 +93,13 @@ export const APPLICATION_LINK_BLOCKED_WARNING =
 export const REPOSITORY_OUT_OF_SCOPE_WARNING = "outside this organization's configured repository scope";
 
 function repositoryWarning(repo: OnboardingRunRepositoryRow): string | null {
-  const review = (repo.review ?? {}) as { prError?: string; applicationLinkWarning?: string };
-  const message = review.prError || review.applicationLinkWarning;
+  const review = (repo.review ?? {}) as { prError?: string; applicationLinkWarning?: string; sandboxError?: string };
+  // Fix round 1, item 3: a repository-level sandbox failure is surfaced too
+  // — prError (a failed PR attempt) and applicationLinkWarning take
+  // precedence since they're about a later, more specific step, but a
+  // repository that never even reached "generated files" should still show
+  // *why*, not just "no generated files" (openPullRequests's fallback).
+  const message = review.prError || review.applicationLinkWarning || review.sandboxError;
   return typeof message === "string" && message.length > 0 ? `${repo.full_name}: ${message}` : null;
 }
 
@@ -380,7 +385,14 @@ export async function applySandboxResult(result: JobResult): Promise<void> {
       detectedBuild: repo.detectedBuild ?? null,
       detectedCi: repo.detectedCi ?? null,
       part: repo.part ?? null,
-      review: repo.review ?? {},
+      // Fix round 1, item 3: a per-repository sandbox error (this repo's
+      // own clone/detect/generate step failed, distinct from the whole run
+      // failing) is carried in review.sandboxError so it survives to the
+      // run output's warnings and openPullRequests's per-repository
+      // warning (repositoryWarning/buildPrFailureReason below), instead of
+      // silently vanishing (the sandbox job's JobRepoResult.error used to
+      // have nowhere to go).
+      review: repo.error ? { ...(repo.review ?? {}), sandboxError: repo.error } : repo.review ?? {},
       generatedManifest: repo.generatedManifest ?? [],
       baselineCounts: repo.baselineCounts ?? {},
     });
@@ -909,7 +921,12 @@ export async function openPullRequests(
       }
       const files = (repo.generated_manifest ?? []) as Array<{ path: string; content: string }>;
       if (files.length === 0) {
-        await markRepoError(repo, "no generated files to open a PR from");
+        // Fix round 1, item 3: when the sandbox itself failed for this
+        // repository, say so — more useful than the generic "no generated
+        // files", and the same message toView/repositoryWarning already
+        // surfaces from review.sandboxError.
+        const sandboxError = (repo.review as { sandboxError?: string } | null)?.sandboxError;
+        await markRepoError(repo, sandboxError || "no generated files to open a PR from");
         continue;
       }
 

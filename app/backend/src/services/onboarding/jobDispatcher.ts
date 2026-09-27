@@ -36,6 +36,18 @@ export interface JobRepoResult {
   review?: Record<string, unknown>;
   generatedManifest?: GeneratedFile[];
   baselineCounts?: Record<string, number>;
+  /**
+   * A per-repository failure (fix round 1, item 3): this ONE repository's
+   * clone/detect/generate step failed (e.g. `infra/onboarding-sandbox/src/entrypoint.ts`'s
+   * `runOneRepository` catch), distinct from the whole run failing
+   * (`JobResult.status === "failed"`/`.error`). Other repositories in the
+   * same run may still have succeeded. `applySandboxResult` persists this
+   * into the repository's own `review.sandboxError` so it survives to
+   * `GET /onboarding/runs/:id/output`'s `warnings` and — if a PR is
+   * attempted anyway — `openPullRequests`'s per-repository warning, instead
+   * of the generic "no generated files" message.
+   */
+  error?: string;
 }
 
 export interface JobResult {

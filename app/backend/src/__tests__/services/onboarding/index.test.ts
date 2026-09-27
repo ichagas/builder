@@ -332,6 +332,33 @@ describe("getRun / access control", () => {
     const view = await onboarding.getRun(USER_ID, RUN_ID);
     expect(view.warnings).toEqual(["goa/permits-api: could not open the pull request (see server logs for details)"]);
   });
+
+  it("surfaces a persisted per-repository sandboxError as a warning (fix round 1, item 3)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun());
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockListRepos.mockResolvedValue([
+      { id: "r1", full_name: "goa/broken-repo", review: { sandboxError: "clone failed: repository not found" } },
+      { id: "r2", full_name: "goa/health-portal", review: {} },
+    ]);
+
+    const view = await onboarding.getRun(USER_ID, RUN_ID);
+    expect(view.warnings).toEqual(["goa/broken-repo: clone failed: repository not found"]);
+  });
+
+  it("prefers prError over sandboxError when both are present (a later, more specific failure)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun());
+    mockCheckTeamAccess.mockResolvedValue(authorizedAccess());
+    mockListRepos.mockResolvedValue([
+      {
+        id: "r1",
+        full_name: "goa/repo",
+        review: { sandboxError: "clone failed", prError: "could not open the pull request (see server logs for details)" },
+      },
+    ]);
+
+    const view = await onboarding.getRun(USER_ID, RUN_ID);
+    expect(view.warnings).toEqual(["goa/repo: could not open the pull request (see server logs for details)"]);
+  });
 });
 
 describe("listImportableGitHubRepositories — fix round 1, item 6 (cross-org isolation)", () => {
@@ -748,6 +775,42 @@ describe("startRun", () => {
     expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { callbackSecretRef: null, sandboxSecretNames: [] });
   });
 
+  it("persists a per-repository sandbox error into review.sandboxError (fix round 1, item 3)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({
+      runId: RUN_ID,
+      status: "ready",
+      repositories: [{ fullName: "goa/broken-repo", error: "could not read the clone credential from the sandbox vault: 403" }],
+    });
+
+    expect(mockUpdateRepo).toHaveBeenCalledWith(
+      RUN_ID,
+      "goa/broken-repo",
+      expect.objectContaining({
+        review: { sandboxError: "could not read the clone credential from the sandbox vault: 403" },
+      })
+    );
+  });
+
+  it("preserves the rest of review when persisting a per-repository sandbox error", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "running" }));
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
+
+    await onboarding.applySandboxResult({
+      runId: RUN_ID,
+      status: "ready",
+      repositories: [{ fullName: "goa/broken-repo", review: { someNote: "kept" }, error: "boom" }],
+    });
+
+    expect(mockUpdateRepo).toHaveBeenCalledWith(
+      RUN_ID,
+      "goa/broken-repo",
+      expect.objectContaining({ review: { someNote: "kept", sandboxError: "boom" } })
+    );
+  });
+
   it("skips the cleanup update entirely when the run has no sandbox secrets to clean up", async () => {
     mockGetRunById.mockResolvedValue(baseRun({ status: "running", callback_secret_ref: null, sandbox_secret_names: [] }));
     mockUpdateRun.mockResolvedValue(baseRun({ status: "ready" }));
@@ -1068,6 +1131,39 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ fullName: "goa/permits-api" }));
     expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { status: "prs_open", step: "prs" });
     expect(view.status).toBe("prs_open");
+  });
+
+  it("uses the repository's own sandbox error, not the generic message, when it has no generated files because the sandbox failed for it (fix round 1, item 3)", async () => {
+    mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+    mockListRepos.mockResolvedValue([
+      {
+        full_name: "goa/permits-api",
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      },
+      {
+        full_name: "goa/broken-repo",
+        selected: true,
+        pr_number: null,
+        generated_manifest: [],
+        review: { sandboxError: "could not read the clone credential from the sandbox vault: 403" },
+      },
+    ]);
+    mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open" });
+    mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", step: "prs" }));
+
+    const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+    expect(mockUpdateRepo).toHaveBeenCalledWith(
+      RUN_ID,
+      "goa/broken-repo",
+      expect.objectContaining({
+        review: expect.objectContaining({ prError: "could not read the clone credential from the sandbox vault: 403" }),
+      })
+    );
+    expect(view.warnings).toContain("goa/broken-repo: could not read the clone credential from the sandbox vault: 403");
   });
 
   it("partial failure: one repo's PR call throws, the other succeeds — run still advances (207-style partial success)", async () => {
