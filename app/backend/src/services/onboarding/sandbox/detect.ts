@@ -16,7 +16,13 @@
  * repository (never file contents) — it's a fast, dependency-free heuristic,
  * not a build-system parser.
  */
-import type { DetectedCiProvider } from "../jobDispatcher";
+/**
+ * Canonical home of this type (moved here, from `../jobDispatcher`, so this
+ * file has zero dependency on anything else in `app/backend` — see the
+ * module docstring above). `jobDispatcher.ts` re-exports it for every
+ * existing caller.
+ */
+export type DetectedCiProvider = "github_actions" | "azure_pipelines";
 
 export type RepositoryHost = "github" | "azure_devops";
 export type StackProfile = "dotnet" | "node" | "java" | "python";

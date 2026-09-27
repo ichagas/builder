@@ -35,6 +35,12 @@ Thumbs.db
 # Infrastructure (not needed for frontend build)
 infra/
 !infra/migrations/
+# onboarding-sandbox's own image is built with this root .dockerignore in
+# effect (its Dockerfile's build context is the repo root, so it can COPY
+# app/backend's shared detect.ts/generateManifest.ts — see its Dockerfile
+# header), so it needs an explicit exception here too.
+!infra/onboarding-sandbox/
+!infra/onboarding-sandbox/**
 
 # API (separate container)
 api/

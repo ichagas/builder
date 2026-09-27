@@ -15,8 +15,9 @@
  * once BE6's implementation exists, or in a test).
  */
 import { logger } from "../../utils/logger";
+import type { DetectedCiProvider } from "./sandbox/detect";
 
-export type DetectedCiProvider = "github_actions" | "azure_pipelines";
+export type { DetectedCiProvider };
 
 export interface GeneratedFile {
   /** Path within the repository, e.g. `.github/workflows/assurance-mesh.yml`. */

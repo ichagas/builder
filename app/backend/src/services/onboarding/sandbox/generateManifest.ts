@@ -12,8 +12,7 @@
  * `azure-pipelines/assurance-mesh.yml`, matching `ALLOWED_DIR_PREFIXES`
  * there).
  */
-import type { DetectedCiProvider } from "../jobDispatcher";
-import type { StackProfile } from "./detect";
+import type { DetectedCiProvider, StackProfile } from "./detect";
 
 export interface GenerateManifestInput {
   ciProvider: DetectedCiProvider;
