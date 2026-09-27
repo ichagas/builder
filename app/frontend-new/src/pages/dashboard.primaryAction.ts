@@ -17,6 +17,17 @@ import type { UsePrimaryAction } from "@/components/shell/types";
  * one Dashboard is ever mounted at a time (it's a routed page), so a
  * module-level singleton is safe; Dashboard resets it to closed on
  * unmount so no state leaks across navigations or tests.
+ *
+ * `useDashboardPrimaryAction` itself is *not* built on a hand-rolled
+ * `useSyncExternalStore` -- unlike D1's requirements page (see
+ * `pages/project/requirements.primaryAction.ts`), Dashboard's primary
+ * action doesn't depend on any state that lives in the page's own render;
+ * it's a constant label/onClick pair, computed directly by the hook the
+ * route registry calls. There's nothing here for `createPrimaryActionStore`
+ * (T027, WP-F3b) to replace: that helper exists for a page to hand a *live*
+ * ActionSpec across the page/header boundary, and only the dialog's
+ * open/closed flag crosses that boundary here -- a different concern (a
+ * boolean, not an ActionSpec) that keeps its own tiny store below.
  */
 type Listener = () => void;
 
