@@ -1,5 +1,6 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useStandardsPrimaryAction } from "@/pages/standards.primaryAction";
+import { useTechStacksPrimaryAction } from "@/pages/techStacks.primaryAction";
 import { useNoPrimaryAction, type SimpleRoute } from "./types";
 
 const Gallery = lazyWithRetry(() => import("@/pages/Gallery"));
@@ -16,7 +17,7 @@ export const LIBRARY_ROUTES: SimpleRoute[] = [
   // Library" })`) runs unchanged against this app per contracts/routes.md
   // §2, so the restyled page's PageHeader-rendered heading must match it.
   { path: "standards", title: "Standards Library", usePrimaryAction: useStandardsPrimaryAction, Component: Standards },
-  { path: "tech-stacks", title: "Tech stacks", usePrimaryAction: useNoPrimaryAction, Component: TechStacks },
+  { path: "tech-stacks", title: "Tech stacks", usePrimaryAction: useTechStacksPrimaryAction, Component: TechStacks },
   { path: "build-books", title: "Build books", usePrimaryAction: useNoPrimaryAction, Component: BuildBooks },
   { path: "build-books/new", title: "New build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
   { path: "build-books/:id", title: "Build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookDetail },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { TechStackCard } from "@/components/techstack/TechStackCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Search, Plus } from "lucide-react";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { useAdmin } from "@/contexts/AdminContext";
 import { toast } from "sonner";
+import { TECH_STACK_NAME_INPUT_ID } from "@/pages/techStacks.primaryAction";
 
 export default function TechStacks() {
   const { isAdmin } = useAdmin();
@@ -107,18 +108,16 @@ export default function TechStacks() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
+    <div className="bg-background">
+      <PageHeader />
 
-      <div className="flex-1 overflow-auto p-4 md:p-6">
+      <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-3 md:space-y-4">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {isAdmin && (
             <div className="flex items-center gap-2 md:gap-4">
-              <h1 className="text-2xl md:text-3xl font-bold">Tech Stacks</h1>
-              {isAdmin && <Badge variant="secondary">Admin</Badge>}
+              <Badge variant="secondary">Admin</Badge>
             </div>
-          </div>
+          )}
 
           {/* Search */}
           <div className="flex items-center gap-4">
@@ -139,6 +138,7 @@ export default function TechStacks() {
               <CardContent className="pt-4 md:pt-6 p-4 md:p-6">
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <Input
+                    id={TECH_STACK_NAME_INPUT_ID}
                     placeholder="New tech stack name..."
                     value={newTechStackName}
                     onChange={(e) => setNewTechStackName(e.target.value)}
