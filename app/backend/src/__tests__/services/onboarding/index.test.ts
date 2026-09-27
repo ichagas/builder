@@ -56,7 +56,7 @@ jest.mock("../../../services/onboarding/azureImport", () => ({
 
 jest.mock("../../../services/integrations", () => {
   const actual = jest.requireActual("../../../services/integrations");
-  return { ...actual, getDefaultConnectionForProvider: jest.fn(), getConnectionForOrg: jest.fn() };
+  return { ...actual, getDefaultConnectionForProvider: jest.fn(), getConnectionForOrg: jest.fn(), getConnection: jest.fn() };
 });
 
 jest.mock("../../../services/onboarding/pullRequests", () => ({
@@ -75,7 +75,7 @@ import { openRepositoryPullRequest } from "../../../services/onboarding/pullRequ
 import { setJobDispatcher, resetJobDispatcher, JobDispatcher, JobResult } from "../../../services/onboarding/jobDispatcher";
 import { listGitHubRepositories } from "../../../services/onboarding/githubImport";
 import { listAzureDevOpsRepositories } from "../../../services/onboarding/azureImport";
-import { getDefaultConnectionForProvider, getConnectionForOrg } from "../../../services/integrations";
+import { getDefaultConnectionForProvider, getConnectionForOrg, getConnection } from "../../../services/integrations";
 import { broadcastOnboardingProgress } from "../../../services/onboarding/realtime";
 import * as onboarding from "../../../services/onboarding";
 
@@ -99,6 +99,7 @@ const mockListGitHubRepositories = listGitHubRepositories as jest.Mock;
 const mockListAzureDevOpsRepositories = listAzureDevOpsRepositories as jest.Mock;
 const mockGetDefaultConnectionForProvider = getDefaultConnectionForProvider as jest.Mock;
 const mockGetConnectionForOrg = getConnectionForOrg as jest.Mock;
+const mockGetConnection = getConnection as jest.Mock;
 const mockBroadcastOnboardingProgress = broadcastOnboardingProgress as jest.Mock;
 
 const USER_ID = "user-1";
@@ -144,8 +145,27 @@ function controlledDispatcher(): JobDispatcher & { complete: (result: JobResult)
   };
 }
 
+/**
+ * org-1's configured repository scope (fix round 3, item 6): GitHub owners
+ * ["goa"] via its github_app connection, Azure DevOps organization
+ * "contoso" via its azure_devops connection.
+ */
+function installOrgScope(opts: { githubOwners?: string[] | null; azureOrgUrl?: string | null } = {}) {
+  const githubOwners = opts.githubOwners === undefined ? ["goa"] : opts.githubOwners;
+  const azureOrgUrl = opts.azureOrgUrl === undefined ? "https://dev.azure.com/contoso" : opts.azureOrgUrl;
+  mockGetDefaultConnectionForProvider.mockImplementation(async (_org: string, provider: string) =>
+    provider === "github_app" && githubOwners ? { id: "gh-conn", provider, scope: { owners: githubOwners } } : null
+  );
+  mockGetConnection.mockImplementation(async (_org: string, provider: string) => {
+    if (provider !== "azure_devops" || !azureOrgUrl) throw new Error("No azure_devops integration is configured");
+    return { id: "ado-conn", provider, scope: { organizationUrl: azureOrgUrl } };
+  });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  installOrgScope();
+  mockGetTeamOrgId.mockResolvedValue("org-1");
   // SQL-aware default: pack version lookups get a version row; anything
   // else (notably getExistingRegistration's cross-tenant lookup, fix round
   // 2 item 1) gets no rows, i.e. "nothing registered yet" — never a bogus
@@ -476,6 +496,67 @@ describe("setRunRepositories", () => {
     await onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "contoso/My Project/permits-api" }]);
 
     expect(mockReplaceRepos).toHaveBeenCalledWith(RUN_ID, [{ fullName: "contoso/My Project/permits-api", selected: true }]);
+  });
+
+  describe("organization scope (fix round 3, item 6 — cross-org selection)", () => {
+    beforeEach(() => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "draft" }));
+      mockReplaceRepos.mockResolvedValue([]);
+      mockUpdateRun.mockResolvedValue(baseRun({ status: "draft", step: "connect" }));
+      mockListRepos.mockResolvedValue([]);
+    });
+
+    it("403s a GitHub repository owned by another organization's login (shared installation), storing nothing", async () => {
+      await expect(
+        onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "goa/permits-api" }, { fullName: "other-tenant/payroll" }])
+      ).rejects.toMatchObject({ statusCode: 403, message: expect.stringContaining("other-tenant/payroll") });
+      expect(mockReplaceRepos).not.toHaveBeenCalled();
+      expect(mockUpdateRun).not.toHaveBeenCalled();
+      // Scope is the team's organization's own github_app connection.
+      expect(mockGetDefaultConnectionForProvider).toHaveBeenCalledWith("org-1", "github_app");
+    });
+
+    it("403s an unselected out-of-scope entry too (nothing outside the scope is stored)", async () => {
+      await expect(
+        onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "other-tenant/payroll", selected: false }])
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect(mockReplaceRepos).not.toHaveBeenCalled();
+    });
+
+    it("403s any GitHub repository when the organization has no github_app connection", async () => {
+      installOrgScope({ githubOwners: null });
+      await expect(onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "goa/permits-api" }])).rejects.toMatchObject({
+        statusCode: 403,
+        message: expect.stringContaining("no GitHub connection"),
+      });
+      expect(mockReplaceRepos).not.toHaveBeenCalled();
+    });
+
+    it("accepts an in-scope owner case-insensitively", async () => {
+      await onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "GoA/permits-api" }]);
+      expect(mockReplaceRepos).toHaveBeenCalledWith(RUN_ID, [{ fullName: "GoA/permits-api", selected: true }]);
+    });
+
+    it("403s an Azure Repos repository in a different Azure DevOps organization", async () => {
+      await expect(
+        onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "fabrikam/Proj/permits-api" }])
+      ).rejects.toMatchObject({ statusCode: 403, message: expect.stringContaining("Azure DevOps organization") });
+      expect(mockReplaceRepos).not.toHaveBeenCalled();
+    });
+
+    it("403s an Azure Repos repository when no usable Azure DevOps connection is configured", async () => {
+      installOrgScope({ azureOrgUrl: null });
+      await expect(
+        onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "contoso/Proj/permits-api" }])
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect(mockReplaceRepos).not.toHaveBeenCalled();
+    });
+
+    it("resolves the Azure scope through the run's own connection_id (the one PR opening will use)", async () => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "draft", connection_id: "ado-conn-2" }));
+      await onboarding.setRunRepositories(USER_ID, RUN_ID, [{ fullName: "contoso/Proj/permits-api" }]);
+      expect(mockGetConnection).toHaveBeenCalledWith("org-1", "azure_devops", "ado-conn-2");
+    });
   });
 
   it("422s a repository entry missing fullName entirely", async () => {
@@ -1158,6 +1239,63 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     });
     expect(mockOpenPr).not.toHaveBeenCalled();
     expect(mockReleasePrLease).not.toHaveBeenCalled(); // never claimed, nothing to release
+  });
+
+  describe("organization scope re-checked before any credential (fix round 3, item 6)", () => {
+    it("skips a repository whose owner left the organization's scope after selection: no secret, no PR, a warning", async () => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+      mockListRepos.mockResolvedValue([
+        {
+          full_name: "goa/permits-api",
+          selected: true,
+          pr_number: null,
+          detected_ci: "github_actions",
+          review: {},
+          generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+        },
+        {
+          full_name: "former-owner/legacy",
+          selected: true,
+          pr_number: null,
+          detected_ci: "github_actions",
+          review: {},
+          generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+        },
+      ]);
+      mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open", defaultBranch: "main" });
+      mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open" }));
+
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      expect(mockOpenPr).toHaveBeenCalledTimes(1);
+      expect(mockOpenPr).toHaveBeenCalledWith(expect.objectContaining({ fullName: "goa/permits-api", organizationId: "org-1" }));
+      expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "former-owner/legacy", {
+        review: { prError: onboarding.REPOSITORY_OUT_OF_SCOPE_WARNING },
+      });
+      const upserted = mockDbQuery.mock.calls
+        .filter(([sql]) => String(sql).includes("INSERT INTO public.application_repositories"))
+        .map(([, params]) => params[2]);
+      expect(upserted).toEqual(["goa/permits-api"]);
+    });
+
+    it("fails the confirm (stays ready) when every repository is out of scope", async () => {
+      installOrgScope({ githubOwners: null });
+      mockGetRunById.mockResolvedValue(baseRun({ status: "ready" }));
+      mockListRepos.mockResolvedValue([
+        {
+          full_name: "goa/permits-api",
+          selected: true,
+          pr_number: null,
+          detected_ci: "github_actions",
+          review: {},
+          generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+        },
+      ]);
+
+      await expect(onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true })).rejects.toMatchObject({ statusCode: 500 });
+      expect(mockOpenPr).not.toHaveBeenCalled();
+      expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ status: "prs_open" }));
+    });
   });
 
   describe("repository already linked to another application (blocked; fix round 2 item 1, fix round 3 item 3)", () => {

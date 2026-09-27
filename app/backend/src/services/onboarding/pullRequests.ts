@@ -23,6 +23,7 @@ import { getAzureDevOpsClient } from "../integrations";
 import { extractAzureDevOpsOrgLogin } from "../integrations/providers/azureDevOps";
 import { parseRepositoryFullName } from "../repositories/fullName";
 import { GeneratedFile } from "./jobDispatcher";
+import { assertRepositoryInOrgScope } from "./repositoryScope";
 
 export interface OpenPullRequestInput {
   provider: "github" | "azure_devops";
@@ -53,6 +54,11 @@ async function githubRequest(token: string, path: string, init: RequestInit = {}
 
 async function openGitHubPullRequest(input: OpenPullRequestInput): Promise<OpenPullRequestResult> {
   const { owner, repo } = parseRepositoryFullName("github", input.fullName);
+
+  // Fix round 3, item 6 (defense in depth): never mint a token from the
+  // platform's shared installation for a repository outside the calling
+  // organization's configured GitHub owners — whatever the caller checked.
+  await assertRepositoryInOrgScope(input.organizationId, input.connectionId, input.fullName);
 
   const token = await getInstallationTokenForRepo({
     fullName: input.fullName,
@@ -140,6 +146,11 @@ async function openAzureDevOpsPullRequest(input: OpenPullRequestInput): Promise<
   // `application_repositories.full_name` is (see data-model.md §2). Parsed
   // strictly by the shared parser (services/repositories/fullName).
   const { adoOrg, project, repo: repoName } = parseRepositoryFullName("azure_devops", input.fullName);
+
+  // Fix round 3, item 6: same scope check as GitHub before the connection's
+  // PAT is resolved (the org-match check below then re-verifies against the
+  // client actually built).
+  await assertRepositoryInOrgScope(input.organizationId, input.connectionId, input.fullName);
 
   const client = await getAzureDevOpsClient(input.organizationId, input.connectionId ?? undefined);
 

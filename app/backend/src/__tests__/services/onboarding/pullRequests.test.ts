@@ -11,14 +11,36 @@ jest.mock("../../../utils/githubAppAuth", () => ({
 
 jest.mock("../../../services/integrations", () => ({
   getAzureDevOpsClient: jest.fn(),
+  // Used by services/onboarding/repositoryScope (fix round 3, item 6), which
+  // runs for real here: the organization's configured GitHub owners and
+  // Azure DevOps connection.
+  getDefaultConnectionForProvider: jest.fn(),
+  getConnection: jest.fn(),
 }));
 
 import { getInstallationTokenForRepo } from "../../../utils/githubAppAuth";
-import { getAzureDevOpsClient } from "../../../services/integrations";
+import { getAzureDevOpsClient, getDefaultConnectionForProvider, getConnection } from "../../../services/integrations";
 import { openRepositoryPullRequest } from "../../../services/onboarding/pullRequests";
 
 const mockGetInstallationTokenForRepo = getInstallationTokenForRepo as jest.Mock;
 const mockGetAzureDevOpsClient = getAzureDevOpsClient as jest.Mock;
+const mockGetDefaultConnectionForProvider = getDefaultConnectionForProvider as jest.Mock;
+const mockGetConnection = getConnection as jest.Mock;
+
+/** org-1's configured scope: GitHub owner "goa", Azure DevOps organization "goa". */
+function installOrgScope(opts: { githubOwners?: string[] | null; azureOrgUrl?: string | null } = {}) {
+  const githubOwners = opts.githubOwners === undefined ? ["goa"] : opts.githubOwners;
+  const azureOrgUrl = opts.azureOrgUrl === undefined ? "https://dev.azure.com/goa" : opts.azureOrgUrl;
+  mockGetDefaultConnectionForProvider.mockImplementation(async (_org: string, provider: string) =>
+    provider === "github_app" && githubOwners ? { provider, scope: { owners: githubOwners } } : null
+  );
+  mockGetConnection.mockImplementation(async (_org: string, provider: string) => {
+    if (provider !== "azure_devops" || !azureOrgUrl) throw new Error("No azure_devops integration is configured");
+    return { provider, scope: { organizationUrl: azureOrgUrl } };
+  });
+}
+
+beforeEach(() => installOrgScope());
 
 const files = [{ path: ".github/workflows/assurance-mesh.yml", content: "name: assurance-mesh\n" }];
 
@@ -277,6 +299,9 @@ describe("openRepositoryPullRequest — azure_devops", () => {
   });
 
   it("rejects when the full_name's adoOrg doesn't match the resolved connection's organization (fix round 2, item 1)", async () => {
+    // Scope check passes (connection lookup says some-other-org), but the
+    // client actually built is for "goa" — the client-level check still fires.
+    installOrgScope({ azureOrgUrl: "https://dev.azure.com/some-other-org" });
     const request = jest.fn();
     mockGetAzureDevOpsClient.mockResolvedValue({ organizationUrl: "https://dev.azure.com/goa", request });
 
@@ -293,5 +318,54 @@ describe("openRepositoryPullRequest — azure_devops", () => {
       })
     ).rejects.toThrow(/belongs to Azure DevOps organization "some-other-org"/i);
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("openRepositoryPullRequest — organization scope before any credential (fix round 3, item 6)", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.resetAllMocks();
+  });
+
+  const input = (fullName: string, provider: "github" | "azure_devops") => ({
+    provider,
+    fullName,
+    organizationId: "org-1",
+    connectionId: null,
+    branchName: "b",
+    title: "t",
+    body: "b",
+    files,
+  });
+
+  it("refuses a GitHub repository owned by a login outside the organization's configured owners, without minting a token", async () => {
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(openRepositoryPullRequest(input("other-tenant/secret-repo", "github"))).rejects.toThrow(
+      /outside this organization's scope/
+    );
+    expect(mockGetInstallationTokenForRepo).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses every GitHub repository when the organization has no github_app connection", async () => {
+    installOrgScope({ githubOwners: null });
+    await expect(openRepositoryPullRequest(input("goa/permits-api", "github"))).rejects.toThrow(/no GitHub connection/);
+    expect(mockGetInstallationTokenForRepo).not.toHaveBeenCalled();
+  });
+
+  it("matches the owner case-insensitively (GitHub logins are)", async () => {
+    mockGetInstallationTokenForRepo.mockRejectedValue(new Error("stop after scope check"));
+    await expect(openRepositoryPullRequest(input("GOA/permits-api", "github"))).rejects.toThrow("stop after scope check");
+    expect(mockGetInstallationTokenForRepo).toHaveBeenCalledWith(expect.objectContaining({ fullName: "GOA/permits-api" }));
+  });
+
+  it("refuses an Azure repository in another Azure DevOps organization before resolving the connection's PAT", async () => {
+    await expect(openRepositoryPullRequest(input("other-tenant/Proj/repo", "azure_devops"))).rejects.toThrow(
+      /not in this run's configured Azure DevOps organization/
+    );
+    expect(mockGetAzureDevOpsClient).not.toHaveBeenCalled();
   });
 });

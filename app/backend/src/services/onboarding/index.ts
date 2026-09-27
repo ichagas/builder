@@ -43,6 +43,7 @@ import { listAzureDevOpsRepositories, ImportableAzureRepository } from "./azureI
 import { openRepositoryPullRequest } from "./pullRequests";
 import { findDisallowedPath } from "./pathValidation";
 import { inferRepositoryProvider, RepositoryProvider } from "../repositories/fullName";
+import { getAllowedGitHubOwners, listRepositoriesOutsideOrgScope } from "./repositoryScope";
 
 export interface OnboardingRunView extends OnboardingRunRow {
   repositories: OnboardingRunRepositoryRow[];
@@ -85,6 +86,9 @@ async function requireRunAccess(userId: string, runId: string): Promise<Onboardi
  */
 export const APPLICATION_LINK_BLOCKED_WARNING =
   "already onboarded to another application; not registered under this one";
+
+/** Per-repository warning when a selected repository is no longer inside the organization's scope. */
+export const REPOSITORY_OUT_OF_SCOPE_WARNING = "outside this organization's configured repository scope";
 
 function repositoryWarning(repo: OnboardingRunRepositoryRow): string | null {
   const review = (repo.review ?? {}) as { prError?: string; applicationLinkWarning?: string };
@@ -193,24 +197,6 @@ export async function getRun(userId: string, runId: string): Promise<OnboardingR
 // GET /onboarding/github/repos
 // ---------------------------------------------------------------------------
 
-interface GitHubConnectionScope {
-  owner?: string;
-  owners?: string[];
-}
-
-/**
- * The GitHub org(s) an organization's `github_app` integration connection is
- * scoped to, or `[]` if none is configured — never derived from anything the
- * caller supplies. See {@link listImportableGitHubRepositories}.
- */
-async function getAllowedGitHubOwners(organizationId: string): Promise<string[]> {
-  const connection = await getDefaultConnectionForProvider(organizationId, "github_app");
-  const scope = (connection?.scope ?? {}) as GitHubConnectionScope;
-  if (Array.isArray(scope.owners) && scope.owners.length > 0) return scope.owners;
-  if (scope.owner) return [scope.owner];
-  return [];
-}
-
 /**
  * Fix round 1, item 6: repositories are scoped to the caller's own
  * organization, never to an arbitrary `org` the caller could otherwise pass
@@ -309,6 +295,26 @@ export async function setRunRepositories(
         repositories: `each entry needs a "fullName" like "owner/repo" (GitHub) or "adoOrg/project/repo" (Azure Repos)`,
       });
     }
+  }
+
+  // Fix round 3, item 6 (security): the platform's GitHub App installation
+  // is shared by every organization, so a well-formed name is not enough —
+  // each repository must be inside THIS organization's configured scope
+  // (its github_app connection's owners / the run's Azure DevOps
+  // organization). Checked again before any provider credential is used
+  // (openPullRequests, pullRequests.ts).
+  const organizationId = await getTeamOrgId(run.team_id);
+  if (!organizationId) throw Errors.notFound("Team");
+  const [outOfScope] = await listRepositoriesOutsideOrgScope(
+    organizationId,
+    run.connection_id,
+    repositories.map((r) => r.fullName)
+  );
+  if (outOfScope) {
+    logger.warn(
+      `[onboarding] rejected out-of-scope repository selection (run=${runId}, org=${organizationId}, repo=${outOfScope.fullName})`
+    );
+    throw Errors.forbidden(`Repository "${outOfScope.fullName}" can't be onboarded by this organization: ${outOfScope.reason}`);
   }
 
   const input: RepositorySelectionInput[] = repositories.map((r) => ({
@@ -729,6 +735,19 @@ export async function openPullRequests(
     const repositories = await listRepositoriesForRun(runId);
     const selected = repositories.filter((r) => r.selected);
 
+    // Fix round 3, item 6: re-validate scope now (it may have been narrowed
+    // since selection), before minting a report secret or any provider
+    // token for a repository. pullRequests.ts checks again at the token.
+    const outOfScope = new Set(
+      (
+        await listRepositoriesOutsideOrgScope(
+          organizationId,
+          run.connection_id,
+          selected.filter((r) => !r.pr_number).map((r) => r.full_name)
+        )
+      ).map((v) => v.fullName)
+    );
+
     const errors: string[] = [];
     const openedNow: OnboardingRunRepositoryRow[] = [];
     const defaultBranchByRepo = new Map<string, string>();
@@ -760,6 +779,11 @@ export async function openPullRequests(
         // Only reachable for a row written before selection-time validation
         // (setRunRepositories) was tightened.
         await markRepoError(repo, "invalid repository name");
+        continue;
+      }
+      if (outOfScope.has(repo.full_name)) {
+        logger.warn(`[onboarding] refusing PR for out-of-scope repository ${repo.full_name} (run=${runId}, org=${organizationId})`);
+        await markRepoError(repo, REPOSITORY_OUT_OF_SCOPE_WARNING);
         continue;
       }
       const files = (repo.generated_manifest ?? []) as Array<{ path: string; content: string }>;

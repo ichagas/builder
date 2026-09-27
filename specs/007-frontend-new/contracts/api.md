@@ -90,7 +90,7 @@ see.
 | GET | `/onboarding/runs/:id` | Wizard state |
 | GET | `/onboarding/github/repos?teamId=&q=` | Import list (GitHub App installation, scoped to `teamId`'s organization — see below) |
 | GET | `/onboarding/azure/repos?teamId=&connectionId=&q=` | Import list (Azure Repos, via the organization's configured connection) |
-| PUT | `/onboarding/runs/:id/repositories` | Selected repos: `{ repositories: [{ fullName, selected? }] }`, each `fullName` a canonical full_name (`owner/repo` or `adoOrg/project/repo`, as returned by the import lists) — anything else is 422 |
+| PUT | `/onboarding/runs/:id/repositories` | Selected repos: `{ repositories: [{ fullName, selected? }] }`, each `fullName` a canonical full_name (`owner/repo` or `adoOrg/project/repo`, as returned by the import lists) — anything else is 422; a repository outside the organization's scope (see below) is 403 and nothing is stored |
 | POST | `/onboarding/runs/:id/start` | Start the sandbox job (Container Apps Job) |
 | GET | `/onboarding/runs/:id/output` | Review, generated files, baselines per repo |
 | POST | `/onboarding/runs/:id/pull-requests` | Open one PR per repo: GitHub (GitHub App) or Azure Repos, with the generated CI for that platform |
@@ -107,6 +107,20 @@ see. `GET /onboarding/azure/repos` is scoped the same way through
 `connectionId` (defaulting to the organization's sole Azure DevOps
 connection), which is itself always resolved within the caller's own
 organization (WP-BE8).
+
+**Repository scope (fix round 3, security).** The GitHub App installation is
+shared by every organization, so being reachable by it is not authorization.
+`PUT .../repositories` only accepts a GitHub repository whose owner is one of
+the organization's `github_app` connection `scope.owners` (case-insensitive;
+no connection → every GitHub repository is refused), and an Azure Repos
+repository whose `adoOrg` is the Azure DevOps organization of the connection
+PR opening will use (the run's `connectionId`, else the organization's
+default `azure_devops` connection). Anything else is **403** naming the
+repository and the reason. The same check runs again at `POST
+.../pull-requests`, before a report secret is minted or any installation
+token/PAT is used: a repository that has since left the scope gets no PR and
+the warning `"<full_name>: outside this organization's configured repository
+scope"`.
 
 The run object returned by every B3 endpoint above carries a `warnings:
 string[]` field (fix round 1, item 10): one generic message per repository
