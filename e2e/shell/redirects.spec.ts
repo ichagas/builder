@@ -19,6 +19,8 @@ const SIMPLE_ROWS: Array<[legacy: string, expectedSuffix: string]> = [
   ["/tech-stacks", "/library/tech-stacks"],
   ["/build-books", "/library/build-books"],
   ["/build-books/new", "/library/build-books/new"],
+  [`/build-books/${seed.buildBookId}`, `/library/build-books/${seed.buildBookId}`],
+  [`/build-books/${seed.buildBookId}/edit`, `/library/build-books/${seed.buildBookId}/edit`],
 ];
 
 const PROJECT_ROWS: Array<[legacyPage: string, expectedSuffix: string]> = [
