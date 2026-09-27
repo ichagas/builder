@@ -17,10 +17,12 @@ export function useShareToken(projectId?: string) {
       const cachedToken = getProjectToken(projectId);
       if (cachedToken) return cachedToken;
     }
-    
-    // Fall back to URL params (skip if masked)
+
+    // Fall back to URL params (skip if masked). `t` is the new-URL query
+    // param name (contracts/routes.md "Share tokens": new routes redirect
+    // to `?t=:token`); `token` is kept for any remaining legacy callers.
     const tokenFromPath = params.token;
-    const tokenFromQuery = searchParams.get("token");
+    const tokenFromQuery = searchParams.get("token") || searchParams.get("t");
     const urlToken = tokenFromPath || tokenFromQuery;
     
     // Don't return 'masked' as a valid token
@@ -34,7 +36,7 @@ export function useShareToken(projectId?: string) {
   // Compute initial token missing state synchronously
   const computeInitialTokenMissing = (): boolean => {
     const tokenFromPath = params.token;
-    const tokenFromQuery = searchParams.get("token");
+    const tokenFromQuery = searchParams.get("token") || searchParams.get("t");
     const tokenParam = tokenFromPath || tokenFromQuery;
     
     // If URL has /t/masked but no cached token, token is missing
@@ -54,7 +56,7 @@ export function useShareToken(projectId?: string) {
     const cachedToken = projectId ? getProjectToken(projectId) : null;
     // Also consider it set if there's no token param (authenticated user access)
     const tokenFromPath = params.token;
-    const tokenFromQuery = searchParams.get("token");
+    const tokenFromQuery = searchParams.get("token") || searchParams.get("t");
     const hasTokenParam = !!(tokenFromPath || tokenFromQuery);
     return !!cachedToken || !projectId || !hasTokenParam;
   });
@@ -64,7 +66,7 @@ export function useShareToken(projectId?: string) {
   useEffect(() => {
     // Priority: path param > query param (for backwards compatibility)
     const tokenFromPath = params.token;
-    const tokenFromQuery = searchParams.get("token");
+    const tokenFromQuery = searchParams.get("token") || searchParams.get("t");
     const tokenParam = tokenFromPath || tokenFromQuery;
     
     // Case 1: Real token in URL (not 'masked') - store and mask

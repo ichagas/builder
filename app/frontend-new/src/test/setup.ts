@@ -1,4 +1,8 @@
 import "@testing-library/jest-dom/vitest";
+// Initializes i18next with the app's English resources (T038) so
+// components using useTranslation() render real copy in tests, not raw
+// translation keys.
+import "@/i18n";
 
 // jsdom 28 does not expose a usable Web Storage implementation in this Vitest
 // environment (`localStorage.clear` is missing), so provide a minimal,
@@ -54,3 +58,21 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: vi.fn(),
   })),
 });
+
+// jsdom does not implement ResizeObserver — cmdk (the CommandPalette's,
+// T036, underlying library) observes element size. A no-op stub is enough
+// for tests, which don't assert on layout.
+if (typeof window.ResizeObserver === "undefined") {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}
+
+// jsdom does not implement Element.scrollIntoView (used by cmdk and by
+// TimelineStrip, T026, to keep the selection in view).
+if (typeof Element.prototype.scrollIntoView === "undefined") {
+  Element.prototype.scrollIntoView = function scrollIntoView() {};
+}

@@ -124,6 +124,46 @@ Tear down when done:
 e2e/scripts/stack.sh down
 ```
 
+## Running several stacks in parallel (e.g. two agents/WPs at once)
+
+`stack.sh` and `serve-app.sh` each read their own port env vars independently
+and don't pass them to each other or to the Playwright process — so running
+two stacks side by side (different worktrees, different agents) needs the
+*same* set of env vars **exported** (not just prefixed on one command) in
+each shell before running any of `stack.sh`, `serve-app.sh` and `npx
+playwright test`/`npm run test:*`:
+
+- `COMPOSE_PROJECT_NAME` — distinct per stack, or `stack.sh down` in one
+  worktree tears down the other's Postgres containers too.
+- `DB_PORT` and `GENAPPS_DB_PORT` — distinct Postgres ports (`stack.sh`
+  binds these on the host).
+- `API_PORT` — distinct API port. `stack.sh` only uses this to start the API
+  process; it does **not** export it back out, and `serve-app.sh` (which
+  sets `VITE_API_BASE_URL` from it) and **`e2e/lib/config.ts`** (which the
+  Playwright test process reads `process.env.API_PORT` from directly, via
+  `config.apiBaseUrl`) each need it in their own env too. If you only export
+  it for `stack.sh`, the test run silently falls back to the default
+  `3140` and hits the wrong (or no) API.
+- The port you pass to `serve-app.sh` — distinct per app under test, and
+  matching `BASE_URL`/`FE_PORT` for whichever suite you run against it.
+
+Example, running a second stack alongside a default one:
+
+```bash
+export COMPOSE_PROJECT_NAME=e2e-f3
+export DB_PORT=55441
+export GENAPPS_DB_PORT=55442
+export API_PORT=3241
+e2e/scripts/stack.sh up
+e2e/scripts/serve-app.sh new 8241   # reads API_PORT from the same shell
+BASE_URL=http://localhost:8241 API_PORT=3241 npm run test:new   # or test:legacy
+```
+
+If `serve-app.sh`'s `vite` fails to bind (`EAFNOSUPPORT` on `::`, seen in
+some sandboxes), run it directly with `--host 127.0.0.1` instead — see the
+`app/frontend` example earlier in this file for the equivalent explicit
+`vite` invocation; the same flag applies when serving `app/frontend-new`.
+
 ## Coverage notes (things PR-xx specs intentionally don't exercise)
 
 Each spec's own header comment says what it covers and skips; the recurring

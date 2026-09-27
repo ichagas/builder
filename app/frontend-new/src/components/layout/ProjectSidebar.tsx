@@ -8,6 +8,7 @@ import { useProjectUrl } from "@/hooks/useProjectUrl";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { useShareToken } from "@/hooks/useShareToken";
+import { useShell } from "@/components/shell/ShellContext";
 
 interface ProjectSidebarProps {
   projectId: string;
@@ -37,6 +38,8 @@ const experimentalNavItems = [
 const comingSoonItems: Array<{ icon: any; label: string }> = [];
 
 export function ProjectSidebar({ projectId, isOpen = false, onOpenChange }: ProjectSidebarProps) {
+  // T034 embedded mode (transitional): see PrimaryNav.tsx for the rationale.
+  const { embedded } = useShell();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [projectName, setProjectName] = useState<string>("");
   const isMobile = useIsMobile();
@@ -67,6 +70,8 @@ export function ProjectSidebar({ projectId, isOpen = false, onOpenChange }: Proj
       loadProject();
     }
   }, [projectId, token]);
+
+  if (embedded) return null;
 
   // Don't render on mobile if not open
   if (isMobile && !isMobileOpen) {

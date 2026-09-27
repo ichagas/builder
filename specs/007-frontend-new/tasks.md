@@ -39,20 +39,20 @@
 - [X] T021 (WP-F2) `FE/src/design/tailwind-preset.ts` wired into `FE/tailwind.config.ts`: new color groups (`ok`, `warn`, `bad`, `define`, `design`, `build`, `ship`, `mesh-*`, `rail-*`, `*-soft`), IBM Plex fonts, radius 4px, density.
 - [X] T022 [P] (WP-F2) Adjust the shadcn primitives in `FE/src/components/ui/` only where variables aren't enough (button heights 40/44px, tabs with an underline indicator, dialog radius, focus ring).
 - [X] T023 [P] (WP-F2) Domain atoms `FE/src/components/shell/atoms/` (TypeChip, DeltaChip, MeshDots, StackBadge, PrChip, VersionTag, RepoRow, AdoptionBar, EmptyState) with tests.
-- [ ] T024 (WP-F3) `AppShell`, `GlobalBar`, `ModeBadge`, `StatusPill` — `FE/src/components/shell/`.
-- [ ] T025 [P] (WP-F3) `Rail`, `PhaseNode` (collapse pref).
-- [ ] T026 [P] (WP-F3) `TimelineStrip` (one "Building" version until B1).
-- [ ] T027 [P] (WP-F3) `PageHeader`, `PrimaryActionSlot`, `MobileTabBar`.
-- [ ] T028 [P] (WP-F3) `ActionButton`, `NextStepBanner`, `Disclosure`, `Stepper`, `Inspector`, `FilterChips`.
-- [ ] T029 [P] (WP-F3) `UndoBar` + `useUndo`, `StatusCenter` + `useLongTask` — `FE/src/lib/state/`.
+- [X] T024 (WP-F3) `AppShell`, `GlobalBar`, `ModeBadge`, `StatusPill` — `FE/src/components/shell/`.
+- [X] T025 [P] (WP-F3) `Rail`, `PhaseNode` (collapse pref).
+- [X] T026 [P] (WP-F3) `TimelineStrip` (one "Building" version until B1).
+- [X] T027 [P] (WP-F3) `PageHeader`, `PrimaryActionSlot`, `MobileTabBar`.
+- [X] T028 [P] (WP-F3) `ActionButton`, `NextStepBanner`, `Disclosure`, `Stepper`, `Inspector`, `FilterChips`.
+- [X] T029 [P] (WP-F3) `UndoBar` + `useUndo`, `StatusCenter` + `useLongTask` — `FE/src/lib/state/`.
 - [X] T030 (WP-F2b) Codemod `scripts/codemods/colors-to-tokens.ts` with the mapping table from `contracts/design-system.md` §1.1, a dry-run report and a list of unmapped cases.
 - [X] T031 (WP-F2b) Run the codemod on `FE/src/components/**` and `FE/src/pages/**` in area batches (one commit per area). Fix unmapped cases. Switch the token lint (T018) to error mode. Unit tests stay green. Applied: see `specs/007-frontend-new/codemod/colors-dry-run.md` "Applied (T031)" section for final counts and the manual fixes. Along the way: extended the codemod's mapping tables to close all 295 originally-unmapped tokens (broadened shade ranges + 5 new hue groups, unit-tested); found and fixed a real codemod bug (a `cn(...)` call nested inside `className={cn(...)}` was edited twice, corrupting the file — verified the 3 areas already committed before the fix were unaffected); extended the token lint rule to also see object-literal property values and template-literal expressions (its own T030-documented blind spots), with a per-file dedupe and new rule tests; added a `--ide-*` token group to `tokens.css` for a recurring fixed VS-Code-style palette across the code/file-browsing widgets; hand-fixed or `eslint-disable`d (with a reason each) the remainder — Canvas 2D/D3 graph-node colors, PNG/PDF export backgrounds, PowerPoint's own OOXML theme colors, and one Recharts attribute-selector false positive. `token-lint/no-raw-tailwind-colors` is now `"error"` in `eslint.config.js`, and `npm run lint` reports 0 token-lint problems.
-- [ ] T032 (WP-F3) `FE/src/lib/state/useUrlState.ts`, `useUiPrefs.ts` with tests.
-- [ ] T033 (WP-F3) Router: convert `FE/src/App.tsx` to `createBrowserRouter` in `FE/src/app/router.tsx`, with layouts in `FE/src/app/layouts/`, a **route metadata registry** `FE/src/app/routes/*.tsx` (`phase`, `tool`, `title`, `usePrimaryAction`), all legacy redirects per `contracts/routes.md` §1 (including `/t/:token`), and NotFound.
-- [ ] T034 (WP-F3) **Embedded mode (transitional):** `ShellContext` with `embedded=true` inside the new layouts. `components/layout/PrimaryNav`, `ProjectSidebar` and `ProjectPageHeader` render `null` when embedded, so every legacy page works in the shell from day one. Removed in T070.
+- [X] T032 (WP-F3) `FE/src/lib/state/useUrlState.ts`, `useUiPrefs.ts` with tests.
+- [X] T033 (WP-F3) Router: convert `FE/src/App.tsx` to `createBrowserRouter` in `FE/src/app/router.tsx`, with layouts in `FE/src/app/layouts/`, a **route metadata registry** `FE/src/app/routes/*.tsx` (`phase`, `tool`, `title`, `usePrimaryAction`), all legacy redirects per `contracts/routes.md` §1 (including `/t/:token`), and NotFound.
+- [X] T034 (WP-F3) **Embedded mode (transitional):** `ShellContext` with `embedded=true` inside the new layouts. `components/layout/PrimaryNav`, `ProjectSidebar` and `ProjectPageHeader` render `null` when embedded, so every legacy page works in the shell from day one. Removed in T070.
 - [ ] T035 (WP-F5) Long-task bridge: register existing runs with `useLongTask`, using `useProjectAgent`, `useAuditPipeline`, `useRealtimeDeployments` and the agent session hooks, so they appear in the status pill and center. No page changes.
-- [ ] T036 [P] (WP-F3) ⌘K palette (projects, tools, library).
-- [ ] T038 [P] (WP-F3) Translation-ready setup (D-16): `react-i18next` with `FE/src/i18n/en.json`, used by the shell and all new-capability screens. English only. No extraction of existing pages.
+- [X] T036 [P] (WP-F3) ⌘K palette (projects, tools, library).
+- [X] T038 [P] (WP-F3) Translation-ready setup (D-16): `react-i18next` with `FE/src/i18n/en.json`, used by the shell and all new-capability screens. English only. No extraction of existing pages.
 - [ ] T037 (WP-F6) Foundation E2E: `e2e/shell/remount.spec.ts`, `redirects.spec.ts` (every row of routes §1), `mobile-reach.spec.ts`, axe on the shell.
 
 ## Phase 3: US1 + US2, restyle the Builder pages (P1) 🎯 MVP

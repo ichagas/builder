@@ -1,0 +1,777 @@
+{
+  "recordedAt": "2026-09-27T12:31:26.556Z",
+  "note": "Axe violation counts for app/frontend-new (new app), recorded post-F2b-merge with design tokens live (WP-F3 pre-merge step 2 re-run). Compare against axe-legacy.json (legacy baseline) and axe-new-f2b.json (prior new-app run) -- a row where this run has MORE serious+critical violations than axe-legacy.json for the same pageId/viewport is a shell-introduced regression.",
+  "pages": [
+    {
+      "pageId": "pr-03-viewer",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-03-viewer",
+      "viewport": "mobile",
+      "serious": 1,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-07",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 9,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 9
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-07",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 10,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 10
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-08",
+      "viewport": "desktop",
+      "serious": 4,
+      "critical": 14,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 14
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-08",
+      "viewport": "mobile",
+      "serious": 2,
+      "critical": 3,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 3
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-10",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 2,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 2
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-10",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-11",
+      "viewport": "desktop",
+      "serious": 3,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 3
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-11",
+      "viewport": "mobile",
+      "serious": 1,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-16",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 4,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 4
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-16",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 9,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 9
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-17",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 4,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 4
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-17",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 9,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 9
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-18",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-18",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-19",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "empty-heading",
+          "impact": "minor",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-19",
+      "viewport": "mobile",
+      "serious": 2,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "empty-heading",
+          "impact": "minor",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-20-admin",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-20-admin",
+      "viewport": "mobile",
+      "serious": 1,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-20-auth",
+      "viewport": "desktop",
+      "serious": 2,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2
+        },
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-20-auth",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "landmark-main-is-top-level",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-no-duplicate-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-21-landing",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "landmark-one-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 2
+        }
+      ]
+    },
+    {
+      "pageId": "pr-21-landing",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "landmark-one-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 2
+        }
+      ]
+    },
+    {
+      "pageId": "pr-21-legal",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    },
+    {
+      "pageId": "pr-21-legal",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    }
+  ]
+}

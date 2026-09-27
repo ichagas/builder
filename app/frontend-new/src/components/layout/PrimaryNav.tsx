@@ -17,13 +17,21 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useShell } from "@/components/shell/ShellContext";
 
 export function PrimaryNav() {
+  // T034 embedded mode (transitional): every legacy page still renders
+  // <PrimaryNav/>, but inside the new shell (RootLayout/ProjectLayout,
+  // T033) it must render nothing — the shell's own GlobalBar/Rail replace
+  // it. Removed once this legacy component is deleted in T070.
+  const { embedded } = useShell();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  if (embedded) return null;
 
   const handleSignOut = async () => {
     // With Easy Auth, signOut redirects to /.auth/logout

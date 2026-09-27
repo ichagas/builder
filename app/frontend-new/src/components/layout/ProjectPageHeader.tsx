@@ -1,6 +1,7 @@
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReactNode } from "react";
+import { useShell } from "@/components/shell/ShellContext";
 
 interface ProjectPageHeaderProps {
   title: string;
@@ -10,6 +11,10 @@ interface ProjectPageHeaderProps {
 }
 
 export function ProjectPageHeader({ title, subtitle, onMenuClick, actions }: ProjectPageHeaderProps) {
+  // T034 embedded mode (transitional): see PrimaryNav.tsx for the rationale.
+  const { embedded } = useShell();
+  if (embedded) return null;
+
   return (
     <div className="flex flex-col gap-4 mb-6">
       {/* Title row: hamburger + title/subtitle */}
