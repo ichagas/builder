@@ -815,7 +815,7 @@ export default function Chat() {
       <PageHeader crumb="Define" />
 
       <div className="flex relative flex-1 overflow-hidden">
-        <main className="flex-1 w-full flex overflow-hidden">
+        <div className="flex-1 w-full flex overflow-hidden">
           {/* Sessions Sidebar */}
           <div
             className={`border-r border-border bg-card transition-all duration-300 flex flex-col ${
@@ -1133,7 +1133,7 @@ export default function Chat() {
               </div>
             )}
           </div>
-        </main>
+        </div>
       </div>
 
       {/* Project Selector */}
