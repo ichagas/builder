@@ -114,5 +114,13 @@ whose most recent `pull-requests` confirm could not open a PR for it (no
 generated files, a disallowed generated path, or an upstream GitHub/Azure
 DevOps failure — never the raw upstream error text, which is logged
 server-side only). Empty once every selected repository has an open PR.
+It also carries a **blocked** warning (`"<full_name>: already onboarded to
+another application; not registered under this one"`) for a repository whose
+PR opened but which is already registered (`application_repositories`) to a
+different application — whether found up front or lost to a concurrent
+confirm (the guarded upsert `RETURNING` no row, fix round 3). A blocked
+repository is never reassigned; if every repository in the call is blocked,
+no application is created for the run. The confirm itself still succeeds
+(`prs_open`); the warning is the blocked state.
 
 Realtime: `onboarding-{runId}` streams `{type:"log"|"step"|"done", ...}`.

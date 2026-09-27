@@ -153,6 +153,9 @@ beforeEach(() => {
   mockDbQuery.mockImplementation(async (sql: string) => {
     if (sql.includes("SELECT version FROM public.standards_packs")) return { rows: [{ version: "2026.3" }] };
     if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
+    // The guarded upsert (fix round 3, item 3) RETURNs the row when it
+    // actually linked it; 0 rows means "blocked".
+    if (sql.includes("INSERT INTO public.application_repositories")) return { rows: [{ application_id: "app-1" }] };
     return { rows: [] };
   });
 });
@@ -732,6 +735,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     mockDbQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
       if (sql.includes("ar.report_secret_ref")) return { rows: [] };
+      if (sql.includes("INSERT INTO public.application_repositories")) return { rows: [{ application_id: "app-1" }] };
       return { rows: [] };
     });
     mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", application_id: "app-1" }));
@@ -760,6 +764,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     mockDbQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
       if (sql.includes("ar.report_secret_ref")) return { rows: [] };
+      if (sql.includes("INSERT INTO public.application_repositories")) return { rows: [{ application_id: "app-1" }] };
       return { rows: [] };
     });
     mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", application_id: "app-1" }));
@@ -811,6 +816,7 @@ describe("openPullRequests — confirm gate and idempotency", () => {
           ],
         };
       }
+      if (sql.includes("INSERT INTO public.application_repositories")) return { rows: [{ application_id: "app-1" }] };
       return { rows: [] };
     });
     mockUpdateRun.mockResolvedValue(baseRun({ status: "prs_open", application_id: "app-1" }));
@@ -1133,8 +1139,13 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     expect(mockReleasePrLease).toHaveBeenCalledWith(RUN_ID, ownerToken);
     // No transaction-held advisory lock — claimPrLease/releasePrLease are
     // independent, short statements, not a `db.transaction()` wrapping the
-    // whole PR-opening call.
-    expect(mockDbTransaction).not.toHaveBeenCalled();
+    // whole PR-opening call. The only transaction is the DB-only
+    // application-link step (fix round 3, item 3), which starts after every
+    // provider call has finished.
+    expect(mockDbTransaction).toHaveBeenCalledTimes(1);
+    expect(mockDbTransaction.mock.invocationCallOrder[0]).toBeGreaterThan(
+      Math.max(...mockOpenPr.mock.invocationCallOrder)
+    );
   });
 
   it("409s with 'PR opening already in progress' when the lease claim finds 0 rows (another confirm is in flight)", async () => {
@@ -1147,6 +1158,122 @@ describe("openPullRequests — confirm gate and idempotency", () => {
     });
     expect(mockOpenPr).not.toHaveBeenCalled();
     expect(mockReleasePrLease).not.toHaveBeenCalled(); // never claimed, nothing to release
+  });
+
+  describe("repository already linked to another application (blocked; fix round 2 item 1, fix round 3 item 3)", () => {
+    function readyRepo(fullName: string) {
+      return {
+        full_name: fullName,
+        selected: true,
+        pr_number: null,
+        detected_ci: "github_actions",
+        review: { summary: "ok" },
+        generated_manifest: [{ path: ".github/workflows/assurance-mesh.yml", content: "y" }],
+      };
+    }
+    const upsertCalls = () =>
+      mockDbQuery.mock.calls.filter(([sql]) => String(sql).includes("INSERT INTO public.application_repositories"));
+
+    beforeEach(() => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: null }));
+      mockOpenPr.mockResolvedValue({ prNumber: 42, prState: "open", defaultBranch: "main" });
+      mockUpdateRun.mockImplementation(async (_id: string, patch: any) => baseRun({ status: "prs_open", ...patch }));
+    });
+
+    it("pre-check: a repository registered to another application is never upserted and is marked blocked", async () => {
+      mockListRepos.mockResolvedValue([readyRepo("goa/permits-api")]);
+      mockDbQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes("ar.report_secret_ref")) {
+          return { rows: [{ application_id: "other-app", organization_id: "org-2", report_secret_ref: "x", default_branch: "main" }] };
+        }
+        if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
+        return { rows: [] };
+      });
+
+      const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      expect(upsertCalls()).toHaveLength(0);
+      expect(mockDbQuery.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO public.applications"))).toBe(false);
+      expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ applicationId: expect.anything() }));
+      expect(mockUpdateRepo).toHaveBeenCalledWith(RUN_ID, "goa/permits-api", {
+        review: { summary: "ok", applicationLinkWarning: onboarding.APPLICATION_LINK_BLOCKED_WARNING },
+      });
+      expect(view.status).toBe("prs_open");
+    });
+
+    it("race: the guarded upsert RETURNs no row -> blocked, and the application created for it is rolled back", async () => {
+      mockListRepos.mockResolvedValue([readyRepo("goa/permits-api")]);
+      // Pre-check sees nothing registered; by the time the upsert runs,
+      // another run registered it -> ON CONFLICT ... WHERE matches 0 rows.
+      mockDbQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
+        return { rows: [] };
+      });
+
+      const view = await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      const [upsert] = upsertCalls();
+      expect(String(upsert[0])).toMatch(/RETURNING application_id/);
+      // Application insert + upsert ran inside one transaction, which was
+      // aborted (the callback rejected) so no empty application survives.
+      expect(mockDbTransaction).toHaveBeenCalledTimes(1);
+      await expect(mockDbTransaction.mock.results[0].value).rejects.toBeDefined();
+      expect(mockUpdateRun).not.toHaveBeenCalledWith(RUN_ID, expect.objectContaining({ applicationId: expect.anything() }));
+      expect(mockUpdateRepo).toHaveBeenCalledWith(
+        RUN_ID,
+        "goa/permits-api",
+        expect.objectContaining({
+          review: expect.objectContaining({ applicationLinkWarning: onboarding.APPLICATION_LINK_BLOCKED_WARNING }),
+        })
+      );
+      // The PR itself did open; the run still advances, with the warning.
+      expect(view.status).toBe("prs_open");
+    });
+
+    it("race, partial: only the repository whose upsert RETURNs nothing is blocked; the rest link to the new application", async () => {
+      mockListRepos.mockResolvedValue([readyRepo("goa/linked"), readyRepo("goa/taken")]);
+      mockDbQuery.mockImplementation(async (sql: string, params?: any[]) => {
+        if (sql.includes("INSERT INTO public.applications")) return { rows: [{ id: "app-1" }] };
+        if (sql.includes("INSERT INTO public.application_repositories")) {
+          return params?.[2] === "goa/taken" ? { rows: [] } : { rows: [{ application_id: "app-1" }] };
+        }
+        return { rows: [] };
+      });
+
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      expect(mockUpdateRun).toHaveBeenCalledWith(RUN_ID, { applicationId: "app-1" });
+      const warned = mockUpdateRepo.mock.calls.filter(([, , patch]) => patch?.review?.applicationLinkWarning);
+      expect(warned.map(([, name]) => name)).toEqual(["goa/taken"]);
+    });
+
+    it("race on a retry (application already exists): blocked, the existing application is kept", async () => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "ready", application_id: "app-1" }));
+      mockClaimPrLease.mockResolvedValue(baseRun({ status: "ready", application_id: "app-1" }));
+      mockListRepos.mockResolvedValue([readyRepo("goa/permits-api")]);
+      mockDbQuery.mockImplementation(async () => ({ rows: [] }));
+
+      await onboarding.openPullRequests(USER_ID, RUN_ID, { confirm: true });
+
+      expect(mockDbQuery.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO public.applications"))).toBe(false);
+      expect(await mockDbTransaction.mock.results[0].value).toEqual({ applicationId: "app-1", blocked: ["goa/permits-api"] });
+      expect(mockUpdateRepo).toHaveBeenCalledWith(
+        RUN_ID,
+        "goa/permits-api",
+        expect.objectContaining({
+          review: expect.objectContaining({ applicationLinkWarning: onboarding.APPLICATION_LINK_BLOCKED_WARNING }),
+        })
+      );
+    });
+
+    it("surfaces the blocked state in the run's warnings", async () => {
+      mockGetRunById.mockResolvedValue(baseRun({ status: "prs_open" }));
+      mockListRepos.mockResolvedValue([
+        { ...readyRepo("goa/permits-api"), pr_number: 42, review: { applicationLinkWarning: onboarding.APPLICATION_LINK_BLOCKED_WARNING } },
+      ]);
+      const view = await onboarding.getRun(USER_ID, RUN_ID);
+      expect(view.warnings).toEqual([`goa/permits-api: ${onboarding.APPLICATION_LINK_BLOCKED_WARNING}`]);
+    });
   });
 
   it("releases the lease even when opening every PR fails (finally, not just on success)", async () => {

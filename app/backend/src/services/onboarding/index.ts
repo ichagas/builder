@@ -77,6 +77,15 @@ async function requireRunAccess(userId: string, runId: string): Promise<Onboardi
   return run;
 }
 
+/**
+ * Per-repository warning for a repository that could not be registered
+ * under this run's application because it is already registered to another
+ * one (contracts/api.md, B3 `warnings`). Generic on purpose: never names the
+ * other application or organization.
+ */
+export const APPLICATION_LINK_BLOCKED_WARNING =
+  "already onboarded to another application; not registered under this one";
+
 function repositoryWarning(repo: OnboardingRunRepositoryRow): string | null {
   const review = (repo.review ?? {}) as { prError?: string; applicationLinkWarning?: string };
   const message = review.prError || review.applicationLinkWarning;
@@ -566,59 +575,100 @@ async function linkApplicationForRun(
     return { applicationId, blocked };
   }
 
-  let resolvedApplicationId = applicationId;
-  if (!resolvedApplicationId) {
-    const { rows } = await db.query(
-      `INSERT INTO public.applications (team_id, name, onboarded_at)
-       VALUES ($1, $2, now())
-       RETURNING id`,
-      [run.team_id, run.application_name]
-    );
-    resolvedApplicationId = rows[0].id;
-  }
-
+  // Resolve every value that may need external I/O (the secret store) up
+  // front, so the transaction below only ever holds its connection for DB
+  // statements.
+  const rowsToLink: Array<{ repo: OnboardingRunRepositoryRow; defaultBranch: string; reportSecretRef: string }> = [];
   for (const repo of toLink) {
     const existing = existingByRepo.get(repo.full_name);
-    const defaultBranch = defaultBranchByRepo.get(repo.full_name) ?? existing?.defaultBranch ?? "main";
-    const reportSecretRef =
-      secretRefByRepo.get(repo.full_name) ?? existing?.reportSecretRef ?? (await resolveReportSecretRef(repo.full_name, organizationId));
-
-    await db.query(
-      `INSERT INTO public.application_repositories
-         (application_id, provider, full_name, default_branch, ci_provider, profile, stack_label, part, build_command, pinned_pack, connection_id, report_secret_ref)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       ON CONFLICT (full_name) DO UPDATE SET
-         application_id = EXCLUDED.application_id,
-         provider = EXCLUDED.provider,
-         default_branch = EXCLUDED.default_branch,
-         ci_provider = EXCLUDED.ci_provider,
-         profile = EXCLUDED.profile,
-         stack_label = EXCLUDED.stack_label,
-         part = EXCLUDED.part,
-         build_command = EXCLUDED.build_command,
-         pinned_pack = EXCLUDED.pinned_pack,
-         connection_id = EXCLUDED.connection_id,
-         report_secret_ref = EXCLUDED.report_secret_ref,
-         updated_at = now()
-       WHERE application_repositories.application_id = EXCLUDED.application_id`,
-      [
-        resolvedApplicationId,
-        providerForRepository(repo.full_name),
-        repo.full_name,
-        defaultBranch,
-        repo.detected_ci,
-        repo.detected_profile,
-        repo.detected_stack,
-        repo.part,
-        repo.detected_build,
-        run.pack_version,
-        run.connection_id,
-        reportSecretRef,
-      ]
-    );
+    rowsToLink.push({
+      repo,
+      defaultBranch: defaultBranchByRepo.get(repo.full_name) ?? existing?.defaultBranch ?? "main",
+      reportSecretRef:
+        secretRefByRepo.get(repo.full_name) ??
+        existing?.reportSecretRef ??
+        (await resolveReportSecretRef(repo.full_name, organizationId)),
+    });
   }
 
-  return { applicationId: resolvedApplicationId, blocked };
+  // Fix round 3, item 3: the pre-check above can't close the race where
+  // another run registers the same repository between it and this insert.
+  // The `ON CONFLICT ... DO UPDATE ... WHERE` guard then leaves the other
+  // application's row untouched and affects 0 rows — which used to be
+  // silent (the repository looked linked but wasn't). `RETURNING` makes it
+  // observable: 0 rows means blocked, same as the pre-check's outcome. If
+  // that leaves an application created here with no repository at all, the
+  // whole transaction is rolled back so no empty application is left behind.
+  const createdApplication = !applicationId;
+  const NOTHING_LINKED = Symbol("nothing-linked");
+  try {
+    return await db.transaction(async (client) => {
+      let resolvedApplicationId = applicationId;
+      if (!resolvedApplicationId) {
+        const { rows } = await client.query(
+          `INSERT INTO public.applications (team_id, name, onboarded_at)
+           VALUES ($1, $2, now())
+           RETURNING id`,
+          [run.team_id, run.application_name]
+        );
+        resolvedApplicationId = rows[0].id as string;
+      }
+
+      const blockedInTx: string[] = [];
+      for (const { repo, defaultBranch, reportSecretRef } of rowsToLink) {
+        const result = await client.query(
+          `INSERT INTO public.application_repositories
+             (application_id, provider, full_name, default_branch, ci_provider, profile, stack_label, part, build_command, pinned_pack, connection_id, report_secret_ref)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (full_name) DO UPDATE SET
+             application_id = EXCLUDED.application_id,
+             provider = EXCLUDED.provider,
+             default_branch = EXCLUDED.default_branch,
+             ci_provider = EXCLUDED.ci_provider,
+             profile = EXCLUDED.profile,
+             stack_label = EXCLUDED.stack_label,
+             part = EXCLUDED.part,
+             build_command = EXCLUDED.build_command,
+             pinned_pack = EXCLUDED.pinned_pack,
+             connection_id = EXCLUDED.connection_id,
+             report_secret_ref = EXCLUDED.report_secret_ref,
+             updated_at = now()
+           WHERE application_repositories.application_id = EXCLUDED.application_id
+           RETURNING application_id`,
+          [
+            resolvedApplicationId,
+            providerForRepository(repo.full_name),
+            repo.full_name,
+            defaultBranch,
+            repo.detected_ci,
+            repo.detected_profile,
+            repo.detected_stack,
+            repo.part,
+            repo.detected_build,
+            run.pack_version,
+            run.connection_id,
+            reportSecretRef,
+          ]
+        );
+        if ((result.rows?.length ?? 0) === 0) {
+          logger.warn(
+            `[onboarding] not reassigning ${repo.full_name}: registered to another application concurrently (run=${run.id})`
+          );
+          blockedInTx.push(repo.full_name);
+        }
+      }
+
+      if (createdApplication && blockedInTx.length === rowsToLink.length) {
+        blocked.push(...blockedInTx);
+        throw NOTHING_LINKED;
+      }
+      blocked.push(...blockedInTx);
+      return { applicationId: resolvedApplicationId, blocked };
+    });
+  } catch (err) {
+    if (err === NOTHING_LINKED) return { applicationId: null, blocked };
+    throw err;
+  }
 }
 
 /**
@@ -804,13 +854,15 @@ export async function openPullRequests(
         updated = await updateRun(runId, { applicationId });
       }
 
-      // Fix round 2, item 1: a repository whose PR opened successfully but
-      // that already belongs to a different application is not reassigned
-      // — surface that as a warning rather than silently dropping it.
+      // Fix round 2, item 1 (+ fix round 3, item 3 for the concurrent
+      // case): a repository whose PR opened successfully but that already
+      // belongs to a different application is not reassigned — it is
+      // marked blocked on the run (`review.applicationLinkWarning`, surfaced
+      // in `warnings`) rather than silently dropped.
       for (const fullName of blocked) {
         const repo = reposWithPr.find((r) => r.full_name === fullName);
         await updateRunRepositoryByFullName(runId, fullName, {
-          review: { ...(repo?.review ?? {}), applicationLinkWarning: "already onboarded elsewhere" },
+          review: { ...(repo?.review ?? {}), applicationLinkWarning: APPLICATION_LINK_BLOCKED_WARNING },
         });
       }
     }
