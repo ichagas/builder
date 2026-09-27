@@ -1,0 +1,42 @@
+{
+  "recordedAt": "2026-09-27T23:38:29.636Z",
+  "note": "Baseline violation counts recorded via --out axe-new-g2.json. See other files in this directory for what app/run they cover.",
+  "pages": [
+    {
+      "pageId": "pr-09",
+      "viewport": "desktop",
+      "serious": 10,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "nodes": 10
+        }
+      ]
+    },
+    {
+      "pageId": "pr-09",
+      "viewport": "mobile",
+      "serious": 10,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "nodes": 10
+        }
+      ]
+    }
+  ]
+}
