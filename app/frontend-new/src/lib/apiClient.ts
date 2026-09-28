@@ -85,6 +85,8 @@ export interface ApiError {
   message: string;
   code?: string;
   statusCode?: number;
+  /** Per-field validation detail (e.g. a 422's `{repositories: "..."}`), when the server sent one. */
+  details?: unknown;
 }
 
 // Token storage (kept for backward compatibility and offline caching)
@@ -191,16 +193,19 @@ class ApiClient {
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
+      let details: unknown;
       try {
         const errorData = await response.json();
         errorMessage = errorData.message || errorData.error || errorMessage;
+        details = errorData.details;
       } catch {
         // Response body may not be JSON
       }
-      
+
       const error: ApiError = {
         message: errorMessage,
         statusCode: response.status,
+        ...(details !== undefined && { details }),
       };
       throw error;
     }

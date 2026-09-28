@@ -20,11 +20,12 @@ import type { CommandPaletteItem } from "@/components/shell/CommandPalette";
  * "Portfolio, Onboard, Applications list (count + worst status dot),
  * Organization."
  *
- * Only the Portfolio route is wired here (WP-A1's scope, NA-01/NA-02) --
- * Onboard/Applications-list/Organization (Packs, Policy) sections belong to
- * WP-A2..A6/O1 and are left off the Rail rather than linking to routes that
- * don't exist yet (contracts/routes.md's WP-A1..A6/O1..O2 own those in
- * later work packages).
+ * Portfolio (WP-A1, NA-01/NA-02) and Onboard (WP-O1, T150, NO-01/NO-02) are
+ * wired here. Applications-list/Organization (Packs, Policy) sections
+ * belong to WP-A2..A6 and are left off the Rail rather than linking to
+ * routes that don't exist yet (contracts/routes.md's WP-A1..A6/O1..O2 own
+ * those in later work packages) -- a minimal, additive change on top of
+ * A1's Rail (which intentionally left Onboard off until this WP landed).
  */
 export function AssuranceLayout() {
   const { t } = useTranslation();
@@ -42,6 +43,12 @@ export function AssuranceLayout() {
   usePublishCommandPaletteItems(paletteItems);
 
   const portfolioHref = teamId ? `/assurance/t/${teamId}` : teams[0] ? `/assurance/t/${teams[0].id}` : "/assurance";
+  const onboardHref = teamId ? `/assurance/t/${teamId}/onboard` : teams[0] ? `/assurance/t/${teams[0].id}/onboard` : "/assurance";
+
+  const railSections = [
+    { id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref },
+    { id: "onboard", label: t("assurance.rail.onboard"), href: onboardHref },
+  ];
 
   return (
     <AppShell
@@ -53,18 +60,8 @@ export function AssuranceLayout() {
           statusPill={<StatusCenter />}
         />
       }
-      rail={
-        <Rail
-          ariaLabel={t("assurance.rail.ariaLabel")}
-          sections={[{ id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref }]}
-        />
-      }
-      mobileTabBar={
-        <MobileTabBar
-          ariaLabel={t("assurance.rail.ariaLabel")}
-          items={[{ id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref }]}
-        />
-      }
+      rail={<Rail ariaLabel={t("assurance.rail.ariaLabel")} sections={railSections} />}
+      mobileTabBar={<MobileTabBar ariaLabel={t("assurance.rail.ariaLabel")} items={railSections} />}
       undoBar={<UndoBar />}
     >
       <Outlet />
