@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
 
 /**
@@ -127,5 +127,88 @@ export function useTeamPortfolio(teamId: string | undefined): UseQueryResult<Tea
       return teamPortfolioSchema.parse(data);
     },
     enabled: !!teamId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mesh policy (T136, WP-A6, NA-08). See `app/backend/src/routes/mesh.ts`
+// (GET/PUT /mesh/policy?scope=&scopeId=) and `services/mesh/policy.ts` --
+// per check (`green`/`yellow`/`red`/`blue`) mode is `off`/`notify`/`issue`/
+// `block` (tighten-only ordering), and `cyberRiskSandbox` (D-17) is only
+// settable at `application`/`repository` scope, never `organization` or
+// `team` (the backend 400s otherwise) -- see `AdminIntegrations.tsx` for how
+// the org admin page uses this at `organization` scope for the four checks
+// and at `application` scope (an org admin can reach any application in
+// their organization, `checkApplicationAccess`) for the sandbox toggle.
+// ---------------------------------------------------------------------------
+
+export const meshPolicyScopeSchema = z.enum(["organization", "team", "application", "repository"]);
+export type MeshPolicyScope = z.infer<typeof meshPolicyScopeSchema>;
+
+export const meshPolicyModeSchema = z.enum(["off", "notify", "issue", "block"]);
+export type MeshPolicyMode = z.infer<typeof meshPolicyModeSchema>;
+
+export const MESH_AGENTS = ["green", "yellow", "red", "blue"] as const;
+export type MeshAgent = (typeof MESH_AGENTS)[number];
+
+/** GET /mesh/policy?scope=&scopeId= response. */
+export const meshPolicySchema = z.object({
+  scope: meshPolicyScopeSchema,
+  scopeId: z.string(),
+  effective: z.record(meshPolicyModeSchema),
+  cyberRiskSandbox: z.boolean(),
+  // Present on GET; PUT's response omits it (see routes/mesh.ts) -- optional
+  // here so the same schema parses both.
+  explicit: z
+    .array(
+      z.object({
+        agent: z.string(),
+        mode: meshPolicyModeSchema,
+        cyber_risk_sandbox: z.boolean().nullable(),
+      }),
+    )
+    .optional(),
+});
+export type MeshPolicy = z.infer<typeof meshPolicySchema>;
+
+export const meshPolicyKeys = {
+  policy: (scope: MeshPolicyScope, scopeId: string) => ["assurance", "meshPolicy", scope, scopeId] as const,
+};
+
+/** GET /mesh/policy?scope=&scopeId= -- effective mode per check plus the effective sandbox flag. */
+export function useMeshPolicy(scope: MeshPolicyScope, scopeId: string | undefined): UseQueryResult<MeshPolicy> {
+  return useQuery({
+    queryKey: meshPolicyKeys.policy(scope, scopeId ?? ""),
+    queryFn: async () => {
+      const data = await apiClient.get<unknown>(`/api/v1/mesh/policy?scope=${scope}&scopeId=${scopeId}`);
+      return meshPolicySchema.parse(data);
+    },
+    enabled: !!scopeId,
+  });
+}
+
+/**
+ * PUT /mesh/policy?scope=&scopeId= -- set one check's mode and/or the
+ * sandbox flag. Organization admins may set anything for their
+ * organization; a narrower scope may only tighten (enforced server-side --
+ * a 403 surfaces as a mutation error for the caller to show).
+ */
+export function useSetMeshPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      scope: MeshPolicyScope;
+      scopeId: string;
+      agent?: MeshAgent;
+      mode?: MeshPolicyMode;
+      cyberRiskSandbox?: boolean;
+    }) => {
+      const { scope, scopeId, ...body } = input;
+      const data = await apiClient.put<unknown>(`/api/v1/mesh/policy?scope=${scope}&scopeId=${scopeId}`, body);
+      return meshPolicySchema.parse(data);
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: meshPolicyKeys.policy(variables.scope, variables.scopeId) });
+    },
   });
 }

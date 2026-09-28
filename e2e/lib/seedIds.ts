@@ -26,4 +26,11 @@ export const seed = {
   assuranceApp1Id: "00000000-0000-4000-8000-000000000811",
   assuranceApp2Id: "00000000-0000-4000-8000-000000000812",
   assuranceOtherTeamAppId: "00000000-0000-4000-8000-000000000813",
+  // Admin -> Integrations (T136, WP-A6, NA-08). memberUserId is an
+  // organization member with no `user_roles` 'admin' row -- proves the page
+  // (and the backend behind it) refuse anyone but an organization admin.
+  memberUserId: "00000000-0000-4000-8000-0000000000a2",
+  memberEmail: "e2e-member@pronghorn.test",
+  memberName: "E2E Member",
+  azureDevOpsConnectionId: "00000000-0000-4000-8000-000000000901",
 } as const;

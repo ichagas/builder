@@ -184,4 +184,45 @@ VALUES
   ('00000000-0000-4000-8000-000000000824', '00000000-0000-4000-8000-000000000813', 'github', 'e2e-goa/licensing-api', 'main', 'github_actions', 'java', 'Java 21', 'api', '2026.2', NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- Admin -> Integrations (T136, WP-A6, NA-08) -------------------------------
+-- A non-admin org member, to prove the page (and the backend behind it)
+-- refuse anyone but an organization admin. Never given a `user_roles`
+-- 'admin' row -- unlike e2e-owner above.
+INSERT INTO auth.users (id, email, raw_user_meta_data, email_verified)
+VALUES (
+  '00000000-0000-4000-8000-0000000000a2',
+  'e2e-member@pronghorn.test',
+  '{"name":"E2E Member"}'::jsonb,
+  true
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.profiles (id, user_id, org_id, display_name, email)
+VALUES (
+  '00000000-0000-4000-8000-0000000000a2',
+  '00000000-0000-4000-8000-0000000000a2',
+  '00000000-0000-4000-8000-000000000001',
+  'E2E Member',
+  'e2e-member@pronghorn.test'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- No secret values here -- an azure_devops PAT is Key Vault-only and never
+-- appears in a seed file (see .github/agents/security.agent.md and BE8's
+-- own doc comment in app/backend/src/routes/admin/integrations.ts).
+-- `secret_ref` null + `status`='untested' represents "added, never tested",
+-- same as a freshly-created service-connection row.
+INSERT INTO public.integration_connections (id, organization_id, provider, auth_type, display_name, secret_ref, scope, status)
+VALUES (
+  '00000000-0000-4000-8000-000000000901',
+  '00000000-0000-4000-8000-000000000001',
+  'azure_devops',
+  'service_connection',
+  'GOA Azure DevOps',
+  NULL,
+  '{"organizationUrl":"https://dev.azure.com/e2e-goa","projects":["Permits"],"serviceConnectionId":"e2e-service-connection"}'::jsonb,
+  'untested'
+)
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

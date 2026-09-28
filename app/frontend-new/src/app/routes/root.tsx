@@ -4,6 +4,7 @@ import { useNoPrimaryAction, type SimpleRoute } from "./types";
 
 const Dashboard = lazyWithRetry(() => import("@/pages/Dashboard"));
 const Settings = lazyWithRetry(() => import("@/pages/Settings"));
+const AdminIntegrations = lazyWithRetry(() => import("@/pages/admin/AdminIntegrations"));
 
 /**
  * Top-level (non-project, non-library, non-public) routes. See
@@ -16,4 +17,8 @@ export const ROOT_ROUTES: SimpleRoute[] = [
   { path: "projects", title: "Dashboard", usePrimaryAction: useDashboardPrimaryAction, Component: Dashboard },
   { path: "settings/profile", title: "Profile settings", usePrimaryAction: useNoPrimaryAction, Component: Settings },
   { path: "settings/organization", title: "Organization settings", usePrimaryAction: useNoPrimaryAction, Component: Settings },
+  // — (new, US5, WP-A6): contracts/routes.md §1. Org admins only (FR-013,
+  // NA-08) — AdminIntegrations itself renders a no-access state for anyone
+  // else; the backend (`requireOrgAdmin`) is the real enforcement.
+  { path: "admin/integrations", title: "Integrations", usePrimaryAction: useNoPrimaryAction, Component: AdminIntegrations },
 ];
