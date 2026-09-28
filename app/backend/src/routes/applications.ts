@@ -58,12 +58,46 @@ router.get("/:appId", async (req: Request, res: Response) => {
     : 0;
   const adoption = totalRepos > 0 ? onLatest / totalRepos : null;
 
+  // Latest mesh run (verdicts per check, MeshDots) per repository, for the
+  // grouped grid (T131, WP-A2). One row per repository — its most recent
+  // report, regardless of pr_state — via DISTINCT ON; a repository with no
+  // run yet is simply absent from `latestRunByRepo` (RepoRow/MeshDots then
+  // render "none").
+  const repoIds = repoRows.map((r: any) => r.id);
+  const latestRunByRepo = new Map<string, any>();
+  if (repoIds.length > 0) {
+    const { rows: latestRunRows } = await db.query(
+      `SELECT DISTINCT ON (repository_id) repository_id, id AS run_id, verdicts, pr_state,
+              pr_number, new_findings, received_at
+       FROM public.mesh_runs
+       WHERE repository_id = ANY($1)
+       ORDER BY repository_id, received_at DESC`,
+      [repoIds],
+    );
+    for (const row of latestRunRows) {
+      latestRunByRepo.set(row.repository_id, row);
+    }
+  }
+
   // "Not reporting" after 7 days (research D-10), surfaced the same way as
   // the team portfolio (routes/teams.ts) — see services/mesh/realtime.ts.
-  const repositoriesWithStatus = repoRows.map((r: any) => ({
-    ...r,
-    not_reporting: isNotReporting(application.onboarded_at, r.last_report_at),
-  }));
+  const repositoriesWithStatus = repoRows.map((r: any) => {
+    const latestRun = latestRunByRepo.get(r.id) ?? null;
+    return {
+      ...r,
+      not_reporting: isNotReporting(application.onboarded_at, r.last_report_at),
+      latest_run: latestRun
+        ? {
+            run_id: latestRun.run_id,
+            verdicts: latestRun.verdicts,
+            pr_state: latestRun.pr_state,
+            pr_number: latestRun.pr_number,
+            new_findings: latestRun.new_findings,
+            received_at: latestRun.received_at,
+          }
+        : null,
+    };
+  });
 
   const { rows: exceptionRows } = await db.query(
     `SELECT me.id, me.repository_id, me.rule, me.reason, me.approved_by, me.expires_at, me.created_at
