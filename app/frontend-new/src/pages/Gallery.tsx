@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { GalleryCard } from "@/components/gallery/GalleryCard";
 import { GalleryPreviewDialog } from "@/components/gallery/GalleryPreviewDialog";
 import { GalleryCloneDialog } from "@/components/gallery/GalleryCloneDialog";
@@ -44,6 +44,20 @@ interface PublishedProject {
   published_at: string;
 }
 
+/**
+ * Gallery (T063, WP-L4). See plan.md "the move and restyle recipe": the
+ * page's own shell (PrimaryNav) is removed and the shared PageHeader
+ * (fed by the `gallery` row in `src/app/routes/library.tsx`) renders the
+ * heading instead. Browse/preview/clone are per-item actions, so the
+ * route keeps `useNoPrimaryAction` (no page-level main action).
+ *
+ * Behavior, data calls and dialogs are unchanged from legacy, including
+ * its known bugs (kept intentionally, see e2e/regression/pr-19.spec.ts):
+ * the `get_published_projects` RPC aliases name/description so gallery
+ * card and preview titles are always blank, and the clone flow fails
+ * silently (param name mismatch server-side, plus no shadcn `<Toaster/>`
+ * mounted for GalleryCloneDialog's `useToast` calls).
+ */
 export default function Gallery() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -118,203 +132,207 @@ export default function Gallery() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      <main className="container px-4 md:px-6 py-6 md:py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6 md:mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
-              <Sparkles className="h-7 w-7 text-primary" />
-              Project Gallery
-            </h1>
-            <p className="text-sm md:text-base text-muted-foreground">
-              Browse and clone published projects to kickstart your work
-            </p>
-          </div>
+    <div className="bg-background">
+      <PageHeader />
 
-          {/* Stats */}
-          <div className="flex items-center gap-4">
-            <div className="text-center px-4 py-2 bg-muted/50 rounded-lg">
-              <p className="text-2xl font-bold text-primary">{projects.length}</p>
-              <p className="text-xs text-muted-foreground">Projects</p>
+      <div className="p-4 md:p-6">
+        <div className="max-w-7xl mx-auto space-y-3 md:space-y-4">
+          {/* Sub-heading + stats */}
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            <div>
+              <p className="flex items-center gap-2 text-sm md:text-base text-muted-foreground">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Browse and clone published projects to kickstart your work
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="text-center px-4 py-2 bg-surface-2 rounded-lg">
+                <p className="text-2xl font-bold text-primary">{projects.length}</p>
+                <p className="text-xs text-muted-foreground">Projects</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Login prompt for non-authenticated users */}
-        {!user && (
-          <Alert className="mb-6">
-            <LogIn className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>Sign in to clone projects to your account</span>
-              <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
-                Sign In
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
+          {/* Login prompt for non-authenticated users */}
+          {!user && (
+            <Alert>
+              <LogIn className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Sign in to clone projects to your account</span>
+                <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
+                  Sign In
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {/* Filters and Search */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          {/* Category filter */}
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* View toggle */}
-          <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as "grid" | "list")}>
-            <ToggleGroupItem value="grid" aria-label="Grid view">
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="List view">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-
-        {/* Tag chips (show top tags) */}
-        {allTags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {allTags.slice(0, 10).map((tag) => (
-              <Badge
-                key={tag}
-                variant={searchQuery === tag ? "default" : "outline"}
-                className="cursor-pointer hover:bg-primary/10 transition-colors"
-                onClick={() => setSearchQuery(searchQuery === tag ? "" : tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Loading state */}
-        {isLoading ? (
-          <div className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : ""}`}>
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="aspect-video w-full" />
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ))}
-          </div>
-        ) : filteredProjects.length === 0 ? (
-          <div className="text-center py-16">
-            <ImageIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-            <h3 className="text-lg font-semibold mb-2">No projects found</h3>
-            <p className="text-muted-foreground">
-              {searchQuery || categoryFilter !== "all"
-                ? "Try adjusting your search or filters"
-                : "No projects have been published yet"}
-            </p>
-          </div>
-        ) : viewMode === "grid" ? (
-          /* Grid View */
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProjects.map((project) => (
-              <GalleryCard
-                key={project.id}
-                id={project.id}
-                name={project.name}
-                description={project.description}
-                imageUrl={project.image_url}
-                category={project.category}
-                tags={project.tags}
-                viewCount={project.view_count || 0}
-                cloneCount={project.clone_count || 0}
-                onPreview={() => handlePreview(project)}
-                onClone={() => handleClone(project)}
+          {/* Filters and Search */}
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
               />
-            ))}
-          </div>
-        ) : (
-          /* List View */
-          <div className="space-y-4">
-            {filteredProjects.map((project) => (
-              <div
-                key={project.id}
-                className="flex gap-4 p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
-              >
-                {/* Thumbnail */}
-                <div className="w-32 h-20 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                  {project.image_url ? (
-                    <img
-                      src={project.image_url}
-                      alt={project.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
-                    </div>
-                  )}
-                </div>
+            </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-lg line-clamp-1">{project.name}</h3>
-                  {project.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
-                      {project.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-4">
-                    {project.category && (
-                      <Badge variant="secondary">{project.category}</Badge>
+            {/* Category filter */}
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* View toggle */}
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(v) => v && setViewMode(v as "grid" | "list")}
+              className="self-start md:self-auto"
+            >
+              <ToggleGroupItem value="grid" aria-label="Grid view" className="min-h-11 min-w-11">
+                <LayoutGrid className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="list" aria-label="List view" className="min-h-11 min-w-11">
+                <List className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          {/* Tag chips (show top tags) */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {allTags.slice(0, 10).map((tag) => (
+                <Badge
+                  key={tag}
+                  variant={searchQuery === tag ? "default" : "outline"}
+                  className="cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => setSearchQuery(searchQuery === tag ? "" : tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Loading state */}
+          {isLoading ? (
+            <div className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : ""}`}>
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-video w-full" />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            <div className="text-center py-16">
+              <ImageIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+              <h3 className="text-lg font-semibold mb-2">No projects found</h3>
+              <p className="text-muted-foreground">
+                {searchQuery || categoryFilter !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "No projects have been published yet"}
+              </p>
+            </div>
+          ) : viewMode === "grid" ? (
+            /* Grid View */
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredProjects.map((project) => (
+                <GalleryCard
+                  key={project.id}
+                  id={project.id}
+                  name={project.name}
+                  description={project.description}
+                  imageUrl={project.image_url}
+                  category={project.category}
+                  tags={project.tags}
+                  viewCount={project.view_count || 0}
+                  cloneCount={project.clone_count || 0}
+                  onPreview={() => handlePreview(project)}
+                  onClone={() => handleClone(project)}
+                />
+              ))}
+            </div>
+          ) : (
+            /* List View */
+            <div className="space-y-4">
+              {filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg border border-line bg-card hover:shadow-md transition-shadow"
+                >
+                  {/* Thumbnail */}
+                  <div className="w-full sm:w-32 h-32 sm:h-20 rounded-md overflow-hidden bg-surface-2 flex-shrink-0">
+                    {project.image_url ? (
+                      <img
+                        src={project.image_url}
+                        alt={project.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+                      </div>
                     )}
-                    {project.tags?.slice(0, 3).map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Eye className="h-3 w-3" />
-                      {project.view_count || 0}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Copy className="h-3 w-3" />
-                      {project.clone_count || 0}
-                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg line-clamp-1">{project.name}</h3>
+                    {project.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
+                        {project.description}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-4">
+                      {project.category && (
+                        <Badge variant="secondary">{project.category}</Badge>
+                      )}
+                      {project.tags?.slice(0, 3).map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Eye className="h-3 w-3" />
+                        {project.view_count || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Copy className="h-3 w-3" />
+                        {project.clone_count || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handlePreview(project)}>
+                      Preview
+                    </Button>
+                    <Button size="sm" onClick={() => handleClone(project)}>
+                      Clone
+                    </Button>
                   </div>
                 </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handlePreview(project)}>
-                    Preview
-                  </Button>
-                  <Button size="sm" onClick={() => handleClone(project)}>
-                    Clone
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Preview Dialog */}
       {previewProject && (
