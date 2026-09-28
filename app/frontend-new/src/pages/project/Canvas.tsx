@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, useMemo, useEffect } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { CanvasMobileSheet, CanvasSheetDetent } from "@/components/canvas/CanvasMobileSheet";
 import { CanvasPalette } from "@/components/canvas/CanvasPalette";
 import { CanvasNode } from "@/components/canvas/CanvasNode";
 import { NotesNode } from "@/components/canvas/NotesNode";
@@ -31,6 +31,7 @@ import { Lasso } from "@/components/canvas/Lasso";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePublishCanvasPrimaryAction } from "./canvas.primaryAction";
 
 const nodeTypes = {
   custom: CanvasNode,
@@ -174,8 +175,22 @@ function CanvasFlow() {
   const [isClearCanvasOpen, setIsClearCanvasOpen] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+  // T046 (WP-G1): detent for the mobile-only palette bottom sheet -- see
+  // the "Add to canvas" CanvasMobileSheet in the render below. Starts at
+  // "peek" so it doesn't dominate the small viewport, same rationale as
+  // the palette needing a collapse toggle on desktop.
+  const [paletteDetent, setPaletteDetent] = useState<CanvasSheetDetent>("peek");
+
+  // T046 (WP-G1): "AI Architect" is the page's primary action, declared in
+  // the route registry (app/routes/project.tsx) and rendered by
+  // PageHeader. It's the same AI Architect flow as the existing toolbar
+  // button below (kept unchanged) -- see canvas.primaryAction.ts for why
+  // it, rather than a literal "Add node" button that doesn't exist in
+  // legacy, was picked as Canvas's primary action.
+  usePublishCanvasPrimaryAction(
+    projectId && !tokenMissing ? { label: "AI Architect", onClick: () => setIsAIArchitectOpen(true) } : undefined
+  );
+
   // Track node positions at drag start for delta calculation
   const dragStartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   
@@ -1349,7 +1364,7 @@ function CanvasFlow() {
   if (tokenMissing) {
     return (
       <div className="h-screen bg-background flex flex-col overflow-hidden">
-        <PrimaryNav />
+        <PageHeader crumb="Design" />
         <TokenRecoveryMessage />
       </div>
     );
@@ -1357,26 +1372,29 @@ function CanvasFlow() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      <PrimaryNav />
-      
+      <PageHeader crumb="Design" />
+
       <div className="flex flex-1 overflow-hidden">
-        <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        
         <div className="flex flex-1 overflow-hidden">
-          <CanvasPalette
-            visibleNodeTypes={visibleNodeTypes}
-            onToggleVisibility={handleToggleVisibility}
-            onNodeClick={handleNodeClickToAdd}
-            layers={layers}
-            selectedNodes={selectedNodesList}
-            onSaveLayer={saveLayer}
-            onDeleteLayer={deleteLayer}
-            onSelectLayer={handleSelectLayer}
-            activeLayerId={activeLayerId}
-            onSetActiveLayer={setActiveLayerId}
-            onMenuClick={() => setIsSidebarOpen(true)}
-          />
-          
+          {/* T046 (WP-G1): the palette stays a fixed left column on
+              desktop (unchanged); on phones it moves into a bottom sheet
+              (CanvasMobileSheet, rendered after the canvas below) so it
+              doesn't permanently eat ~80% of a 390px-wide screen. */}
+          {!isMobile && (
+            <CanvasPalette
+              visibleNodeTypes={visibleNodeTypes}
+              onToggleVisibility={handleToggleVisibility}
+              onNodeClick={handleNodeClickToAdd}
+              layers={layers}
+              selectedNodes={selectedNodesList}
+              onSaveLayer={saveLayer}
+              onDeleteLayer={deleteLayer}
+              onSelectLayer={handleSelectLayer}
+              activeLayerId={activeLayerId}
+              onSetActiveLayer={setActiveLayerId}
+            />
+          )}
+
           <div
             className="flex-1 relative"
             ref={reactFlowWrapper}
@@ -1737,8 +1755,11 @@ function CanvasFlow() {
             )}
           </div>
 
-          {/* Properties panel is also hidden while AI Architect is open */}
-          {!isAIArchitectOpen && (
+          {/* Desktop properties panel (unchanged); hidden while AI Architect
+              is open. On phones the equivalent lives in the
+              CanvasMobileSheet bottom sheet below instead of this fixed
+              right column. */}
+          {!isMobile && !isAIArchitectOpen && (
             selectedNode ? (
               <NodePropertiesPanel
                 node={selectedNode}
@@ -1775,6 +1796,68 @@ function CanvasFlow() {
           )}
         </div>
       </div>
+
+      {/* T046 (WP-G1): on phones, the palette and the node/edge properties
+          panel move into a bottom sheet (CanvasMobileSheet) instead of the
+          fixed-width side columns above (hidden at this width). Only one
+          is shown at a time -- properties take over the sheet while
+          something is selected, same as how the desktop panel auto-opens
+          on selection (see onNodeClick/onEdgeClick above). Both hide
+          while AI Architect is open, matching the desktop panel. */}
+      {isMobile && !isAIArchitectOpen && (
+        isPanelOpen && (selectedNode || selectedEdge) ? (
+          <CanvasMobileSheet
+            title={selectedNode ? "Node properties" : "Edge properties"}
+            onClose={handleClosePanel}
+          >
+            {selectedNode ? (
+              <NodePropertiesPanel
+                node={selectedNode}
+                onClose={handleClosePanel}
+                onUpdate={handleNodeUpdate}
+                onDelete={handleNodeDelete}
+                projectId={projectId!}
+                isOpen
+                onToggle={handleTogglePanel}
+                onCreateMultipleNotesFromArtifacts={handleCreateMultipleNotesFromArtifacts}
+                mobile
+              />
+            ) : (
+              <EdgePropertiesPanel
+                edge={selectedEdge}
+                onClose={handleClosePanel}
+                onUpdate={handleEdgeUpdate}
+                onVisualUpdate={handleEdgeVisualUpdate}
+                onDelete={handleEdgeDelete}
+                isOpen
+                onToggle={handleTogglePanel}
+                mobile
+              />
+            )}
+          </CanvasMobileSheet>
+        ) : (
+          <CanvasMobileSheet
+            title="Canvas Palette"
+            detent={paletteDetent}
+            onDetentChange={setPaletteDetent}
+            onClose={() => setPaletteDetent("peek")}
+          >
+            <CanvasPalette
+              visibleNodeTypes={visibleNodeTypes}
+              onToggleVisibility={handleToggleVisibility}
+              onNodeClick={handleNodeClickToAdd}
+              layers={layers}
+              selectedNodes={selectedNodesList}
+              onSaveLayer={saveLayer}
+              onDeleteLayer={deleteLayer}
+              onSelectLayer={handleSelectLayer}
+              activeLayerId={activeLayerId}
+              onSetActiveLayer={setActiveLayerId}
+              mobile
+            />
+          </CanvasMobileSheet>
+        )
+      )}
     </div>
   );
 }

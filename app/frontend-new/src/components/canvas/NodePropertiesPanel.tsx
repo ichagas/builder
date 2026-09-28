@@ -31,6 +31,15 @@ interface NodePropertiesPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   onCreateMultipleNotesFromArtifacts?: (artifacts: Artifact[], sourceNode?: Node) => void;
+  /**
+   * T046 (WP-G1): when true, this panel is nested inside
+   * `CanvasMobileSheet` (a phone-only bottom sheet -- see Canvas.tsx),
+   * which already renders its own header (title + close). In that mode this
+   * component renders just its scrollable body/footer, skipping its own
+   * desktop-only header, collapse chevron and fixed w-80/w-12 column
+   * chrome. `isOpen`/`onToggle` are unused in this mode.
+   */
+  mobile?: boolean;
 }
 
 export function NodePropertiesPanel({
@@ -42,6 +51,7 @@ export function NodePropertiesPanel({
   isOpen,
   onToggle,
   onCreateMultipleNotesFromArtifacts,
+  mobile,
 }: NodePropertiesPanelProps) {
   const { token } = useShareToken(projectId);
   const [label, setLabel] = useState("");
@@ -228,26 +238,9 @@ export function NodePropertiesPanel({
 
   if (!node) return null;
 
-  return (
-    <div
-      className={`border-l border-border bg-card flex flex-col h-full z-50 transition-all duration-300 ${isOpen ? "w-80" : "w-12"}`}
-    >
-      {!isOpen ? (
-        <div className="flex flex-col items-center py-4 h-full">
-          <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
-            <ChevronRight className="h-4 w-4 rotate-180" />
-          </Button>
-        </div>
-      ) : (
-        <>
-          <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0">
-            <h3 className="font-semibold text-lg">Node Properties</h3>
-            <Button variant="ghost" size="icon" onClick={onToggle}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <ScrollArea className="flex-1">
+  const body = (
+    <>
+      <ScrollArea className="flex-1">
             <div className="p-4 space-y-6">
               {/* Basic Info */}
               <div className="space-y-4">
@@ -417,28 +410,65 @@ export function NodePropertiesPanel({
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t border-border space-y-2 flex-shrink-0">
-            <Button onClick={handleSave} className="w-full">
-              Save Changes
+      <div className="p-4 border-t border-border space-y-2 flex-shrink-0">
+        <Button onClick={handleSave} className="w-full">
+          Save Changes
+        </Button>
+        {onDelete && (
+          <Button onClick={handleDelete} variant="destructive" className="w-full">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Node
+          </Button>
+        )}
+      </div>
+    </>
+  );
+
+  const selector = (
+    <ProjectSelector
+      projectId={projectId}
+      shareToken={token}
+      open={isProjectSelectorOpen}
+      onClose={() => setIsProjectSelectorOpen(false)}
+      onConfirm={handleProjectSelectorConfirm}
+    />
+  );
+
+  if (mobile) {
+    return (
+      <div className="flex h-full w-full flex-col">
+        {body}
+        {selector}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`border-l border-border bg-card flex flex-col h-full z-50 transition-all duration-300 ${isOpen ? "w-80" : "w-12"}`}
+    >
+      {!isOpen ? (
+        <div className="flex flex-col items-center py-4 h-full">
+          <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8">
+            <ChevronRight className="h-4 w-4 rotate-180" />
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0">
+            {/* T046 (WP-G1): h2, not h3 -- same heading-order reasoning as
+                CanvasPalette's header (first heading after the page h1). */}
+            <h2 className="font-semibold text-lg">Node Properties</h2>
+            <Button variant="ghost" size="icon" onClick={onToggle}>
+              <ChevronRight className="h-4 w-4" />
             </Button>
-            {onDelete && (
-              <Button onClick={handleDelete} variant="destructive" className="w-full">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Node
-              </Button>
-            )}
           </div>
+
+          {body}
         </>
       )}
-      
-      {/* ProjectSelector Dialog for NOTES nodes */}
-      <ProjectSelector
-        projectId={projectId}
-        shareToken={token}
-        open={isProjectSelectorOpen}
-        onClose={() => setIsProjectSelectorOpen(false)}
-        onConfirm={handleProjectSelectorConfirm}
-      />
+
+      {selector}
     </div>
   );
 }
