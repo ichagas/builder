@@ -12,8 +12,7 @@ import type { PhaseNodeState, UsePrimaryAction } from "@/components/shell/types"
  * action usually depends on that page's own state (dirty/pending/disabled).
  * Until a page is restyled (Phase 3/4), its entry uses `useNoPrimaryAction`
  * — the page still renders its own legacy controls, and PageHeader isn't
- * mounted on it yet (T034 embedded mode keeps the old chrome working
- * meanwhile).
+ * mounted on it yet.
  */
 export type Phase = "define" | "design" | "build" | "ship";
 

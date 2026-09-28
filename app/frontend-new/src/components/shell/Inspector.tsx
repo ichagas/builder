@@ -2,6 +2,7 @@ import * as React from "react";
 import { ChevronDown, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
  * Inspector (T028). See contracts/design-system.md §2: "Right panel on
@@ -10,6 +11,15 @@ import { cn } from "@/lib/utils";
  * Desktop: a fixed-width side panel. Mobile: a bottom sheet whose height
  * follows the current detent, cycled with the header's chevron button (a
  * simple, fully keyboard-operable alternative to drag-to-resize).
+ *
+ * Renders exactly one instance for the current breakpoint (T024/WP-X0
+ * fix), switched by `useIsMobile` rather than mounting both and hiding one
+ * with CSS: the old approach double-mounted the title and children (a
+ * hidden desktop `<aside>` plus the mobile sheet), which duplicated
+ * element ids and text locators for stateful children -- see
+ * `CanvasMobileSheet`, which had to be built page-local to Canvas to avoid
+ * exactly that. `useIsMobile` matches this component's `md:` (768px)
+ * breakpoint.
  */
 export type InspectorDetent = "peek" | "half" | "full";
 
@@ -36,23 +46,15 @@ export interface InspectorProps {
 
 export function Inspector({ title, onClose, children, detent = "half", onDetentChange, className }: InspectorProps) {
   const { t } = useTranslation();
-  return (
-    <>
-      {/* Desktop: right side panel */}
-      <aside
-        aria-label={title}
-        className={cn("hidden w-80 shrink-0 flex-col border-l border-line bg-surface md:flex", className)}
-      >
-        <InspectorHeader title={title} onClose={onClose} />
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
-      </aside>
+  const isMobile = useIsMobile();
 
-      {/* Mobile: bottom sheet with detents */}
+  if (isMobile) {
+    return (
       <div
         role="dialog"
         aria-label={title}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-md border-t border-line bg-surface shadow-xl transition-[height] md:hidden",
+          "fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-md border-t border-line bg-surface shadow-xl transition-[height]",
           DETENT_HEIGHT[detent],
         )}
       >
@@ -72,7 +74,17 @@ export function Inspector({ title, onClose, children, detent = "half", onDetentC
         />
         <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <aside
+      aria-label={title}
+      className={cn("flex w-80 shrink-0 flex-col border-l border-line bg-surface", className)}
+    >
+      <InspectorHeader title={title} onClose={onClose} />
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
+    </aside>
   );
 }
 
