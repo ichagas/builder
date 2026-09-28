@@ -17,9 +17,9 @@ interface EdgePropertiesPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   /**
-   * T046 (WP-G1): when true, this panel is nested inside the shell's
-   * `Inspector` (a phone-only bottom sheet -- see Canvas.tsx), which
-   * already renders its own header (title + close). In that mode this
+   * T046 (WP-G1): when true, this panel is nested inside
+   * `CanvasMobileSheet` (a phone-only bottom sheet -- see Canvas.tsx),
+   * which already renders its own header (title + close). In that mode this
    * component renders just its scrollable body/footer, skipping its own
    * desktop-only header, collapse chevron and fixed w-80/w-12 column
    * chrome. `isOpen`/`onToggle` are unused in this mode.
@@ -206,7 +206,9 @@ export function EdgePropertiesPanel({
       ) : (
         <>
           <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0">
-            <h3 className="font-semibold text-foreground">Edge Properties</h3>
+            {/* T046 (WP-G1): h2, not h3 -- same heading-order reasoning as
+                CanvasPalette's header (first heading after the page h1). */}
+            <h2 className="font-semibold text-foreground">Edge Properties</h2>
             <Button variant="ghost" size="icon" onClick={onToggle}>
               <ChevronRight className="h-4 w-4" />
             </Button>

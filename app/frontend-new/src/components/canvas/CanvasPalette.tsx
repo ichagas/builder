@@ -21,9 +21,9 @@ interface CanvasPaletteProps {
   activeLayerId: string | null;
   onSetActiveLayer: (layerId: string | null) => void;
   /**
-   * T046 (WP-G1): when true, this palette is nested inside the shell's
-   * `Inspector` (a phone-only bottom sheet -- see Canvas.tsx), which
-   * already renders its own header (title + close). In that mode this
+   * T046 (WP-G1): when true, this palette is nested inside
+   * `CanvasMobileSheet` (a phone-only bottom sheet -- see Canvas.tsx),
+   * which already renders its own header (title + close). In that mode this
    * component renders just its accordion content, skipping its own
    * desktop-only header (menu button, title, collapse chevron) and fixed
    * w-80/w-12 column chrome. `onMenuClick` is unused in this mode.
@@ -202,6 +202,10 @@ export function CanvasPalette({
   );
 
   if (mobile) {
+    // T046 (WP-G1): the CanvasMobileSheet wrapping this (Canvas.tsx)
+    // supplies the "Canvas Palette" title and close/detent chrome, so
+    // this mode renders just the accordion content, unlike the
+    // desktop-only header below.
     return <div className="flex h-full w-full flex-col overflow-hidden">{content}</div>;
   }
 
@@ -218,7 +222,10 @@ export function CanvasPalette({
       ) : (
         <>
           <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0">
-            <h3 className="text-sm font-semibold">Canvas Palette</h3>
+            {/* T046 (WP-G1): h2, not h3 -- this is the first heading after
+                Canvas.tsx's page <h1> (from PageHeader), so skipping
+                straight to h3 is an axe heading-order violation. */}
+            <h2 className="text-sm font-semibold">Canvas Palette</h2>
             <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(true)} className="h-8 w-8">
               <ChevronLeft className="h-4 w-4" />
             </Button>

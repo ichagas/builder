@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, useMemo, useEffect } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { Inspector, InspectorDetent } from "@/components/shell/Inspector";
+import { CanvasMobileSheet, CanvasSheetDetent } from "@/components/canvas/CanvasMobileSheet";
 import { CanvasPalette } from "@/components/canvas/CanvasPalette";
 import { CanvasNode } from "@/components/canvas/CanvasNode";
 import { NotesNode } from "@/components/canvas/NotesNode";
@@ -175,11 +175,11 @@ function CanvasFlow() {
   const [isClearCanvasOpen, setIsClearCanvasOpen] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  // T046 (WP-G1): detent for the mobile-only palette Inspector (bottom
-  // sheet) -- see the "Canvas Palette" Inspector in the render below.
-  // Starts at "peek" so it doesn't dominate the small viewport, same
-  // rationale as the palette needing a collapse toggle on desktop.
-  const [paletteDetent, setPaletteDetent] = useState<InspectorDetent>("peek");
+  // T046 (WP-G1): detent for the mobile-only palette bottom sheet -- see
+  // the "Add to canvas" CanvasMobileSheet in the render below. Starts at
+  // "peek" so it doesn't dominate the small viewport, same rationale as
+  // the palette needing a collapse toggle on desktop.
+  const [paletteDetent, setPaletteDetent] = useState<CanvasSheetDetent>("peek");
 
   // T046 (WP-G1): "AI Architect" is the page's primary action, declared in
   // the route registry (app/routes/project.tsx) and rendered by
@@ -1377,9 +1377,9 @@ function CanvasFlow() {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 overflow-hidden">
           {/* T046 (WP-G1): the palette stays a fixed left column on
-              desktop (unchanged); on phones it moves into the shell's
-              Inspector as a bottom sheet (rendered after the canvas below)
-              so it doesn't permanently eat ~80% of a 390px-wide screen. */}
+              desktop (unchanged); on phones it moves into a bottom sheet
+              (CanvasMobileSheet, rendered after the canvas below) so it
+              doesn't permanently eat ~80% of a 390px-wide screen. */}
           {!isMobile && (
             <CanvasPalette
               visibleNodeTypes={visibleNodeTypes}
@@ -1756,8 +1756,9 @@ function CanvasFlow() {
           </div>
 
           {/* Desktop properties panel (unchanged); hidden while AI Architect
-              is open. On phones the equivalent lives in the Inspector
-              bottom sheet below instead of this fixed right column. */}
+              is open. On phones the equivalent lives in the
+              CanvasMobileSheet bottom sheet below instead of this fixed
+              right column. */}
           {!isMobile && !isAIArchitectOpen && (
             selectedNode ? (
               <NodePropertiesPanel
@@ -1797,15 +1798,15 @@ function CanvasFlow() {
       </div>
 
       {/* T046 (WP-G1): on phones, the palette and the node/edge properties
-          panel move into the shell's Inspector as a bottom sheet instead
-          of the fixed-width side columns above (hidden at this width).
-          Only one is shown at a time -- properties take over the sheet
-          while something is selected, same as how the desktop panel
-          auto-opens on selection (see onNodeClick/onEdgeClick above). Both
-          hide while AI Architect is open, matching the desktop panel. */}
+          panel move into a bottom sheet (CanvasMobileSheet) instead of the
+          fixed-width side columns above (hidden at this width). Only one
+          is shown at a time -- properties take over the sheet while
+          something is selected, same as how the desktop panel auto-opens
+          on selection (see onNodeClick/onEdgeClick above). Both hide
+          while AI Architect is open, matching the desktop panel. */}
       {isMobile && !isAIArchitectOpen && (
         isPanelOpen && (selectedNode || selectedEdge) ? (
-          <Inspector
+          <CanvasMobileSheet
             title={selectedNode ? "Node properties" : "Edge properties"}
             onClose={handleClosePanel}
           >
@@ -1833,9 +1834,9 @@ function CanvasFlow() {
                 mobile
               />
             )}
-          </Inspector>
+          </CanvasMobileSheet>
         ) : (
-          <Inspector
+          <CanvasMobileSheet
             title="Canvas Palette"
             detent={paletteDetent}
             onDetentChange={setPaletteDetent}
@@ -1854,7 +1855,7 @@ function CanvasFlow() {
               onSetActiveLayer={setActiveLayerId}
               mobile
             />
-          </Inspector>
+          </CanvasMobileSheet>
         )
       )}
     </div>
