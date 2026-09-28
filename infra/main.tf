@@ -797,12 +797,13 @@ module "frontend" {
 # =============================================================================
 # Frontend-new Container App Module (redesigned frontend, spec 007)
 # =============================================================================
-# Reuses the same ./modules/frontend module as the legacy frontend above.
-# Pre-cutover, its host is next.<domain> via frontend_new_app_url_override.
-# As of WP-X2/T073, var.primary_frontend defaults to "new": this is now the
-# production-primary app (see primary_frontend_url output) — point the
-# production custom domain's frontend_new_app_url_override / DNS record at it
-# per specs/007-frontend-new/quickstart.md "Cutover". module.frontend stays
+# Reuses the same ./modules/frontend module as the legacy frontend above,
+# at its own host (next.<domain> via frontend_new_app_url_override) so
+# testers can verify it independently of production (T015). WP-X2/T073 adds
+# var.primary_frontend (default "legacy") to switch production over to this
+# app as a later, deliberate step — set primary_frontend = "new" only after
+# next.<domain> is verified and the final regression is green; see
+# specs/007-frontend-new/quickstart.md "Cutover". module.frontend stays
 # deployed until T074 removes it. See specs/007-frontend-new/.
 # =============================================================================
 
@@ -1299,10 +1300,12 @@ module "entra_app_registration" {
 
   redirect_uris = concat(
     # Primary redirect: whichever frontend is primary per var.primary_frontend
-    # (spec 007, WP-X2, T073 cutover — default "new"). Both frontends' redirect
-    # URIs are always included below regardless of which is primary, so
-    # flipping var.primary_frontend is a safe, reversible switch until T074
-    # removes module.frontend entirely.
+    # (spec 007, WP-X2, T073 cutover — default "legacy"; flip to "new" as an
+    # explicit later step once next.<domain> is verified and the final
+    # regression is green). Both frontends' redirect URIs are always included
+    # below regardless of which is primary, so flipping var.primary_frontend
+    # is a safe, reversible switch until T074 removes module.frontend
+    # entirely.
     # Azure AD requires a trailing slash on URIs without a path segment.
     [
       "${trimsuffix(

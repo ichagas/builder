@@ -230,6 +230,11 @@ jobs:
           TF_VAR_central_dns_resource_group_name: ${{ vars.CENTRAL_DNS_RESOURCE_GROUP_NAME }}
           TF_VAR_frontend_app_url_override: ${{ vars.FRONTEND_APP_URL_OVERRIDE }}
           TF_VAR_frontend_new_app_url_override: ${{ vars.FRONTEND_NEW_APP_URL_OVERRIDE }}
+          # Leave PRIMARY_FRONTEND unset until the WP-X2/T073 cutover step: the
+          # Terraform default ("legacy") then applies, so this same job (also
+          # used for T015's frontend_new-at-next.<domain> apply) never switches
+          # production as a side effect. Set it ("new") only once next.<domain>
+          # is verified and the final regression run is green.
           TF_VAR_primary_frontend: ${{ vars.PRIMARY_FRONTEND }}
           TF_VAR_api_base_url_override: ${{ vars.API_BASE_URL_OVERRIDE }}
         run: |
@@ -1587,6 +1592,11 @@ jobs:
           TF_VAR_central_dns_resource_group_name: ${{ vars.CENTRAL_DNS_RESOURCE_GROUP_NAME }}
           TF_VAR_frontend_app_url_override: ${{ vars.FRONTEND_APP_URL_OVERRIDE }}
           TF_VAR_frontend_new_app_url_override: ${{ vars.FRONTEND_NEW_APP_URL_OVERRIDE }}
+          # Leave PRIMARY_FRONTEND unset until the WP-X2/T073 cutover step: the
+          # Terraform default ("legacy") then applies, so this same job (also
+          # used for T015's frontend_new-at-next.<domain> apply) never switches
+          # production as a side effect. Set it ("new") only once next.<domain>
+          # is verified and the final regression run is green.
           TF_VAR_primary_frontend: ${{ vars.PRIMARY_FRONTEND }}
           TF_VAR_api_base_url_override: ${{ vars.API_BASE_URL_OVERRIDE }}
         run: |
