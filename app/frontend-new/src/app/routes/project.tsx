@@ -7,6 +7,7 @@ import { useProjectStandardsPrimaryAction } from "@/pages/project/standards.prim
 import { useArtifactsPrimaryAction } from "@/pages/project/artifacts.primaryAction";
 import { useChatPrimaryAction } from "@/pages/project/chat.primaryAction";
 import { useDeployPrimaryAction } from "@/pages/project/deploy.primaryAction";
+import { useDatabasePrimaryAction } from "@/pages/project/database.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -54,7 +55,7 @@ export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
   { tool: "specifications", phase: "design", title: "Project Specifications", usePrimaryAction: useSpecificationsPrimaryAction, Component: Specifications },
   { tool: "agent", phase: "build", title: "Build agent", usePrimaryAction: useNoPrimaryAction, Component: Build },
   { tool: "repository", phase: "build", title: "Repository", usePrimaryAction: useNoPrimaryAction, Component: Repository },
-  { tool: "database", phase: "build", title: "Database", usePrimaryAction: useNoPrimaryAction, Component: Database },
+  { tool: "database", phase: "build", title: "Database", usePrimaryAction: useDatabasePrimaryAction, Component: Database },
   // T051 (WP-S1): title "Deploy", not "Environments", to match legacy's
   // ProjectPageHeader heading exactly -- PR-13's regression spec asserts
   // getByRole("heading", { name: "Deploy", exact: true }) unchanged (same
