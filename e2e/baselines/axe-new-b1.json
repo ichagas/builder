@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-09-28T05:10:53.709Z",
+  "note": "Baseline violation counts recorded via --out axe-new-b1.json. See other files in this directory for what app/run they cover.",
+  "pages": [
+    {
+      "pageId": "pr-10",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 2,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 2
+        }
+      ]
+    },
+    {
+      "pageId": "pr-10",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    }
+  ]
+}
