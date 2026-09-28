@@ -80,7 +80,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [x] T061 [P] [US3] (WP-L2) Tech Stacks `pages/TechStacks.tsx`. PR-17.
 - [ ] T062 [P] [US3] (WP-L3) Build Books `pages/BuildBooks.tsx`, `BuildBookDetail.tsx`, `BuildBookEditor.tsx`. PR-18.
 - [ ] T063 [P] [US3] (WP-L4) Gallery `pages/Gallery.tsx`. PR-19.
-- [ ] T064 [P] [US3] (WP-L5) Settings, admin, superadmin, auth pages (`pages/Settings.tsx`, `pages/Auth*.tsx`, `GitHubCallback.tsx`). PR-20.
+- [x] T064 [P] [US3] (WP-L5) Settings, admin, superadmin, auth pages (`pages/Settings.tsx`, `pages/Auth*.tsx`, `GitHubCallback.tsx`). PR-20.
 - [ ] T065 [P] [US3] (WP-P1) Landing, Terms, Privacy, License, PWA prompt, theme toggle. PR-21.
 
 ## Phase 5: Clean-up and cutover (US7)
