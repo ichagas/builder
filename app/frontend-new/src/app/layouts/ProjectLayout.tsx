@@ -9,7 +9,6 @@ import { MobileTabBar } from "@/components/shell/MobileTabBar";
 import { StatusCenter } from "@/components/shell/StatusCenter";
 import { UndoBar } from "@/components/shell/UndoBar";
 import { NextStepBanner } from "@/components/shell/NextStepBanner";
-import { ShellProvider } from "@/components/shell/ShellContext";
 import { usePublishCommandPaletteItems } from "@/components/shell/CommandPaletteItemsContext";
 import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { PHASE_ORDER, PROJECT_TOOL_ROUTES } from "@/app/routes/project";
@@ -34,9 +33,7 @@ export const CURRENT_VERSION = { id: "building", label: "Building" } as const;
  * version (D-7: always "building" for now). Exposed through
  * `useProjectLayoutData` so a page *can* read it instead of running its
  * own copy of this fetch -- see plan.md "the move and restyle recipe":
- * moving pages onto this is Phase R, not this task, so nothing here
- * changes what an unmoved page renders today (`ShellProvider embedded`
- * still nulls its own `PrimaryNav`/`ProjectSidebar`/`ProjectPageHeader`).
+ * moving pages onto this is Phase R, not this task.
  */
 export interface ProjectLayoutData {
   projectId: string;
@@ -163,39 +160,37 @@ export function ProjectLayout() {
   usePublishCommandPaletteItems(paletteItems);
 
   return (
-    <ShellProvider embedded>
-      <ProjectLayoutContext.Provider value={projectLayoutData}>
-        <AppShell
-          globalBar={<GlobalBar onSearch={openPalette} mode={{ kind: "building", label: "Building" }} statusPill={<StatusCenter />} />}
-          rail={
-            <Rail
-              sections={[{ id: "versions", label: "All versions", href: `/p/${projectId}/versions` }]}
-              phases={phases}
-              versionCard={<span className="text-xs text-rail-muted">One building version — versions ship in a later milestone.</span>}
-            />
-          }
-          timeline={
-            <TimelineStrip
-              nodes={[{ id: "building", label: "Building", kind: "building" }]}
-              selectedId="building"
-              onSelect={() => {}}
-            />
-          }
-          mobileTabBar={
-            <MobileTabBar
-              items={[
-                { id: "versions", label: "Versions", href: `/p/${projectId}/versions` },
-                ...phases.map((phase) => ({ id: phase.id, label: phase.label, href: phase.href })),
-              ]}
-            />
-          }
-          undoBar={<UndoBar />}
-        >
-          {accessBanner}
-          <Outlet />
-        </AppShell>
-      </ProjectLayoutContext.Provider>
-    </ShellProvider>
+    <ProjectLayoutContext.Provider value={projectLayoutData}>
+      <AppShell
+        globalBar={<GlobalBar onSearch={openPalette} mode={{ kind: "building", label: "Building" }} statusPill={<StatusCenter />} />}
+        rail={
+          <Rail
+            sections={[{ id: "versions", label: "All versions", href: `/p/${projectId}/versions` }]}
+            phases={phases}
+            versionCard={<span className="text-xs text-rail-muted">One building version — versions ship in a later milestone.</span>}
+          />
+        }
+        timeline={
+          <TimelineStrip
+            nodes={[{ id: "building", label: "Building", kind: "building" }]}
+            selectedId="building"
+            onSelect={() => {}}
+          />
+        }
+        mobileTabBar={
+          <MobileTabBar
+            items={[
+              { id: "versions", label: "Versions", href: `/p/${projectId}/versions` },
+              ...phases.map((phase) => ({ id: phase.id, label: phase.label, href: phase.href })),
+            ]}
+          />
+        }
+        undoBar={<UndoBar />}
+      >
+        {accessBanner}
+        <Outlet />
+      </AppShell>
+    </ProjectLayoutContext.Provider>
   );
 }
 
