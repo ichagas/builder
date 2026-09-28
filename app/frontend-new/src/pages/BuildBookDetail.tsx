@@ -29,13 +29,13 @@ export default function BuildBookDetail() {
     return (
       <div className="flex min-h-full flex-col bg-background">
         <PageHeader />
-        <main className="container py-8 px-4 md:px-6">
+        <div className="container py-8 px-4 md:px-6">
           <Skeleton className="h-8 w-48 mb-6" />
           <Skeleton className="aspect-[21/9] w-full rounded-lg mb-6" />
           <Skeleton className="h-12 w-3/4 mb-4" />
           <Skeleton className="h-6 w-full mb-2" />
           <Skeleton className="h-6 w-2/3" />
-        </main>
+        </div>
       </div>
     );
   }
@@ -44,7 +44,7 @@ export default function BuildBookDetail() {
     return (
       <div className="flex min-h-full flex-col bg-background">
         <PageHeader />
-        <main className="container py-8 px-4 md:px-6 text-center">
+        <div className="container py-8 px-4 md:px-6 text-center">
           <Book className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h2 className="text-xl font-semibold mb-2">Build Book Not Found</h2>
           <p className="text-muted-foreground mb-4">
@@ -54,7 +54,7 @@ export default function BuildBookDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Build Books
           </Button>
-        </main>
+        </div>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default function BuildBookDetail() {
     <div className="flex min-h-full flex-col bg-background">
       <PageHeader />
 
-      <main className="container py-8 px-4 md:px-6">
+      <div className="container py-8 px-4 md:px-6">
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -133,7 +133,7 @@ export default function BuildBookDetail() {
           standards={standards}
           techStacks={techStacks}
         />
-      </main>
+      </div>
     </div>
   );
 }

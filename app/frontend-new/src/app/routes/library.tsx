@@ -24,6 +24,13 @@ export const LIBRARY_ROUTES: SimpleRoute[] = [
   { path: "build-books", title: "Build books", usePrimaryAction: useBuildBooksPrimaryAction, Component: BuildBooks },
   { path: "build-books/new", title: "New build book", usePrimaryAction: useBuildBookEditorPrimaryAction, Component: BuildBookEditor },
   { path: "build-books/:id", title: "Build book", usePrimaryAction: useBuildBookDetailPrimaryAction, Component: BuildBookDetail },
-  { path: "build-books/:id/edit", title: "Edit build book", usePrimaryAction: useBuildBookEditorPrimaryAction, Component: BuildBookEditor },
+  // "Build book editor", not "Edit build book": PR-18's regression spec
+  // does getByRole("heading", { name: "Edit Build Book" }) (a
+  // case-insensitive substring match, no `exact`) against
+  // BuildBookEditor.tsx's own in-page `<h1>Edit Build Book</h1>` -- a
+  // PageHeader title containing that same phrase (word order intact) would
+  // make the locator ambiguous (strict-mode violation) without the spec
+  // itself changing.
+  { path: "build-books/:id/edit", title: "Build book editor", usePrimaryAction: useBuildBookEditorPrimaryAction, Component: BuildBookEditor },
   { path: "gallery", title: "Gallery", usePrimaryAction: useNoPrimaryAction, Component: Gallery },
 ];

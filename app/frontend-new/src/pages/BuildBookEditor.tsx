@@ -342,7 +342,7 @@ export default function BuildBookEditor() {
     <div className="flex min-h-full flex-col bg-background">
       <PageHeader />
 
-      <main className="container py-8 px-4 md:px-6 max-w-5xl">
+      <div className="container py-8 px-4 md:px-6 max-w-5xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" onClick={() => navigate("/build-books")}>
@@ -543,7 +543,7 @@ export default function BuildBookEditor() {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
