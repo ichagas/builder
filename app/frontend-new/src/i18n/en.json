@@ -52,5 +52,70 @@
       "tools": "Tools",
       "library": "Library"
     }
+  },
+  "assurance": {
+    "switcher": {
+      "ariaLabel": "Switch team",
+      "choose": "Choose a team",
+      "loading": "Loading teams…",
+      "yourTeams": "Your teams",
+      "allTeams": "All teams",
+      "noTeams": "You're not on a team yet",
+      "appCount_one": "{{count}} app",
+      "appCount_other": "{{count}} apps"
+    },
+    "rail": {
+      "ariaLabel": "Assurance",
+      "portfolio": "Portfolio"
+    },
+    "mode": {
+      "label": "Standards"
+    },
+    "portfolio": {
+      "title": "Portfolio",
+      "crumb_one": "Team · {{count}} member",
+      "crumb_other": "Team · {{count}} members",
+      "applicationsHeading": "Applications and repositories",
+      "applicationsMeta_one": "{{count}} application",
+      "applicationsMeta_other": "{{count}} applications",
+      "repoCount_one": "{{count}} repo",
+      "repoCount_other": "{{count}} repos",
+      "filters": {
+        "all": "All",
+        "notReporting": "Not reporting"
+      },
+      "notReportingBadge_one": "{{count}} not reporting",
+      "notReportingBadge_other": "{{count}} not reporting",
+      "notReportingRepo": "Not reporting",
+      "reportingRepo": "Reporting",
+      "lastReport": "Last report {{when}}",
+      "neverReported": "Never reported",
+      "allReporting": {
+        "title": "Every repository is reporting to the mesh",
+        "body": "No repository has gone quiet for 7 days or more."
+      },
+      "someNotReporting": {
+        "title_one": "{{count}} repository hasn't reported in 7 days",
+        "title_other": "{{count}} repositories haven't reported in 7 days",
+        "body": "A repository that stops reporting shows here until its next merge to the default branch.",
+        "cta": "Show them"
+      },
+      "empty": {
+        "title": "No applications yet",
+        "description": "Onboard an application to start seeing it here."
+      },
+      "emptyFiltered": {
+        "title": "No repositories match this filter"
+      },
+      "error": {
+        "title": "Couldn't load this team's portfolio",
+        "description": "Try again in a moment."
+      },
+      "notFound": {
+        "title": "Team not found",
+        "description": "You may not have access to this team, or it may have been removed."
+      },
+      "loading": "Loading portfolio…"
+    }
   }
 }

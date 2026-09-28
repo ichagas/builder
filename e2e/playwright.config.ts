@@ -15,7 +15,7 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${process.env.FE_PORT
 
 export default defineConfig({
   testDir: ".",
-  testMatch: ["regression/**/*.spec.ts", "shell/**/*.spec.ts"],
+  testMatch: ["regression/**/*.spec.ts", "shell/**/*.spec.ts", "new/**/*.spec.ts"],
   outputDir: "test-results",
   fullyParallel: false, // pages share seeded projects; keep ordering predictable per file
   forbidOnly: !!process.env.CI,
