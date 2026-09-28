@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** PAUSED by the user on 2026-09-28 after X0 + A1 merged. Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** 4–5 on the **short path** (user decision 2026-09-28). Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -207,3 +207,9 @@ Paused on the user's instruction: finish running work, merge everything into `fe
 4. Polish T160–T162 (include: long-task staleness/TTL in useLongTask; unused i18n key assurance.portfolio.crumb), then T170–T171.
 
 **Machine rules (8 GB RAM):** one Docker/e2e stack at a time (lock script in the orchestrator scratchpad, or run e2e sequentially), `npm test -- --maxWorkers=2`, servers via run_in_background, agents never restart Docker. Spend-limit interruptions: resume agents with SendMessage; their work stays in worktrees.
+
+## Short path (user decision, 2026-09-28)
+
+Resumed with a shorter path: **no per-WP e2e/axe/screenshots and no per-WP tester**. Per WP: developer keeps lint/tsc/unit (`--maxWorkers=2`)/build green and **writes** its E2E spec (not run); one code reviewer per batch; orchestrator verifies and merges. At the end: **one consolidated test pass** (shell suite, PR-01..21 at 1440/390, new-capability E2E us4/us5/us6, axe) run in small chunks with timeouts, then fixes, then **T074 (remove app/frontend/) only after that pass is green** (legacy is the regression reference; orchestrate prompt rule). Estimated 8–10 h of run time instead of 15–20. Shared brief for new-capability agents: `newcap-brief.md` in the orchestrator scratchpad.
+
+Batch plan: **N1** = V1 (T110), A2 (T131), A6 (T136), O1 (T150) + X2a (T073 code, BLOCKED-EXTERNAL apply; remount.spec desktop guard + mobile variant; unused i18n key). **N2** = V2, V3, V4 (T111–T113), A3, A4, A5 (T132–T134), O2 (T151) + E2E specs T114/T135/T152. **N3** = polish T160–T162. Then the final test pass (T071 + new-capability E2E), fixes, T074, T170–T171.
