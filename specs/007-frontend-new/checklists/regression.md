@@ -17,7 +17,7 @@ Regression rows are defined in [contracts/routes.md](../contracts/routes.md) §2
 | PR-07 | Chat | D4 | ✅ | ✅ / ✅ | ✅ better | ☐ |
 | PR-08 | Canvas | G1 | ✅ | ✅ / ✅ (G1 restyle) | ✅ better | ☐ |
 | PR-09 | Specifications | G2 | ✅ | ✅ / ✅ | ✅ subset | ☐ |
-| PR-10 | Build agent | B1 | ✅ | ✅ / ✅ (embedded, not restyled) | — | ☐ |
+| PR-10 | Build agent | B1 | ✅ | ✅ / ✅ (B1 restyle) | ✅ no new | ☐ |
 | PR-11 | Repository | B2 | ✅ | ✅ / ✅ (B2 restyle) | ✅ no new | ☐ |
 | PR-12 | Database | B3 | ✅ | ✅ / ✅ (B3 restyle) | ✅ better | ☐ |
 | PR-13 | Environments | S1 | ✅ | ✅ / ✅ | ✅ better | ☐ |
