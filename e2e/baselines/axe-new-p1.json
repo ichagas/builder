@@ -1,0 +1,66 @@
+{
+  "recordedAt": "2026-09-28T12:07:03.957Z",
+  "note": "Baseline violation counts recorded via --out axe-new-p1.json. See other files in this directory for what app/run they cover.",
+  "pages": [
+    {
+      "pageId": "pr-21-landing",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "landmark-one-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 2
+        }
+      ]
+    },
+    {
+      "pageId": "pr-21-landing",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": [
+        {
+          "id": "landmark-one-main",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 2
+        }
+      ]
+    },
+    {
+      "pageId": "pr-21-legal",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    },
+    {
+      "pageId": "pr-21-legal",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    }
+  ]
+}
