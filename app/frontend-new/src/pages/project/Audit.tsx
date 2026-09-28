@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
-import { ProjectPageHeader } from "@/components/layout/ProjectPageHeader";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { useUrlState } from "@/lib/state/useUrlState";
+import { usePublishAuditPrimaryAction } from "./audit.primaryAction";
 import { TesseractVisualizer } from "@/components/audit/TesseractVisualizer";
 import { VennDiagramResults } from "@/components/audit/VennDiagramResults";
 import { FitGapResults } from "@/components/audit/FitGapResults";
@@ -49,12 +49,12 @@ export default function Audit() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>();
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [usePipeline] = useState(true); // Use new pipeline by default
   const manualStopRef = useRef(false);
   const [loadedSessionId, setLoadedSessionId] = useState<string | undefined>();
+  const [activeTab, setActiveTab] = useUrlState("tab", "activity");
   
   // Store D1/D2 elements for Tesseract visualization
   const [d1Elements, setD1Elements] = useState<Array<{ id: string; label: string; content: string; category: string }>>([]);
@@ -594,130 +594,125 @@ export default function Audit() {
   // Agent instances removed - pipeline-based audit doesn't use individual agents
   const isRunning = session?.status === "running" || session?.status === "agents_active" || session?.status === "analyzing_shape" || session?.status === "pending";
   const currentPhase = (session as any)?.phase;
-  return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      
-      <div className="flex relative">
-        <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        
-        <main className="flex-1 overflow-auto w-full">
-          <div className="px-4 md:px-6 py-6 md:py-8 max-w-7xl mx-auto">
-            {/* Header with hamburger */}
-            <ProjectPageHeader
-              title="Audit"
-              subtitle="Multi-agent compliance audits with tesseract visualization"
-              onMenuClick={() => setIsSidebarOpen(true)}
-              actions={
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Session Selector */}
-                  <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
-                    <SelectTrigger className="w-[160px] md:w-[220px]">
-                      <SelectValue placeholder="Select session..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sessions.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No sessions yet
-                        </SelectItem>
-                      ) : (
-                        sessions.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${getStatusColor(s.status)}`} />
-                              <span className="truncate">{s.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  
-                  {/* Load Session button - show when session selected but not loaded */}
-                  {selectedSessionId && selectedSessionId !== loadedSessionId && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleLoadSession}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4 mr-2" />
-                      )}
-                      Load
-                    </Button>
-                  )}
-                  
-                  {session && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => refreshSession(session.id)}
-                        disabled={isLoading}
-                      >
-                        <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-                      </Button>
-                      
-                      {isRunning && (
-                        <>
-                          <Button variant="outline" size="sm" onClick={handlePauseResume} className="hidden sm:flex">
-                            {session.status === "paused" ? (
-                              <PlayCircle className="h-4 w-4 mr-2" />
-                            ) : (
-                              <Pause className="h-4 w-4 mr-2" />
-                            )}
-                            {session.status === "paused" ? "Resume" : "Pause"}
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={handleStop} className="hidden sm:flex">
-                            <StopCircle className="h-4 w-4 mr-2" />
-                            Stop
-                          </Button>
-                        </>
-                      )}
-                      
-                      {/* Manual Resume Button for stale sessions */}
-                      {(session.status === "running" || session.status === "agents_active") && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleManualResume}
-                          disabled={isResuming}
-                          className="hidden sm:flex"
-                        >
-                          <RotateCcw className={`h-4 w-4 mr-2 ${isResuming ? "animate-spin" : ""}`} />
-                          {isResuming ? "Resuming..." : "Resume"}
-                        </Button>
-                      )}
-                    </>
-                  )}
-                  
-                  {/* Step Mode Toggle - before starting audit */}
-                  <div className="hidden sm:flex items-center gap-2 mr-2">
-                    <input
-                      type="checkbox"
-                      id="stepModeToggle"
-                      checked={stepMode}
-                      onChange={(e) => setStepMode(e.target.checked)}
-                      className="w-4 h-4 rounded border-border"
-                    />
-                    <label htmlFor="stepModeToggle" className="text-xs text-muted-foreground whitespace-nowrap">
-                      Step Mode
-                    </label>
-                  </div>
-                  
-                  <Button onClick={() => setConfigDialogOpen(true)} size="sm">
-                    <PlayCircle className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden sm:inline">New Audit</span>
-                    <span className="sm:hidden">New</span>
-                  </Button>
-                </div>
-              }
-            />
 
-            {/* Not Loaded Message */}
+  // T052 (WP-S2): "New Audit" is the page's primary action, declared in
+  // the route registry (app/routes/project.tsx) and rendered by
+  // PageHeader. Publish it here on every render -- see
+  // audit.primaryAction.ts. Legacy shows this unconditionally for any
+  // project member (never disabled), same as the "Start New Audit"
+  // empty-state button below, which stays in the page body untouched.
+  usePublishAuditPrimaryAction({
+    label: "New Audit",
+    onClick: () => setConfigDialogOpen(true),
+  });
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <PageHeader crumb="Ship" />
+      <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Toolbar: session selector and session controls */}
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            {/* Session Selector */}
+            <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
+              <SelectTrigger className="w-[160px] md:w-[220px]">
+                <SelectValue placeholder="Select session..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions.length === 0 ? (
+                  <SelectItem value="none" disabled>
+                    No sessions yet
+                  </SelectItem>
+                ) : (
+                  sessions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${getStatusColor(s.status)}`} />
+                        <span className="truncate">{s.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+
+            {/* Load Session button - show when session selected but not loaded */}
+            {selectedSessionId && selectedSessionId !== loadedSessionId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleLoadSession}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Load
+              </Button>
+            )}
+
+            {session && (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => refreshSession(session.id)}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                </Button>
+
+                {isRunning && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={handlePauseResume} className="hidden sm:flex">
+                      {session.status === "paused" ? (
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                      ) : (
+                        <Pause className="h-4 w-4 mr-2" />
+                      )}
+                      {session.status === "paused" ? "Resume" : "Pause"}
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={handleStop} className="hidden sm:flex">
+                      <StopCircle className="h-4 w-4 mr-2" />
+                      Stop
+                    </Button>
+                  </>
+                )}
+
+                {/* Manual Resume Button for stale sessions */}
+                {(session.status === "running" || session.status === "agents_active") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManualResume}
+                    disabled={isResuming}
+                    className="hidden sm:flex"
+                  >
+                    <RotateCcw className={`h-4 w-4 mr-2 ${isResuming ? "animate-spin" : ""}`} />
+                    {isResuming ? "Resuming..." : "Resume"}
+                  </Button>
+                )}
+              </>
+            )}
+
+            {/* Step Mode Toggle - before starting audit */}
+            <div className="hidden sm:flex items-center gap-2 mr-2">
+              <input
+                type="checkbox"
+                id="stepModeToggle"
+                checked={stepMode}
+                onChange={(e) => setStepMode(e.target.checked)}
+                className="w-4 h-4 rounded border-border"
+              />
+              <label htmlFor="stepModeToggle" className="text-xs text-muted-foreground whitespace-nowrap">
+                Step Mode
+              </label>
+            </div>
+          </div>
+
+          {/* Not Loaded Message */}
             {selectedSessionId && selectedSessionId !== loadedSessionId && (
               <Card className="mb-6 border-muted">
                 <CardContent className="py-4">
@@ -924,7 +919,7 @@ export default function Audit() {
                 </CardContent>
               </Card>
             ) : (
-              <Tabs defaultValue="activity" className="space-y-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <div className="overflow-x-auto -mx-6 px-6">
                   <TabsList className="inline-flex w-auto min-w-full sm:min-w-0">
                     <TabsTrigger value="activity" className="gap-1 sm:gap-2 text-xs sm:text-sm">
@@ -1085,9 +1080,7 @@ export default function Audit() {
               </Tabs>
             )}
           </div>
-        </main>
-      </div>
-
+        </div>
       <AuditConfigurationDialog
         open={configDialogOpen}
         onOpenChange={setConfigDialogOpen}
