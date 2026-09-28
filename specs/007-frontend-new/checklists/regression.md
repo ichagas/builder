@@ -15,7 +15,7 @@ Regression rows are defined in [contracts/routes.md](../contracts/routes.md) §2
 | PR-05 | Project standards | D2 | ✅ | ✅ / ✅ | ✅ better | ☐ |
 | PR-06 | Artifacts | D3 | ✅ | ✅ / ✅ | ✅ 0 violations | ☐ |
 | PR-07 | Chat | D4 | ✅ | ✅ / ✅ | ✅ better | ☐ |
-| PR-08 | Canvas | G1 | ✅ | ✅ / ✅ (embedded, not restyled) | — | ☐ |
+| PR-08 | Canvas | G1 | ✅ | ✅ / ✅ (G1 restyle) | ✅ better | ☐ |
 | PR-09 | Specifications | G2 | ✅ | ✅ / ✅ | ✅ subset | ☐ |
 | PR-10 | Build agent | B1 | ✅ | ✅ / ✅ (embedded, not restyled) | — | ☐ |
 | PR-11 | Repository | B2 | ✅ | ✅ / ✅ (B2 restyle) | ✅ no new | ☐ |
