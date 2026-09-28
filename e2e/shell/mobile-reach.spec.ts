@@ -104,10 +104,12 @@ test.describe("mobile reach (contracts/design-system.md §2, spec.md SC-005)", (
   });
 
   test("the primary action slot renders nothing on a route with no primary action", async ({ page }) => {
-    // Library's build-books route registers useNoPrimaryAction (see
-    // app/routes/library.tsx) -- a route that genuinely has no primary
-    // action, unlike Requirements above, which now has one.
-    await page.goto("/library/build-books");
+    // WP-L3 gave Library's build-books route a live primary action ("New
+    // Build Book" for admins, see app/routes/library.tsx and
+    // pages/buildBooks.primaryAction.ts), so it's no longer a route with no
+    // primary action at all -- settings/profile still registers
+    // useNoPrimaryAction (app/routes/root.tsx) and genuinely has none.
+    await page.goto("/settings/profile");
     await expect(page.locator("#mobile-primary-action")).toHaveCount(0);
   });
 

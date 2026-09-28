@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Trash2, Loader2 } from "lucide-react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
+import { ArrowLeft, Trash2, Loader2 } from "lucide-react";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { usePublishBuildBookEditorPrimaryAction } from "@/pages/buildBookEditor.primaryAction";
 
 interface Standard {
   id: string;
@@ -324,13 +325,22 @@ export default function BuildBookEditor() {
     }
   };
 
+  // Published unconditionally on every render (createPrimaryActionStore's
+  // contract) -- undefined for non-admins, matching the early `return null`
+  // below (legacy never rendered this page's controls for them either).
+  usePublishBuildBookEditorPrimaryAction(
+    isAdmin
+      ? { label: isNew ? "Create" : "Save", onClick: handleSave, disabled: isSaving }
+      : undefined
+  );
+
   if (!isAdmin) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
+    <div className="flex min-h-full flex-col bg-background">
+      <PageHeader />
 
       <main className="container py-8 px-4 md:px-6 max-w-5xl">
         {/* Header */}
@@ -339,26 +349,16 @@ export default function BuildBookEditor() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div className="flex items-center gap-2">
-            {!isNew && (
-              <Button
-                variant="outline"
-                className="text-destructive hover:text-destructive"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            )}
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              {isNew ? "Create" : "Save"}
+          {!isNew && (
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
             </Button>
-          </div>
+          )}
         </div>
 
         <h1 className="text-2xl font-bold mb-6">

@@ -1,6 +1,9 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useStandardsPrimaryAction } from "@/pages/standards.primaryAction";
 import { useTechStacksPrimaryAction } from "@/pages/techStacks.primaryAction";
+import { useBuildBooksPrimaryAction } from "@/pages/buildBooks.primaryAction";
+import { useBuildBookDetailPrimaryAction } from "@/pages/buildBookDetail.primaryAction";
+import { useBuildBookEditorPrimaryAction } from "@/pages/buildBookEditor.primaryAction";
 import { useNoPrimaryAction, type SimpleRoute } from "./types";
 
 const Gallery = lazyWithRetry(() => import("@/pages/Gallery"));
@@ -18,9 +21,9 @@ export const LIBRARY_ROUTES: SimpleRoute[] = [
   // §2, so the restyled page's PageHeader-rendered heading must match it.
   { path: "standards", title: "Standards Library", usePrimaryAction: useStandardsPrimaryAction, Component: Standards },
   { path: "tech-stacks", title: "Tech stacks", usePrimaryAction: useTechStacksPrimaryAction, Component: TechStacks },
-  { path: "build-books", title: "Build books", usePrimaryAction: useNoPrimaryAction, Component: BuildBooks },
-  { path: "build-books/new", title: "New build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
-  { path: "build-books/:id", title: "Build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookDetail },
-  { path: "build-books/:id/edit", title: "Edit build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
+  { path: "build-books", title: "Build books", usePrimaryAction: useBuildBooksPrimaryAction, Component: BuildBooks },
+  { path: "build-books/new", title: "New build book", usePrimaryAction: useBuildBookEditorPrimaryAction, Component: BuildBookEditor },
+  { path: "build-books/:id", title: "Build book", usePrimaryAction: useBuildBookDetailPrimaryAction, Component: BuildBookDetail },
+  { path: "build-books/:id/edit", title: "Edit build book", usePrimaryAction: useBuildBookEditorPrimaryAction, Component: BuildBookEditor },
   { path: "gallery", title: "Gallery", usePrimaryAction: useNoPrimaryAction, Component: Gallery },
 ];

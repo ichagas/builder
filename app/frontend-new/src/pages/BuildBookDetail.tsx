@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Book, Edit, Calendar, Tag, Eye, EyeOff } from "lucide-react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
+import { ArrowLeft, Book, Calendar, Tag, Eye, EyeOff } from "lucide-react";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { useBuildBookDetail } from "@/hooks/useRealtimeBuildBooks";
 import { useAdmin } from "@/contexts/AdminContext";
 import { format } from "date-fns";
 import { BuildBookDocsViewer } from "@/components/buildbook/BuildBookDocsViewer";
+import { usePublishBuildBookDetailPrimaryAction } from "@/pages/buildBookDetail.primaryAction";
 
 export default function BuildBookDetail() {
   const { id } = useParams<{ id: string }>();
@@ -15,10 +16,19 @@ export default function BuildBookDetail() {
   const { buildBook, standards, techStacks, isLoading } = useBuildBookDetail(id);
   const { isAdmin } = useAdmin();
 
+  // Published unconditionally on every render (createPrimaryActionStore's
+  // contract) -- undefined on the loading/not-found branches below, same as
+  // legacy, which never rendered the "Edit" button on those branches.
+  usePublishBuildBookDetailPrimaryAction(
+    isAdmin && buildBook
+      ? { label: "Edit", onClick: () => navigate(`/build-books/${id}/edit`) }
+      : undefined
+  );
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
+      <div className="flex min-h-full flex-col bg-background">
+        <PageHeader />
         <main className="container py-8 px-4 md:px-6">
           <Skeleton className="h-8 w-48 mb-6" />
           <Skeleton className="aspect-[21/9] w-full rounded-lg mb-6" />
@@ -32,8 +42,8 @@ export default function BuildBookDetail() {
 
   if (!buildBook) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
+      <div className="flex min-h-full flex-col bg-background">
+        <PageHeader />
         <main className="container py-8 px-4 md:px-6 text-center">
           <Book className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
           <h2 className="text-xl font-semibold mb-2">Build Book Not Found</h2>
@@ -50,8 +60,8 @@ export default function BuildBookDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
+    <div className="flex min-h-full flex-col bg-background">
+      <PageHeader />
 
       <main className="container py-8 px-4 md:px-6">
         {/* Back Button */}
@@ -103,15 +113,6 @@ export default function BuildBookDetail() {
               </p>
             )}
           </div>
-          {isAdmin && (
-            <Button
-              className="absolute top-4 right-4"
-              onClick={() => navigate(`/build-books/${id}/edit`)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          )}
         </div>
 
         {/* Tags */}
