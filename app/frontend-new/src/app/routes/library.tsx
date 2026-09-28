@@ -22,5 +22,9 @@ export const LIBRARY_ROUTES: SimpleRoute[] = [
   { path: "build-books/new", title: "New build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
   { path: "build-books/:id", title: "Build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookDetail },
   { path: "build-books/:id/edit", title: "Edit build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
-  { path: "gallery", title: "Gallery", usePrimaryAction: useNoPrimaryAction, Component: Gallery },
+  // Title matches legacy's <h1> exactly ("Project Gallery") — PR-19's
+  // regression assertion (`getByRole("heading", { name: "Project
+  // Gallery" })`) runs unchanged against this app per contracts/routes.md
+  // §2, so the restyled page's PageHeader-rendered heading must match it.
+  { path: "gallery", title: "Project Gallery", usePrimaryAction: useNoPrimaryAction, Component: Gallery },
 ];
