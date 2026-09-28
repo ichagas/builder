@@ -120,7 +120,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 ## Phase 9: US5, Assurance console (P2, built new)
 
 - [X] T130 [US5] (WP-A1) `AssuranceLayout`, TeamSwitcher (header only), team portfolio. NA-01, NA-02.
-- [ ] T131 [US5] (WP-A2) Application page (adoption bar, grouped grid, group actions, exceptions). NA-03, NA-04.
+- [X] T131 [US5] (WP-A2) Application page (adoption bar, grouped grid, group actions, exceptions). NA-03, NA-04.
 - [ ] T132 [US5] (WP-A3) Mesh runs by day (PRs to the default branch, open and merged) and evidence. NA-05.
 - [ ] T133 [P] [US5] (WP-A4) Packs, policy, exceptions. NA-06.
 - [ ] T134 [P] [US5] (WP-A5) All teams. NA-07.

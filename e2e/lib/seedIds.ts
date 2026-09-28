@@ -26,4 +26,9 @@ export const seed = {
   assuranceApp1Id: "00000000-0000-4000-8000-000000000811",
   assuranceApp2Id: "00000000-0000-4000-8000-000000000812",
   assuranceOtherTeamAppId: "00000000-0000-4000-8000-000000000813",
+  // T131, WP-A2: application page (NA-03/NA-04) -- assuranceApp1's two
+  // repositories, in different `part` groups ("api"/"worker").
+  assuranceRepo1Id: "00000000-0000-4000-8000-000000000821", // e2e-goa/permits-api, part "api", on the latest pack
+  assuranceRepo2Id: "00000000-0000-4000-8000-000000000822", // e2e-goa/permits-worker, part "worker", behind + not reporting
+  assuranceExceptionId: "00000000-0000-4000-8000-000000000841",
 } as const;

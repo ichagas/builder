@@ -184,4 +184,31 @@ VALUES
   ('00000000-0000-4000-8000-000000000824', '00000000-0000-4000-8000-000000000813', 'github', 'e2e-goa/licensing-api', 'main', 'github_actions', 'java', 'Java 21', 'api', '2026.2', NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- Application page (T131, WP-A2; extends T130's seed) -- NA-03 (grouped
+-- grid with per-check mesh verdicts) and NA-04 (group actions, exceptions).
+-- permits-api (821, part "api") is on the latest pack with a clean run;
+-- permits-worker (822, part "worker") is behind (2026.1), not reporting
+-- (last_report_at 10 days old, above) and its latest run has a warning and
+-- one new finding, so it's both "behind" and "new findings" and its
+-- "worker" group gets a "Send update PRs" action (T131 NA-04).
+INSERT INTO public.mesh_runs
+  (id, repository_id, commit_sha, pr_number, base_branch, pr_state, trigger, pack_version, verdicts, new_findings, asvs_passed, alberta_passed, report_url, received_at)
+VALUES
+  ('00000000-0000-4000-8000-000000000831', '00000000-0000-4000-8000-000000000821', 'e2e-commit-831', 210, 'main', 'open', 'pull_request', '2026.2', '{"green":"pass","yellow":"pass","red":"pass","blue":"pass"}'::jsonb, 0, 285, 62, 'https://example.test/e2e/reports/831.json', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-000000000832', '00000000-0000-4000-8000-000000000822', 'e2e-commit-832', 211, 'main', 'open', 'pull_request', '2026.1', '{"green":"pass","yellow":"warn","red":"pass","blue":"skip"}'::jsonb, 1, 280, 60, 'https://example.test/e2e/reports/832.json', now() - interval '10 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- One exception on permits-worker (Red recon, no test environment), for the
+-- application page's Exceptions disclosure (T131, NA-04).
+INSERT INTO public.mesh_exceptions (id, repository_id, rule, reason, approved_by, expires_at)
+VALUES (
+  '00000000-0000-4000-8000-000000000841',
+  '00000000-0000-4000-8000-000000000822',
+  'Red recon',
+  'Batch job, no public endpoint',
+  '00000000-0000-4000-8000-0000000000a1',
+  now() + interval '180 days'
+)
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
