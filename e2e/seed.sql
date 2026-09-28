@@ -144,4 +144,44 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- US5 Assurance console (T130, WP-A1; extended by T131-T136) ---------------
+-- e2e-owner is already an organization admin (see user_roles insert above),
+-- so one signed-in user covers both NA-01's "your teams" and "all teams for
+-- org admins" (D-8) cases: team 801 they belong to, team 802 they don't
+-- (visible only through GET /teams).
+INSERT INTO public.standards_packs (version, notes)
+VALUES
+  ('2026.1', 'Seeded for US5 adoption coverage (older pack).'),
+  ('2026.2', 'Seeded for US5 adoption coverage (latest pack).')
+ON CONFLICT (version) DO NOTHING;
+
+INSERT INTO public.teams (id, organization_id, name)
+VALUES
+  ('00000000-0000-4000-8000-000000000801', '00000000-0000-4000-8000-000000000001', 'Permits Platform'),
+  ('00000000-0000-4000-8000-000000000802', '00000000-0000-4000-8000-000000000001', 'Licensing')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.team_members (team_id, user_id, role)
+VALUES ('00000000-0000-4000-8000-000000000801', '00000000-0000-4000-8000-0000000000a1', 'owner')
+ON CONFLICT (team_id, user_id) DO NOTHING;
+
+INSERT INTO public.applications (id, team_id, name, owner_label, onboarded_at)
+VALUES
+  ('00000000-0000-4000-8000-000000000811', '00000000-0000-4000-8000-000000000801', 'Permits API', 'Permits squad', now() - interval '30 days'),
+  ('00000000-0000-4000-8000-000000000812', '00000000-0000-4000-8000-000000000801', 'Permits Portal', 'Permits squad', now() - interval '10 days'),
+  ('00000000-0000-4000-8000-000000000813', '00000000-0000-4000-8000-000000000802', 'Licensing API', 'Licensing squad', now() - interval '5 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- application_repositories.full_name is globally unique -- see data-model.md
+-- ("Canonical form, everywhere") -- so these use a namespaced "e2e-goa/..."
+-- to never collide with a real org/repo.
+INSERT INTO public.application_repositories
+  (id, application_id, provider, full_name, default_branch, ci_provider, profile, stack_label, part, pinned_pack, last_report_at)
+VALUES
+  ('00000000-0000-4000-8000-000000000821', '00000000-0000-4000-8000-000000000811', 'github', 'e2e-goa/permits-api', 'main', 'github_actions', 'dotnet', '.NET 8', 'api', '2026.2', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-000000000822', '00000000-0000-4000-8000-000000000811', 'github', 'e2e-goa/permits-worker', 'main', 'github_actions', 'dotnet', '.NET 8', 'worker', '2026.1', now() - interval '10 days'),
+  ('00000000-0000-4000-8000-000000000823', '00000000-0000-4000-8000-000000000812', 'github', 'e2e-goa/permits-portal', 'main', 'github_actions', 'node', 'Node 20', 'web', '2026.2', now() - interval '2 hours'),
+  ('00000000-0000-4000-8000-000000000824', '00000000-0000-4000-8000-000000000813', 'github', 'e2e-goa/licensing-api', 'main', 'github_actions', 'java', 'Java 21', 'api', '2026.2', NULL)
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

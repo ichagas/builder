@@ -18,4 +18,12 @@ export const seed = {
   techStackId: "00000000-0000-4000-8000-000000000301",
   buildBookId: "00000000-0000-4000-8000-000000000601",
   publishedProjectId: "00000000-0000-4000-8000-000000000701",
+  // US5 Assurance console (T130, WP-A1) -- e2e-owner is a member (owner
+  // role) of assuranceTeamId, and an organization admin (see `role` above),
+  // so assuranceOtherTeamId is reachable only through GET /teams (D-8).
+  assuranceTeamId: "00000000-0000-4000-8000-000000000801",
+  assuranceOtherTeamId: "00000000-0000-4000-8000-000000000802",
+  assuranceApp1Id: "00000000-0000-4000-8000-000000000811",
+  assuranceApp2Id: "00000000-0000-4000-8000-000000000812",
+  assuranceOtherTeamAppId: "00000000-0000-4000-8000-000000000813",
 } as const;
