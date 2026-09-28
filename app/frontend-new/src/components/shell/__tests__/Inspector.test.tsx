@@ -1,20 +1,50 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Inspector } from "../Inspector";
 
+function setWidth(width: number) {
+  Object.defineProperty(window, "innerWidth", {
+    writable: true,
+    configurable: true,
+    value: width,
+  });
+}
+
 describe("Inspector", () => {
-  it("renders the panel title and content, twice (desktop panel + mobile sheet)", () => {
+  afterEach(() => {
+    // Restore jsdom's default width so other suites aren't affected.
+    setWidth(1024);
+  });
+
+  it("renders exactly one instance of the title and content on desktop", () => {
+    setWidth(1024);
     render(
       <Inspector title="Properties" onClose={() => {}}>
         <p>Node details</p>
       </Inspector>,
     );
-    expect(screen.getAllByText("Properties").length).toBe(2);
-    expect(screen.getAllByText("Node details").length).toBe(2);
+    expect(screen.getAllByText("Properties").length).toBe(1);
+    expect(screen.getAllByText("Node details").length).toBe(1);
+    expect(screen.getByRole("complementary", { name: "Properties" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Properties" })).not.toBeInTheDocument();
   });
 
-  it("calls onClose from either close button", async () => {
+  it("renders exactly one instance of the title and content on mobile", () => {
+    setWidth(375);
+    render(
+      <Inspector title="Properties" onClose={() => {}}>
+        <p>Node details</p>
+      </Inspector>,
+    );
+    expect(screen.getAllByText("Properties").length).toBe(1);
+    expect(screen.getAllByText("Node details").length).toBe(1);
+    expect(screen.getByRole("dialog", { name: "Properties" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Properties" })).not.toBeInTheDocument();
+  });
+
+  it("calls onClose from the close button", async () => {
+    setWidth(1024);
     const user = userEvent.setup();
     const onClose = vi.fn();
     render(
@@ -22,12 +52,12 @@ describe("Inspector", () => {
         content
       </Inspector>,
     );
-    const closeButtons = screen.getAllByRole("button", { name: "Close" });
-    await user.click(closeButtons[0]);
+    await user.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("cycles the mobile detent on the resize button", async () => {
+    setWidth(375);
     const user = userEvent.setup();
     const onDetentChange = vi.fn();
     render(
