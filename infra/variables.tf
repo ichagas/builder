@@ -526,15 +526,47 @@ variable "entra_app_owners" {
 }
 
 variable "frontend_app_url_override" {
-  description = "Frontend application URL used as the primary redirect URI for the Entra App Registration. Required when create_entra_app_registration is true."
+  description = "Legacy frontend (module.frontend) application URL — the public custom domain fronting it, if any. Registered as an Entra App Registration redirect URI and a CORS origin regardless of var.primary_frontend (both frontends stay reachable until T074 removes module.frontend). Required when create_entra_app_registration is true and var.primary_frontend = \"legacy\"."
   type        = string
   default     = null
 }
 
 variable "frontend_new_app_url_override" {
-  description = "Frontend-new (redesigned frontend, spec 007) application URL — the public custom domain fronting it (e.g. https://next.<domain>). Used as an additional Entra App Registration redirect URI and baked into the frontend-new build as VITE_AZURE_REDIRECT_URI. Leave null to use the auto-derived Container App URL (module.frontend_new.app_url)."
+  description = "Frontend-new (redesigned frontend, spec 007) application URL — the public custom domain fronting it (e.g. https://next.<domain> pre-cutover, or the production domain once it is primary). Registered as an Entra App Registration redirect URI and a CORS origin regardless of var.primary_frontend. Used as VITE_AZURE_REDIRECT_URI for the frontend-new build. Leave null to use the auto-derived Container App URL (module.frontend_new.app_url)."
   type        = string
   default     = null
+}
+
+# =============================================================================
+# Primary Frontend Switch (spec 007, WP-X2, T073)
+# =============================================================================
+# Which of the two parallel frontend Container Apps (module.frontend, the
+# pre-redesign app, vs module.frontend_new, the spec-007 redesign) is treated
+# as production-primary. Both apps stay deployed and both stay registered as
+# valid Entra redirect URIs / API CORS origins no matter which is primary —
+# this variable only picks which one's URL is exposed as the
+# `primary_frontend_url` output and listed first among Entra redirect URIs.
+# The actual host that end users hit is decided outside Terraform, by which
+# *_app_url_override a human points the production custom domain's DNS
+# record at (see specs/007-frontend-new/quickstart.md "Cutover" section) —
+# this variable documents and drives that choice in code so `terraform plan`
+# shows the switch instead of it being a tribal-knowledge DNS change.
+#
+# Default "new": app/frontend (legacy) has no live users yet (T074 removes it
+# right after cutover, "not live yet, so no transition period" — see
+# tasks.md T074), so applying this commit's default is the T073 cutover
+# itself. Set to "legacy" only to roll back a bad cutover before T074 lands.
+# =============================================================================
+
+variable "primary_frontend" {
+  description = "Which frontend Container App is production-primary: \"legacy\" (module.frontend) or \"new\" (module.frontend_new, spec 007 redesign). Drives the primary_frontend_url output and Entra redirect URI ordering. Default \"new\" performs the WP-X2/T073 cutover on apply; set \"legacy\" to roll back."
+  type        = string
+  default     = "new"
+
+  validation {
+    condition     = contains(["legacy", "new"], var.primary_frontend)
+    error_message = "primary_frontend must be \"legacy\" or \"new\"."
+  }
 }
 
 variable "api_base_url_override" {

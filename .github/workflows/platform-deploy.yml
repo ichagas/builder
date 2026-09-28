@@ -229,6 +229,8 @@ jobs:
           TF_VAR_central_dns_subscription_id: ${{ vars.CENTRAL_DNS_SUBSCRIPTION_ID }}
           TF_VAR_central_dns_resource_group_name: ${{ vars.CENTRAL_DNS_RESOURCE_GROUP_NAME }}
           TF_VAR_frontend_app_url_override: ${{ vars.FRONTEND_APP_URL_OVERRIDE }}
+          TF_VAR_frontend_new_app_url_override: ${{ vars.FRONTEND_NEW_APP_URL_OVERRIDE }}
+          TF_VAR_primary_frontend: ${{ vars.PRIMARY_FRONTEND }}
           TF_VAR_api_base_url_override: ${{ vars.API_BASE_URL_OVERRIDE }}
         run: |
           set -euo pipefail
@@ -250,6 +252,8 @@ jobs:
             TF_VAR_central_dns_subscription_id \
             TF_VAR_central_dns_resource_group_name \
             TF_VAR_frontend_app_url_override \
+            TF_VAR_frontend_new_app_url_override \
+            TF_VAR_primary_frontend \
             TF_VAR_api_base_url_override; do
             val="${!name:-}"
             if [ -n "$val" ]; then
@@ -1582,6 +1586,8 @@ jobs:
           TF_VAR_central_dns_subscription_id: ${{ vars.CENTRAL_DNS_SUBSCRIPTION_ID }}
           TF_VAR_central_dns_resource_group_name: ${{ vars.CENTRAL_DNS_RESOURCE_GROUP_NAME }}
           TF_VAR_frontend_app_url_override: ${{ vars.FRONTEND_APP_URL_OVERRIDE }}
+          TF_VAR_frontend_new_app_url_override: ${{ vars.FRONTEND_NEW_APP_URL_OVERRIDE }}
+          TF_VAR_primary_frontend: ${{ vars.PRIMARY_FRONTEND }}
           TF_VAR_api_base_url_override: ${{ vars.API_BASE_URL_OVERRIDE }}
         run: |
           set -euo pipefail
@@ -1603,6 +1609,8 @@ jobs:
             TF_VAR_central_dns_subscription_id \
             TF_VAR_central_dns_resource_group_name \
             TF_VAR_frontend_app_url_override \
+            TF_VAR_frontend_new_app_url_override \
+            TF_VAR_primary_frontend \
             TF_VAR_api_base_url_override; do
             val="${!name:-}"
             if [ -n "$val" ]; then

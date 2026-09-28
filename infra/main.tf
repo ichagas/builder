@@ -797,9 +797,13 @@ module "frontend" {
 # =============================================================================
 # Frontend-new Container App Module (redesigned frontend, spec 007)
 # =============================================================================
-# Reuses the same ./modules/frontend module as the legacy frontend above, at
-# its own host (next.<domain> via frontend_new_app_url_override), running
-# alongside it until cutover. See specs/007-frontend-new/.
+# Reuses the same ./modules/frontend module as the legacy frontend above.
+# Pre-cutover, its host is next.<domain> via frontend_new_app_url_override.
+# As of WP-X2/T073, var.primary_frontend defaults to "new": this is now the
+# production-primary app (see primary_frontend_url output) — point the
+# production custom domain's frontend_new_app_url_override / DNS record at it
+# per specs/007-frontend-new/quickstart.md "Cutover". module.frontend stays
+# deployed until T074 removes it. See specs/007-frontend-new/.
 # =============================================================================
 
 module "frontend_new" {
@@ -1294,13 +1298,32 @@ module "entra_app_registration" {
   owners                   = var.entra_app_owners
 
   redirect_uris = concat(
-    # Primary redirect: frontend Container App URL (auto-detected)
-    # Azure AD requires a trailing slash on URIs without a path segment
-    ["${trimsuffix(coalesce(var.frontend_app_url_override, module.frontend.app_url), "/")}/"],
-    # Frontend-new (redesigned frontend, spec 007) — own host redirect URI,
-    # e.g. https://next.<domain>/ via frontend_new_app_url_override.
-    ["${trimsuffix(coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url), "/")}/"],
-    # Additional redirect URIs (e.g. custom domains)
+    # Primary redirect: whichever frontend is primary per var.primary_frontend
+    # (spec 007, WP-X2, T073 cutover — default "new"). Both frontends' redirect
+    # URIs are always included below regardless of which is primary, so
+    # flipping var.primary_frontend is a safe, reversible switch until T074
+    # removes module.frontend entirely.
+    # Azure AD requires a trailing slash on URIs without a path segment.
+    [
+      "${trimsuffix(
+        local.primary_frontend_is_new
+        ? coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url)
+        : coalesce(var.frontend_app_url_override, module.frontend.app_url),
+        "/"
+      )}/"
+    ],
+    # The non-primary frontend's redirect URI (e.g. https://next.<domain>/
+    # pre-cutover, or the legacy host post-cutover).
+    [
+      "${trimsuffix(
+        local.primary_frontend_is_new
+        ? coalesce(var.frontend_app_url_override, module.frontend.app_url)
+        : coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url),
+        "/"
+      )}/"
+    ],
+    # Additional redirect URIs (e.g. custom domains, such as next.<domain> if
+    # it must keep working post-cutover — see quickstart.md "Cutover")
     var.entra_app_redirect_uris,
     # Optional localhost for dev
     var.entra_app_include_localhost_redirect ? ["http://localhost:5173/"] : []
