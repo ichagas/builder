@@ -31,6 +31,18 @@ interface UnifiedAgentInterfaceProps {
   files?: Array<{ id: string; path: string; isStaged?: boolean }>;
   autoCommit: boolean;
   onAutoCommitChange: (checked: boolean) => void;
+  /**
+   * T048 (WP-B1): reports the same state that drives the in-page Send/Stop
+   * button below (unchanged) so `Build.tsx` can mirror it as the page's
+   * `PageHeader` primary action, without this component knowing anything
+   * about the route registry or `createPrimaryActionStore`. Called on every
+   * render with `undefined` when nothing meaningful can run yet (no repo).
+   */
+  onPrimaryActionChange?: (
+    action:
+      | { label: string; onClick: () => void; disabled?: boolean; tone?: "danger" }
+      | undefined,
+  ) => void;
 }
 
 interface ChatHistorySettings {
@@ -50,7 +62,8 @@ export function UnifiedAgentInterface({
   onOpenSettings,
   files = [],
   autoCommit,
-  onAutoCommitChange
+  onAutoCommitChange,
+  onPrimaryActionChange,
 }: UnifiedAgentInterfaceProps) {
   const { messages: loadedMessages, loading: messagesLoading, hasMore: hasMoreMessages, loadMore: loadMoreMessages, refetch: refetchMessages } = useInfiniteAgentMessages(projectId, shareToken);
   const { operations, loading: operationsLoading, hasMore: hasMoreOperations, loadMore: loadMoreOperations, refetch: refetchOperations } = useInfiniteAgentOperations(projectId, shareToken);
@@ -673,6 +686,28 @@ export function UnifiedAgentInterface({
       toast.info("Stopping agent...");
     }
   };
+
+  // T048 (WP-B1): mirror the Send/Stop button below (unchanged) as the
+  // page's PageHeader primary action -- same label/onClick/disabled the
+  // in-page button already computes from `isSubmitting`/`taskInput`/
+  // `repoId`. Runs every render (like `usePublishPrimaryAction` itself)
+  // so the reported action always closes over the latest state.
+  useEffect(() => {
+    onPrimaryActionChange?.(
+      isSubmitting
+        ? { label: "Stop agent", onClick: handleStop, tone: "danger" }
+        : { label: "Run agent", onClick: handleSubmit, disabled: !taskInput.trim() || !repoId },
+    );
+  });
+  // Clear the mirrored action when this view unmounts (e.g. the desktop
+  // "Chat" tab loses `TabsContent`'s mount, or the workspace sidebar
+  // collapses) so a stale action never lingers on a tab/panel it no longer
+  // renders in -- same guarantee `createPrimaryActionStore` gives a page
+  // that unmounts entirely.
+  useEffect(() => {
+    return () => onPrimaryActionChange?.(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDownloadChatHistory = async () => {
     setIsDownloadingHistory(true);

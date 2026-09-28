@@ -7,6 +7,7 @@ import { useProjectStandardsPrimaryAction } from "@/pages/project/standards.prim
 import { useArtifactsPrimaryAction } from "@/pages/project/artifacts.primaryAction";
 import { useChatPrimaryAction } from "@/pages/project/chat.primaryAction";
 import { useDeployPrimaryAction } from "@/pages/project/deploy.primaryAction";
+import { useBuildPrimaryAction } from "@/pages/project/build.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -52,7 +53,11 @@ export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
   { tool: "chat", phase: "define", title: "Chat", usePrimaryAction: useChatPrimaryAction, Component: Chat },
   { tool: "canvas", phase: "design", title: "Canvas", usePrimaryAction: useNoPrimaryAction, Component: Canvas },
   { tool: "specifications", phase: "design", title: "Project Specifications", usePrimaryAction: useSpecificationsPrimaryAction, Component: Specifications },
-  { tool: "agent", phase: "build", title: "Build agent", usePrimaryAction: useNoPrimaryAction, Component: Build },
+  // T048 (WP-B1): title "Build", not "Build agent" -- PR-10's regression
+  // spec asserts getByRole("heading", { name: "Build", exact: true })
+  // unchanged, matching legacy's ProjectPageHeader heading text exactly
+  // (same approach WP-S1 used for Deploy/"Environments").
+  { tool: "agent", phase: "build", title: "Build", usePrimaryAction: useBuildPrimaryAction, Component: Build },
   { tool: "repository", phase: "build", title: "Repository", usePrimaryAction: useNoPrimaryAction, Component: Repository },
   { tool: "database", phase: "build", title: "Database", usePrimaryAction: useNoPrimaryAction, Component: Database },
   // T051 (WP-S1): title "Deploy", not "Environments", to match legacy's
