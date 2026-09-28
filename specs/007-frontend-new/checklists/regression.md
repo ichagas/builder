@@ -27,7 +27,7 @@ Regression rows are defined in [contracts/routes.md](../contracts/routes.md) §2
 | PR-17 | Tech Stacks | L2 | ✅ | ✅ / ✅ | ✅ better | ☐ |
 | PR-18 | Build Books | L3 | ✅ | ✅ / ✅ (L3 restyle) | ✅ 0 violations | ☐ |
 | PR-19 | Gallery | L4 | ✅ | ✅ / ✅ (L4 restyle) | ✅ no new | ☐ |
-| PR-20 | Settings and admin | L5 | ✅ | ✅ / ✅ (embedded, not restyled) | — | ☐ |
+| PR-20 | Settings and admin | L5 | ✅ | ✅ / ✅ (L5 restyle) | ✅ better (auth 0) | ☐ |
 | PR-21 | Public | P1 | ✅ | ✅ / ✅ (embedded, not restyled) | — | ☐ |
 | PR-22 | Shell (new) | F3, F3b, F6 | n/a | ✅ shell suite 105 passed / 0 failed | ✅ shell axe 0 violations | ☐ |
 
