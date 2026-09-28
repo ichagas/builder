@@ -54,6 +54,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T043 | done | ef51039, 63f703e | WP-D2. Project Standards; "Save Changes" as the primary action (createPrimaryActionStore). PR-05 green 1440/390; axe strictly fewer than legacy |
 | T044 | done | d9bf548, f5557b8 | WP-D3. Artifacts; "Add artifact" primary action; mobile icon buttons labelled. PR-06 green 1440/390; axe **0 violations** both viewports |
 | T045 | done | 16b37a8, 0a819d8, 9ab5558 | WP-D4. Chat; sessions sidebar → Sheet on phones; toggle aria-label; primary action "Start a conversation"; duplicate <main> removed. PR-07 green 1440/390; axe fewer nodes than legacy |
+| T051 | done | 2f12b22, 38229bc | WP-S1. Deploy/Environments; title kept "Deploy" (PR-13); tabs in URL; aria-labels on icon tabs + Refresh. PR-13 green 1440/390; axe 0 critical/serious (legacy 5 critical mobile) |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
 ## Escalations to Opus 5.5
@@ -159,3 +160,5 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - **Merged WP-D2** (verified on feature: lint 0 errors, tsc OK, **730 FE tests**, build OK). D3 E2E running.
 - **Merged WP-D3** (verified on feature: lint 0 errors, tsc OK, **734 FE tests**, build OK). D4 E2E running.
 - **Merged WP-D4** (verified on feature: lint 0 errors, tsc OK, **738 FE tests**, build OK). S1 E2E running (last of batch 2).
+- **Merged WP-S1 — wave 3 batch 2 complete** (S3, G2, D2, D3, D4, S1; E2E run strictly one at a time after the Docker restart). Verified on feature: lint 0 errors, tsc OK, **742 FE tests**, build OK. Restyled so far: 11 of 20 page WPs (P2, P3, D1–D4, G2, S1, S3, L1, L2). Remaining: G1, B1, B2, B3, S2, L3, L4, L5, P1.
+- Ops notes for agents: background servers started with plain `nohup … &` die when the launching Bash call ends; use the tool's run_in_background. Limit vitest workers when several agents run unit tests at once (8 GB RAM).
