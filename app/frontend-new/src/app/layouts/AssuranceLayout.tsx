@@ -6,7 +6,6 @@ import { Rail } from "@/components/shell/Rail";
 import { MobileTabBar } from "@/components/shell/MobileTabBar";
 import { StatusCenter } from "@/components/shell/StatusCenter";
 import { UndoBar } from "@/components/shell/UndoBar";
-import { ShellProvider } from "@/components/shell/ShellContext";
 import { usePublishCommandPaletteItems } from "@/components/shell/CommandPaletteItemsContext";
 import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { TeamSwitcher } from "@/components/assurance/TeamSwitcher";
@@ -45,33 +44,31 @@ export function AssuranceLayout() {
   const portfolioHref = teamId ? `/assurance/t/${teamId}` : teams[0] ? `/assurance/t/${teams[0].id}` : "/assurance";
 
   return (
-    <ShellProvider embedded={false}>
-      <AppShell
-        globalBar={
-          <GlobalBar
-            switcher={<TeamSwitcher />}
-            mode={{ kind: "standards", label: t("assurance.mode.label") }}
-            onSearch={openPalette}
-            statusPill={<StatusCenter />}
-          />
-        }
-        rail={
-          <Rail
-            ariaLabel={t("assurance.rail.ariaLabel")}
-            sections={[{ id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref }]}
-          />
-        }
-        mobileTabBar={
-          <MobileTabBar
-            ariaLabel={t("assurance.rail.ariaLabel")}
-            items={[{ id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref }]}
-          />
-        }
-        undoBar={<UndoBar />}
-      >
-        <Outlet />
-      </AppShell>
-    </ShellProvider>
+    <AppShell
+      globalBar={
+        <GlobalBar
+          switcher={<TeamSwitcher />}
+          mode={{ kind: "standards", label: t("assurance.mode.label") }}
+          onSearch={openPalette}
+          statusPill={<StatusCenter />}
+        />
+      }
+      rail={
+        <Rail
+          ariaLabel={t("assurance.rail.ariaLabel")}
+          sections={[{ id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref }]}
+        />
+      }
+      mobileTabBar={
+        <MobileTabBar
+          ariaLabel={t("assurance.rail.ariaLabel")}
+          items={[{ id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref }]}
+        />
+      }
+      undoBar={<UndoBar />}
+    >
+      <Outlet />
+    </AppShell>
   );
 }
 

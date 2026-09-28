@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** 3 complete (all 20 restyles merged); next X0 (T070–T071). Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** PAUSED by the user on 2026-09-28 after X0 + A1 merged. Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -64,6 +64,8 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T064 | done | f94d9ab, 1197f15 | WP-L5. Settings restyled (headings "Settings"/"Admin User Management" via PageHeader title override); auth pages already on bare PublicLayout; no standalone admin/superadmin page exists (managers live inside B2/B3/S1 pages); signup validation components unreferenced. PR-20 4/4 1440/390; axe auth 0, admin subset of legacy |
 | T065 | done | e17a9cb, 84c4c07 | WP-P1. Public pages already tokenized (F2b); ThemeToggle 44px; nested <a> in Terms/Privacy/License fixed (390 overlap). PR-21 green 1440/390; axe legal 0, landing no new |
 | T072 | done | d530987, 31081d0 | WP-X1. nginx 301 for every routes.md §1 legacy URL (query + share token → ?t=); `/` and same-path routes left to the SPA (signed-in redirect is client state). scripts/test-nginx-redirects.sh (nginx:alpine, 44/44) in frontend-new CI |
+| T070 | done | 1805a81, 0e86e98 | WP-X0. Embedded mode removed; PrimaryNav/ProjectSidebar/ProjectPageHeader deleted (−607 lines); Inspector renders one instance per breakpoint |
+| T130 | done | c5e0339, cee0551 | WP-A1. /assurance/t/:teamId portfolio, TeamSwitcher (D-8), realtime team-{teamId}; zod + TanStack Query (features/assurance/api.ts); NA-01/02 14/14; axe 0 |
 | T049 | done | c78ce9e, 041fe2e | WP-B2. Repository; tabs in URL; no page-level action (as legacy). PR-11 green 1440/390; axe no new |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
@@ -190,3 +192,18 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - **Wave 4 new capabilities started:** WP-A1 (T130: AssuranceLayout, TeamSwitcher, team portfolio; NA-01/02; creates e2e/new/us5.assurance.spec.ts) dispatched in parallel with X0, told not to touch X0's files (ProjectLayout, RootLayout, ShellContext, Inspector, routes/types, legacy chrome). Rest of wave 4 (V1–V4, A2–A6) follows after X0 merges, to limit conflicts in shared layout/router files.
 - WP-A1 (T130) developer done: c5e0339, cee0551. /assurance → t/:teamId portfolio, TeamSwitcher (own + all teams for org admins), realtime team-{teamId}; NA-01/NA-02 14/14; axe 0 at 1440/390 light/dark; 791 FE tests. Adds `zod` and the first `src/features/<domain>/api.ts` (TanStack Query) → reviewer checks against the plan. Also adds `new/**` to playwright testMatch + `test:new-capabilities`. A1 saw `shell/remount.spec.ts` mobile Canvas drag-and-drop failing; suspected regression from G1's mobile palette sheet → reviewer + X0's full run to confirm.
 - A1 review: **APPROVE** (zod + features/assurance/api.ts are prescribed by instructions/research D-2/D-3/api.md; contract, D-8, realtime cleanup OK; nit: unused i18n key assurance.portfolio.crumb). The `shell/remount.spec.ts` mobile failure is **not** a Canvas/G1 regression: the spec clicks Rail links, and the Rail is hidden ≤768px by design; it lacks the desktop-only guard other shell specs have. Follow-up: guard it and add a mobile variant via MobileTabBar. A1 merges after X0.
+- **Merged WP-X0 (T070) and WP-A1 (T130).** X0's T071 full-regression run hung for hours and was stopped by the user (Docker); T070 code + Inspector fix were committed before that and verified by the orchestrator. Semantic merge conflict fixed on feature: A1's AssuranceLayout wrapped itself in the deleted `ShellProvider` → wrapper removed. Verified on feature: lint 0 errors, tsc OK, **788 FE tests**, build OK; backend **1196 tests**.
+
+## Paused state (2026-09-28, resume from here)
+
+Paused on the user's instruction: finish running work, merge everything into `feature/frontend-new`, push, delete merged `wp/*` branches and their worktrees. All work is on `feature/frontend-new`; no open WP branches.
+
+**Done:** Phases 0–2 (T000–T038), all 20 restyles (T040–T053, T060–T065), T070, T072, all backend (T100–T104, T120–T126, T140; T141/T142/T126-role BLOCKED-EXTERNAL), T130. **Baseline:** FE lint 0 errors, tsc OK, 788 unit tests, build OK; BE 1196 tests; migrations through 023 (next free 024).
+
+**Next, in order:**
+1. **T071** full regression (PR-01..22, 1440/390) on the local stack. The previous attempt hung for hours: run the shell suite and rows in smaller chunks (e.g. a few rows per `npx playwright test` call, `--workers=1`, a per-test timeout, `--max-failures`), reseeding between chunks, and never leave a run without a timeout. Fix first: `e2e/shell/remount.spec.ts` needs a desktop-only guard (it clicks Rail links, hidden ≤768px) plus a mobile variant via MobileTabBar. Record results in `checklists/regression.md` (Final column). Staging run stays BLOCKED-EXTERNAL until T015 apply.
+2. **T074** remove `app/frontend/`, its CI job and Terraform instance, after T071 is green; update constitution/README/instructions. **T073** host switch: code only, BLOCKED-EXTERNAL (Terraform/Front Door/Entra apply).
+3. Wave 4/5 new capabilities: V1–V4 (T110–T114), A2–A6 (T131–T136), O1–O2 (T150–T152). A1 set the pattern (features/<domain>/api.ts, e2e/new/*, `npm run test:new-capabilities`).
+4. Polish T160–T162 (include: long-task staleness/TTL in useLongTask; unused i18n key assurance.portfolio.crumb), then T170–T171.
+
+**Machine rules (8 GB RAM):** one Docker/e2e stack at a time (lock script in the orchestrator scratchpad, or run e2e sequentially), `npm test -- --maxWorkers=2`, servers via run_in_background, agents never restart Docker. Spend-limit interruptions: resume agents with SendMessage; their work stays in worktrees.
