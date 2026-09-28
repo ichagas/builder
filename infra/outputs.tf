@@ -216,6 +216,16 @@ output "frontend_new_fqdn" {
   value       = module.frontend_new.app_fqdn
 }
 
+output "primary_frontend" {
+  description = "Which frontend Container App is production-primary (var.primary_frontend): \"legacy\" (module.frontend) or \"new\" (module.frontend_new). See specs/007-frontend-new/quickstart.md \"Cutover\" (WP-X2, T073)."
+  value       = var.primary_frontend
+}
+
+output "primary_frontend_url" {
+  description = "Public URL of the currently-primary frontend (module.frontend or module.frontend_new per var.primary_frontend), preferring its *_app_url_override when set. This is the URL end users and the Entra primary redirect should resolve to after cutover."
+  value       = local.primary_frontend_app_url
+}
+
 # -----------------------------------------------------------------------------
 # API Management Outputs
 # -----------------------------------------------------------------------------

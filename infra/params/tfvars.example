@@ -284,8 +284,22 @@ frontend_build_vars = {
 # browser cannot reach). The frontend makes direct browser calls to the API, so
 # api_base_url_override MUST be publicly reachable. Leave commented to use the
 # auto-generated internal URLs.
-# frontend_app_url_override = "REPLACE: https://app.<your-domain>"     # MSAL redirect URI + CORS + Entra redirect
-# api_base_url_override     = "REPLACE: https://api.<your-domain>"     # VITE_API_BASE_URL + derived VITE_WS_URL
+# frontend_app_url_override     = "REPLACE: https://app.<your-domain>"      # legacy frontend (module.frontend) — MSAL redirect URI + CORS + Entra redirect
+# frontend_new_app_url_override = "REPLACE: https://app.<your-domain>"      # frontend-new (module.frontend_new, spec 007) — same, its own redirect URI + CORS origin
+# api_base_url_override         = "REPLACE: https://api.<your-domain>"      # VITE_API_BASE_URL + derived VITE_WS_URL
+
+# ── Primary Frontend Switch (spec 007, WP-X2, T073) ───────────────────────────
+# Which of the two frontend Container Apps is production-primary. Default
+# "legacy" — do NOT set this to "new" as part of the same apply that first
+# creates module.frontend_new (T015, at next.<domain>): that apply is for
+# testers to verify frontend_new independently of production, not to cut
+# production over. Cutover is a deliberate, later step: once next.<domain>
+# is verified and the final regression run is green, set
+# frontend_new_app_url_override above to your real production domain AND
+# primary_frontend = "new" together, then apply. Set back to "legacy" to
+# roll back. Both frontends' redirect URIs / CORS origins stay registered
+# either way. See specs/007-frontend-new/quickstart.md "Cutover".
+# primary_frontend = "legacy" # "legacy" | "new"
 
 # ── Azure AI Foundry ──────────────────────────────────────────────────────────
 enable_ai_foundry                     = true

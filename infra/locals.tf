@@ -217,6 +217,12 @@ locals {
       "VITE_GITHUB_ORG" = local.configured_github_org
     } : {}
   )
+
+  # ---------------------------------------------------------------------------
+  # Primary frontend switch (spec 007, WP-X2, T073). See var.primary_frontend.
+  # ---------------------------------------------------------------------------
+  primary_frontend_is_new  = var.primary_frontend == "new"
+  primary_frontend_app_url = local.primary_frontend_is_new ? coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url) : coalesce(var.frontend_app_url_override, module.frontend.app_url)
 }
 
 # =============================================================================

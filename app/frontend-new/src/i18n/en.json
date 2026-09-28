@@ -73,8 +73,6 @@
     },
     "portfolio": {
       "title": "Portfolio",
-      "crumb_one": "Team · {{count}} member",
-      "crumb_other": "Team · {{count}} members",
       "applicationsHeading": "Applications and repositories",
       "applicationsMeta_one": "{{count}} application",
       "applicationsMeta_other": "{{count}} applications",
