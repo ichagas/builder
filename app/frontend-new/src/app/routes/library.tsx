@@ -1,6 +1,9 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useStandardsPrimaryAction } from "@/pages/standards.primaryAction";
 import { useTechStacksPrimaryAction } from "@/pages/techStacks.primaryAction";
+import { useBuildBooksPrimaryAction } from "@/pages/buildBooks.primaryAction";
+import { useBuildBookDetailPrimaryAction } from "@/pages/buildBookDetail.primaryAction";
+import { useBuildBookEditorPrimaryAction } from "@/pages/buildBookEditor.primaryAction";
 import { useNoPrimaryAction, type SimpleRoute } from "./types";
 
 const Gallery = lazyWithRetry(() => import("@/pages/Gallery"));
@@ -18,10 +21,17 @@ export const LIBRARY_ROUTES: SimpleRoute[] = [
   // §2, so the restyled page's PageHeader-rendered heading must match it.
   { path: "standards", title: "Standards Library", usePrimaryAction: useStandardsPrimaryAction, Component: Standards },
   { path: "tech-stacks", title: "Tech stacks", usePrimaryAction: useTechStacksPrimaryAction, Component: TechStacks },
-  { path: "build-books", title: "Build books", usePrimaryAction: useNoPrimaryAction, Component: BuildBooks },
-  { path: "build-books/new", title: "New build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
-  { path: "build-books/:id", title: "Build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookDetail },
-  { path: "build-books/:id/edit", title: "Edit build book", usePrimaryAction: useNoPrimaryAction, Component: BuildBookEditor },
+  { path: "build-books", title: "Build books", usePrimaryAction: useBuildBooksPrimaryAction, Component: BuildBooks },
+  { path: "build-books/new", title: "New build book", usePrimaryAction: useBuildBookEditorPrimaryAction, Component: BuildBookEditor },
+  { path: "build-books/:id", title: "Build book", usePrimaryAction: useBuildBookDetailPrimaryAction, Component: BuildBookDetail },
+  // "Build book editor", not "Edit build book": PR-18's regression spec
+  // does getByRole("heading", { name: "Edit Build Book" }) (a
+  // case-insensitive substring match, no `exact`) against
+  // BuildBookEditor.tsx's own in-page `<h1>Edit Build Book</h1>` -- a
+  // PageHeader title containing that same phrase (word order intact) would
+  // make the locator ambiguous (strict-mode violation) without the spec
+  // itself changing.
+  { path: "build-books/:id/edit", title: "Build book editor", usePrimaryAction: useBuildBookEditorPrimaryAction, Component: BuildBookEditor },
   // Title matches legacy's <h1> exactly ("Project Gallery") — PR-19's
   // regression assertion (`getByRole("heading", { name: "Project
   // Gallery" })`) runs unchanged against this app per contracts/routes.md
