@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
 import { useParams } from "react-router-dom";
 import { useShareToken } from "@/hooks/useShareToken";
 import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage";
@@ -17,7 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useRealtimeRepos } from "@/hooks/useRealtimeRepos";
 import { useFileBuffer } from "@/hooks/useFileBuffer";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Menu, FilePlus, FolderPlus, Eye, EyeOff, Upload, Trash2, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, FilePlus, FolderPlus, Eye, EyeOff, Upload, Trash2, AlertTriangle } from "lucide-react";
 import { CreateFileDialog } from "@/components/repository/CreateFileDialog";
 import { RenameDialog } from "@/components/repository/RenameDialog";
 import { stageFile } from "@/lib/stagingOperations";
@@ -32,6 +30,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { useUrlState } from "@/lib/state/useUrlState";
+import { usePublishBuildPrimaryAction } from "./build.primaryAction";
 
 const BINARY_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svg", "pdf", "zip", "tar", "gz", "exe", "dll", "so", "dylib", "woff", "woff2", "ttf", "eot", "mp3", "mp4", "wav", "ogg", "webm", "avi", "mov"];
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svg", "avif", "tiff", "tif"];
@@ -65,18 +66,33 @@ export default function Build() {
   const [stagedChanges, setStagedChanges] = useState<any[]>([]);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ id: string; path: string }>>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createType, setCreateType] = useState<"file" | "folder">("file");
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
   const [showDeletedFiles, setShowDeletedFiles] = useState(true);
-  const [mobileActiveTab, setMobileActiveTab] = useState("files");
+  // T048 (WP-B1): tabs in the URL (plan.md "the move and restyle recipe"
+  // step 3), replacing the page's old `useState`. Desktop (workspace:
+  // chat/staging/history) and mobile (files/editor/chat/staging) render
+  // mutually exclusively (`useIsMobile`), so each keeps its own query
+  // param rather than sharing one whose valid values differ per layout.
+  const [mobileActiveTab, setMobileActiveTab] = useUrlState("mobileTab", "files");
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [itemToRename, setItemToRename] = useState<{ id: string; path: string; type: "file" | "folder" } | null>(null);
   const [autoCommit, setAutoCommit] = useState(false);
-  const [desktopActiveTab, setDesktopActiveTab] = useState("chat");
+  const [desktopActiveTab, setDesktopActiveTab] = useUrlState("tab", "chat");
   const [stagingRefreshTrigger, setStagingRefreshTrigger] = useState(0);
+
+  // T048 (WP-B1): "Run agent"/"Stop agent" is the page's primary action,
+  // declared in the route registry (app/routes/project.tsx) and rendered
+  // by PageHeader. It mirrors the Send/Stop icon button
+  // `UnifiedAgentInterface` already renders in its composer (kept
+  // unchanged) -- see build.primaryAction.ts and
+  // UnifiedAgentInterface's `onPrimaryActionChange` prop.
+  const [agentPrimaryAction, setAgentPrimaryAction] = useState<
+    { label: string; onClick: () => void; disabled?: boolean; tone?: "danger" } | undefined
+  >(undefined);
+  usePublishBuildPrimaryAction(agentPrimaryAction);
 
   // File buffer system for instant file switching and background saves
   const {
@@ -721,41 +737,20 @@ export default function Build() {
   // Show token recovery message if token is missing
   if (tokenMissing) {
     return (
-      <div className="flex flex-col bg-background h-screen">
-        <PrimaryNav />
-        <TokenRecoveryMessage />
+      <div className="flex h-screen flex-col bg-background">
+        <PageHeader />
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          <TokenRecoveryMessage />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col bg-background h-screen">
-      <PrimaryNav />
+    <div className="flex h-screen flex-col bg-background">
+      <PageHeader />
 
-      <div className="flex flex-1 min-h-0 relative overflow-hidden">
-        <ProjectSidebar
-          projectId={projectId}
-          isOpen={isProjectSidebarOpen}
-          onOpenChange={setIsProjectSidebarOpen}
-        />
-
-        <main className="flex-1 w-full">
-          <div className="flex flex-col h-full">
-            <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="flex h-14 items-center gap-2 px-3 md:px-6">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsProjectSidebarOpen(true)}
-                  className="shrink-0 h-8 w-8 md:hidden"
-                  aria-label="Open menu"
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-                <h1 className="text-base md:text-lg font-semibold">Build</h1>
-              </div>
-            </div>
-
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
             {/* Desktop Layout */}
             {!isMobile && (
               <div className="flex-1 flex overflow-hidden">
@@ -932,6 +927,7 @@ export default function Build() {
                                   files={files}
                                   autoCommit={autoCommit}
                                   onAutoCommitChange={setAutoCommit}
+                                  onPrimaryActionChange={setAgentPrimaryAction}
                                 />
                               </TabsContent>
 
@@ -1116,6 +1112,7 @@ export default function Build() {
                       files={files}
                       autoCommit={autoCommit}
                       onAutoCommitChange={setAutoCommit}
+                      onPrimaryActionChange={setAgentPrimaryAction}
                     />
                   </TabsContent>
 
@@ -1133,8 +1130,6 @@ export default function Build() {
                 </Tabs>
               </div>
             )}
-          </div>
-        </main>
       </div>
 
       <CreateFileDialog
