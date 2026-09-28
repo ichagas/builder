@@ -6,6 +6,7 @@ import { useSpecificationsPrimaryAction } from "@/pages/project/specifications.p
 import { useProjectStandardsPrimaryAction } from "@/pages/project/standards.primaryAction";
 import { useArtifactsPrimaryAction } from "@/pages/project/artifacts.primaryAction";
 import { useChatPrimaryAction } from "@/pages/project/chat.primaryAction";
+import { useCanvasPrimaryAction } from "@/pages/project/canvas.primaryAction";
 import { useDeployPrimaryAction } from "@/pages/project/deploy.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
@@ -50,7 +51,7 @@ export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
   { tool: "standards", phase: "define", title: "Project Standards", usePrimaryAction: useProjectStandardsPrimaryAction, Component: ProjectStandards },
   { tool: "artifacts", phase: "define", title: "Artifacts", usePrimaryAction: useArtifactsPrimaryAction, Component: Artifacts },
   { tool: "chat", phase: "define", title: "Chat", usePrimaryAction: useChatPrimaryAction, Component: Chat },
-  { tool: "canvas", phase: "design", title: "Canvas", usePrimaryAction: useNoPrimaryAction, Component: Canvas },
+  { tool: "canvas", phase: "design", title: "Canvas", usePrimaryAction: useCanvasPrimaryAction, Component: Canvas },
   { tool: "specifications", phase: "design", title: "Project Specifications", usePrimaryAction: useSpecificationsPrimaryAction, Component: Specifications },
   { tool: "agent", phase: "build", title: "Build agent", usePrimaryAction: useNoPrimaryAction, Component: Build },
   { tool: "repository", phase: "build", title: "Repository", usePrimaryAction: useNoPrimaryAction, Component: Repository },

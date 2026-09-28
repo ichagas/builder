@@ -1,4 +1,4 @@
-import { Eye, EyeOff, ChevronLeft, ChevronRight, Menu, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { LayersManager } from "./LayersManager";
@@ -20,7 +20,15 @@ interface CanvasPaletteProps {
   onSelectLayer: (nodeIds: string[]) => void;
   activeLayerId: string | null;
   onSetActiveLayer: (layerId: string | null) => void;
-  onMenuClick: () => void;
+  /**
+   * T046 (WP-G1): when true, this palette is nested inside the shell's
+   * `Inspector` (a phone-only bottom sheet -- see Canvas.tsx), which
+   * already renders its own header (title + close). In that mode this
+   * component renders just its accordion content, skipping its own
+   * desktop-only header (menu button, title, collapse chevron) and fixed
+   * w-80/w-12 column chrome. `onMenuClick` is unused in this mode.
+   */
+  mobile?: boolean;
 }
 
 export function CanvasPalette({
@@ -34,7 +42,7 @@ export function CanvasPalette({
   onSelectLayer,
   activeLayerId,
   onSetActiveLayer,
-  onMenuClick,
+  mobile,
 }: CanvasPaletteProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
@@ -85,31 +93,8 @@ export function CanvasPalette({
     });
   };
 
-  return (
-    <div
-      className={`border-r border-border bg-card flex flex-col h-full overflow-hidden transition-all duration-300 ${isCollapsed ? "w-12" : "w-80"}`}
-    >
-      {isCollapsed ? (
-        <div className="flex flex-col items-center py-4 h-full">
-          <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)} className="h-8 w-8">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <>
-          <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={onMenuClick} className="h-8 w-8" aria-label="Open menu">
-                <Menu className="h-4 w-4" />
-              </Button>
-              <h3 className="text-sm font-semibold">Canvas Palette</h3>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(true)} className="h-8 w-8">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <ScrollArea className="flex-1 overflow-y-auto">
+  const content = (
+    <ScrollArea className="flex-1 overflow-y-auto">
             <div className="p-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -213,7 +198,33 @@ export function CanvasPalette({
                 </Accordion>
               )}
             </div>
-          </ScrollArea>
+    </ScrollArea>
+  );
+
+  if (mobile) {
+    return <div className="flex h-full w-full flex-col overflow-hidden">{content}</div>;
+  }
+
+  return (
+    <div
+      className={`border-r border-border bg-card flex flex-col h-full overflow-hidden transition-all duration-300 ${isCollapsed ? "w-12" : "w-80"}`}
+    >
+      {isCollapsed ? (
+        <div className="flex flex-col items-center py-4 h-full">
+          <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)} className="h-8 w-8">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0">
+            <h3 className="text-sm font-semibold">Canvas Palette</h3>
+            <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(true)} className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {content}
         </>
       )}
     </div>
