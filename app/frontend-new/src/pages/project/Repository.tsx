@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
-import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +11,7 @@ import { IDEModal } from "@/components/repository/IDEModal";
 import { SyncDialog, SyncConfig } from "@/components/repository/SyncDialog";
 import { CommitLog } from "@/components/repository/CommitLog";
 import { CreateFileDialog } from "@/components/repository/CreateFileDialog";
-import { GitBranch, Database, Menu, FilePlus, FolderPlus, Maximize2, FileArchive, Upload, Loader2, CheckCircle, XCircle, Shield } from "lucide-react";
+import { GitBranch, Database, FilePlus, FolderPlus, Maximize2, FileArchive, Upload, Loader2, CheckCircle, XCircle, Shield } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
@@ -27,6 +25,8 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import JSZip from "jszip";
 import { GitHubConnectBanner } from "@/components/repository/GitHubConnectBanner";
 import { SuperadminGitHubManager } from "@/components/superadmin/SuperadminGitHubManager";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { useUrlState } from "@/lib/state/useUrlState";
 
 interface FileNode {
   name: string;
@@ -56,7 +56,7 @@ export default function Repository() {
   const [rootCreateType, setRootCreateType] = useState<"file" | "folder">("file");
   const [allFilesWithContent, setAllFilesWithContent] = useState<{ path: string; content: string }[]>([]);
   const [selectedIsStaged, setSelectedIsStaged] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useUrlState("tab", "repos");
   // Maps path → { id, isStaged } for fast local resolution in handleFileSelect.
   // Avoids re-fetching the full file structure on every file click.
   const fileIdMapRef = useRef<Map<string, { id: string | null; isStaged: boolean }>>(new Map());
@@ -228,35 +228,34 @@ export default function Repository() {
   // Early returns AFTER all hooks
   if (tokenMissing) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <TokenRecoveryMessage />
+      <div className="flex min-h-full flex-col">
+        <PageHeader />
+        <div className="flex-1 p-4 md:p-6">
+          <TokenRecoveryMessage />
+        </div>
       </div>
     );
   }
 
   if (!projectId) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-destructive">Invalid project ID</p>
+      <div className="flex min-h-full items-center justify-center p-6">
+        <p className="text-bad">Invalid project ID</p>
       </div>
     );
   }
 
   if (!hasAccessToken) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <div className="flex relative">
-          <ProjectSidebar projectId={projectId} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-          <main className="flex-1 w-full flex items-center justify-center">
-            <div className="text-center space-y-2 max-w-md px-4">
-              <h1 className="text-xl font-semibold">Share token required</h1>
-              <p className="text-sm text-muted-foreground">
-                This project can only be accessed via its secure sharing link. Please use the full URL that includes the <code>/t/token</code> path segment.
-              </p>
-            </div>
-          </main>
+      <div className="flex min-h-full flex-col">
+        <PageHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-2 max-w-md px-4">
+            <h1 className="text-xl font-semibold">Share token required</h1>
+            <p className="text-sm text-muted-foreground">
+              This project can only be accessed via its secure sharing link. Please use the full URL that includes the <code>/t/token</code> path segment.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -265,13 +264,10 @@ export default function Repository() {
   // Wait for token to be set before loading data
   if (shareToken && !isTokenSet) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <div className="flex relative">
-          <ProjectSidebar projectId={projectId} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-          <main className="flex-1 w-full flex items-center justify-center">
-            <p>Loading...</p>
-          </main>
+      <div className="flex min-h-full flex-col">
+        <PageHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -832,38 +828,17 @@ export default function Repository() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      
-      <div className="flex relative">
-        <ProjectSidebar projectId={projectId!} isOpen={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-        
-        <main className="flex-1 w-full">
-          <div className="container px-6 py-8 max-w-7xl">
-            <div className="mb-6">
-              <div className="flex items-start gap-2 md:gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="shrink-0 h-8 w-8 md:h-9 md:w-9 mt-1 md:hidden"
-                  aria-label="Open menu"
-                >
-                  <Menu className="h-4 w-4 md:h-5 md:w-5" />
-                </Button>
-                <div className="flex-1">
-                  <h1 className="text-3xl font-bold mb-2">Repository</h1>
-                  <p className="text-muted-foreground">
-                    Manage GitHub repositories, files, and synchronization
-                  </p>
-                </div>
-              </div>
-            </div>
+    <div className="flex min-h-full flex-col">
+      <PageHeader />
+      <div className="flex-1 overflow-auto px-4 py-6 md:px-6 md:py-8">
+        <p className="text-muted-foreground mb-6">
+          Manage GitHub repositories, files, and synchronization
+        </p>
 
-            <GitHubConnectBanner />
+        <GitHubConnectBanner />
 
-            <Tabs defaultValue="repos" className="space-y-6">
-              <TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
                 <TabsTrigger value="repos" className="flex items-center gap-2">
                   <GitBranch className="h-4 w-4" />
                   Repositories
@@ -1266,8 +1241,6 @@ export default function Repository() {
                 </TabsContent>
               )}
             </Tabs>
-          </div>
-        </main>
       </div>
 
       <SyncDialog
