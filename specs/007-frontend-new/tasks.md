@@ -87,7 +87,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 - [ ] T070 (WP-X0) Remove embedded mode (T034) and delete `FE/src/components/layout/{PrimaryNav,ProjectSidebar,ProjectPageHeader}.tsx` once no page imports them.
 - [ ] T071 (WP-X0) Full regression run (PR-01…PR-22) on staging at 1440 and 390, recorded in `specs/007-frontend-new/checklists/regression.md`.
-- [ ] T072 (WP-X1) nginx rewrites for legacy paths (for internal testers' links).
+- [X] T072 (WP-X1) nginx rewrites for legacy paths (for internal testers' links).
 - [ ] T073 (WP-X2) Switch the primary host to `frontend-new` (Terraform, Front Door or App Gateway, Entra redirect URIs).
 - [ ] T074 (WP-X2) Remove `app/frontend/`, its CI job and its Terraform instance right after the switch (not live yet, so no transition period). Update the constitution, README and instructions.
 

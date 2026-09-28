@@ -143,6 +143,9 @@ jobs:
       - name: build
         run: npm run build
 
+      - name: nginx legacy-redirect check (T072)
+        run: ./scripts/test-nginx-redirects.sh
+
   # ---------------------------------------------------------------------------
   # Backend: build → test
   # ---------------------------------------------------------------------------
