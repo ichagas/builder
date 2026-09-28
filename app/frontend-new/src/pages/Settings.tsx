@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PrimaryNav } from "@/components/layout/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
@@ -179,12 +179,11 @@ export default function Settings() {
   // Not authenticated
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <main className="container px-6 py-8">
-          <h1 className="text-3xl font-bold mb-4">Settings</h1>
+      <div className="flex min-h-full flex-col bg-background">
+        <PageHeader title="Settings" />
+        <div className="flex-1 overflow-auto p-4 md:p-6">
           <p className="text-muted-foreground">Please sign in to access settings.</p>
-        </main>
+        </div>
       </div>
     );
   }
@@ -192,11 +191,11 @@ export default function Settings() {
   // Loading admin status
   if (adminLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <main className="container px-6 py-8 flex items-center justify-center">
+      <div className="flex min-h-full flex-col bg-background">
+        <PageHeader title="Settings" />
+        <div className="flex-1 overflow-auto p-4 md:p-6 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     );
   }
@@ -204,35 +203,32 @@ export default function Settings() {
   // Not admin
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-background">
-        <PrimaryNav />
-        <main className="container px-6 py-8">
-          <h1 className="text-3xl font-bold mb-4">Settings</h1>
+      <div className="flex min-h-full flex-col bg-background">
+        <PageHeader title="Settings" />
+        <div className="flex-1 overflow-auto p-4 md:p-6">
           <p className="text-muted-foreground">Access denied. Admin privileges required.</p>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <PrimaryNav />
-      <main className="container px-6 py-8 max-w-6xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Admin User Management</h1>
-            <p className="text-muted-foreground mt-1">
-              {isSuperAdmin 
-                ? "View and manage all users in the platform" 
-                : "View and manage admin users"}
-            </p>
-          </div>
+    <div className="flex min-h-full flex-col bg-background">
+      <PageHeader title="Admin User Management" />
+      <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground">
+            {isSuperAdmin
+              ? "View and manage all users in the platform"
+              : "View and manage admin users"}
+          </p>
           <div className="flex items-center gap-2">
             {getRoleBadge(role || "user")}
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
+        <div className="grid gap-6 md:grid-cols-2">
           {/* Add/Update User Role */}
           <Card>
             <CardHeader>
@@ -392,7 +388,8 @@ export default function Settings() {
             )}
           </CardContent>
         </Card>
-      </main>
+        </div>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
