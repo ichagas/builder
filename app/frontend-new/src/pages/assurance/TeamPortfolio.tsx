@@ -7,6 +7,7 @@ import { NextStepBanner } from "@/components/shell/NextStepBanner";
 import { EmptyState, AdoptionBar, RepoRow, type AdoptionSegment } from "@/components/shell/atoms";
 import type { StackProfile } from "@/components/shell/atoms/StackBadge";
 import { useUrlState } from "@/lib/state/useUrlState";
+import { useBoolPref } from "@/lib/state/useUiPrefs";
 import { useTeamsMine, useTeamsAll, useTeamPortfolio, type PortfolioApplication, type PortfolioRepository } from "@/features/assurance/api";
 import { useRealtimeTeamPortfolio } from "@/features/assurance/useRealtimeTeamPortfolio";
 import { useAdmin } from "@/contexts/AdminContext";
@@ -65,7 +66,10 @@ function formatRelative(iso: string | null): string {
 
 function ApplicationRow({ app, filter }: { app: PortfolioApplication; filter: string }) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = React.useState(app.repositories.length <= 3);
+  // contracts/design-system.md §3: useUiPrefs' `exp.<appId>` key persists
+  // expand/collapse per application across visits, like the prototype's
+  // store("exp."+a.id) (docs/design/.../shared/onboard-b.js).
+  const [expanded, setExpanded] = useBoolPref(`exp.${app.id}`, app.repositories.length <= 3);
   const repos = filter === "notReporting" ? app.repositories.filter((r) => r.not_reporting) : app.repositories;
 
   if (filter === "notReporting" && repos.length === 0) return null;
