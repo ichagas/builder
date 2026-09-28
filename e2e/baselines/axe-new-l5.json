@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-09-28T12:00:31.827Z",
+  "note": "Baseline violation counts recorded via --out axe-new-l5.json. See other files in this directory for what app/run they cover.",
+  "pages": [
+    {
+      "pageId": "pr-20-admin",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-20-admin",
+      "viewport": "mobile",
+      "serious": 1,
+      "critical": 1,
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "pageId": "pr-20-auth",
+      "viewport": "desktop",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    },
+    {
+      "pageId": "pr-20-auth",
+      "viewport": "mobile",
+      "serious": 0,
+      "critical": 0,
+      "violations": []
+    }
+  ]
+}
