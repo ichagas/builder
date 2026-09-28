@@ -71,7 +71,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [x] T049 [P] [US2] (WP-B2) Repository `pages/project/Repository.tsx`. PR-11.
 - [x] T050 [P] [US2] (WP-B3) Database `pages/project/Database.tsx` (import wizard unchanged). PR-12.
 - [x] T051 [P] [US2] (WP-S1) Deploy → Environments `pages/project/Deploy.tsx`. PR-13.
-- [ ] T052 [P] [US2] (WP-S2) Audit `pages/project/Audit.tsx`. PR-14.
+- [x] T052 [P] [US2] (WP-S2) Audit `pages/project/Audit.tsx`. PR-14.
 - [x] T053 [P] [US2] (WP-S3) Present `pages/project/Present.tsx`. PR-15.
 
 ## Phase 4: US3, restyle library, settings, public (P2)

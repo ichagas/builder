@@ -8,6 +8,7 @@ import { useArtifactsPrimaryAction } from "@/pages/project/artifacts.primaryActi
 import { useChatPrimaryAction } from "@/pages/project/chat.primaryAction";
 import { useDeployPrimaryAction } from "@/pages/project/deploy.primaryAction";
 import { useDatabasePrimaryAction } from "@/pages/project/database.primaryAction";
+import { useAuditPrimaryAction } from "@/pages/project/audit.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -62,7 +63,7 @@ export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
   // approach WP-L1 used for Standards: keep the row's title matching
   // legacy's heading text so the existing regression spec stays green).
   { tool: "environments", phase: "ship", title: "Deploy", usePrimaryAction: useDeployPrimaryAction, Component: Deploy },
-  { tool: "audit", phase: "ship", title: "Audit", usePrimaryAction: useNoPrimaryAction, Component: Audit },
+  { tool: "audit", phase: "ship", title: "Audit", usePrimaryAction: useAuditPrimaryAction, Component: Audit },
   { tool: "present", phase: "ship", title: "Present", usePrimaryAction: usePresentPrimaryAction, Component: Present },
 ];
 
