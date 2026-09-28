@@ -14,7 +14,7 @@ import { ProjectLayout } from "./layouts/ProjectLayout";
 import { AssuranceLayout } from "./layouts/AssuranceLayout";
 import { ROOT_ROUTES } from "./routes/root";
 import { LIBRARY_ROUTES } from "./routes/library";
-import { PROJECT_TOOL_ROUTES, PROJECT_SETTINGS_ROUTE } from "./routes/project";
+import { PROJECT_TOOL_ROUTES, PROJECT_SETTINGS_ROUTE, PROJECT_VERSIONS_ROUTE } from "./routes/project";
 import { ASSURANCE_ROUTES } from "./routes/assurance";
 import { NotFound } from "./routes/NotFound";
 import { buildLegacyRedirectRoutes } from "./redirects";
@@ -104,6 +104,11 @@ export const router = createBrowserRouter([
             path: PROJECT_SETTINGS_ROUTE.path,
             element: <PROJECT_SETTINGS_ROUTE.Component />,
             handle: PROJECT_SETTINGS_ROUTE,
+          },
+          {
+            path: PROJECT_VERSIONS_ROUTE.path,
+            element: <PROJECT_VERSIONS_ROUTE.Component />,
+            handle: PROJECT_VERSIONS_ROUTE,
           },
           ...PROJECT_TOOL_ROUTES.map((route) => ({
             path: `v/current/${route.phase}/${route.tool}`,

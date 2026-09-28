@@ -26,4 +26,20 @@ export const seed = {
   assuranceApp1Id: "00000000-0000-4000-8000-000000000811",
   assuranceApp2Id: "00000000-0000-4000-8000-000000000812",
   assuranceOtherTeamAppId: "00000000-0000-4000-8000-000000000813",
+  // US4 Versions and changes (T110, WP-V1) -- its own project (not the
+  // shared baseline `projectId`) so seeding a real version timeline and
+  // triage inbox here can't shift any PR-xx regression spec that navigates
+  // `projectId`'s `v/current/...` routes (those keep the D-7 "no versions
+  // yet" fallback).
+  versionsProjectId: "00000000-0000-4000-8000-000000000102",
+  versionCurrentId: "00000000-0000-4000-8000-000000000901",
+  versionNextId: "00000000-0000-4000-8000-000000000902",
+  // High-severity bug -- NV-02 suggests scheduling this into a hotfix.
+  workItemHotfixBugId: "00000000-0000-4000-8000-000000000911",
+  // Enhancement, no severity -- NV-02 suggests scheduling this into the
+  // next open (non-hotfix) version instead.
+  workItemNextEnhancementId: "00000000-0000-4000-8000-000000000912",
+  // Already scheduled into versionNextId (status active) -- gives the "In
+  // progress" lane a non-zero change count to assert on.
+  workItemScheduledId: "00000000-0000-4000-8000-000000000913",
 } as const;

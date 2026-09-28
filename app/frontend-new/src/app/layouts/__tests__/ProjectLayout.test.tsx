@@ -42,6 +42,14 @@ vi.mock("@/integrations/pronghorn-api/client", () => ({
   },
 }));
 
+// `useVersions` (T110, WP-V1) goes through `apiClient`, not `pronghornApi` --
+// mocked separately so these loader tests stay deterministic (no real
+// fetch) and exercise the "no versions yet" fallback (D-7 "Building").
+const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }));
+vi.mock("@/lib/apiClient", () => ({
+  default: { get: (...args: unknown[]) => mockApiGet(...args) },
+}));
+
 import { ProjectLayout, useProjectLayoutData, CURRENT_VERSION } from "../ProjectLayout";
 
 function ProbePage() {
@@ -86,6 +94,8 @@ describe("ProjectLayout loader (T041)", () => {
     mockChannelOn.mockReset();
     mockChannelSubscribe.mockReset();
     mockRemoveChannel.mockReset();
+    mockApiGet.mockReset();
+    mockApiGet.mockResolvedValue([]); // no versions yet -> falls back to the single "Building" node (D-7)
   });
 
   it("loads the project and role once and exposes them via useProjectLayoutData", async () => {
@@ -122,6 +132,40 @@ describe("ProjectLayout loader (T041)", () => {
 
     await waitFor(() => expect(screen.getByTestId("role").textContent).toBe("viewer"));
     expect(await screen.findByText("Read-only access")).toBeInTheDocument();
+  });
+
+  it("scopes to the real current version once GET /versions resolves (T110, WP-V1)", async () => {
+    mockRpc.mockImplementation(async (fn: string) => {
+      if (fn === "get_project_with_token") {
+        return { data: { id: "proj-1", name: "Acme project" }, error: null };
+      }
+      if (fn === "authorize_project_access") {
+        return { data: "owner", error: null };
+      }
+      return { data: null, error: null };
+    });
+    mockApiGet.mockResolvedValue([
+      {
+        id: "ver-1",
+        project_id: "proj-1",
+        name: "v1.4.2",
+        kind: "released",
+        is_current: true,
+        is_first_release: false,
+        released_at: "2026-08-01T00:00:00Z",
+        released_by: null,
+        release_notes: null,
+        git_tag: "v1.4.2",
+        created_at: "2026-08-01T00:00:00Z",
+        updated_at: "2026-08-01T00:00:00Z",
+        work_item_count: 0,
+        active_work_item_count: 0,
+      },
+    ]);
+
+    renderAt("/p/proj-1/v/current/define/requirements");
+
+    await waitFor(() => expect(screen.getByTestId("version").textContent).toBe("ver-1"));
   });
 
   it("throws a clear error if useProjectLayoutData is used outside ProjectLayout", () => {
