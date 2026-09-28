@@ -232,3 +232,5 @@ codeql-results.sarif
 # WP-F6 E2E harness runtime state (PIDs, logs, staged initdb, local storage)
 e2e/.run/
 e2e/baselines/axe-legacy.raw.jsonl
+# Playwright MCP browser-tool artifacts (logs, screenshots)
+.playwright-mcp/
