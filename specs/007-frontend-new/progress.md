@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** 3 (restyles), batch 2 in flight. Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** 3 complete (all 20 restyles merged); next X0 (T070–T071). Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -62,6 +62,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T063 | done | 8d333b3, 3c5f029 | WP-L4. Gallery; title "Project Gallery"; no page action (per-item actions); legacy bugs kept. PR-19 green 1440/390; axe no new |
 | T062 | done | 04ad005, 207b975 | WP-L3. Build Books list/detail/editor; per-page primary actions (New Build Book admin-only, Edit, Create/Save); legacy create bug kept; duplicate <main> removed; mobile-reach no-action case → /settings/profile. PR-18 green 1440/390; axe 0 violations |
 | T064 | done | f94d9ab, 1197f15 | WP-L5. Settings restyled (headings "Settings"/"Admin User Management" via PageHeader title override); auth pages already on bare PublicLayout; no standalone admin/superadmin page exists (managers live inside B2/B3/S1 pages); signup validation components unreferenced. PR-20 4/4 1440/390; axe auth 0, admin subset of legacy |
+| T065 | done | e17a9cb, 84c4c07 | WP-P1. Public pages already tokenized (F2b); ThemeToggle 44px; nested <a> in Terms/Privacy/License fixed (390 overlap). PR-21 green 1440/390; axe legal 0, landing no new |
 | T049 | done | c78ce9e, 041fe2e | WP-B2. Repository; tabs in URL; no page-level action (as legacy). PR-11 green 1440/390; axe no new |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
@@ -182,3 +183,4 @@ Environment notes for a fresh container: start `dockerd` and `pg_ctlcluster 16 m
 - Batch 3b review: **APPROVE ×4** (S2, L3, L4, L5; L5 scope verified: Settings restyled; auth pages already on the bare PublicLayout; superadmin managers live inside B2/B3/S1 pages; signup validation components are unreferenced). **Merged WP-S2 and WP-L4** (verified on feature: lint 0 errors, tsc OK, **765 FE tests**, build OK). L3 E2E running; then L5, P1. When merging L3, hand-check library.tsx keeps both L4's gallery title and L3's build-books rows.
 - **Merged WP-L3** (verified on feature: lint 0 errors, tsc OK, **775 FE tests**, build OK; library.tsx conflict resolved by hand: L3's build-books rows + L4's gallery title). Note for the X0 full run: PR-18 has a pre-existing shared-seed race when desktop and mobile run in parallel → run the final regression with `--workers=1`. L5 E2E running; P1 last.
 - **Merged WP-L5** (verified on feature: lint 0 errors, tsc OK, **775 FE tests**, build OK). **Restyles merged: 19 of 20.** P1 (T065) E2E running, then review + merge → X0.
+- **Merged WP-P1 — WAVE 3 COMPLETE: all 20 restyle WPs merged (T040–T053, T060–T065).** Verified on feature: lint 0 errors, tsc OK, **775 FE tests**, build OK. Next: X0 (T070 remove embedded mode + legacy chrome components; T071 full regression PR-01..22 at 1440/390 with --workers=1, recorded in checklists/regression.md), with the Inspector double-mount fix folded in.
