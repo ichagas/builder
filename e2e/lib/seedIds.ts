@@ -26,4 +26,15 @@ export const seed = {
   assuranceApp1Id: "00000000-0000-4000-8000-000000000811",
   assuranceApp2Id: "00000000-0000-4000-8000-000000000812",
   assuranceOtherTeamAppId: "00000000-0000-4000-8000-000000000813",
+  // US6 Onboarding wizard (T150, WP-O1) -- a `github_app` integration
+  // connection scoped to owner "e2e-goa" (the same namespace US5's seeded
+  // repositories use) for assuranceTeamId's organization, so NO-02's
+  // `PUT .../repositories` scope check (services/onboarding/
+  // repositoryScope.ts) passes for an "e2e-goa/..." full_name without ever
+  // calling the real GitHub API (that check is DB-only) -- see
+  // us6.onboarding.spec.ts for why the live import list itself isn't
+  // exercised here (no real GitHub App installation in the e2e stack).
+  onboardingGitHubConnectionId: "00000000-0000-4000-8000-000000000901",
+  onboardingAllowedOwner: "e2e-goa",
+  onboardingOutOfScopeFullName: "e2e-unauthorized-org/some-repo",
 } as const;

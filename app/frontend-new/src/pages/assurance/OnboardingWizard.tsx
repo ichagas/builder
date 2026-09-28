@@ -90,7 +90,7 @@ export function OnboardingWizard() {
   const navigate = useNavigate();
   const { teamId = "", step: rawStep } = useParams<{ teamId: string; step?: string }>();
   const [searchParams] = useSearchParams();
-  const [runId, setRunId] = useUrlState("run", "");
+  const [runId] = useUrlState("run", "");
   const { isAdmin } = useAdmin();
   const { data: mine } = useTeamsMine();
   const { data: allTeams } = useTeamsAll(isAdmin);
@@ -154,10 +154,18 @@ export function OnboardingWizard() {
       ) : (
         <>
           {step === "team" ? (
-            <TeamStep teamId={teamId} teamName={team?.name} run={run} onCreated={(newRunId) => {
-              setRunId(newRunId);
-              goToStep("connect");
-            }} />
+            <TeamStep
+              teamId={teamId}
+              teamName={team?.name}
+              run={run}
+              onCreated={(newRunId) => {
+                // A single, atomic navigation (path + `?run=`) rather than
+                // `setRunId` (useUrlState) followed by a separate
+                // `goToStep` -- two independent navigations in the same
+                // tick would race on which one's search params "win".
+                navigate(`/assurance/t/${teamId}/onboard/connect?run=${newRunId}`);
+              }}
+            />
           ) : (
             <ConnectStep teamId={teamId} run={run ?? null} />
           )}

@@ -184,4 +184,26 @@ VALUES
   ('00000000-0000-4000-8000-000000000824', '00000000-0000-4000-8000-000000000813', 'github', 'e2e-goa/licensing-api', 'main', 'github_actions', 'java', 'Java 21', 'api', '2026.2', NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- US6 Onboarding wizard (T150, WP-O1; extended by WP-O2) ------------------
+-- A `github_app` connection scoped to owner "e2e-goa" for the E2E org, so
+-- NO-02's repository-scope check (PUT .../onboarding/runs/:id/repositories,
+-- DB-only -- no real GitHub API call) accepts an "e2e-goa/..." full_name
+-- and refuses anything else with 403, deterministically and without a real
+-- GitHub App installation in the e2e stack. `secret_ref` is null: an
+-- `app_installation` connection reuses the platform's shared GitHub App
+-- credentials, not a per-connection secret (data-model.md §4).
+INSERT INTO public.integration_connections
+  (id, organization_id, provider, auth_type, display_name, secret_ref, scope, status)
+VALUES (
+  '00000000-0000-4000-8000-000000000901',
+  '00000000-0000-4000-8000-000000000001',
+  'github_app',
+  'app_installation',
+  'E2E GitHub',
+  NULL,
+  '{"owners":["e2e-goa"]}'::jsonb,
+  'ok'
+)
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
