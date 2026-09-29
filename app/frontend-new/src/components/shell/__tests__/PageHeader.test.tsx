@@ -6,6 +6,7 @@ import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { PageHeader } from "../PageHeader";
 import { PrimaryActionProvider } from "../PrimaryActionContext";
 import { PrimaryActionSlot } from "../PrimaryActionSlot";
+import { ReadOnlyProvider } from "../ReadOnlyContext";
 import type { RouteHandle } from "../types";
 
 describe("PageHeader", () => {
@@ -47,6 +48,29 @@ describe("PageHeader", () => {
     const button = screen.getByRole("button", { name: "Deploy" });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("title", "No changes staged");
+  });
+});
+
+describe("PageHeader in a read-only subtree", () => {
+  it("disables the primary action with the reason, in the header and in the mobile slot (outside the provider)", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <PrimaryActionProvider>
+        <ReadOnlyProvider value={{ readOnly: true, reason: "Released and read-only" }}>
+          <PageHeader title="Requirements" primary={{ label: "Add requirement", onClick }} />
+        </ReadOnlyProvider>
+        <PrimaryActionSlot />
+      </PrimaryActionProvider>,
+    );
+    const buttons = screen.getAllByRole("button", { name: "Add requirement" });
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute("title", "Released and read-only");
+      await user.click(button);
+    }
+    expect(onClick).not.toHaveBeenCalled();
   });
 });
 

@@ -1,3 +1,4 @@
+import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -6,6 +7,11 @@ import "@/i18n";
 import { resolveScope, isUnscopedSegment } from "../scope.api";
 import { VersionScope } from "../scope/VersionScope";
 import { useVersionScopeContext } from "../scope/context";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { PrimaryActionProvider } from "@/components/shell/PrimaryActionContext";
+import { PrimaryActionSlot } from "@/components/shell/PrimaryActionSlot";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import userEvent from "@testing-library/user-event";
 import type { Version } from "../api";
 
 const getMock = vi.fn();
@@ -55,6 +61,39 @@ describe("resolveScope", () => {
 function Tool() {
   const { readOnly } = useVersionScopeContext();
   return <button type="button">Do it {readOnly ? "ro" : "rw"}</button>;
+}
+
+function RichTool() {
+  const [count, setCount] = React.useState(0);
+  return (
+    <div>
+      <PageHeader title="Requirements" primary={{ label: "Add requirement", onClick: () => setCount((c) => c + 1) }} />
+      <output data-testid="count">{count}</output>
+      <input aria-label="Title" defaultValue="x" />
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">Tab A</TabsTrigger>
+          <TabsTrigger value="b">Tab B</TabsTrigger>
+        </TabsList>
+        <TabsContent value="a">Panel A</TabsContent>
+        <TabsContent value="b">
+          Panel B <button type="button">Edit thing</button>
+        </TabsContent>
+      </Tabs>
+      <details>
+        <summary>More</summary>
+        <span>Details body</span>
+      </details>
+    </div>
+  );
+}
+
+let mountCount = 0;
+function MountCounter() {
+  React.useEffect(() => {
+    mountCount += 1;
+  }, []);
+  return null;
 }
 
 function renderAt(path: string) {
@@ -117,5 +156,89 @@ describe("VersionScope", () => {
     renderAt("/p/p1/v/zzz/define/requirements");
     expect(await screen.findByText("Version not found")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Do it rw" })).toBeEnabled();
+  });
+});
+
+describe("VersionScope read-only enforcement", () => {
+  function renderRich(path: string, slot = false) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <PrimaryActionProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <Routes>
+              <Route
+                path="/p/:projectId/v/:versionId/define/requirements"
+                element={
+                  <VersionScope>
+                    <MountCounter />
+                    <RichTool />
+                  </VersionScope>
+                }
+              />
+            </Routes>
+          </MemoryRouter>
+          {slot ? <PrimaryActionSlot /> : null}
+        </PrimaryActionProvider>
+      </QueryClientProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    mountCount = 0;
+    getMock.mockReset();
+    getMock.mockImplementation(async (url: string) => (url.endsWith("/versions") ? [RELEASED, OPEN] : []));
+  });
+
+  it("released: primary action (header and mobile slot) is disabled with a reason; inputs disabled; tabs and disclosures still work", async () => {
+    const user = userEvent.setup();
+    renderRich("/p/p1/v/rel/define/requirements", true);
+    await screen.findByText(/v1\.0\.0 is released and read-only/);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Add requirement" })).toHaveLength(2));
+    for (const button of screen.getAllByRole("button", { name: "Add requirement" })) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute("title", "This version is released and read-only.");
+    }
+    expect(screen.getByLabelText("Title")).toBeDisabled();
+    // Navigation stays usable, editing inside the newly visible tab does not.
+    await user.click(screen.getByRole("tab", { name: "Tab B" }));
+    expect(await screen.findByText(/Panel B/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit thing" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Tab A" })).toBeEnabled();
+    await user.click(screen.getByText("More"));
+    expect(screen.getByText("Details body")).toBeVisible();
+    expect(screen.getByTestId("count")).toHaveTextContent("0");
+  });
+
+  it("open version: nothing is disabled", async () => {
+    renderRich("/p/p1/v/open/define/requirements");
+    await screen.findByText("Changes in v1.1.0");
+    expect(screen.getByLabelText("Title")).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Add requirement" })[0]).toBeEnabled();
+  });
+
+  it("locks the tool while versions resolve and keeps it mounted when they arrive", async () => {
+    let release!: (v: Version[]) => void;
+    getMock.mockImplementation((url: string) =>
+      url.endsWith("/versions") ? new Promise((r) => (release = r as (v: Version[]) => void)) : Promise.resolve([]),
+    );
+    renderRich("/p/p1/v/open/define/requirements");
+    expect(screen.getByText("Loading version")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Title")).toBeDisabled());
+    const input = screen.getByLabelText("Title");
+    expect(screen.getByRole("button", { name: "Add requirement" })).toBeDisabled();
+    release([RELEASED, OPEN]);
+    await screen.findByText("Changes in v1.1.0");
+    await waitFor(() => expect(screen.getByLabelText("Title")).toBeEnabled());
+    expect(screen.getByLabelText("Title")).toBe(input);
+    expect(mountCount).toBe(1);
+  });
+
+  it("fails closed with a warning when the versions request fails", async () => {
+    getMock.mockRejectedValue(new Error("500"));
+    renderRich("/p/p1/v/rel/define/requirements");
+    expect(await screen.findByText("Couldn't load this version")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Title")).toBeDisabled());
+    expect(screen.getByRole("button", { name: "Add requirement" })).toBeDisabled();
   });
 });
