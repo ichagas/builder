@@ -104,7 +104,10 @@ export function ActionSpecButton({ spec, className }: { spec: ActionSpec; classN
   return (
     <ActionButton
       label={spec.label}
-      onAction={() => spec.onClick?.()}
+      onAction={() => {
+        // Return the promise: the button needs it for pending / failed / undo-after-success.
+        return spec.onClick?.();
+      }}
       disabled={spec.disabled}
       disabledReason={spec.disabledReason}
       confirm={spec.confirm}

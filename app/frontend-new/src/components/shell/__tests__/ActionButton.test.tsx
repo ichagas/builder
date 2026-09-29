@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ActionButton } from "../ActionButton";
+import { ActionButton, ActionSpecButton } from "../ActionButton";
+import { dismissUndo, useUndo } from "@/lib/state/useUndo";
 
 describe("ActionButton", () => {
   it("goes idle -> pending -> done and calls onAction", async () => {
@@ -56,5 +57,49 @@ describe("ActionButton", () => {
     const button = screen.getByRole("button", { name: "Deploy" });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("title", "No changes staged");
+  });
+});
+
+function UndoProbe() {
+  const { current } = useUndo();
+  return <output data-testid="undo">{current?.text ?? ""}</output>;
+}
+const getUndoText = () => screen.getByTestId("undo").textContent;
+
+describe("ActionSpecButton (async onClick)", () => {
+  it("shows pending while the promise is open, then pushes undo after it resolves", async () => {
+    dismissUndo();
+    const user = userEvent.setup();
+    let resolve!: () => void;
+    const onClick = vi.fn(() => new Promise<void>((r) => (resolve = r)));
+    render(
+      <>
+        <UndoProbe />
+        <ActionSpecButton spec={{ label: "Ship", onClick, undo: { text: "Shipped", onUndo: vi.fn() } }} />
+      </>,
+    );
+    await user.click(screen.getByRole("button", { name: "Ship" }));
+    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button")).toHaveAttribute("aria-busy", "true");
+    expect(getUndoText()).toBe("");
+    resolve();
+    await waitFor(() => expect(getUndoText()).toBe("Shipped"));
+    expect(screen.getByRole("button")).not.toHaveAttribute("aria-busy", "true");
+    dismissUndo();
+  });
+
+  it("enters failed on rejection and pushes no undo", async () => {
+    dismissUndo();
+    const user = userEvent.setup();
+    const onClick = vi.fn().mockRejectedValue(new Error("boom"));
+    render(
+      <>
+        <UndoProbe />
+        <ActionSpecButton spec={{ label: "Ship", onClick, undo: { text: "Shipped", onUndo: vi.fn() } }} />
+      </>,
+    );
+    await user.click(screen.getByRole("button", { name: "Ship" }));
+    await screen.findByRole("button", { name: "Ship failed — retry" });
+    expect(getUndoText()).toBe("");
   });
 });

@@ -83,8 +83,10 @@ export function Change() {
       setActionError(false);
       try {
         await fn();
-      } catch {
+      } catch (err) {
         setActionError(true);
+        // Rethrow so the ActionButton shows "<label> failed — retry" and skips undo.
+        throw err;
       }
     };
     switch (action.action.kind) {
