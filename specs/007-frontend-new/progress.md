@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** 4–5 on the **short path** (user decision 2026-09-28). Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** PAUSED by the user (2026-09-28) after batch N1 merged; short path in effect. Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -67,6 +67,10 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 | T070 | done | 1805a81, 0e86e98 | WP-X0. Embedded mode removed; PrimaryNav/ProjectSidebar/ProjectPageHeader deleted (−607 lines); Inspector renders one instance per breakpoint |
 | T130 | done | c5e0339, cee0551 | WP-A1. /assurance/t/:teamId portfolio, TeamSwitcher (D-8), realtime team-{teamId}; zod + TanStack Query (features/assurance/api.ts); NA-01/02 14/14; axe 0 |
 | T073 | BLOCKED-EXTERNAL | 2c86ae0, c515603 | WP-X2a. No Front Door/AGW instance in infra, so the switch = `primary_frontend` (default legacy) + Entra redirect order + outputs + CI wiring (frontend_new custom domain var was missing). Human: see quickstart.md Cutover (apply T015 → verify next → set new + apply → DNS → verify → rollback) |
+| T110 | done | 03d0aeb | WP-V1. Real TimelineStrip (features/versions, D-7 fallback), /p/:id/versions triage (hotfix vs next). E2E spec us4 written (NV-01/02), not yet run |
+| T131 | done | 41a6597, 25d2057 | WP-A2. /assurance/t/:teamId/apps/:appId; backend GET /applications/:appId + latest_run (api.md updated at merge). E2E NA-03/04 written, not yet run |
+| T136 | done (follow-up) | 3a52019 | WP-A6. /admin/integrations; connections CRUD/test, org mesh policy, Cyber Risk sandbox per application. **Follow-up:** NA-08 E2E mutates shared org policy + seeded Permits API without reset → isolate |
+| T150 | done (follow-up) | 719ca52, 00f36e2 | WP-O1. /assurance/t/:teamId/onboard/:step? steps 1–2; ApiError.details. **Follow-up:** add unit tests for features/onboarding/api.ts and OnboardingWizard error extraction |
 | T049 | done | c78ce9e, 041fe2e | WP-B2. Repository; tabs in URL; no page-level action (as legacy). PR-11 green 1440/390; axe no new |
 | T141 | BLOCKED-EXTERNAL | f1dd311..2651036 | WP-BE6. Code complete; sandbox Key Vault (get-only custom role for the sandbox), per-run secret cleanup, custom start/stop job role, NSG deny-all egress with allow-list. Human: terraform apply (job, subnet, sandbox vault + RBAC), image push + env config, Azure Firewall for FQDN egress, real two-repo dev run |
 
@@ -216,3 +220,16 @@ Resumed with a shorter path: **no per-WP e2e/axe/screenshots and no per-WP teste
 Batch plan: **N1** = V1 (T110), A2 (T131), A6 (T136), O1 (T150) + X2a (T073 code, BLOCKED-EXTERNAL apply; remount.spec desktop guard + mobile variant; unused i18n key). **N2** = V2, V3, V4 (T111–T113), A3, A4, A5 (T132–T134), O2 (T151) + E2E specs T114/T135/T152. **N3** = polish T160–T162. Then the final test pass (T071 + new-capability E2E), fixes, T074, T170–T171.
 - **Merged WP-X2a** (T073 code, BLOCKED-EXTERNAL apply; remount.spec guard + MobileTabBar variant; unused i18n key removed). Orchestrator asked for default `legacy` so T015's apply doesn't also switch the primary host. Verified: deploy yml parses, tsc OK, 788 tests. N1 feature WPs (V1, A2, A6, O1) coding.
 - Batch N1 developers done (short path, code-only): V1 03d0aeb (T110: real TimelineStrip via features/versions, /p/:id/versions triage; NV-01/02 spec; 807 tests), A6 3a52019 (T136: /admin/integrations, connections CRUD + test, org mesh policy, Cyber Risk sandbox per application; NA-08 spec; 800 tests), A2 41a6597 + 25d2057 (T131: /assurance/t/:teamId/apps/:appId; **backend change**: GET /applications/:appId adds latest_run per repo; NA-03/04 spec; BE 1197 tests), O1 719ca52 + 00f36e2 (T150: /assurance/t/:teamId/onboard/:step?, steps 1–2, ApiError.details; NO-01/02 spec). Shell gap reported by A2: PageHeader/PrimaryActionSlot ignore ActionSpec.confirm/undo. Batch reviewer dispatched (contract check for A2's backend change and A6's route; trial merge + tsc/unit on the merged result).
+- **Batch N1 review:** V1 APPROVE, A2 APPROVE (api.md line for latest_run added at merge), A6 CHANGES REQUIRED (E2E shared-seed mutation), O1 CHANGES REQUIRED (no unit tests). User instructed: finish the running review, merge, clean up, stop, so A6/O1 were merged with their findings recorded as follow-ups (non-functional: test isolation and unit tests).
+- **Merged N1: V1, A6, A2, O1.** Merge fixes: en.json deep-merged as JSON; seed.sql blocks re-terminated with `ON CONFLICT (id) DO NOTHING;`; **seed id collision** (A6 and O1 both used ...901 in integration_connections) → A6 = ...903, O1 = ...904; features/assurance/api.ts union restored useSetMeshPolicy's closing lines. Verified on feature: lint 0 errors, tsc OK, **829 FE tests**, build OK; BE **1197 tests**; Playwright lists 258 tests / 28 files.
+
+## Paused state (2026-09-28, after N1): resume here
+
+Everything is on `feature/frontend-new`; no open WP branches or worktrees. Tasks: 71 done, 4 BLOCKED-EXTERNAL (T015, T073, T141, T142), 17 open.
+
+**Next, in order (short path):**
+1. N1 follow-ups: O1 unit tests (features/onboarding/api.ts, OnboardingWizard error extraction); A6 NA-08 E2E isolation (dedicated fixture or reset in afterEach).
+2. Shell fix: PageHeader/PrimaryActionSlot render `ActionButton` (with `useUndo().push`) so `ActionSpec.confirm`/`.undo` work; then A2/O1-style pages can use the header slot.
+3. Batch N2 (code-only + batch review): V2 T111, V3 T112, V4 T113 (+ T114 spec), A3 T132, A4 T133 (de-duplicate with A6's `useMeshPolicy`/`useSetMeshPolicy`/`MESH_AGENTS` in features/assurance/api.ts), A5 T134 (+ T135 spec with the 15-repo seed), O2 T151 (+ T152 spec). **Seed ids:** before merging, grep all branches' `e2e/lib/seedIds.ts` for duplicate UUIDs (git can't see these collisions); reserve an id block per WP in the prompts.
+4. Polish T160–T162.
+5. Final consolidated test pass (T071 + us4/us5/us6 + axe), in chunks with timeouts, one Docker stack at a time; then fixes; then T074 (remove app/frontend/) only after it is green; then T170–T171.
