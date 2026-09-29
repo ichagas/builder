@@ -320,7 +320,9 @@
       },
       "error": {
         "failed": "The release didn't go out. Nothing was changed."
-      }
+      },
+      "open": "Release",
+      "openLabel": "Release {{version}}"
     }
   },
   "integrations": {
