@@ -1138,8 +1138,6 @@
     "timeline": {
       "label": "Version timeline",
       "hint": "Use the left and right arrow keys to move between versions, Enter to open one.",
-      "more": "Show {{count}} earlier versions",
-      "fewer": "Show fewer versions",
       "kind": {
         "current": "current release",
         "building": "in progress",
