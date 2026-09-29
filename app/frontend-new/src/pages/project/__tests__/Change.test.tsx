@@ -214,7 +214,7 @@ describe("Change page (NV-03/NV-04)", () => {
   it("shows a not found state for an unknown change", async () => {
     getMock.mockImplementation(async (p: string) => {
       if (p === `/api/v1/projects/${P}/versions`) return VERSIONS;
-      throw new Error("404");
+      throw Object.assign(new Error("Not found"), { statusCode: 404 });
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
@@ -227,5 +227,35 @@ describe("Change page (NV-03/NV-04)", () => {
       </QueryClientProvider>,
     );
     expect((await screen.findAllByText("Change not found")).length).toBeGreaterThan(0);
+  });
+
+  it("shows a retryable error (not 'not found') when loading the change fails", async () => {
+    let fail = true;
+    getMock.mockImplementation(async (p: string) => {
+      if (p === `/api/v1/projects/${P}/versions`) return VERSIONS;
+      if (p === "/api/v1/work-items/wi1") {
+        if (fail) throw Object.assign(new Error("Server exploded"), { statusCode: 500 });
+        return item();
+      }
+      if (p === "/api/v1/work-items/wi1/requirement-changes") return [];
+      throw new Error(`unexpected path ${p}`);
+    });
+    rpcMock.mockResolvedValue({ data: [], error: null });
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/p/${P}/changes/wi1`]}>
+          <Routes>
+            <Route path="/p/:projectId/changes/:changeId/:step?" element={<Change />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect((await screen.findAllByText("Couldn't load this change")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Change not found")).not.toBeInTheDocument();
+    fail = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "Upload fails on iPhone" })).toBeInTheDocument();
   });
 });

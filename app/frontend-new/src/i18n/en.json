@@ -364,6 +364,11 @@
         "title": "Change not found",
         "description": "It may have been removed, or the link is for another project."
       },
+      "error": {
+        "title": "Couldn't load this change",
+        "description": "Something went wrong reaching the server. Check your connection and try again.",
+        "retry": "Try again"
+      },
       "unscheduled": "Not scheduled",
       "severity": "{{severity}} severity",
       "actionFailed": "That didn't work. Try again in a moment.",
