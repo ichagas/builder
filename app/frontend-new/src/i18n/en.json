@@ -212,6 +212,11 @@
       "crumb": "{{team}} / {{app}}",
       "title": "Mesh runs",
       "backToApp": "Back to application",
+      "notInWindow": {
+        "message": "The selected run is not in the last {{count}} days.",
+        "widen": "Show the last {{count}} days",
+        "clear": "Clear selection"
+      },
       "loading": "Loading mesh runs…",
       "days_one": "Last {{count}} day",
       "days_other": "Last {{count}} days",
