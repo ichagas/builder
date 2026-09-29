@@ -63,3 +63,55 @@ describe("useUrlState", () => {
     expect(screen.getByTestId("search").textContent).toBe("");
   });
 });
+
+function Pair() {
+  const [team, setTeam] = useUrlState("sbTeam", "");
+  const [app, setApp] = useUrlState("sbApp", "");
+  const location = useLocation();
+  return (
+    <div>
+      <span data-testid="search">{location.search}</span>
+      <span data-testid="vals">{`${team}|${app}`}</span>
+      <button
+        onClick={() => {
+          setTeam("t1");
+          setApp("");
+        }}
+      >
+        team-then-clear-app
+      </button>
+      <button
+        onClick={() => {
+          setTeam("t2");
+          setApp("a2");
+        }}
+      >
+        both
+      </button>
+    </div>
+  );
+}
+
+describe("useUrlState consecutive setters", () => {
+  it("composes two setters called in one handler", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/x?sbApp=old&keep=1"]}>
+        <Pair />
+      </MemoryRouter>,
+    );
+    await act(async () => {
+      await user.click(screen.getByText("team-then-clear-app"));
+    });
+    expect(screen.getByTestId("vals").textContent).toBe("t1|");
+    const params = new URLSearchParams(screen.getByTestId("search").textContent ?? "");
+    expect(params.get("sbTeam")).toBe("t1");
+    expect(params.has("sbApp")).toBe(false);
+    expect(params.get("keep")).toBe("1");
+
+    await act(async () => {
+      await user.click(screen.getByText("both"));
+    });
+    expect(screen.getByTestId("vals").textContent).toBe("t2|a2");
+  });
+});

@@ -23,6 +23,16 @@ const stringCodec: UrlStateCodec<string> = {
   serialize: (value) => (value === "" ? null : value),
 };
 
+/**
+ * react-router's functional `setSearchParams(prev => …)` is not queued: `prev`
+ * is the params seen at render time, so two setters called in one handler
+ * would each start from the same base and the second would overwrite the
+ * first. Updates made in the same tick therefore compose through this
+ * pending value (cleared in a microtask, i.e. once the handler has returned
+ * and the router has re-rendered from the URL).
+ */
+let pendingParams: URLSearchParams | null = null;
+
 export function useUrlState(
   key: string,
   defaultValue: string,
@@ -55,13 +65,15 @@ export function useUrlState<T>(
     (next: T) => {
       setSearchParams(
         (prev) => {
-          const params = new URLSearchParams(prev);
+          const params = new URLSearchParams(pendingParams ?? prev);
           const serialized = codec.serialize(next);
           if (serialized === null || serialized === undefined) {
             params.delete(key);
           } else {
             params.set(key, serialized);
           }
+          if (pendingParams === null) queueMicrotask(() => (pendingParams = null));
+          pendingParams = params;
           return params;
         },
         { replace: true },
