@@ -2,11 +2,15 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useTeamsMine, useTeamsAll, useTeamPortfolio } from "../api";
+import { useTeamsMine, useTeamsAll, useTeamPortfolio, useMeshPolicy, useSetMeshPolicy } from "../api";
 
 const getMock = vi.fn();
+const putMock = vi.fn();
 vi.mock("@/lib/apiClient", () => ({
-  default: { get: (...args: unknown[]) => getMock(...args) },
+  default: {
+    get: (...args: unknown[]) => getMock(...args),
+    put: (...args: unknown[]) => putMock(...args),
+  },
 }));
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -17,6 +21,7 @@ function wrapper({ children }: { children: ReactNode }) {
 describe("assurance api", () => {
   beforeEach(() => {
     getMock.mockReset();
+    putMock.mockReset();
   });
 
   it("useTeamsMine parses GET /teams/mine", async () => {
@@ -88,5 +93,65 @@ describe("assurance api", () => {
     await waitFor(() => expect(r2.current.isSuccess).toBe(true));
     expect(getMock).toHaveBeenCalledWith("/api/v1/teams/t1/portfolio");
     expect(r2.current.data?.totals.repositories).toBe(1);
+  });
+});
+
+// T136, WP-A6, NA-08: organization-wide mesh policy + Cyber Risk sandbox.
+describe("mesh policy api", () => {
+  beforeEach(() => {
+    getMock.mockReset();
+    putMock.mockReset();
+  });
+
+  it("useMeshPolicy parses GET /mesh/policy and stays disabled without a scopeId", async () => {
+    const { result } = renderHook(() => useMeshPolicy("organization", undefined), { wrapper });
+    expect(result.current.fetchStatus).toBe("idle");
+
+    getMock.mockResolvedValueOnce({
+      scope: "organization",
+      scopeId: "org1",
+      effective: { green: "issue", yellow: "notify", red: "block", blue: "off" },
+      cyberRiskSandbox: false,
+      explicit: [{ agent: "green", mode: "issue", cyber_risk_sandbox: null }],
+    });
+    const { result: r2 } = renderHook(() => useMeshPolicy("organization", "org1"), { wrapper });
+    await waitFor(() => expect(r2.current.isSuccess).toBe(true));
+    expect(getMock).toHaveBeenCalledWith("/api/v1/mesh/policy?scope=organization&scopeId=org1");
+    expect(r2.current.data?.effective.red).toBe("block");
+  });
+
+  it("useSetMeshPolicy PUTs mode for a check and invalidates the scope's query", async () => {
+    putMock.mockResolvedValueOnce({
+      scope: "organization",
+      scopeId: "org1",
+      effective: { green: "block", yellow: "notify", red: "issue", blue: "off" },
+      cyberRiskSandbox: false,
+    });
+    const { result } = renderHook(() => useSetMeshPolicy(), { wrapper });
+    result.current.mutate({ scope: "organization", scopeId: "org1", agent: "green", mode: "block" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(putMock).toHaveBeenCalledWith("/api/v1/mesh/policy?scope=organization&scopeId=org1", {
+      agent: "green",
+      mode: "block",
+    });
+    // The PUT response has no `explicit` field -- the shared schema must
+    // still parse it (routes/mesh.ts's PUT handler omits it).
+    expect(result.current.data?.explicit).toBeUndefined();
+  });
+
+  it("useSetMeshPolicy PUTs cyberRiskSandbox at application scope", async () => {
+    putMock.mockResolvedValueOnce({
+      scope: "application",
+      scopeId: "app1",
+      effective: { green: "issue", yellow: "issue", red: "issue", blue: "issue" },
+      cyberRiskSandbox: true,
+    });
+    const { result } = renderHook(() => useSetMeshPolicy(), { wrapper });
+    result.current.mutate({ scope: "application", scopeId: "app1", cyberRiskSandbox: true });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(putMock).toHaveBeenCalledWith("/api/v1/mesh/policy?scope=application&scopeId=app1", {
+      cyberRiskSandbox: true,
+    });
+    expect(result.current.data?.cyberRiskSandbox).toBe(true);
   });
 });

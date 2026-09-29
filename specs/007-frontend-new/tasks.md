@@ -124,7 +124,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [ ] T132 [US5] (WP-A3) Mesh runs by day (PRs to the default branch, open and merged) and evidence. NA-05.
 - [ ] T133 [P] [US5] (WP-A4) Packs, policy, exceptions. NA-06.
 - [ ] T134 [P] [US5] (WP-A5) All teams. NA-07.
-- [ ] T136 [P] [US5] (WP-A6) **Admin → Integrations** page: GitHub App status, Azure DevOps connection (service connection or PAT), test connection, and the mesh policy per check (issue, notify, block, off) with the Cyber Risk sandbox toggle. NA-08.
+- [X] T136 [P] [US5] (WP-A6) **Admin → Integrations** page: GitHub App status, Azure DevOps connection (service connection or PAT), test connection, and the mesh policy per check (issue, notify, block, off) with the Cyber Risk sandbox toggle. NA-08.
 - [ ] T135 [US5] E2E `e2e/new/us5.assurance.spec.ts` (15-repo seed).
 
 ## Phase 10: Backend B3, onboarding and the mesh workflow

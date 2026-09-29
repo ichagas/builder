@@ -90,6 +90,108 @@ test.describe("NA-02: team portfolio", () => {
   });
 });
 
+test.describe("NA-08: Admin -> Integrations", () => {
+  test.describe("as a non-admin org member", () => {
+    test.use({ mockUser: { id: seed.memberUserId, email: seed.memberEmail, name: seed.memberName } });
+
+    test("sees a no-access state, not the forms", async ({ page }) => {
+      // seed.sql: memberUserId is an org member with no user_roles 'admin' row.
+      await page.goto("/admin/integrations");
+      await expect(page.getByText("Organization admins only")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "GitHub App" })).not.toBeVisible();
+    });
+  });
+
+  test.describe("as an organization admin", () => {
+    test("shows the platform GitHub App status and this org's Azure DevOps connection", async ({ page }) => {
+      await page.goto("/admin/integrations");
+      await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "GitHub App" })).toBeVisible();
+
+      // seed.sql's azure_devops connection (id 901) -- no github_app
+      // connection is seeded, so onboarding's import scope starts empty
+      // (contracts/api.md "Admin: Integrations") until this test adds one.
+      await expect(page.getByText("GOA Azure DevOps")).toBeVisible();
+      await expect(page.getByText("https://dev.azure.com/e2e-goa")).toBeVisible();
+      await expect(page.getByText("No secret stored")).toBeVisible();
+    });
+
+    test("configures the GitHub App connection's owners (main write)", async ({ page }) => {
+      await page.goto("/admin/integrations");
+      await page.getByLabel("Display name").first().fill("GOA GitHub import");
+      await page.getByLabel(/Owners/i).fill("goa-standards");
+      await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page.getByText("GitHub App connection saved")).toBeVisible();
+      // A saved github_app connection has no secret at all (BE8) -- its
+      // footer still shows the status/secret row, same as Azure DevOps.
+      await expect(page.getByText("No secret stored")).toBeVisible();
+
+      await page.reload();
+      await expect(page.getByLabel("Display name").first()).toHaveValue("GOA GitHub import");
+    });
+
+    test("sets the organization-wide mesh policy per check (tighten and loosen -- org admins aren't tighten-only)", async ({ page }) => {
+      await page.goto("/admin/integrations");
+      const greenSelect = page.getByRole("combobox", { name: "Green" });
+      await greenSelect.click();
+      await page.getByRole("option", { name: "Block" }).click();
+      await expect(page.getByText("Mesh policy updated")).toBeVisible();
+
+      await page.reload();
+      await expect(page.getByRole("combobox", { name: "Green" })).toHaveText("Block");
+
+      // Org admins may loosen too (unlike team/app/repo owners, D-15).
+      await page.getByRole("combobox", { name: "Green" }).click();
+      await page.getByRole("option", { name: "Off" }).click();
+      await page.reload();
+      await expect(page.getByRole("combobox", { name: "Green" })).toHaveText("Off");
+    });
+
+    test("enables the Cyber Risk sandbox for an application (D-17)", async ({ page }) => {
+      await page.goto("/admin/integrations");
+      await page.getByLabel("Team").click();
+      await page.getByRole("option", { name: "Permits Platform" }).click();
+      await page.getByLabel("Application").click();
+      await page.getByRole("option", { name: "Permits API" }).click();
+
+      const toggle = page.getByRole("switch", { name: /Cyber Risk sandbox for Permits API/i });
+      await expect(toggle).not.toBeChecked();
+      await toggle.click();
+      await expect(page.getByText("Cyber Risk sandbox updated")).toBeVisible();
+
+      await page.reload();
+      await page.getByLabel("Team").click();
+      await page.getByRole("option", { name: "Permits Platform" }).click();
+      await page.getByLabel("Application").click();
+      await page.getByRole("option", { name: "Permits API" }).click();
+      await expect(page.getByRole("switch", { name: /Cyber Risk sandbox for Permits API/i })).toBeChecked();
+    });
+  });
+
+  test.describe("Admin -> Integrations axe: zero violations", () => {
+    for (const theme of ["light", "dark"] as const) {
+      test(`admin integrations -- ${theme} theme`, async ({ page }, testInfo) => {
+        await page.addInitScript((t) => {
+          try {
+            window.localStorage.setItem("theme", t);
+          } catch {
+            // ignore
+          }
+        }, theme);
+        await page.goto("/admin/integrations");
+        await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
+
+        const results = await new AxeBuilder({ page }).analyze();
+        const description = results.violations
+          .map((v) => `[${theme}/${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+          .join("\n");
+        expect(results.violations, description).toEqual([]);
+      });
+    }
+  });
+});
+
 test.describe("Assurance axe: zero violations", () => {
   for (const theme of ["light", "dark"] as const) {
     test(`team portfolio -- ${theme} theme`, async ({ page }, testInfo) => {

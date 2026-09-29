@@ -113,7 +113,9 @@
         "title": "Team not found",
         "description": "You may not have access to this team, or it may have been removed."
       },
-      "loading": "Loading portfolio…"
+      "loading": "Loading portfolio…",
+      "crumb_one": "Team · {{count}} member",
+      "crumb_other": "Team · {{count}} members"
     }
   },
   "versions": {
@@ -174,6 +176,106 @@
     "empty": {
       "title": "No versions yet",
       "description": "Versions appear here once this project starts building."
+    }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "noAccess": {
+      "title": "Organization admins only",
+      "description": "Ask an organization admin to configure integrations and mesh policy."
+    },
+    "loading": "Loading integrations…",
+    "error": {
+      "title": "Couldn't load integrations",
+      "description": "Try again in a moment."
+    },
+    "githubApp": {
+      "heading": "GitHub App",
+      "platformStatus": "Platform installation",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "account": "Installed on {{account}}",
+      "connectionHeading": "This organization's import scope",
+      "connectionDescription": "The GitHub users or organizations this organization's onboarding import list may draw repositories from. The App's own credentials are shared platform-wide -- nothing here is a secret.",
+      "ownersLabel": "Owners (GitHub users or organizations)",
+      "ownersPlaceholder": "goa-standards, another-org",
+      "displayNameLabel": "Display name",
+      "displayNamePlaceholder": "e.g. GOA GitHub import",
+      "save": "Save",
+      "saved": "GitHub App connection saved",
+      "saveFailed": "Couldn't save the GitHub App connection",
+      "empty": "No GitHub connection configured yet -- onboarding's import list will be empty until you add one."
+    },
+    "azureDevOps": {
+      "heading": "Azure DevOps",
+      "description": "Connections used to import repositories and open pull requests in Azure Repos.",
+      "empty": "No Azure DevOps connections yet.",
+      "addHeading": "Add a connection",
+      "displayNameLabel": "Display name",
+      "displayNamePlaceholder": "e.g. GOA Azure DevOps",
+      "orgUrlLabel": "Organization URL",
+      "orgUrlPlaceholder": "https://dev.azure.com/goa-standards",
+      "authTypeLabel": "Authentication",
+      "authType": {
+        "service_connection": "Service connection",
+        "pat": "Personal access token (PAT)"
+      },
+      "serviceConnectionIdLabel": "Service connection id",
+      "patLabel": "Personal access token",
+      "patHint": "Stored in Key Vault. Never shown again after saving.",
+      "projectsLabel": "Projects (optional)",
+      "projectsPlaceholder": "Permits, Licensing",
+      "add": "Add connection",
+      "added": "Azure DevOps connection added",
+      "addFailed": "Couldn't add the Azure DevOps connection"
+    },
+    "connection": {
+      "status": {
+        "ok": "Connected",
+        "failing": "Failing",
+        "untested": "Untested"
+      },
+      "hasSecret": "Secret stored",
+      "noSecret": "No secret stored",
+      "lastTested": "Last tested {{when}}",
+      "neverTested": "Never tested",
+      "test": "Test connection",
+      "testSucceeded": "Connection is working",
+      "testFailed": "Connection test failed",
+      "remove": "Remove",
+      "removeConfirm": "Remove this connection?",
+      "removed": "Connection removed",
+      "removeFailed": "Couldn't remove this connection -- it may still be in use"
+    },
+    "meshPolicy": {
+      "heading": "Mesh policy",
+      "description": "Default per-check mode for every team and repository in this organization. Team, application and repository owners may only tighten it from here.",
+      "checks": {
+        "green": "Green",
+        "yellow": "Yellow",
+        "red": "Red",
+        "blue": "Blue"
+      },
+      "mode": {
+        "off": "Off",
+        "notify": "Notify",
+        "issue": "Issue",
+        "block": "Block"
+      },
+      "saved": "Mesh policy updated",
+      "saveFailed": "Couldn't update mesh policy",
+      "loading": "Loading mesh policy…",
+      "sandbox": {
+        "heading": "Cyber Risk sandbox",
+        "description": "An optional Cyber Risk sandbox stage in the generated CI, set per application.",
+        "teamLabel": "Team",
+        "teamPlaceholder": "Choose a team",
+        "appLabel": "Application",
+        "appPlaceholder": "Choose an application",
+        "toggleLabel": "Enable the Cyber Risk sandbox for {{app}}",
+        "saved": "Cyber Risk sandbox updated",
+        "saveFailed": "Couldn't update the Cyber Risk sandbox"
+      }
     }
   }
 }

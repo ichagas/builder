@@ -42,4 +42,12 @@ export const seed = {
   // Already scheduled into versionNextId (status active) -- gives the "In
   // progress" lane a non-zero change count to assert on.
   workItemScheduledId: "00000000-0000-4000-8000-000000000913",
+  // Admin -> Integrations (T136, WP-A6, NA-08). memberUserId is an
+  // organization member with no `user_roles` 'admin' row -- proves the page
+  // (and the backend behind it) refuse anyone but an organization admin.
+  memberUserId: "00000000-0000-4000-8000-0000000000a2",
+  memberEmail: "e2e-member@pronghorn.test",
+  memberName: "E2E Member",
+  // Renumbered from ...901 at merge: WP-O1 and WP-V1 also used 901.
+  azureDevOpsConnectionId: "00000000-0000-4000-8000-000000000903",
 } as const;
