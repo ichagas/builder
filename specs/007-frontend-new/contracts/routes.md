@@ -39,7 +39,7 @@ Share tokens: legacy `/project/:id/<page>/t/:token` → new `/p/:id/<route>?t=:t
 | — (new, US5, US6) | `/assurance/t/:teamId`, `/assurance/t/:teamId/apps/:appId`, `/assurance/t/:teamId/onboard/:step?`, `/assurance/all`, `/assurance/packs`, `/assurance/policy` | Assurance | WP-A1…A5, WP-O1…O2 (built new) |
 | `*` | NotFound with search and links to Projects and Assurance | Root | WP-F3 |
 
-`v/current` resolves to the selected version (D-7: a single "Building" version until B1).
+`v/current` resolves to the selected version (D-7: a single "Building" version until B1). In `v/:version/...`, `:version` is a version **name** (canonical, e.g. `v1.1.0`, used in generated links) or a version **id** (the timeline strip navigates with ids); both resolve to the same version.
 
 ## 2. Regression checklist
 
