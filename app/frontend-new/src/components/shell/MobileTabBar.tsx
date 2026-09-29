@@ -15,6 +15,8 @@ export interface MobileTabBarItem {
   label: string;
   href: string;
   icon?: React.ReactNode;
+  /** Compact visible label for narrow bars; `label` stays the accessible name. */
+  shortLabel?: string;
 }
 
 export interface MobileTabBarProps {
@@ -35,13 +37,20 @@ export function MobileTabBar({ items, ariaLabel }: MobileTabBarProps) {
           to={item.href}
           className={({ isActive }) =>
             cn(
-              "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-rail-muted",
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-rail-muted",
               isActive && "text-rail-ink",
             )
           }
         >
           {item.icon}
-          <span className="truncate px-1">{item.label}</span>
+          {item.shortLabel ? (
+            <>
+              <span aria-hidden="true" className="max-w-full truncate px-0.5">{item.shortLabel}</span>
+              <span className="sr-only">{item.label}</span>
+            </>
+          ) : (
+            <span className="max-w-full truncate px-0.5">{item.label}</span>
+          )}
         </NavLink>
       ))}
     </nav>

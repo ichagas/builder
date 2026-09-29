@@ -164,8 +164,15 @@ describe("AppShell primary action mirroring", () => {
       </MemoryRouter>,
     );
     const main = screen.getByRole("main");
-    expect(main.className).toContain("max-md:pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))]");
+    expect(main.className).toContain("max-md:pb-[var(--shell-bottom-inset,0px)]");
     expect(main.className).not.toMatch(/(^|\s)pb-/);
+    // Page z-indices are contained below the fixed bars on mobile.
+    expect(main.className).toContain("max-md:isolate");
+    const root = main.closest("div.min-h-dvh") as HTMLElement;
+    expect(root.className).toContain("[--shell-bottom-inset:calc(var(--tabbar-h)+env(safe-area-inset-bottom))]");
+    expect(root.className).toContain(
+      "max-md:has-[#mobile-primary-action]:[--shell-bottom-inset:calc(var(--tabbar-h)+var(--action-bar-h)+env(safe-area-inset-bottom))]",
+    );
     rerender(
       <MemoryRouter>
         <AppShell globalBar={<div />}>
@@ -173,6 +180,8 @@ describe("AppShell primary action mirroring", () => {
         </AppShell>
       </MemoryRouter>,
     );
-    expect(screen.getByRole("main").className).not.toContain("--tabbar-h");
+    expect((screen.getByRole("main").closest("div.min-h-dvh") as HTMLElement).className).not.toContain(
+      "[--shell-bottom-inset:calc(var(--tabbar-h)+env",
+    );
   });
 });

@@ -17,7 +17,7 @@ export function PrimaryActionSlot() {
   return (
     <div
       id="mobile-primary-action"
-      className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 md:hidden"
+      className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 md:hidden"
     >
       <ActionSpecButton spec={action} className="h-11 w-full max-w-md shadow-lg" />
     </div>

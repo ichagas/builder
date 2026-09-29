@@ -29,7 +29,7 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Type | `--font "IBM Plex Sans"`, `--mono "IBM Plex Mono"` (identifiers only), `--fs 14px`, `--h1 26px/600`, `--h2 14px/600` |
 | Shape | `--radius 4px`, `--radius-s 3px`, `--radius-pill 3px` |
 | Density | `--row 48px` (min target 44px), `--pad 14px`, `--gap 14px` |
-| Layout | `--rail-w 248px` (collapsed 76px), `--bar-h 52px`, `--timeline-h 76px`, `--tabbar-h 56px` |
+| Layout | `--rail-w 248px` (collapsed 76px), `--bar-h 52px`, `--timeline-h 76px`, `--tabbar-h 56px`, `--action-bar-h 52px` |
 | Elevation | `--shadow none`, `--shadow-pop 0 10px 28px rgba(11,24,48,.28)` |
 
 Dark theme: invert surfaces (`--bg #0E1626`, `--surface #142036`…) while keeping status and phase hues, with contrast ≥ 4.5:1. The rail and global bar stay navy in both themes.
@@ -155,9 +155,17 @@ Fixed "VS Code Dark+"-style palette for the code/file-browsing widgets — file 
 | `Inspector` | Right panel on desktop, bottom sheet with detents (peek, half, full) at ≤768px. |
 | `StatusPill` / `StatusCenter` | Shows running long tasks (`useLongTask`) from realtime: agent sessions, audits, deploys, sandbox runs. |
 | `UndoBar` | A single slot, bottom left on desktop and above the mobile action on phones. One message at a time, 7s. |
-| `MobileTabBar` | 4–5 items. Project: Versions + 4 phases. Assurance: Portfolio, Onboard, Packs, Policy. |
+| `MobileTabBar` | 4–5 items. Project: Versions + 4 phases. Assurance: Portfolio, Onboard, Packs, Policy (+ Organization for admins). Items are `min-w-0 flex-1` and truncate; an item may carry a `shortLabel` (visible, aria-hidden) with the full `label` as sr-only accessible name, so 5 items fit 360/390px with no horizontal overflow. |
 | `FilterChips` | URL-bound (`?f=`), with counts. |
 | Domain atoms | `TypeChip`, `DeltaChip`, `MeshDots` (G, Y, R, B letters + aria-label), `StackBadge`, `PrChip`, `VersionTag`, `RepoRow`, `AdoptionBar`, `EmptyState` |
+
+### 2.1 Mobile bottom inset and stacking (T071-fix; LAYOUT CONTRACT CHANGE)
+
+At <=768px the `MobileTabBar` (`z-20`, height `--tabbar-h` + safe area) and the `PrimaryActionSlot` (`#mobile-primary-action`, `z-30`, sits above the tab bar, `--action-bar-h` 52px) are `fixed`. Rules:
+
+- `AppShell` defines `--shell-bottom-inset` on its root: tab bar height + safe area when a tab bar is mounted, plus `--action-bar-h` whenever `#mobile-primary-action` is in the DOM (`has-[]` variant, so no re-render). `<main>` pads its bottom by `var(--shell-bottom-inset)` at <=768px; full-height tools must use the same variable, never their own constants.
+- `<main>` is `max-md:isolate`: page content z-indices (legacy `z-50` toolbars etc.) are contained inside `<main>` and can never paint over the fixed bars. Portaled overlays (dialogs, popovers, toasts) live outside `<main>` at `z-50`/`z-[100]` and stay above the bars.
+- Scale: page content (inside `<main>`) < `MobileTabBar` 20 < `PrimaryActionSlot` 30 < overlays 50+.
 
 ## 3. State hooks (`src/lib/state/`)
 

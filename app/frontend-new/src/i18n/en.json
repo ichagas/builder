@@ -161,7 +161,14 @@
       "onboard": "Onboard",
       "packs": "Standards packs",
       "policy": "Mesh policy",
-      "organization": "Organization"
+      "organization": "Organization",
+      "short": {
+        "portfolio": "Portfolio",
+        "onboard": "Onboard",
+        "packs": "Packs",
+        "policy": "Policy",
+        "organization": "Org"
+      }
     },
     "mode": {
       "label": "Standards"
