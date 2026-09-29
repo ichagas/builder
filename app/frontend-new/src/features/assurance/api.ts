@@ -296,6 +296,9 @@ export function useSetMeshPolicy() {
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: meshPolicyKeys.policy(variables.scope, variables.scopeId) });
+    },
+  });
+}
 
 /**
  * GET /applications/:appId (T131, WP-A2, NA-03) — the application page:
