@@ -520,4 +520,42 @@ VALUES
   ('00000000-0000-4000-8000-0000000009be', '00000000-0000-4000-8000-000000000984', 'github', 'e2e-goa/a5-harbor-cli', 'main', 'github_actions', 'node', 'Node 20', 'cli', '2026.2', now() - interval '1 day')
 ON CONFLICT (id) DO NOTHING;
 
+-- ---------------------------------------------------------------------
+-- WP-O2 (T152): onboarding steps 3-5 (NO-03/04/05), ids ...990-...99f.
+-- Runs in fixed states so the sandbox log, output review and PR steps render
+-- without a real sandbox job (BLOCKED-EXTERNAL) or GitHub App: 990 ready
+-- (991 with generated files, 992 with a sandbox error), 993 running (994),
+-- 995 failed (996), 997 prs_open (998, PR #42 open, linked to Permits API).
+-- ---------------------------------------------------------------------
+INSERT INTO public.onboarding_runs (id, team_id, application_name, application_id, status, step, log_blob, started_by)
+VALUES
+  ('00000000-0000-4000-8000-000000000990', '00000000-0000-4000-8000-000000000801', 'E2E Sandbox Ready App', NULL, 'ready', 'output',
+   E'cloning e2e-goa/onboard-ready\ndetected node\ngenerated 1 file', '00000000-0000-4000-8000-0000000000a1'),
+  ('00000000-0000-4000-8000-000000000993', '00000000-0000-4000-8000-000000000801', 'E2E Sandbox Running App', NULL, 'running', 'sandbox',
+   NULL, '00000000-0000-4000-8000-0000000000a1'),
+  ('00000000-0000-4000-8000-000000000995', '00000000-0000-4000-8000-000000000801', 'E2E Sandbox Failed App', NULL, 'failed', 'sandbox',
+   E'cloning e2e-goa/onboard-failed\nsandbox job failed', '00000000-0000-4000-8000-0000000000a1'),
+  ('00000000-0000-4000-8000-000000000997', '00000000-0000-4000-8000-000000000801', 'E2E Prs Open App', '00000000-0000-4000-8000-000000000811', 'prs_open', 'prs',
+   NULL, '00000000-0000-4000-8000-0000000000a1')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.onboarding_run_repositories
+  (id, run_id, full_name, selected, detected_profile, detected_stack, detected_build, detected_ci, part, review, generated_manifest, baseline_counts, pr_number, pr_state)
+VALUES
+  ('00000000-0000-4000-8000-000000000991', '00000000-0000-4000-8000-000000000990', 'e2e-goa/onboard-ready', true,
+   'node', 'Node.js', 'npm ci && npm run build', 'github_actions', 'APIs', '{}'::jsonb,
+   '[{"path":".github/workflows/assurance-mesh.yml","content":"name: assurance-mesh\non: pull_request"}]'::jsonb,
+   '{"green":3,"yellow":1,"red":0,"blue":2}'::jsonb, NULL, NULL),
+  ('00000000-0000-4000-8000-000000000992', '00000000-0000-4000-8000-000000000990', 'e2e-goa/onboard-broken', true,
+   NULL, NULL, NULL, NULL, NULL, '{"sandboxError":"clone failed: repository is empty"}'::jsonb, '[]'::jsonb, '{}'::jsonb, NULL, NULL),
+  ('00000000-0000-4000-8000-000000000994', '00000000-0000-4000-8000-000000000993', 'e2e-goa/onboard-running', true,
+   NULL, NULL, NULL, NULL, NULL, '{}'::jsonb, '[]'::jsonb, '{}'::jsonb, NULL, NULL),
+  ('00000000-0000-4000-8000-000000000996', '00000000-0000-4000-8000-000000000995', 'e2e-goa/onboard-failed', true,
+   NULL, NULL, NULL, NULL, NULL, '{}'::jsonb, '[]'::jsonb, '{}'::jsonb, NULL, NULL),
+  ('00000000-0000-4000-8000-000000000998', '00000000-0000-4000-8000-000000000997', 'e2e-goa/onboard-opened', true,
+   'node', 'Node.js', 'npm ci', 'github_actions', 'APIs', '{}'::jsonb,
+   '[{"path":".github/workflows/assurance-mesh.yml","content":"name: assurance-mesh"}]'::jsonb,
+   '{"green":1,"yellow":0,"red":0,"blue":0}'::jsonb, 42, 'open')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

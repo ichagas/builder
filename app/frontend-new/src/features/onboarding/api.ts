@@ -105,8 +105,12 @@ export type ImportableAzureRepository = z.infer<typeof importableAzureRepository
 // Queries
 // ---------------------------------------------------------------------------
 
+/** How often a running run is re-read when the realtime channel is quiet or down. */
+export const RUN_POLL_MS = 3000;
+
 export const onboardingKeys = {
   run: (runId: string) => ["onboarding", "runs", runId] as const,
+  output: (runId: string) => ["onboarding", "runs", runId, "output"] as const,
   githubImport: (teamId: string, query: string) => ["onboarding", "github-repos", teamId, query] as const,
   azureImport: (teamId: string, query: string) => ["onboarding", "azure-repos", teamId, query] as const,
 };
@@ -120,6 +124,10 @@ export function useOnboardingRun(runId: string | undefined): UseQueryResult<Onbo
       return onboardingRunSchema.parse(data);
     },
     enabled: !!runId,
+    // Fallback for a dropped realtime connection while the sandbox job runs
+    // (T151): the run's status is the source of truth, the channel only adds
+    // live log lines.
+    refetchInterval: (query) => (query.state.data?.status === "running" ? RUN_POLL_MS : false),
   });
 }
 
