@@ -5,7 +5,7 @@
 **Status**: Draft  
 **Input**: User description: "Rewrite the project Repository page (`app/frontend-new/src/pages/project/Repository.tsx`, route `/p/:id/v/current/build/repository`) with inline feedback instead of toasts, an inspector instead of dialogs, repository, file and tab held in the URL, and TanStack Query for data. Selected in `specs/007-frontend-new/phase-r-selection.md` (order 3 of 5). Also settles the shared file tree, editor and create/rename pieces that `specs/011-rewrite-build/` reuses."
 
-**Related**: `specs/007-frontend-new/contracts/design-system.md`, `contracts/routes.md` (PR-11), `contracts/api.md` (reused unchanged), `specs/008-rewrite-chat/`, `specs/009-rewrite-artifacts/`.
+**Related**: `specs/007-frontend-new/contracts/design-system.md`, `contracts/routes.md` (PR-11), `contracts/api.md` (reused unchanged), `specs/008-rewrite-chat/`.
 
 ## User Scenarios & Testing *(mandatory)*
 

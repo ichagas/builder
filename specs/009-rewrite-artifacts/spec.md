@@ -2,8 +2,8 @@
 
 **Feature Branch**: `009-rewrite-artifacts`  
 **Created**: 2026-09-29  
-**Status**: Draft  
-**Input**: User description: "Rewrite the project Artifacts page (`app/frontend-new/src/pages/project/Artifacts.tsx`, route `/p/:id/v/current/define/artifacts`) with inline feedback instead of toasts, one inspector instead of nine dialogs, folder, view and opened artifact held in the URL, and TanStack Query for data. Selected in `specs/007-frontend-new/phase-r-selection.md` (order 2 of 5)."
+**Status**: Deferred (does not meet 2 of 5 D-14 criteria under the strict reading, see `007-frontend-new/phase-r-selection.md`; spec kept for later)  
+**Input**: User description: "Rewrite the project Artifacts page (`app/frontend-new/src/pages/project/Artifacts.tsx`, route `/p/:id/v/current/define/artifacts`) with inline feedback instead of toasts, one inspector instead of nine dialogs, folder, view and opened artifact held in the URL, and TanStack Query for data. Selected in `specs/007-frontend-new/phase-r-selection.md` (scored 1 of 5 on the strict D-14 reading, so deferred)."
 
 **Related**: `specs/007-frontend-new/contracts/design-system.md`, `contracts/routes.md` (PR-06), `contracts/api.md` (reused unchanged). Follows the patterns settled in `specs/008-rewrite-chat/`.
 

@@ -5,7 +5,7 @@
 **Status**: Draft  
 **Input**: User description: "Rewrite the project Canvas page (`app/frontend-new/src/pages/project/Canvas.tsx`, route `/p/:id/v/current/design/canvas`) with inline feedback instead of toasts, one inspector instead of dialogs and the page-local mobile sheet, selection, layer and view held in the URL, and TanStack Query for data. Selected in `specs/007-frontend-new/phase-r-selection.md` (order 5 of 5)."
 
-**Related**: `specs/007-frontend-new/contracts/design-system.md`, `contracts/routes.md` (PR-08), `contracts/api.md` (reused unchanged), and the patterns settled in `specs/008-rewrite-chat/`, `009-rewrite-artifacts/`.
+**Related**: `specs/007-frontend-new/contracts/design-system.md`, `contracts/routes.md` (PR-08), `contracts/api.md` (reused unchanged), and the patterns settled in `specs/008-rewrite-chat/`.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -136,5 +136,5 @@ A user opens the change heatmap and change log, generates an infographic of the 
 - The restyled page (T046) is the behavior baseline.
 - React Flow stays as the diagram engine.
 - The `Inspector` supports being opened from a URL key and holds long forms (node properties) in the same way at desktop and phone detents.
-- Chat (008) and Artifacts (009) have settled the streaming, long-task and undo patterns.
+- Chat (008) has settled the streaming, long-task and undo patterns.
 - Phase R starts after cutover (T073).
