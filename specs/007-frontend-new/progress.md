@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** PAUSED by the user (2026-09-28) after batch N1 merged; short path in effect. Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** batch N2a (V2, V3, V4, X3) in progress; batch testing in effect (see "Batch testing"). Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -233,3 +233,11 @@ Everything is on `feature/frontend-new`; no open WP branches or worktrees. Tasks
 3. Batch N2 (code-only + batch review): V2 T111, V3 T112, V4 T113 (+ T114 spec), A3 T132, A4 T133 (de-duplicate with A6's `useMeshPolicy`/`useSetMeshPolicy`/`MESH_AGENTS` in features/assurance/api.ts), A5 T134 (+ T135 spec with the 15-repo seed), O2 T151 (+ T152 spec). **Seed ids:** before merging, grep all branches' `e2e/lib/seedIds.ts` for duplicate UUIDs (git can't see these collisions); reserve an id block per WP in the prompts.
 4. Polish T160–T162.
 5. Final consolidated test pass (T071 + us4/us5/us6 + axe), in chunks with timeouts, one Docker stack at a time; then fixes; then T074 (remove app/frontend/) only after it is green; then T170–T171.
+
+## Batch testing (user decision, 2026-09-28, resumed after N1)
+
+Don't run the full E2E per feature. Merge **3–5 WPs per batch**, then ONE tester runs **that batch's E2E** serially (one Docker stack, lock script, chunks with timeouts) and ONE reviewer reviews the batch diff. The full regression (T071) still runs once at the end. Never run E2E in parallel on this machine.
+
+- **Batch N2a** = X3 (N1 follow-ups: O1 unit tests, A6 NA-08 isolation; shell fix: PageHeader/PrimaryActionSlot honour ActionSpec.confirm/undo), V2 (T111), V3 (T112), V4 (T113 + T114). Test: us4 + us5 + us6 new-capability specs (N1 wasn't run yet). Seed id blocks: V2 …920–92f, V3 …930–93f, V4 …940–94f, X3 …950–95f.
+- **Batch N2b** = A3 (T132), A4 (T133), A5 (T134 + T135), O2 (T151 + T152). Seed blocks: A3 …960, A4 …970, A5 …980, O2 …990 (16 each).
+- **Batch N3** = polish T160–T162. Then the final regression (T071), fixes, T074, T170–T171.

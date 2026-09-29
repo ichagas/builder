@@ -22,10 +22,10 @@ Use the Agent tool for all implementation and testing. Keep your own context for
 
 | Role | When | Model |
 |---|---|---|
-| **Developer** | Implements the tasks of one WP | **Sonnet 5** (`model: "sonnet"`) |
-| **Tester** | Writes and runs the WP's unit, E2E and axe tests; checks the definition of done | **Sonnet 5** |
-| **Reviewer** | Applies `code-review.agent.md` (layout contract, constitution, layer validation) to the WP diff | **Sonnet 5** |
-| **Security reviewer** | WPs BE4, BE5, BE6, BE7, BE8: applies `security.agent.md` | **Sonnet 5** |
+| **Developer** | Implements the tasks of one WP | **Sonnet 5.5** (`model: "sonnet"`) |
+| **Tester** | Writes and runs the WP's unit, E2E and axe tests; checks the definition of done | **Sonnet 5.5** |
+| **Reviewer** | Applies `code-review.agent.md` (layout contract, constitution, layer validation) to the WP diff | **Sonnet 5.5** |
+| **Security reviewer** | WPs BE4, BE5, BE6, BE7, BE8: applies `security.agent.md` | **Sonnet 5.5** |
 | **Escalation** | Only when needed (see below) | **Opus 5.5** (`model: "opus"`) |
 
 **Use Opus 5.5 only when:**
@@ -45,13 +45,13 @@ Give the Opus agent the failing context and ask for a fix or a decision. Then co
 
 For each WP in the current wave:
 
-1. **Dispatch the Developer** (Sonnet 5, worktree) with the prompt template from `agents.md`, filled in: WP ID, tasks, owned files, prototype, legacy files to match (restyle WPs) and acceptance criteria. Instructions:
+1. **Dispatch the Developer** (Sonnet 5.5, worktree) with the prompt template from `agents.md`, filled in: WP ID, tasks, owned files, prototype, legacy files to match (restyle WPs) and acceptance criteria. Instructions:
    - **Commit once per task** (`T###`) as soon as that task is done and its checks pass.
-   - Commit message: `T### (WP-XX): <short summary>`, then a blank line, a body listing what changed and how it was verified, and the trailer `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`.
+   - Commit message: `T### (WP-XX): <short summary>`, then a blank line, a body listing what changed and how it was verified, and the trailer `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
    - Tick the task in `tasks.md` in the same commit.
    - Run the layer validation before each commit: `npm run lint` + `npm run build` + `npm test` in `app/frontend-new/`, `npm run build` + `npm test` in `app/backend/` for backend tasks.
-2. **Dispatch the Tester** (Sonnet 5, same worktree) after the developer reports done. It runs the WP's tests (regression rows `PR-xx`, capability rows `NV/NA/NO-xx`, axe, and for restyle WPs screenshots at 1440 and 390). It fixes test code only, or reports defects.
-3. **Dispatch the Reviewer** (Sonnet 5), plus the **Security reviewer** where listed, on the WP diff.
+2. **Dispatch the Tester** (Sonnet 5.5, same worktree) after the developer reports done. It runs the WP's tests (regression rows `PR-xx`, capability rows `NV/NA/NO-xx`, axe, and for restyle WPs screenshots at 1440 and 390). It fixes test code only, or reports defects.
+3. **Dispatch the Reviewer** (Sonnet 5.5), plus the **Security reviewer** where listed, on the WP diff.
 4. If the tester or reviewers report defects, send them back to the Developer. After **two** failed rounds, escalate to Opus 5.5 (§3).
 5. When everything is green, **merge `wp/<WP-ID>` into `feature/frontend-new`** with a merge commit (`Merge WP-XX: <title>`), which keeps the per-task commits. Run the full frontend and backend validation on `feature/frontend-new` after the merge. If it breaks, fix it before starting the next merge.
 6. Update `progress.md`.
