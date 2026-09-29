@@ -369,4 +369,75 @@ VALUES
    'Confirmation email drops the case number', NULL, NULL, 'shipped')
 ON CONFLICT (id) DO NOTHING;
 
+-- US4 Change page (T111, WP-V2, NV-03/NV-04) --------------------------------
+-- Own project (ids ...920-...92f only) so the change-page specs can't shift
+-- WP-V1's triage/lane assertions on project 102. Keys are WI-92x, never
+-- WI-<small n>, so another WP's seed rows can't collide on
+-- UNIQUE (project_id, key). Read-only fixtures: tests that mutate a change
+-- create their own through the API (desktop and mobile run concurrently).
+INSERT INTO public.projects (id, name, description, org_id, created_by, organization)
+VALUES (
+  '00000000-0000-4000-8000-000000000920',
+  'E2E Change Page Project',
+  'Seeded project for the US4 change-page e2e coverage (NV-03, NV-04).',
+  '00000000-0000-4000-8000-000000000001',
+  '00000000-0000-4000-8000-0000000000a1',
+  'E2E Test Org'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.versions (id, project_id, name, kind, is_current, is_first_release, released_at, git_tag)
+VALUES
+  ('00000000-0000-4000-8000-000000000921', '00000000-0000-4000-8000-000000000920', 'v2.0.0', 'released', true, true, now() - interval '30 days', 'v2.0.0'),
+  ('00000000-0000-4000-8000-000000000922', '00000000-0000-4000-8000-000000000920', 'v2.1.0', 'next', false, false, NULL, NULL),
+  ('00000000-0000-4000-8000-000000000923', '00000000-0000-4000-8000-000000000920', 'v2.0.1', 'hotfix', false, false, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- Two canvas nodes and an edge between them: the scoped canvas highlights
+-- the affected ones and lists what they connect to.
+INSERT INTO public.canvas_nodes (id, project_id, type, data)
+VALUES
+  ('00000000-0000-4000-8000-000000000926', '00000000-0000-4000-8000-000000000920', 'API', '{"label":"Checkout API"}'::jsonb),
+  ('00000000-0000-4000-8000-000000000927', '00000000-0000-4000-8000-000000000920', 'DATABASE', '{"label":"Orders database"}'::jsonb),
+  ('00000000-0000-4000-8000-000000000928', '00000000-0000-4000-8000-000000000920', 'WEB_COMPONENT', '{"label":"Marketing site"}'::jsonb)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.canvas_edges (id, project_id, source, target)
+VALUES ('00000000-0000-4000-8000-000000000929', '00000000-0000-4000-8000-000000000920',
+        '00000000-0000-4000-8000-000000000926', '00000000-0000-4000-8000-000000000927')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.work_items
+  (id, project_id, key, version_id, type, severity, title, source, status, phase_state, phase_notes, branch, preview_url, bug_report, components)
+VALUES
+  -- 924: a bug in Define (design skipped), with a bug report and one delta (92a)
+  ('00000000-0000-4000-8000-000000000924', '00000000-0000-4000-8000-000000000920', 'WI-920',
+   '00000000-0000-4000-8000-000000000922', 'bug', 'high', 'Checkout total ignores the discount code', 'Reported by support', 'active',
+   '{"define":"active","design":"skipped","build":"todo","ship":"todo"}'::jsonb, '{"define":"1 requirement"}'::jsonb,
+   'fix/wi-920-checkout-total', NULL,
+   '{"steps":["Add an item to the cart","Apply code SAVE10","Open checkout"],"expected":"Total is 10% lower","actual":"Total is unchanged","environment":"Production, Safari 18"}'::jsonb,
+   '{}'),
+  -- 925: an enhancement in Design, affecting the Checkout API and Orders database
+  ('00000000-0000-4000-8000-000000000925', '00000000-0000-4000-8000-000000000920', 'WI-921',
+   '00000000-0000-4000-8000-000000000922', 'enhancement', NULL, 'Send order confirmations by SMS', 'Requested by operations', 'active',
+   '{"define":"done","design":"active","build":"todo","ship":"todo"}'::jsonb, '{}'::jsonb,
+   'feat/wi-921-sms-confirmations', NULL, NULL,
+   ARRAY['00000000-0000-4000-8000-000000000926','00000000-0000-4000-8000-000000000927']),
+  -- 92b: built and reviewed, on the Ship step, with a preview
+  ('00000000-0000-4000-8000-00000000092b', '00000000-0000-4000-8000-000000000920', 'WI-923',
+   '00000000-0000-4000-8000-000000000922', 'feature', NULL, 'Guest checkout', 'Requested by the product owner', 'active',
+   '{"define":"done","design":"skipped","build":"done","ship":"active"}'::jsonb, '{}'::jsonb,
+   'feat/wi-923-guest-checkout', 'https://wi-923.preview.example.test', NULL, '{}'),
+  -- 92c: shipped in the released v2.0.0 (locked, read-only)
+  ('00000000-0000-4000-8000-00000000092c', '00000000-0000-4000-8000-000000000920', 'WI-922',
+   '00000000-0000-4000-8000-000000000921', 'feature', NULL, 'Saved payment methods', 'Requested by the product owner', 'shipped',
+   '{"define":"done","design":"done","build":"done","ship":"done"}'::jsonb, '{}'::jsonb,
+   'feat/wi-922-saved-payments', NULL, NULL, '{}')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.work_item_requirement_changes (id, work_item_id, requirement_id, kind, title, criterion)
+VALUES ('00000000-0000-4000-8000-00000000092a', '00000000-0000-4000-8000-000000000924', NULL, 'changed',
+        'Order total includes discounts', 'A valid discount code lowers the checkout total')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

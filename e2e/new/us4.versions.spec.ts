@@ -204,12 +204,189 @@ test.describe("NV-06 version scoping", () => {
         const results = await new AxeBuilder({ page }).analyze();
         const description = results.violations
           .map((v) => `[${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+
+// =============================================================================
+// WP-V2 (T111): NV-03/NV-04 change page. Appended block; WP-V3/WP-V4 append
+// their own blocks after this one.
+//
+// NV-03 = the change page's workflow: step bar, bug report, requirement
+//         deltas, and the single primary action per step (mark definition
+//         ready, approve design, send for review, open release).
+// NV-04 = what the steps show and let you change: the scoped canvas, branch
+//         and agent, checks, the version picker, and the read-only lock.
+//
+// Seed (e2e/seed.sql "US4 Change page", ids ...920-...92f): its own project
+// (`seed.changeProjectId`) with released v2.0.0, next v2.1.0 and hotfix
+// v2.0.1. Seeded changes are READ-ONLY fixtures; a test that mutates a change
+// creates its own (desktop and mobile run this file concurrently).
+// =============================================================================
+
+const CHANGE_PROJECT_ID = seed.changeProjectId;
+const changeUrl = (id: string, step?: string) => `/p/${CHANGE_PROJECT_ID}/changes/${id}${step ? `/${step}` : ""}`;
+
+/** A fresh change scheduled into the next version (v2.1.0), accepted so its first step is workable. */
+async function createAcceptedChange(type: "bug" | "enhancement" | "feature", title: string): Promise<{ id: string; key: string }> {
+  const created = await api.post<{ id: string; key: string }>(`/api/v1/projects/${CHANGE_PROJECT_ID}/work-items`, defaultOwner, {
+    type,
+    title,
+    severity: type === "bug" ? "medium" : undefined,
+    versionId: seed.changeVersionNextId,
+    bugReport: type === "bug" ? { steps: ["Open the page"], expected: "It works", actual: "It doesn't" } : undefined,
+  });
+  await api.patch(`/api/v1/work-items/${created.id}`, defaultOwner, { status: "active" });
+  return created;
+}
+
+test.describe("NV-03/NV-04 change page", () => {
+  test("NV-03: Define step shows the bug report, requirement deltas and the step bar", async ({ page }) => {
+    await page.goto(changeUrl(seed.changeBugId));
+
+    await expect(page.getByRole("heading", { name: "Checkout total ignores the discount code", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bug report" })).toBeVisible();
+    await expect(page.getByText("Apply code SAVE10")).toBeVisible();
+    await expect(page.getByText("Total is unchanged")).toBeVisible();
+
+    const deltas = page.getByTestId("requirement-deltas");
+    await expect(deltas.getByText("Order total includes discounts")).toBeVisible();
+    await expect(deltas.getByText("Changed")).toBeVisible();
+
+    const steps = page.getByRole("navigation", { name: "Steps for WI-920" });
+    await expect(steps.getByRole("button", { name: /^Define/ })).toHaveAttribute("aria-current", "step");
+    await expect(steps.getByRole("button", { name: /^Design/ })).toHaveAttribute("data-state", "skipped");
+    await expect(page.getByRole("button", { name: "Mark definition ready" })).toBeEnabled();
+  });
+
+  test("NV-03: selecting a step puts it in the URL", async ({ page }) => {
+    await page.goto(changeUrl(seed.changeBugId));
+
+    await page.getByRole("navigation", { name: "Steps for WI-920" }).getByRole("button", { name: /^Build/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/p/${CHANGE_PROJECT_ID}/changes/${seed.changeBugId}/build$`));
+  });
+
+  test("NV-03: Mark definition ready completes Define and moves to the next step", async ({ page }) => {
+    const change = await createAcceptedChange("enhancement", unique("Add gift wrapping"));
+    await page.goto(changeUrl(change.id));
+
+    await page.getByRole("button", { name: "Mark definition ready" }).click();
+    await expect(page).toHaveURL(new RegExp(`/changes/${change.id}/design$`));
+
+    const after = await api.get<{ phase_state: Record<string, string> }>(`/api/v1/work-items/${change.id}`, defaultOwner);
+    expect(after.phase_state.define).toBe("done");
+  });
+
+  test("NV-03: records a requirement delta", async ({ page }) => {
+    const change = await createAcceptedChange("feature", unique("Wishlist"));
+    await page.goto(changeUrl(change.id));
+
+    await page.getByLabel("Requirement", { exact: true }).fill("Shoppers can share a wishlist");
+    await page.getByRole("button", { name: "Add requirement change" }).click();
+
+    await expect(page.getByTestId("requirement-deltas").getByText("Shoppers can share a wishlist")).toBeVisible();
+    const deltas = await api.get<Array<{ title: string; kind: string }>>(`/api/v1/work-items/${change.id}/requirement-changes`, defaultOwner);
+    expect(deltas).toEqual([expect.objectContaining({ title: "Shoppers can share a wishlist", kind: "new" })]);
+  });
+
+  test("NV-03: a bug can add the design step it skips by default", async ({ page }) => {
+    await page.goto(changeUrl(seed.changeBugId, "design"));
+    await expect(page.getByText("Bugs skip design by default")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add a design step" })).toBeVisible();
+  });
+
+  test("NV-04: the Design step scopes the canvas to the affected components", async ({ page }) => {
+    await page.goto(changeUrl(seed.changeEnhancementId, "design"));
+
+    await expect(page.getByText("2 components affected")).toBeVisible();
+    const affected = page.getByTestId("scoped-canvas-affected");
+    await expect(affected.getByText("Checkout API")).toBeVisible();
+    await expect(affected.getByText("Connects to Orders database")).toBeVisible();
+    await expect(affected.getByText("Marketing site")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Approve design" })).toBeEnabled();
+
+    // Everything else stays collapsed until opened.
+    await expect(page.getByText("Marketing site")).toBeHidden();
+    await page.getByText(/1 component unchanged/).click();
+    await expect(page.getByText("Marketing site")).toBeVisible();
+  });
+
+  test("NV-04: the Build step shows the branch, agent state and preview", async ({ page }) => {
+    await page.goto(changeUrl(seed.changeShipItemId, "build"));
+
+    await expect(page.getByTestId("change-branch")).toHaveText("feat/wi-923-guest-checkout");
+    await expect(page.getByTestId("change-agent-status")).toContainText("has not started");
+    await expect(page.getByRole("link", { name: "https://wi-923.preview.example.test" })).toBeVisible();
+  });
+
+  test("NV-04: the Ship step lists checks and opens the release page", async ({ page }) => {
+    await page.goto(changeUrl(seed.changeShipItemId, "ship"));
+
+    const checks = page.getByTestId("change-checks");
+    await expect(checks.getByText("Definition ready")).toBeVisible();
+    await expect(checks.getByText("Build reviewed")).toBeVisible();
+    await expect(checks.locator('[data-passed="true"]').first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Open release v2.1.0" }).click();
+    await expect(page).toHaveURL(new RegExp(`/p/${CHANGE_PROJECT_ID}/v/v2\\.1\\.0/ship/release$`));
+  });
+
+  test("NV-04: the version picker moves a change between open versions", async ({ page }) => {
+    const change = await createAcceptedChange("bug", unique("Wrong tax on gift cards"));
+    await page.goto(changeUrl(change.id));
+
+    const picker = page.getByRole("combobox", { name: `Move ${change.key} to another version` });
+    await expect(picker).toHaveValue(seed.changeVersionNextId);
+    // Released versions aren't offered.
+    await expect(picker.getByRole("option", { name: /v2\.0\.0/ })).toHaveCount(0);
+
+    await picker.selectOption(seed.changeVersionHotfixId);
+    await expect(picker).toHaveValue(seed.changeVersionHotfixId);
+    await expect
+      .poll(async () => (await api.get<{ version_id: string }>(`/api/v1/work-items/${change.id}`, defaultOwner)).version_id)
+      .toBe(seed.changeVersionHotfixId);
+  });
+
+  test("NV-04: a change in a released version is read-only", async ({ page }) => {
+    await page.goto(changeUrl(seed.changeLockedItemId));
+
+    await expect(page.getByText("v2.0.0 is released and read-only")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: /^Move WI-922 to another version$/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /Mark definition ready|Approve design|Send for review/ })).toHaveCount(0);
+  });
+
+  test("an unknown change shows a not-found state", async ({ page }) => {
+    await page.goto(changeUrl("00000000-0000-4000-8000-0000000009ff"));
+    await expect(page.getByRole("heading", { name: "Change not found" }).first()).toBeVisible();
+  });
+});
+
+test.describe("NV-03/NV-04 change page axe: zero violations", () => {
+  const screens: Array<{ name: string; url: () => string; ready: RegExp | string }> = [
+    { name: "Define", url: () => changeUrl(seed.changeBugId), ready: "Bug report" },
+    { name: "Design", url: () => changeUrl(seed.changeEnhancementId, "design"), ready: "Architecture" },
+    { name: "Build", url: () => changeUrl(seed.changeShipItemId, "build"), ready: "feat/wi-923-guest-checkout" },
+    { name: "Ship", url: () => changeUrl(seed.changeShipItemId, "ship"), ready: "Checks" },
+  ];
+  for (const theme of ["light", "dark"] as const) {
+    for (const screen of screens) {
+      test(`${screen.name} step -- ${theme} theme`, async ({ page }, testInfo) => {
+        await page.addInitScript((t) => {
+          try {
+            window.localStorage.setItem("theme", t);
+          } catch {
+            // ignore
+          }
+        }, theme);
+        await page.goto(screen.url());
+        await expect(page.getByRole("heading", { name: screen.ready, exact: typeof screen.ready === "string" })).toBeVisible();
+
+        const results = await new AxeBuilder({ page }).analyze();
+        const description = results.violations
+          .map((v) => `[${theme}/${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
           .join("\n");
         expect(results.violations, description).toEqual([]);
       });
     }
 
-// ===========================================================================
+// ====================================================================
 // NV-05 release (T112, WP-V3). Own seed projects (e2e/seed.sql ids 930..93f):
 // no repository is linked (a real merge/tag needs GitHub), so the release
 // itself is exercised with the checks GET and the release POST mocked; the
@@ -327,4 +504,6 @@ test.describe("NV-05 release", () => {
       .join("\n");
     expect(results.violations, description).toEqual([]);
   });
+=======
+  }
 });

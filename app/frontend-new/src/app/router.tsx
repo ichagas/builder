@@ -15,7 +15,7 @@ import { VersionScope } from "@/features/versions/scope/VersionScope";
 import { AssuranceLayout } from "./layouts/AssuranceLayout";
 import { ROOT_ROUTES } from "./routes/root";
 import { LIBRARY_ROUTES } from "./routes/library";
-import { PROJECT_TOOL_ROUTES, PROJECT_SETTINGS_ROUTE, PROJECT_VERSIONS_ROUTE, PROJECT_RELEASE_ROUTE } from "./routes/project";
+import { PROJECT_TOOL_ROUTES, PROJECT_SETTINGS_ROUTE, PROJECT_VERSIONS_ROUTE, PROJECT_RELEASE_ROUTE, PROJECT_CHANGE_ROUTE } from "./routes/project";
 import { ASSURANCE_ROUTES } from "./routes/assurance";
 import { NotFound } from "./routes/NotFound";
 import { buildLegacyRedirectRoutes } from "./redirects";
@@ -115,6 +115,11 @@ export const router = createBrowserRouter([
             path: PROJECT_RELEASE_ROUTE.path,
             element: <PROJECT_RELEASE_ROUTE.Component />,
             handle: PROJECT_RELEASE_ROUTE,
+          },
+          {
+            path: PROJECT_CHANGE_ROUTE.path,
+            element: <PROJECT_CHANGE_ROUTE.Component />,
+            handle: PROJECT_CHANGE_ROUTE,
           },
           // NV-06 (T113, WP-V4): the one place phase tools get version
           // scoping. `v/current` is a passthrough (D-7 fallback, PR-xx

@@ -346,6 +346,170 @@
       },
       "open": "Release",
       "openLabel": "Release {{version}}"
+    },
+    "change": {
+      "loading": "Loading change…",
+      "notFound": {
+        "title": "Change not found",
+        "description": "It may have been removed, or the link is for another project."
+      },
+      "unscheduled": "Not scheduled",
+      "severity": "{{severity}} severity",
+      "actionFailed": "That didn't work. Try again in a moment.",
+      "openLink": "Open change",
+      "steps": {
+        "label": "Steps for {{key}}",
+        "define": "Define",
+        "design": "Design",
+        "build": "Build",
+        "ship": "Ship",
+        "skipped": "Skipped",
+        "state": {
+          "todo": "not started",
+          "active": "in progress",
+          "done": "done",
+          "skipped": "skipped"
+        }
+      },
+      "action": {
+        "define": "Mark definition ready",
+        "design": "Approve design",
+        "build": "Send for review",
+        "unskip": "Add a design step",
+        "openRelease": "Open release {{version}}",
+        "notScheduled": "Schedule this change into a version first"
+      },
+      "banner": {
+        "declined": {
+          "title": "This change was declined",
+          "body": "It is read-only. Reopen it from All versions if that was a mistake."
+        },
+        "locked": {
+          "title": "{{version}} is released and read-only",
+          "body": "Changes go into a newer version."
+        },
+        "viewer": {
+          "title": "Read-only access",
+          "body": "You're viewing this change with a shared viewer link."
+        },
+        "unscheduled": {
+          "title": "This change isn't scheduled",
+          "body": "Choose a version for it below."
+        },
+        "define": {
+          "title": "Describe what changes",
+          "body": "Only requirements this change touches are listed."
+        },
+        "defineDone": {
+          "title": "Defined. The agent uses these criteria as tests",
+          "body": "Requirement changes are locked in for this step."
+        },
+        "goTo": "Go to {{step}}",
+        "designSkipped": {
+          "title": "Bugs skip design by default",
+          "body": "Add a design step if the fix changes how components connect."
+        },
+        "design": {
+          "title_one": "{{count}} component affected",
+          "title_other": "{{count}} components affected",
+          "body": "Highlighted components change. Everything else stays as released."
+        },
+        "buildTodo": {
+          "title": "Build hasn't started",
+          "body": "The agent starts on {{branch}} when the earlier steps are done."
+        },
+        "buildRunning": {
+          "title": "The agent is working on {{branch}}",
+          "body": "Progress stays in the status pill at the top, so you can leave this page."
+        },
+        "buildReview": {
+          "title": "Review the changes",
+          "body": "Sending for review creates a preview and, once approved, merges into the release branch of {{version}}."
+        },
+        "shipReady": {
+          "title": "Ships with {{version}}",
+          "body": "Release {{version}} from its Ship page."
+        },
+        "shipNotReady": {
+          "title": "Not ready for {{version}} yet",
+          "body": "If it's still open when the version is released, it moves to the next version automatically."
+        }
+      },
+      "bug": {
+        "heading": "Bug report",
+        "foundIn": "found in {{version}}",
+        "steps": "Steps",
+        "expected": "Expected",
+        "actual": "Actual",
+        "environment": "Environment",
+        "empty": "No bug report was recorded for this change."
+      },
+      "deltas": {
+        "heading": "Requirement changes",
+        "affected": "Affected requirements",
+        "comparedWith": "compared with {{version}}",
+        "empty": "No requirement changes yet.",
+        "criterion": "New criterion: {{criterion}}",
+        "addLabel": "Add a requirement change",
+        "kind": "Kind",
+        "title": "Requirement",
+        "criterionLabel": "New acceptance criterion (optional)",
+        "add": "Add requirement change",
+        "addFailed": "Couldn't add the requirement change.",
+        "kinds": {
+          "new": "New",
+          "changed": "Changed",
+          "regression": "Regression"
+        }
+      },
+      "canvas": {
+        "heading": "Architecture",
+        "loading": "Loading the canvas…",
+        "errorTitle": "Couldn't load the canvas",
+        "errorDescription": "Try again in a moment.",
+        "affected_one": "{{count}} affected",
+        "affected_other": "{{count}} affected",
+        "none": "No components are marked for this change yet.",
+        "connects": "Connects to {{list}}",
+        "noLinks": "No connections",
+        "others_one": "{{count}} component unchanged in {{version}}",
+        "others_other": "{{count}} components unchanged in {{version}}"
+      },
+      "build": {
+        "noBranch": "No branch yet",
+        "noBranchHint": "The branch is created when the change is scheduled into a version and a repository is linked.",
+        "mergesInto": "merges into the release branch of {{version}}",
+        "agent": "Build agent",
+        "agentIdle": "has not started.",
+        "agentRunning": "is working.",
+        "agentStatus": "finished with status {{status}}.",
+        "agentUnknown": "session not found.",
+        "openAgent": "Open the build agent",
+        "preview": "Preview",
+        "waitForAgent": "Wait for the agent to finish"
+      },
+      "checks": {
+        "heading": "Checks",
+        "forVersion": "for {{version}}",
+        "define": "Definition ready",
+        "design": "Design approved or skipped",
+        "build": "Build reviewed",
+        "passing": "Passing",
+        "waiting": "Waiting",
+        "loading": "Loading release checks…"
+      },
+      "picker": {
+        "label": "Version",
+        "aria": "Move {{key}} to another version",
+        "unscheduled": "Not scheduled",
+        "kind": {
+          "building": "first release",
+          "hotfix": "hotfix",
+          "next": "next release",
+          "planned": "planned",
+          "released": "released"
+        }
+      }
     }
   },
   "integrations": {
