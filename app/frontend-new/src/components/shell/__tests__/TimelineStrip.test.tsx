@@ -57,4 +57,29 @@ describe("TimelineStrip", () => {
     await user.click(screen.getByRole("tab", { name: "v1.0.0" }));
     expect(onSelect).toHaveBeenCalledWith("v1.0.0");
   });
+
+  it("keeps the more/fewer buttons out of the tablist", async () => {
+    const user = userEvent.setup();
+    const nodes: TimelineNode[] = ["1", "2", "3", "4", "5"].map((n) => ({ id: `v${n}`, label: `v${n}`, kind: "hist" as const }));
+    render(<TimelineStrip nodes={nodes} selectedId="v5" onSelect={() => {}} visibleHistoryCount={2} />);
+    const tablist = screen.getByRole("tablist");
+    expect(tablist).not.toContainElement(screen.getByText("3 more").closest("button"));
+    await user.click(screen.getByText("3 more"));
+    expect(tablist).not.toContainElement(screen.getByRole("button", { name: "Fewer" }));
+    tablist.querySelectorAll("button").forEach((b) => expect(b).toHaveAttribute("role", "tab"));
+  });
+
+  it("gives each strip its own hint id", () => {
+    const nodes: TimelineNode[] = [{ id: "a", label: "a", kind: "building" }];
+    render(
+      <>
+        <TimelineStrip nodes={nodes} selectedId="a" onSelect={() => {}} />
+        <TimelineStrip nodes={nodes} selectedId="a" onSelect={() => {}} />
+      </>,
+    );
+    const [one, two] = screen.getAllByRole("tablist");
+    const ids = [one, two].map((el) => el.getAttribute("aria-describedby"));
+    expect(ids[0]).not.toBe(ids[1]);
+    ids.forEach((id) => expect(document.querySelectorAll(`[id="${id}"]`)).toHaveLength(1));
+  });
 });

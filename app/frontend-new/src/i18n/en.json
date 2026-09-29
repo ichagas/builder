@@ -59,7 +59,8 @@
       "today": "today",
       "oneDayAgo": "1 day ago",
       "daysAgo": "{{count}} days ago",
-      "more": "{{count}} more"
+      "more": "{{count}} more",
+      "fewer": "Fewer"
     },
     "locked": "Locked",
     "phases": {
