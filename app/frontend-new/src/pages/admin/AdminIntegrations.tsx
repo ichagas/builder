@@ -28,6 +28,7 @@ import {
   useTeamsAll,
   useTeamsMine,
   useTeamPortfolio,
+  useOrganizationId,
   useMeshPolicy,
   useSetMeshPolicy,
   MESH_AGENTS,
@@ -428,7 +429,7 @@ function MeshPolicySection() {
   const { isAdmin } = useAdmin();
   const { data: mine } = useTeamsMine();
   const { data: allTeams } = useTeamsAll(isAdmin);
-  const orgId = allTeams?.[0]?.organization_id ?? mine?.[0]?.organization_id;
+  const orgId = useOrganizationId(isAdmin);
 
   const { data: policy, isLoading } = useMeshPolicy("organization", orgId);
   const setPolicy = useSetMeshPolicy();

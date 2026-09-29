@@ -16,6 +16,12 @@ import type { LongTask, LongTaskStatus } from "@/components/shell/types";
  * Finished tasks (done/failed) stay in the list for
  * `FINISHED_RETENTION_MS` so `StatusCenter`'s "Running and recent" list has
  * something to show right after a task completes, then are pruned.
+ *
+ * Running tasks are not persisted (a reload clears the store) but a task
+ * whose owner never reports back (dropped realtime connection, unmounted
+ * screen) would spin forever, so a running task with no `update`/`start`
+ * for `STALE_RUNNING_MS` is marked failed and then pruned like any other
+ * finished task.
  */
 export interface StartLongTaskInput {
   id: string;
@@ -31,6 +37,43 @@ export interface LongTaskHandle {
 }
 
 const FINISHED_RETENTION_MS = 5 * 60 * 1000;
+/** A running task with no update for this long is considered stale. */
+export const STALE_RUNNING_MS = 30 * 60 * 1000;
+
+const staleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function clearStale(id: string) {
+  const timer = staleTimers.get(id);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    staleTimers.delete(id);
+  }
+}
+
+/** (Re)arms the stale timer for a running task; fails and prunes it on expiry. */
+function armStale(id: string) {
+  clearStale(id);
+  staleTimers.set(
+    id,
+    setTimeout(() => {
+      staleTimers.delete(id);
+      const t = tasks.get(id);
+      if (!t || t.status !== "running") return;
+      setTask(id, { status: "failed" });
+      scheduleRemoval(id);
+    }, STALE_RUNNING_MS),
+  );
+}
+
+function scheduleRemoval(id: string) {
+  setTimeout(() => {
+    const t = tasks.get(id);
+    if (t && t.status !== "running") {
+      tasks.delete(id);
+      notify();
+    }
+  }, FINISHED_RETENTION_MS);
+}
 
 const tasks = new Map<string, LongTask>();
 const listeners = new Set<() => void>();
@@ -80,18 +123,20 @@ export function startLongTask(input: StartLongTaskInput): LongTaskHandle {
       startedAt: Date.now(),
     });
   }
+  armStale(input.id);
   notify();
 
   const finish = (status: "done" | "failed") => {
+    clearStale(input.id);
     setTask(input.id, { status });
-    setTimeout(() => {
-      tasks.delete(input.id);
-      notify();
-    }, FINISHED_RETENTION_MS);
+    scheduleRemoval(input.id);
   };
 
   return {
-    update: (progress, label) => setTask(input.id, { status: "running", progress, ...(label ? { label } : {}) }),
+    update: (progress, label) => {
+      setTask(input.id, { status: "running", progress, ...(label ? { label } : {}) });
+      armStale(input.id);
+    },
     done: () => finish("done"),
     fail: () => finish("failed"),
   };
@@ -105,15 +150,14 @@ export function startLongTask(input: StartLongTaskInput): LongTaskHandle {
 export function settleLongTask(id: string, status: "done" | "failed"): void {
   const existing = tasks.get(id);
   if (!existing || existing.status !== "running") return;
+  clearStale(id);
   setTask(id, { status });
-  setTimeout(() => {
-    tasks.delete(id);
-    notify();
-  }, FINISHED_RETENTION_MS);
+  scheduleRemoval(id);
 }
 
 /** Removes a task from the list without recording an outcome. */
 export function cancelLongTask(id: string): void {
+  clearStale(id);
   if (tasks.delete(id)) notify();
 }
 
@@ -133,6 +177,8 @@ export function useLongTasks(): LongTask[] {
 
 /** Test-only: clears all tracked tasks. Not used by production code. */
 export function __resetLongTasksForTests(): void {
+  staleTimers.forEach((timer) => clearTimeout(timer));
+  staleTimers.clear();
   tasks.clear();
   notify();
 }
