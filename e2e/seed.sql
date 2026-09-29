@@ -321,4 +321,41 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- US4 Release tool (T112, WP-V3, NV-05): ids 930..93f -----------------------
+-- Two isolated projects (no release spec touches project 102). No repository
+-- is linked, so the "repository-linked" check fails and a real release can't
+-- go out (merge/tag need GitHub); the spec mocks the POST for the confirm flow.
+-- 930: building era, v1.0.0 building, one shipped + one unfinished change.
+-- 934: stage 'released'; v1.0.0 released; v1.0.1 hotfix and v1.1.0 next open
+-- (v1.1.0 is blocked until v1.0.1 releases; one shipped, one carry-over).
+INSERT INTO public.projects (id, name, description, org_id, created_by, organization, stage)
+VALUES
+  ('00000000-0000-4000-8000-000000000930', 'E2E Release First', 'NV-05: first-release checks.',
+   '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-0000000000a1', 'E2E Test Org', 'building'),
+  ('00000000-0000-4000-8000-000000000934', 'E2E Release Ordered', 'NV-05: in-order release with carry-over.',
+   '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-0000000000a1', 'E2E Test Org', 'released')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.versions (id, project_id, name, kind, is_current, is_first_release, released_at, git_tag)
+VALUES
+  ('00000000-0000-4000-8000-000000000931', '00000000-0000-4000-8000-000000000930', 'v1.0.0', 'building', false, false, NULL, NULL),
+  ('00000000-0000-4000-8000-000000000935', '00000000-0000-4000-8000-000000000934', 'v1.0.0', 'released', true, true, now() - interval '30 days', 'v1.0.0'),
+  ('00000000-0000-4000-8000-000000000936', '00000000-0000-4000-8000-000000000934', 'v1.0.1', 'hotfix', false, false, NULL, NULL),
+  ('00000000-0000-4000-8000-000000000937', '00000000-0000-4000-8000-000000000934', 'v1.1.0', 'next', false, false, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.work_items (id, project_id, key, version_id, type, severity, title, source, evidence, status)
+VALUES
+  ('00000000-0000-4000-8000-000000000932', '00000000-0000-4000-8000-000000000930', 'WI-1', '00000000-0000-4000-8000-000000000931', 'feature', NULL,
+   'Applicants can upload supporting documents', NULL, NULL, 'shipped'),
+  ('00000000-0000-4000-8000-000000000933', '00000000-0000-4000-8000-000000000930', 'WI-2', '00000000-0000-4000-8000-000000000931', 'bug', 'low',
+   'Footer link opens in the same tab', NULL, NULL, 'active'),
+  ('00000000-0000-4000-8000-000000000938', '00000000-0000-4000-8000-000000000934', 'WI-1', '00000000-0000-4000-8000-000000000937', 'bug', 'medium',
+   'Status page shows a stale case count', NULL, NULL, 'shipped'),
+  ('00000000-0000-4000-8000-000000000939', '00000000-0000-4000-8000-000000000934', 'WI-2', '00000000-0000-4000-8000-000000000937', 'enhancement', NULL,
+   'Add a print view for the decision letter', NULL, NULL, 'active'),
+  ('00000000-0000-4000-8000-00000000093a', '00000000-0000-4000-8000-000000000934', 'WI-3', '00000000-0000-4000-8000-000000000936', 'bug', 'high',
+   'Confirmation email drops the case number', NULL, NULL, 'shipped')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
