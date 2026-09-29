@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -57,6 +58,9 @@ export function ArtifactCollaborator({
   
   // Local editor state
   const [localContent, setLocalContent] = useState(artifact.content);
+  // P4 (NV-06): defensive; the Artifacts page never opens a session on a released version
+  // (it would create one), but if this view is reached the editor and chat stay inert.
+  const { readOnly: scopeReadOnly } = useVersionScopeContext();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -274,6 +278,7 @@ export function ArtifactCollaborator({
 
   // Handle content changes
   const handleContentChange = useCallback((content: string) => {
+    if (scopeReadOnly) return;
     setLocalContent(content);
     // Only mark as unsaved if this is a real user edit, not a programmatic sync
     if (!isSyncingContentRef.current) {
@@ -287,11 +292,11 @@ export function ArtifactCollaborator({
         setBaseVersionWhenEditing(currentLatest);
       }
     }
-  }, [baseVersionWhenEditing, latestVersionFromHook, history]);
+  }, [scopeReadOnly, baseVersionWhenEditing, latestVersionFromHook, history]);
 
   // Save changes as an edit
   const handleSave = useCallback(async () => {
-    if (!collaborationId || !hasUnsavedChanges) return;
+    if (scopeReadOnly || !collaborationId || !hasUnsavedChanges) return;
     
     // Store the content we're about to save to prevent sync from overwriting
     const contentToSave = localContent;
@@ -344,7 +349,7 @@ export function ArtifactCollaborator({
     } finally {
       setIsSaving(false);
     }
-  }, [collaborationId, hasUnsavedChanges, localContent, collaboration?.current_content, artifact.content, insertEdit, refreshHistory]);
+  }, [scopeReadOnly, collaborationId, hasUnsavedChanges, localContent, collaboration?.current_content, artifact.content, insertEdit, refreshHistory]);
 
   // Helper to get the correct content for a version
   // Reads from the pre-fetched snapshot cache (blob-backed)
@@ -367,7 +372,7 @@ export function ArtifactCollaborator({
 
   // Handle restore - fetches snapshot from blob storage and creates a NEW version with the content from the selected version
   const handleRestore = useCallback(async (version: number) => {
-    if (!collaborationId) return;
+    if (scopeReadOnly || !collaborationId) return;
     
     try {
       // Get snapshot content — try cache first, then fetch from blob API
@@ -450,11 +455,11 @@ export function ArtifactCollaborator({
       justSavedRef.current = false;
       toast.error("Failed to restore version");
     }
-  }, [collaborationId, shareToken, artifact.content, insertEdit, refreshHistory]);
+  }, [scopeReadOnly, collaborationId, shareToken, artifact.content, insertEdit, refreshHistory]);
 
   // Handle merge to artifact - updates the source artifact but keeps collaboration session open
   const handleMerge = useCallback(async () => {
-    if (!collaborationId) return;
+    if (scopeReadOnly || !collaborationId) return;
     
     setIsMerging(true);
     try {
@@ -476,11 +481,11 @@ export function ArtifactCollaborator({
     } finally {
       setIsMerging(false);
     }
-  }, [collaborationId, shareToken, onMerged]);
+  }, [scopeReadOnly, collaborationId, shareToken, onMerged]);
 
   // Handle chat message send with streaming
   const handleSendMessage = useCallback(async (content: string) => {
-    if (!collaborationId || !projectId) return;
+    if (scopeReadOnly || !collaborationId || !projectId) return;
     
     // Add optimistic user message immediately for instant feedback
     const optimisticId = `optimistic-${Date.now()}`;
@@ -631,7 +636,7 @@ export function ArtifactCollaborator({
       setOptimisticMessages([]); // Clear any remaining optimistic messages
       isAgentEditingRef.current = false; // Re-enable sync after agent is done
     }
-  }, [collaborationId, projectId, shareToken, sendMessage, hasUnsavedChanges, localContent, collaboration?.current_content, artifact.content, insertEdit, refreshMessages, refreshHistory, attachedContext]);
+  }, [scopeReadOnly, collaborationId, projectId, shareToken, sendMessage, hasUnsavedChanges, localContent, collaboration?.current_content, artifact.content, insertEdit, refreshMessages, refreshHistory, attachedContext]);
 
   // Use hook's latestVersion for real-time sync - fallback to local calculation for safety
   const latestVersion = latestVersionFromHook || (
@@ -859,7 +864,7 @@ export function ArtifactCollaborator({
                 isSaving={isSaving}
                 hasUnsavedChanges={hasUnsavedChanges}
                 hasConflict={hasConflict}
-                readOnly={viewingVersion !== null && viewingVersion < latestVersion}
+                readOnly={scopeReadOnly || (viewingVersion !== null && viewingVersion < latestVersion)}
                 currentVersion={latestVersion}
               />
               {history.length > 0 && (
@@ -882,6 +887,7 @@ export function ArtifactCollaborator({
               isStreaming={isStreaming}
               streamingContent={streamingContent}
               onSendMessage={handleSendMessage}
+              disabled={scopeReadOnly}
               attachedCount={totalAttachments}
               onAttach={() => setIsProjectSelectorOpen(true)}
               onClearContext={() => setAttachedContext(null)}
@@ -1014,7 +1020,7 @@ export function ArtifactCollaborator({
               isSaving={isSaving}
               hasUnsavedChanges={hasUnsavedChanges}
               hasConflict={hasConflict}
-              readOnly={viewingVersion !== null && viewingVersion < latestVersion}
+              readOnly={scopeReadOnly || (viewingVersion !== null && viewingVersion < latestVersion)}
               currentVersion={latestVersion}
             />
             {history.length > 0 && (
@@ -1041,6 +1047,7 @@ export function ArtifactCollaborator({
               isStreaming={isStreaming}
               streamingContent={streamingContent}
               onSendMessage={handleSendMessage}
+              disabled={scopeReadOnly}
               attachedCount={totalAttachments}
               onAttach={() => setIsProjectSelectorOpen(true)}
               onClearContext={() => setAttachedContext(null)}

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { 
   ChevronRight, 
   ChevronDown, 
@@ -88,6 +89,8 @@ function ArtifactNode({
   onDropArtifact,
   summarizingId,
 }: ArtifactNodeProps) {
+  // P4 (NV-06): no drag-to-move on a released version.
+  const { readOnly } = useVersionScopeContext();
   const [isExpanded, setIsExpanded] = useState(level < 2);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(artifact.ai_title || "");
@@ -176,7 +179,7 @@ function ArtifactNode({
         )}
         style={{ paddingLeft: `${level * 20 + 8}px` }}
         onClick={handleRowClick}
-        draggable
+        draggable={!readOnly}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}

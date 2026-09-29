@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { 
   ChevronRight, 
   ChevronDown, 
@@ -71,6 +72,8 @@ function FolderNode({
   onDeleteFolder,
   onViewArtifact
 }: FolderNodeProps) {
+  // P4 (NV-06): no drag-to-move on a released version.
+  const { readOnly } = useVersionScopeContext();
   const [isExpanded, setIsExpanded] = useState(level < 2);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -157,7 +160,7 @@ function FolderNode({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        draggable
+        draggable={!readOnly}
         onDragStart={handleDragStart}
       >
         <GripVertical className="h-3 w-3 opacity-0 group-hover:opacity-50 cursor-grab flex-shrink-0" />
@@ -317,6 +320,8 @@ interface ArtifactNodeProps {
 }
 
 function ArtifactNode({ artifact, level, onDropArtifact, onViewArtifact }: ArtifactNodeProps) {
+  // P4 (NV-06): no drag-to-move on a released version.
+  const { readOnly } = useVersionScopeContext();
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("artifactId", artifact.id);
     e.dataTransfer.effectAllowed = "move";
@@ -326,7 +331,7 @@ function ArtifactNode({ artifact, level, onDropArtifact, onViewArtifact }: Artif
     <div
       className="flex items-center gap-1 py-0.5 px-1 rounded-md hover:bg-muted cursor-pointer transition-colors text-xs group"
       style={{ paddingLeft: `${level * 10 + 18}px` }}
-      draggable
+      draggable={!readOnly}
       onDragStart={handleDragStart}
       onClick={() => onViewArtifact?.(artifact)}
     >
