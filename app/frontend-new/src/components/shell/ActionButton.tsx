@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUndo } from "@/lib/state/useUndo";
+import type { ActionSpec } from "./types";
 
 /**
  * ActionButton (T028). See contracts/design-system.md §2:
@@ -92,6 +94,25 @@ export function ActionButton({
         />
       ) : null}
     </button>
+  );
+}
+
+/** Renders an `ActionSpec` (PageHeader / PrimaryActionSlot): honours `confirm`
+ * (two-step) and `undo` (pushed to the UndoBar via `useUndo`). */
+export function ActionSpecButton({ spec, className }: { spec: ActionSpec; className?: string }) {
+  const { push } = useUndo();
+  return (
+    <ActionButton
+      label={spec.label}
+      onAction={() => spec.onClick?.()}
+      disabled={spec.disabled}
+      disabledReason={spec.disabledReason}
+      confirm={spec.confirm}
+      undo={spec.undo}
+      pushUndo={push}
+      tone={spec.tone}
+      className={className}
+    />
   );
 }
 

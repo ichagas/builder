@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { usePublishPrimaryAction } from "./PrimaryActionContext";
 import { usePageRoute } from "./usePageRoute";
+import { ActionSpecButton } from "./ActionButton";
 import type { ActionSpec } from "./types";
 
 /** A no-op fallback for routes whose registry entry has no `usePrimaryAction`
@@ -46,23 +47,7 @@ export function PageHeader({ crumb, title, primary, className }: PageHeaderProps
         <h1 className="truncate text-xl font-bold text-ink">{resolvedTitle}</h1>
       </div>
       {resolvedPrimary ? (
-        <button
-          type="button"
-          onClick={() => resolvedPrimary.onClick?.()}
-          disabled={resolvedPrimary.disabled}
-          title={resolvedPrimary.disabled ? resolvedPrimary.disabledReason : undefined}
-          className={cn(
-            "hidden h-10 shrink-0 items-center rounded-xs px-4 text-sm font-semibold sm:flex",
-            resolvedPrimary.tone === "danger"
-              ? "bg-bad text-white"
-              : resolvedPrimary.tone === "ghost"
-                ? "border border-line bg-surface text-ink"
-                : "bg-primary text-primary-foreground",
-            resolvedPrimary.disabled && "cursor-not-allowed opacity-50",
-          )}
-        >
-          {resolvedPrimary.label}
-        </button>
+        <ActionSpecButton spec={resolvedPrimary} className="hidden shrink-0 sm:flex" />
       ) : null}
     </div>
   );
