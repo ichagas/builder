@@ -32,6 +32,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePublishCanvasPrimaryAction } from "./canvas.primaryAction";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { getCanvasFlowInteraction } from "./canvas.readOnly";
 
 const nodeTypes = {
   custom: CanvasNode,
@@ -170,11 +172,17 @@ function CanvasFlow() {
   const [isLassoActive, setIsLassoActive] = useState(false);
   const [isIsolateActive, setIsIsolateActive] = useState(false);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
-  const [isAIArchitectOpen, setIsAIArchitectOpen] = useState(false);
+  const [isAIArchitectOpenState, setIsAIArchitectOpen] = useState(false);
   const [isInfographicOpen, setIsInfographicOpen] = useState(false);
   const [isClearCanvasOpen, setIsClearCanvasOpen] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  // P4 (NV-06): a released version is inspect-only. Outside VersionScope (and
+  // under v/current) this is always false, so the legacy behaviour is unchanged.
+  const { readOnly } = useVersionScopeContext();
+  const flowInteraction = getCanvasFlowInteraction(readOnly);
+  // The AI generator (and the tools that rewrite the diagram) never open on a released version.
+  const isAIArchitectOpen = isAIArchitectOpenState && !readOnly;
   // T046 (WP-G1): detent for the mobile-only palette bottom sheet -- see
   // the "Add to canvas" CanvasMobileSheet in the render below. Starts at
   // "peek" so it doesn't dominate the small viewport, same rationale as
@@ -188,7 +196,7 @@ function CanvasFlow() {
   // it, rather than a literal "Add node" button that doesn't exist in
   // legacy, was picked as Canvas's primary action.
   usePublishCanvasPrimaryAction(
-    projectId && !tokenMissing ? { label: "AI Architect", onClick: () => setIsAIArchitectOpen(true) } : undefined
+    projectId && !tokenMissing ? { label: "AI Architect", onClick: () => { if (!readOnly) setIsAIArchitectOpen(true); } } : undefined
   );
 
   // Track node positions at drag start for delta calculation
@@ -208,7 +216,21 @@ function CanvasFlow() {
   }, [allNodeTypes]);
 
   // Layers management
-  const { layers, saveLayer, deleteLayer } = useRealtimeLayers(projectId!, token);
+  const { layers, saveLayer: saveLayerRaw, deleteLayer: deleteLayerRaw } = useRealtimeLayers(projectId!, token);
+  const saveLayer = useCallback(
+    async (...args: Parameters<typeof saveLayerRaw>) => {
+      if (readOnly) return;
+      return saveLayerRaw(...args);
+    },
+    [readOnly, saveLayerRaw],
+  );
+  const deleteLayer = useCallback(
+    async (...args: Parameters<typeof deleteLayerRaw>) => {
+      if (readOnly) return;
+      return deleteLayerRaw(...args);
+    },
+    [readOnly, deleteLayerRaw],
+  );
 
   const {
     nodes,
@@ -217,10 +239,27 @@ function CanvasFlow() {
     setEdges,
     onNodesChange: baseOnNodesChange,
     onEdgesChange,
-    saveNode,
-    saveEdge,
+    saveNode: saveNodeRaw,
+    saveEdge: saveEdgeRaw,
     loadCanvasData,
   } = useRealtimeCanvas(projectId!, token, isTokenSet, initialNodes, initialEdges);
+
+  // Persistence safety net for a released version: nothing is written even if
+  // a resize/measure event or a stray handler fires.
+  const saveNode = useCallback(
+    async (...args: Parameters<typeof saveNodeRaw>) => {
+      if (readOnly) return;
+      return saveNodeRaw(...args);
+    },
+    [readOnly, saveNodeRaw],
+  );
+  const saveEdge = useCallback(
+    async (...args: Parameters<typeof saveEdgeRaw>) => {
+      if (readOnly) return;
+      return saveEdgeRaw(...args);
+    },
+    [readOnly, saveEdgeRaw],
+  );
 
   // Wrap onNodesChange to handle resize events
   const onNodesChange = useCallback((changes: NodeChange[]) => {
@@ -355,6 +394,7 @@ function CanvasFlow() {
 
   const onConnect = useCallback(
     (params: Connection) => {
+      if (readOnly) return;
       // Create edge with proper UUID and styling for export
       const newEdge: Edge = {
         id: crypto.randomUUID(),
@@ -382,7 +422,7 @@ function CanvasFlow() {
       setEdges((eds) => [...eds, newEdge]);
       saveEdge(newEdge);
     },
-    [setEdges, saveEdge]
+    [setEdges, saveEdge, readOnly]
   );
 
   const onNodeClick = useCallback(
@@ -536,6 +576,7 @@ function CanvasFlow() {
 
   const handleEdgeDelete = useCallback(
     async (edgeId: string) => {
+      if (readOnly) return;
       setEdges((eds) => eds.filter((edge) => edge.id !== edgeId));
       
       // Delete from database using APIM backend
@@ -550,11 +591,12 @@ function CanvasFlow() {
         });
       }
     },
-    [setEdges, projectId, toast]
+    [setEdges, projectId, toast, readOnly]
   );
 
   const handleNodeDelete = useCallback(
     async (nodeId: string) => {
+      if (readOnly) return;
       setNodes((nds) => nds.filter((node) => node.id !== nodeId));
       
       // Delete from database using APIM backend
@@ -572,11 +614,12 @@ function CanvasFlow() {
         });
       }
     },
-    [setNodes, projectId, toast]
+    [setNodes, projectId, toast, readOnly]
   );
 
   const handleMultiNodeDelete = useCallback(
     async (nodeIds: string[]) => {
+      if (readOnly) return;
       // Delete nodes from UI
       setNodes((nds) => nds.filter((node) => !nodeIds.includes(node.id)));
       
@@ -598,7 +641,7 @@ function CanvasFlow() {
         title: `${nodeIds.length} nodes deleted`,
       });
     },
-    [setNodes, setEdges, projectId, toast]
+    [setNodes, setEdges, projectId, toast, readOnly]
   );
 
   // Handle keyboard shortcuts for copy/paste/delete
@@ -611,6 +654,9 @@ function CanvasFlow() {
                        target.isContentEditable;
       
       if (isTyping) return;
+
+      // Released version: no delete / paste shortcuts (copy stays harmless).
+      if (readOnly && (event.key === "Delete" || ((event.ctrlKey || event.metaKey) && event.key === "v"))) return;
       
       // Delete key for edges
       if (event.key === "Delete" && selectedEdge) {
@@ -675,16 +721,18 @@ function CanvasFlow() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedEdge, selectedNode, copiedNode, nodes, handleEdgeDelete, handleNodeDelete, handleMultiNodeDelete, setNodes, saveNode, toast]);
+  }, [readOnly, selectedEdge, selectedNode, copiedNode, nodes, handleEdgeDelete, handleNodeDelete, handleMultiNodeDelete, setNodes, saveNode, toast]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
+    if (readOnly) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-  }, []);
+  }, [readOnly]);
 
   const onDrop = useCallback(
     async (event: React.DragEvent) => {
       event.preventDefault();
+      if (readOnly) return;
 
       const type = event.dataTransfer.getData("application/reactflow");
 
@@ -739,12 +787,12 @@ function CanvasFlow() {
         }
       }
     },
-    [reactFlowInstance, setNodes, saveNode, activeLayerId, layers, saveLayer]
+    [readOnly, reactFlowInstance, setNodes, saveNode, activeLayerId, layers, saveLayer]
   );
 
   const handleNodeClickToAdd = useCallback(
     async (type: string) => {
-      if (!reactFlowInstance) return;
+      if (readOnly || !reactFlowInstance) return;
 
       // Get the center of the viewport
       const wrapper = reactFlowWrapper.current;
@@ -808,11 +856,12 @@ function CanvasFlow() {
         description: `${type} node added to canvas`,
       });
     },
-    [reactFlowInstance, reactFlowWrapper, setNodes, saveNode, activeLayerId, layers, saveLayer, toast]
+    [readOnly, reactFlowInstance, reactFlowWrapper, setNodes, saveNode, activeLayerId, layers, saveLayer, toast]
   );
 
   const handleArchitectureGenerated = useCallback(
     async (generatedNodes: any[], generatedEdges: any[]) => {
+      if (readOnly) return;
       try {
         // Create maps to track node ID mappings
         const nodeIdMap = new Map<string, string>(); // label -> UUID
@@ -919,7 +968,7 @@ function CanvasFlow() {
         });
       }
     },
-    [setNodes, setEdges, saveNode, saveEdge, toast]
+    [readOnly, setNodes, setEdges, saveNode, saveEdge, toast]
   );
 
   const refreshCanvas = useCallback(() => {
@@ -934,6 +983,7 @@ function CanvasFlow() {
   // Create multiple Notes nodes from selected artifacts
   const handleCreateMultipleNotesFromArtifacts = useCallback(
     async (artifacts: any[], sourceNode?: Node) => {
+      if (readOnly) return;
       if (!reactFlowInstance) return;
       
       // Use source node position or fall back to selected node or default
@@ -981,7 +1031,7 @@ function CanvasFlow() {
         description: "Notes cascaded from selected node",
       });
     },
-    [reactFlowInstance, selectedNode, setNodes, saveNode, toast]
+    [readOnly, reactFlowInstance, selectedNode, setNodes, saveNode, toast]
   );
 
   const handleDownloadSnapshot = useCallback(
@@ -1107,6 +1157,7 @@ function CanvasFlow() {
 
   // Alignment functions for multiple selected nodes
   const handleAlignLeft = useCallback(() => {
+    if (readOnly) return;
     if (selectedNodesList.length <= 1) return;
     
     const minX = Math.min(...selectedNodesList.map(n => n.position.x));
@@ -1130,9 +1181,10 @@ function CanvasFlow() {
       title: "Nodes aligned",
       description: "Aligned to leftmost position",
     });
-  }, [selectedNodesList, setNodes, saveNode, toast]);
+  }, [readOnly, selectedNodesList, setNodes, saveNode, toast]);
 
   const handleAlignTop = useCallback(() => {
+    if (readOnly) return;
     if (selectedNodesList.length <= 1) return;
     
     const minY = Math.min(...selectedNodesList.map(n => n.position.y));
@@ -1156,9 +1208,10 @@ function CanvasFlow() {
       title: "Nodes aligned",
       description: "Aligned to topmost position",
     });
-  }, [selectedNodesList, setNodes, saveNode, toast]);
+  }, [readOnly, selectedNodesList, setNodes, saveNode, toast]);
 
   const handleDistributeHorizontally = useCallback(() => {
+    if (readOnly) return;
     if (selectedNodesList.length <= 2) return;
     
     const sorted = [...selectedNodesList].sort((a, b) => a.position.x - b.position.x);
@@ -1186,9 +1239,10 @@ function CanvasFlow() {
       title: "Nodes distributed",
       description: "Distributed evenly horizontally",
     });
-  }, [selectedNodesList, setNodes, saveNode, toast]);
+  }, [readOnly, selectedNodesList, setNodes, saveNode, toast]);
 
   const handleDistributeVertically = useCallback(() => {
+    if (readOnly) return;
     if (selectedNodesList.length <= 2) return;
     
     const sorted = [...selectedNodesList].sort((a, b) => a.position.y - b.position.y);
@@ -1216,9 +1270,10 @@ function CanvasFlow() {
       title: "Nodes distributed",
       description: "Distributed evenly vertically",
     });
-  }, [selectedNodesList, setNodes, saveNode, toast]);
+  }, [readOnly, selectedNodesList, setNodes, saveNode, toast]);
 
   const handleAutoOrder = useCallback(() => {
+    if (readOnly) return;
     // Configuration
     const VERTICAL_SPACING = 84;    // Space between nodes vertically
     const START_Y = 50;             // Top margin
@@ -1316,9 +1371,10 @@ function CanvasFlow() {
       title: "Nodes ordered",
       description: `Auto-ordered ${updates.length} node${updates.length !== 1 ? "s" : ""} by type`,
     });
-  }, [selectedNodesList, visibleNodes, setNodes, saveNode, toast]);
+  }, [readOnly, selectedNodesList, visibleNodes, setNodes, saveNode, toast]);
 
   const handleClearCanvas = useCallback(async () => {
+    if (readOnly) return;
     const nodeCount = nodes.length;
     const edgeCount = edges.length;
     const layerCount = layers.length;
@@ -1358,7 +1414,7 @@ function CanvasFlow() {
     });
     
     setIsClearCanvasOpen(false);
-  }, [nodes, edges, layers, projectId, deleteLayer, setNodes, setEdges, toast]);
+  }, [readOnly, nodes, edges, layers, projectId, deleteLayer, setNodes, setEdges, toast]);
 
   // Show token recovery message if token is missing
   if (tokenMissing) {
@@ -1434,7 +1490,7 @@ function CanvasFlow() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-popover z-50">
-                        <DropdownMenuItem onClick={() => setIsAIArchitectOpen(true)}>
+                        <DropdownMenuItem onClick={() => setIsAIArchitectOpen(true)} disabled={readOnly}>
                           <Sparkles className="h-4 w-4 mr-2" />
                           AI Architect
                         </DropdownMenuItem>
@@ -1454,38 +1510,39 @@ function CanvasFlow() {
                           <FileSearch className="h-4 w-4 mr-2" />
                           Export SVG
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsInfographicOpen(true)}>
+                        <DropdownMenuItem onClick={() => setIsInfographicOpen(true)} disabled={readOnly}>
                           <ImagePlus className="h-4 w-4 mr-2" />
                           Generate Infographic
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleAlignLeft} disabled={selectedNodesList.length <= 1}>
+                        <DropdownMenuItem onClick={handleAlignLeft} disabled={readOnly || selectedNodesList.length <= 1}>
                           <AlignLeft className="h-4 w-4 mr-2" />
                           Align Left
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleAlignTop} disabled={selectedNodesList.length <= 1}>
+                        <DropdownMenuItem onClick={handleAlignTop} disabled={readOnly || selectedNodesList.length <= 1}>
                           <AlignVerticalJustifyStart className="h-4 w-4 mr-2" />
                           Align Top
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={handleDistributeHorizontally}
-                          disabled={selectedNodesList.length <= 2}
+                          disabled={readOnly || selectedNodesList.length <= 2}
                         >
                           <AlignHorizontalDistributeCenter className="h-4 w-4 mr-2" />
                           Distribute Horizontally
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={handleDistributeVertically}
-                          disabled={selectedNodesList.length <= 2}
+                          disabled={readOnly || selectedNodesList.length <= 2}
                         >
                           <AlignVerticalDistributeCenter className="h-4 w-4 mr-2" />
                           Distribute Vertically
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleAutoOrder}>
+                        <DropdownMenuItem onClick={handleAutoOrder} disabled={readOnly}>
                           <Grid3x3 className="h-4 w-4 mr-2" />
                           Auto Order
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => setIsClearCanvasOpen(true)}
+                          disabled={readOnly}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -1499,6 +1556,7 @@ function CanvasFlow() {
                         <TooltipTrigger asChild>
                           <Button
                             onClick={() => setIsAIArchitectOpen(true)}
+                            disabled={readOnly}
                             variant="outline"
                             className="bg-card/80"
                             size="icon"
@@ -1574,6 +1632,7 @@ function CanvasFlow() {
                         <TooltipTrigger asChild>
                           <Button
                             onClick={() => setIsInfographicOpen(true)}
+                            disabled={readOnly}
                             size="sm"
                             variant="outline"
                             className="bg-card/80"
@@ -1593,7 +1652,7 @@ function CanvasFlow() {
                             size="sm"
                             variant="outline"
                             className="bg-card/80"
-                            disabled={selectedNodesList.length <= 1}
+                            disabled={readOnly || selectedNodesList.length <= 1}
                           >
                             <AlignLeft className="w-3 h-3" />
                           </Button>
@@ -1609,7 +1668,7 @@ function CanvasFlow() {
                             size="sm"
                             variant="outline"
                             className="bg-card/80"
-                            disabled={selectedNodesList.length <= 1}
+                            disabled={readOnly || selectedNodesList.length <= 1}
                           >
                             <AlignVerticalJustifyStart className="w-3 h-3" />
                           </Button>
@@ -1625,7 +1684,7 @@ function CanvasFlow() {
                             size="sm"
                             variant="outline"
                             className="bg-card/80"
-                            disabled={selectedNodesList.length <= 2}
+                            disabled={readOnly || selectedNodesList.length <= 2}
                           >
                             <AlignHorizontalDistributeCenter className="w-3 h-3" />
                           </Button>
@@ -1641,7 +1700,7 @@ function CanvasFlow() {
                             size="sm"
                             variant="outline"
                             className="bg-card/80"
-                            disabled={selectedNodesList.length <= 2}
+                            disabled={readOnly || selectedNodesList.length <= 2}
                           >
                             <AlignVerticalDistributeCenter className="w-3 h-3" />
                           </Button>
@@ -1654,6 +1713,7 @@ function CanvasFlow() {
                         <TooltipTrigger asChild>
                           <Button
                             onClick={handleAutoOrder}
+                            disabled={readOnly}
                             size="sm"
                             variant="outline"
                             className="bg-card/80"
@@ -1669,6 +1729,7 @@ function CanvasFlow() {
                         <TooltipTrigger asChild>
                           <Button
                             onClick={() => setIsClearCanvasOpen(true)}
+                            disabled={readOnly}
                             size="sm"
                             variant="outline"
                             className="bg-card/80 text-destructive hover:text-destructive"
@@ -1724,6 +1785,9 @@ function CanvasFlow() {
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 nodeTypes={nodeTypes}
+                nodesDraggable={flowInteraction.nodesDraggable}
+                nodesConnectable={flowInteraction.nodesConnectable}
+                elementsSelectable={flowInteraction.elementsSelectable}
                 deleteKeyCode={null}
                 minZoom={0.05}
                 maxZoom={4}
@@ -1762,6 +1826,7 @@ function CanvasFlow() {
           {!isMobile && !isAIArchitectOpen && (
             selectedNode ? (
               <NodePropertiesPanel
+                readOnly={readOnly}
                 node={selectedNode}
                 onClose={handleClosePanel}
                 onUpdate={handleNodeUpdate}
@@ -1773,6 +1838,7 @@ function CanvasFlow() {
               />
             ) : selectedEdge ? (
               <EdgePropertiesPanel
+                readOnly={readOnly}
                 edge={selectedEdge}
                 onClose={handleClosePanel}
                 onUpdate={handleEdgeUpdate}
@@ -1812,6 +1878,7 @@ function CanvasFlow() {
           >
             {selectedNode ? (
               <NodePropertiesPanel
+                readOnly={readOnly}
                 node={selectedNode}
                 onClose={handleClosePanel}
                 onUpdate={handleNodeUpdate}
@@ -1824,6 +1891,7 @@ function CanvasFlow() {
               />
             ) : (
               <EdgePropertiesPanel
+                readOnly={readOnly}
                 edge={selectedEdge}
                 onClose={handleClosePanel}
                 onUpdate={handleEdgeUpdate}

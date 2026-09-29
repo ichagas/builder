@@ -169,6 +169,41 @@ test.describe("NV-06 version scoping", () => {
     ).toHaveCount(0);
   });
 
+  // P4: tools that the generic guard cannot lock honour the hook's readOnly.
+  test("released Canvas: nodes are not draggable or connectable and the palette does not drag", async ({ page }) => {
+    await page.goto(`/p/${PROJECT_ID}/v/${seed.versionCurrentId}/design/canvas`);
+    const locked = page.getByTestId("version-scope-readonly");
+    await expect(locked).toBeVisible();
+    await expect(locked.locator(".react-flow")).toBeVisible();
+    await expect(locked.locator(".react-flow__node.draggable")).toHaveCount(0);
+    await expect(locked.locator(".react-flow__handle.connectable")).toHaveCount(0);
+    await expect(locked.locator('[draggable="true"]')).toHaveCount(0);
+  });
+
+  test("released Canvas: the AI Architect action is disabled", async ({ page }) => {
+    await page.goto(`/p/${PROJECT_ID}/v/${seed.versionCurrentId}/design/canvas`);
+    const locked = page.getByTestId("version-scope-readonly");
+    await expect(locked.locator(".react-flow")).toBeVisible();
+    // The header primary action (the toolbar's icon buttons are disabled by the same readOnly flag).
+    await expect(page.getByRole("button", { name: "AI Architect" }).first()).toBeDisabled();
+  });
+
+  test("released Repository: no enabled create/save controls and any Monaco editor is read-only", async ({ page }) => {
+    await page.goto(`/p/${PROJECT_ID}/v/${seed.versionCurrentId}/build/repository?tab=files`);
+    const locked = page.getByTestId("version-scope-readonly");
+    await expect(locked).toBeVisible();
+    for (const name of ["File", "Folder", "Save"]) {
+      await expect(locked.getByRole("button", { name, exact: true })).toHaveCount(0, { timeout: 1000 }).catch(async () => {
+        await expect(locked.getByRole("button", { name, exact: true }).first()).toBeDisabled();
+      });
+    }
+    // If the seed repository has a file open, Monaco must not accept input.
+    const monaco = locked.locator(".monaco-editor textarea");
+    if ((await monaco.count()) > 0) {
+      await expect(monaco.first()).toHaveAttribute("readonly", "");
+    }
+  });
+
   test("an open version shows its changes and requirement deltas above the tool", async ({ page }) => {
     await page.goto(OPEN_URL);
 

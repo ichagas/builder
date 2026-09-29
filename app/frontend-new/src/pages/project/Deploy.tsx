@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { readOnlyWrite, gateOpener } from "@/features/versions/scope/readOnly";
 import { useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +20,8 @@ import { useUrlState } from "@/lib/state/useUrlState";
 import { usePublishDeployPrimaryAction } from "./deploy.primaryAction";
 
 const Deploy = () => {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const { isSuperAdmin } = useAdmin();
@@ -26,7 +30,8 @@ const Deploy = () => {
     shareToken,
     isTokenSet
   );
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpenRaw] = useState(false);
+  const setIsCreateOpen = gateOpener(readOnly, setIsCreateOpenRaw);
   const [activeTab, setActiveTab] = useUrlState("tab", "cloud");
   const [selectedLocalDeployment, setSelectedLocalDeployment] = useState<string | null>(null);
 

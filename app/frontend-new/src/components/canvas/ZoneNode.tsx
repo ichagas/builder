@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { NodeProps, NodeResizer, useReactFlow, Handle, Position } from "reactflow";
 import { Input } from "@/components/ui/input";
 
@@ -39,6 +40,8 @@ export const ZoneNode = memo(({ data, selected, id }: NodeProps<ZoneNodeData>) =
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(data.title || data.label || "Zone");
   const { setNodes } = useReactFlow();
+  // P4 (NV-06): no in-node editing or resizing on a released version.
+  const { readOnly } = useVersionScopeContext();
 
   const backgroundColor = data.backgroundColor || "gray";
   const colorClass = zoneColorClasses[backgroundColor] || zoneColorClasses.gray;
@@ -51,8 +54,9 @@ export const ZoneNode = memo(({ data, selected, id }: NodeProps<ZoneNodeData>) =
 
   const handleTitleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    if (readOnly) return;
     setIsEditingTitle(true);
-  }, []);
+  }, [readOnly]);
 
   const handleTitleBlur = useCallback(() => {
     setIsEditingTitle(false);
@@ -85,7 +89,7 @@ export const ZoneNode = memo(({ data, selected, id }: NodeProps<ZoneNodeData>) =
       <NodeResizer
         minWidth={200}
         minHeight={150}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         lineClassName="border-primary"
         handleClassName="bg-primary border-2 border-background rounded"
         handleStyle={{ width: 40, height: 40 }}

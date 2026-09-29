@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { useParams } from "react-router-dom";
 import { useShareToken } from "@/hooks/useShareToken";
 import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage";
@@ -52,6 +53,8 @@ function isImageFile(filename: string): boolean {
 }
 
 export default function Build() {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId || null);
   const isMobile = useIsMobile();
@@ -417,6 +420,7 @@ export default function Build() {
   }, [closeFile]);
 
   const handleCreateFile = async (name: string) => {
+    if (readOnly) return;
     if (!defaultRepo || !projectId) return;
 
     try {
@@ -479,6 +483,7 @@ export default function Build() {
   };
 
   const handleConfirmRename = async (newName: string) => {
+    if (readOnly) return;
     if (!itemToRename || !defaultRepo || !projectId) return;
 
     const oldPath = itemToRename.path.replace(/\/$/, "");
@@ -567,6 +572,7 @@ export default function Build() {
   };
 
   const handleDeleteFromContext = async (fileId: string, path: string) => {
+    if (readOnly) return;
     if (!defaultRepo || !projectId) {
       toast.error("No repository available");
       return;
@@ -615,6 +621,7 @@ export default function Build() {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     const uploadedFiles = event.target.files;
     if (!uploadedFiles || uploadedFiles.length === 0 || !defaultRepo || !projectId) return;
 
@@ -686,6 +693,7 @@ export default function Build() {
   };
 
   const handleDeleteFile = async () => {
+    if (readOnly) return;
     if (!currentFile || !defaultRepo || !projectId) {
       toast.error("No file selected");
       return;

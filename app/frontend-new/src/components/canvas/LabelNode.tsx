@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { NodeProps, NodeResizer, useReactFlow, Handle, Position } from "reactflow";
 import { Input } from "@/components/ui/input";
 
@@ -16,6 +17,8 @@ export const LabelNode = memo(({ data, selected, id }: NodeProps<LabelNodeData>)
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(data.text || data.label || "Label");
   const { setNodes } = useReactFlow();
+  // P4 (NV-06): no in-node editing or resizing on a released version.
+  const { readOnly } = useVersionScopeContext();
 
   // Sync text with data prop
   useEffect(() => {
@@ -23,8 +26,9 @@ export const LabelNode = memo(({ data, selected, id }: NodeProps<LabelNodeData>)
   }, [data.text, data.label]);
 
   const handleDoubleClick = useCallback(() => {
+    if (readOnly) return;
     setIsEditing(true);
-  }, []);
+  }, [readOnly]);
 
   const handleBlur = useCallback(() => {
     setIsEditing(false);
@@ -57,7 +61,7 @@ export const LabelNode = memo(({ data, selected, id }: NodeProps<LabelNodeData>)
       <NodeResizer
         minWidth={80}
         minHeight={30}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         lineClassName="border-primary"
         handleClassName="bg-primary border-2 border-background rounded"
         handleStyle={{ width: 40, height: 40 }}

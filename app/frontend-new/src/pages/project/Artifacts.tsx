@@ -64,40 +64,75 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { getEdgeFunctionName } from "@/config/aiModels";
 import { usePublishArtifactsPrimaryAction } from "./artifacts.primaryAction";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { readOnlyWrite, gateOpener } from "@/features/versions/scope/readOnly";
 
 export default function Artifacts() {
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const { user } = useAuth();
   const hasAccessToken = !!shareToken || !!user;
-  const { artifacts, artifactTree, isLoading, addArtifact, addFolder, moveArtifact, renameFolder, updateArtifact, deleteArtifact, deleteFolder, refresh, broadcastRefresh } = useRealtimeArtifacts(
+  // P4 (NV-06): a released version is read-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
+  const {
+    artifacts,
+    artifactTree,
+    isLoading,
+    addArtifact: addArtifactRaw,
+    addFolder: addFolderRaw,
+    moveArtifact: moveArtifactRaw,
+    renameFolder: renameFolderRaw,
+    updateArtifact: updateArtifactRaw,
+    deleteArtifact: deleteArtifactRaw,
+    deleteFolder: deleteFolderRaw,
+    refresh,
+    broadcastRefresh,
+  } = useRealtimeArtifacts(
     projectId,
     shareToken,
     hasAccessToken && isTokenSet
   );
+  // Persistence safety net: every write is a no-op on a released version.
+  const addArtifact = readOnlyWrite(readOnly, addArtifactRaw);
+  const addFolder = readOnlyWrite(readOnly, addFolderRaw);
+  const moveArtifact = readOnlyWrite(readOnly, moveArtifactRaw);
+  const renameFolder = readOnlyWrite(readOnly, renameFolderRaw);
+  const updateArtifact = readOnlyWrite(readOnly, updateArtifactRaw);
+  const deleteArtifact = readOnlyWrite(readOnly, deleteArtifactRaw);
+  const deleteFolder = readOnlyWrite(readOnly, deleteFolderRaw);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingArtifact, setEditingArtifact] = useState<any>(null);
+  const [editingArtifact, setEditingArtifactRaw] = useState<any>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpenRaw] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "table" | "gallery" | "tree">("cards");
-  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [isCreateFolderOpen, setIsCreateFolderOpenRaw] = useState(false);
   const [createFolderParentId, setCreateFolderParentId] = useState<string | null>(null);
-  const [movingArtifact, setMovingArtifact] = useState<Artifact | null>(null);
+  const [movingArtifact, setMovingArtifactRaw] = useState<Artifact | null>(null);
   const [, setAddArtifactParentId] = useState<string | null>(null);
   const [summarizingId, setSummarizingId] = useState<string | null>(null);
   const [streamingSummary, setStreamingSummary] = useState<{ [key: string]: string }>({});
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [collaboratingArtifact, setCollaboratingArtifact] = useState<any>(null);
+  const [collaboratingArtifact, setCollaboratingArtifactRaw] = useState<any>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   const [provenanceFilter, setProvenanceFilter] = useState<string | null>(null);
-  const [deletingArtifact, setDeletingArtifact] = useState<{ id: string; title: string } | null>(null);
-  const [isVisualRecognitionOpen, setIsVisualRecognitionOpen] = useState(false);
-  const [isEnhanceImageOpen, setIsEnhanceImageOpen] = useState(false);
+  const [deletingArtifact, setDeletingArtifactRaw] = useState<{ id: string; title: string } | null>(null);
+  const [isVisualRecognitionOpen, setIsVisualRecognitionOpenRaw] = useState(false);
+  const [isEnhanceImageOpen, setIsEnhanceImageOpenRaw] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showFolderSidebar, setShowFolderSidebar] = useState(true);
   const [viewingArtifact, setViewingArtifact] = useState<Artifact | null>(null);
   const [editViewMode, setEditViewMode] = useState<"raw" | "markdown">("raw");
+
+  // Nothing that writes (add/edit/delete/move/folder/AI dialogs, collaboration session) can be opened on a released version.
+  const setEditingArtifact = gateOpener(readOnly, setEditingArtifactRaw);
+  const setIsAddDialogOpen = gateOpener(readOnly, setIsAddDialogOpenRaw);
+  const setIsCreateFolderOpen = gateOpener(readOnly, setIsCreateFolderOpenRaw);
+  const setMovingArtifact = gateOpener(readOnly, setMovingArtifactRaw);
+  const setCollaboratingArtifact = gateOpener(readOnly, setCollaboratingArtifactRaw);
+  const setDeletingArtifact = gateOpener(readOnly, setDeletingArtifactRaw);
+  const setIsVisualRecognitionOpen = gateOpener(readOnly, setIsVisualRecognitionOpenRaw);
+  const setIsEnhanceImageOpen = gateOpener(readOnly, setIsEnhanceImageOpenRaw);
 
   // T044 (WP-D3): "Add artifact" is the page's primary action, declared in
   // the route registry (app/routes/project.tsx) and rendered by PageHeader.
@@ -209,6 +244,7 @@ export default function Artifacts() {
 
   // Handle drag and drop
   const handleDropArtifact = async (artifactId: string, targetFolderId: string | null) => {
+    if (readOnly) return;
     try {
       await moveArtifact(artifactId, targetFolderId);
     } catch (error) {
@@ -228,7 +264,7 @@ export default function Artifacts() {
   };
 
   const handleSummarize = async (artifact: any) => {
-    if (summarizingId) return;
+    if (readOnly || summarizingId) return;
 
     setSummarizingId(artifact.id);
     setStreamingSummary({ [artifact.id]: "" });
@@ -362,10 +398,11 @@ ${artifact.content}`;
   };
 
   const handleEditClick = useCallback(async (artifact: any) => {
+    if (readOnly) return;
     const withContent = await fetchArtifactWithContent(artifact);
     setEditingArtifact(withContent);
     setEditingTitle(withContent.ai_title || "");
-  }, [fetchArtifactWithContent]);
+  }, [readOnly, fetchArtifactWithContent]);
 
   const handleShowRelated = (provenanceId: string) => {
     setProvenanceFilter(provenanceId);
@@ -376,6 +413,7 @@ ${artifact.content}`;
   };
 
   const handleCloneArtifact = async (artifact: typeof artifacts[0]) => {
+    if (readOnly) return;
     try {
       await addArtifact(
         artifact.content,

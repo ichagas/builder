@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { gateOpener } from "@/features/versions/scope/readOnly";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TokenRecoveryMessage } from "@/components/project/TokenRecoveryMessage";
@@ -104,6 +106,8 @@ interface Layout {
 }
 
 export default function Present() {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId || "");
 
@@ -165,7 +169,8 @@ export default function Present() {
   const [showNotes, setShowNotes] = useState(false);
   
   // Image generation dialog state
-  const [isImageGeneratorOpen, setIsImageGeneratorOpen] = useState(false);
+  const [isImageGeneratorOpen, setIsImageGeneratorOpenRaw] = useState(false);
+  const setIsImageGeneratorOpen = gateOpener(readOnly, setIsImageGeneratorOpenRaw);
 
   // Load presentations list (lightweight - metadata only)
   useEffect(() => {
@@ -238,6 +243,7 @@ export default function Present() {
 
   // Create and generate presentation - FIXED: removed p_metadata parameter
   const handleCreatePresentation = async () => {
+    if (readOnly) return;
     if (!projectId || !shareToken) return;
     
     try {
@@ -291,6 +297,7 @@ export default function Present() {
 
   // Generate presentation via edge function with SSE
   const generatePresentation = async (presentation: Presentation) => {
+    if (readOnly) return;
     if (!projectId || !shareToken) return;
     
     setIsGenerating(true);
@@ -400,6 +407,7 @@ export default function Present() {
 
   // Delete presentation
   const handleDelete = async (id: string) => {
+    if (readOnly) return;
     if (!shareToken) return;
     
     try {
@@ -469,6 +477,7 @@ export default function Present() {
 
   // Update slide data - LOCAL only, no DB save
   const handleUpdateSlide = (slideIndex: number, updates: Partial<any>) => {
+    if (readOnly) return;
     console.log("handleUpdateSlide called:", { slideIndex, updates });
     setWorkingSlides(prev => {
       if (!prev) {
@@ -490,6 +499,7 @@ export default function Present() {
 
   // Save all changes to database
   const handleSaveChanges = async () => {
+    if (readOnly) return;
     if (!selectedPresentation || !shareToken || !workingSlides) return;
     
     setIsSaving(true);
@@ -511,11 +521,13 @@ export default function Present() {
 
   // Handle font scale change
   const handleFontScaleChange = (fontScale: number) => {
+    if (readOnly) return;
     handleUpdateSlide(selectedSlideIndex, { fontScale });
   };
 
   // Handle layout change with AI recasting
   const handleLayoutChange = async (layoutId: string) => {
+    if (readOnly) return;
     if (!workingSlides || !workingSlides[selectedSlideIndex]) return;
     
     const currentSlide = workingSlides[selectedSlideIndex];
@@ -565,6 +577,7 @@ export default function Present() {
 
   // Handle JSON editor save
   const handleJsonSave = () => {
+    if (readOnly) return;
     try {
       const parsed = JSON.parse(jsonEditValue);
       handleUpdateSlide(selectedSlideIndex, parsed);
@@ -706,7 +719,7 @@ export default function Present() {
                 layouts={layouts}
                 theme={currentTheme}
                 fontScale={currentSlide.fontScale || 1}
-                onAddImageClick={() => setIsImageGeneratorOpen(true)}
+                onAddImageClick={readOnly ? undefined : () => setIsImageGeneratorOpen(true)}
               />
             </SlideCanvas>
           </div>
@@ -756,7 +769,7 @@ export default function Present() {
             action (PageHeader / PrimaryActionSlot); see
             present.primaryAction.ts. Also opened from the empty-state
             "Create Presentation" button below. */}
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen && !readOnly} onOpenChange={setIsCreateOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Presentation</DialogTitle>
@@ -1180,7 +1193,7 @@ export default function Present() {
                                 layouts={layouts}
                                 theme={currentTheme}
                                 fontScale={currentSlide.fontScale || 1}
-                                onAddImageClick={() => setIsImageGeneratorOpen(true)}
+                                onAddImageClick={readOnly ? undefined : () => setIsImageGeneratorOpen(true)}
                               />
                             </SlideCanvas>
                           )}

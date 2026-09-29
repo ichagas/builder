@@ -5,6 +5,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { FilePlus, FolderPlus, Edit, Trash2 } from "lucide-react";
 
 interface FileTreeContextMenuProps {
@@ -24,6 +25,11 @@ export function FileTreeContextMenu({
   onRename,
   onDelete,
 }: FileTreeContextMenuProps) {
+  // P4 (NV-06): every entry of this menu creates, renames or deletes files, and the
+  // menu content is portaled outside the ReadOnlyGuard, so on a released version
+  // there is no menu at all (browsing is unaffected).
+  const { readOnly } = useVersionScopeContext();
+  if (readOnly) return <>{children}</>;
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>

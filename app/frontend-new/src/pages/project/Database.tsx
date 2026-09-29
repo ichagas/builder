@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { readOnlyWrite, gateOpener } from "@/features/versions/scope/readOnly";
 import { useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +24,8 @@ import { toast } from "sonner";
 import { usePublishDatabasePrimaryAction } from "./database.primaryAction";
 
 const Database = () => {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const { isSuperAdmin } = useAdmin();
@@ -41,8 +45,10 @@ const Database = () => {
     broadcastRefresh: broadcastRefreshExternal
   } = useRealtimeExternalDatabases(projectId, shareToken, isTokenSet);
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpenRaw] = useState(false);
+  const [isConnectOpen, setIsConnectOpenRaw] = useState(false);
+  const setIsCreateOpen = gateOpener(readOnly, setIsCreateOpenRaw);
+  const setIsConnectOpen = gateOpener(readOnly, setIsConnectOpenRaw);
   const [activeTab, setActiveTab] = useUrlState("tab", "deploy");
   const [primeRepoName, setPrimeRepoName] = useState("");
   const [selectedDatabase, setSelectedDatabase] = useState<any>(null);
@@ -134,8 +140,8 @@ const Database = () => {
   };
 
   const handleRefreshAll = async () => {
-    // Sync database statuses from the API
-    await syncAllDatabaseStatuses();
+    // Sync database statuses from the API (writes status rows: skipped on a released version)
+    if (!readOnly) await syncAllDatabaseStatuses();
     // Also refresh external connections
     refreshExternal();
     broadcastRefreshExternal();

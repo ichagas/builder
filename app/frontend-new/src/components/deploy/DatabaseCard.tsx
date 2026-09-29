@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,8 @@ interface DatabaseCardProps {
 }
 
 export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showExploreOnly = false }: DatabaseCardProps) {
+  // P4 (NV-06): menus are portaled outside the ReadOnlyGuard, so mutating items disable themselves.
+  const { readOnly } = useVersionScopeContext();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -67,6 +70,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
   };
 
   const handleCreate = async () => {
+    if (readOnly) return;
     try {
       await invokeCloudDatabase("create");
       toast.success("Database provisioned successfully");
@@ -77,6 +81,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
   };
 
   const handleSyncStatus = async () => {
+    if (readOnly) return;
     try {
       await invokeCloudDatabase("status");
       toast.success("Status synced");
@@ -87,6 +92,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
   };
 
   const handleSuspend = async () => {
+    if (readOnly) return;
     try {
       await invokeCloudDatabase("suspend");
       toast.success("Database suspended");
@@ -97,6 +103,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
   };
 
   const handleResume = async () => {
+    if (readOnly) return;
     try {
       await invokeCloudDatabase("resume");
       toast.success("Database resumed");
@@ -107,6 +114,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
   };
 
   const handleRestart = async () => {
+    if (readOnly) return;
     try {
       await invokeCloudDatabase("restart");
       toast.success("Database restarting");
@@ -117,6 +125,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
   };
 
   const handleDelete = async () => {
+    if (readOnly) return;
     try {
       await invokeCloudDatabase("delete");
       toast.success("Database deleted");
@@ -191,7 +200,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {canCreate && (
-                    <DropdownMenuItem onClick={handleCreate}>
+                    <DropdownMenuItem onClick={handleCreate} disabled={readOnly}>
                       <Play className="h-4 w-4 mr-2" />
                       Create Database
                     </DropdownMenuItem>
@@ -209,12 +218,12 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                     </DropdownMenuItem>
                   )}
                   {canSync && (
-                    <DropdownMenuItem onClick={handleSyncStatus}>
+                    <DropdownMenuItem onClick={handleSyncStatus} disabled={readOnly}>
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Sync Status
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowEditDialog(true)} disabled={readOnly}>
                     <Settings className="h-4 w-4 mr-2" />
                     Edit Configuration
                   </DropdownMenuItem>
@@ -228,19 +237,19 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                   )}
                   <DropdownMenuSeparator />
                   {canSuspend && (
-                    <DropdownMenuItem onClick={handleSuspend}>
+                    <DropdownMenuItem onClick={handleSuspend} disabled={readOnly}>
                       <Pause className="h-4 w-4 mr-2" />
                       Suspend
                     </DropdownMenuItem>
                   )}
                   {canResume && (
-                    <DropdownMenuItem onClick={handleResume}>
+                    <DropdownMenuItem onClick={handleResume} disabled={readOnly}>
                       <Play className="h-4 w-4 mr-2" />
                       Resume
                     </DropdownMenuItem>
                   )}
                   {canRestart && (
-                    <DropdownMenuItem onClick={handleRestart}>
+                    <DropdownMenuItem onClick={handleRestart} disabled={readOnly}>
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Restart
                     </DropdownMenuItem>
@@ -250,6 +259,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setShowDeleteDialog(true)}
+                        disabled={readOnly}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
@@ -287,7 +297,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {canCreate && (
-                    <DropdownMenuItem onClick={handleCreate}>
+                    <DropdownMenuItem onClick={handleCreate} disabled={readOnly}>
                       <Play className="h-4 w-4 mr-2" />
                       Create Database
                     </DropdownMenuItem>
@@ -305,12 +315,12 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                     </DropdownMenuItem>
                   )}
                   {canSync && (
-                    <DropdownMenuItem onClick={handleSyncStatus}>
+                    <DropdownMenuItem onClick={handleSyncStatus} disabled={readOnly}>
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Sync Status
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowEditDialog(true)} disabled={readOnly}>
                     <Settings className="h-4 w-4 mr-2" />
                     Edit Configuration
                   </DropdownMenuItem>
@@ -324,19 +334,19 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                   )}
                   <DropdownMenuSeparator />
                   {canSuspend && (
-                    <DropdownMenuItem onClick={handleSuspend}>
+                    <DropdownMenuItem onClick={handleSuspend} disabled={readOnly}>
                       <Pause className="h-4 w-4 mr-2" />
                       Suspend
                     </DropdownMenuItem>
                   )}
                   {canResume && (
-                    <DropdownMenuItem onClick={handleResume}>
+                    <DropdownMenuItem onClick={handleResume} disabled={readOnly}>
                       <Play className="h-4 w-4 mr-2" />
                       Resume
                     </DropdownMenuItem>
                   )}
                   {canRestart && (
-                    <DropdownMenuItem onClick={handleRestart}>
+                    <DropdownMenuItem onClick={handleRestart} disabled={readOnly}>
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Restart
                     </DropdownMenuItem>
@@ -346,6 +356,7 @@ export function DatabaseCard({ database, shareToken, onRefresh, onExplore, showE
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setShowDeleteDialog(true)}
+                        disabled={readOnly}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />

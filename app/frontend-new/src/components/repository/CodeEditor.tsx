@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { fetchStagedFileContent } from "@/lib/stagedContentClient";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { Save, X, FileText, ImageIcon, GitCompare, Eye } from "lucide-react";
 
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svg", "avif", "tiff", "tif"];
@@ -94,6 +95,9 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
     onShowDiffChange?.(checked);
   };
   const { toast } = useToast();
+  // P4 (NV-06): Monaco is read-only and nothing is staged on a released version.
+  // Also covers the IDE modal and the Build staging panel, which reuse this editor.
+  const { readOnly } = useVersionScopeContext();
 
   // Resolved content values
   const content = isBufferMode ? bufferContent : internalContent;
@@ -205,7 +209,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
   };
 
   const handleSave = useCallback(async (): Promise<boolean> => {
-    if (!filePath || !repoId) return false;
+    if (readOnly || !filePath || !repoId) return false;
 
     // In buffer mode, just call onSave and let the buffer handle it
     if (isBufferMode) {
@@ -255,7 +259,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
     } finally {
       setSaving(false);
     }
-  }, [filePath, repoId, shareToken, internalContent, fileId, toast, onSave, onAutoSync, isBufferMode]);
+  }, [readOnly, filePath, repoId, shareToken, internalContent, fileId, toast, onSave, onAutoSync, isBufferMode]);
 
   // Expose save method and isDirty getter via ref
   useImperativeHandle(ref, () => ({
@@ -400,7 +404,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
             </TooltipProvider>
           )}
           <div className="flex gap-1">
-            {!isImage && (
+            {!isImage && !readOnly && (
               <Button
                 size="sm"
                 onClick={handleSave}
@@ -475,12 +479,14 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
             onMount={(editor) => {
               const modifiedEditor = editor.getModifiedEditor();
               modifiedEditor.onDidChangeModelContent(() => {
+                if (readOnly) return;
                 const value = modifiedEditor.getValue();
                 setContent(value);
               });
             }}
             options={{
-              readOnly: false,
+              readOnly,
+              domReadOnly: readOnly,
               minimap: { enabled: false },
               fontSize: 14,
               lineNumbers: "on",
@@ -505,9 +511,13 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
             height="100%"
             language={getLanguage(filePath)}
             value={content}
-            onChange={(value) => setContent(value || "")}
+            onChange={(value) => {
+              if (!readOnly) setContent(value || "");
+            }}
             theme="vs-dark"
             options={{
+              readOnly,
+              domReadOnly: readOnly,
               minimap: { enabled: true },
               fontSize: 14,
               lineNumbers: "on",

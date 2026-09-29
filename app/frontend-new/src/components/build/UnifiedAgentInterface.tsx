@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,6 +66,8 @@ export function UnifiedAgentInterface({
   onAutoCommitChange,
   onPrimaryActionChange,
 }: UnifiedAgentInterfaceProps) {
+  // P4 (NV-06): no start/stop/send/auto-commit on a released version; logs and history stay viewable.
+  const { readOnly } = useVersionScopeContext();
   const { messages: loadedMessages, loading: messagesLoading, hasMore: hasMoreMessages, loadMore: loadMoreMessages, refetch: refetchMessages } = useInfiniteAgentMessages(projectId, shareToken);
   const { operations, loading: operationsLoading, hasMore: hasMoreOperations, loadMore: loadMoreOperations, refetch: refetchOperations } = useInfiniteAgentOperations(projectId, shareToken);
   
@@ -422,7 +425,7 @@ export function UnifiedAgentInterface({
   };
 
   const handleSubmit = async () => {
-    if (!taskInput.trim() || isSubmitting || !repoId) {
+    if (readOnly || !taskInput.trim() || isSubmitting || !repoId) {
       if (!repoId) {
         toast.error("No repository selected");
       }
@@ -658,6 +661,7 @@ export function UnifiedAgentInterface({
   };
 
   const handleStop = async () => {
+    if (readOnly) return;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       
@@ -696,7 +700,7 @@ export function UnifiedAgentInterface({
     onPrimaryActionChange?.(
       isSubmitting
         ? { label: "Stop agent", onClick: handleStop, tone: "danger" }
-        : { label: "Run agent", onClick: handleSubmit, disabled: !taskInput.trim() || !repoId },
+        : { label: "Run agent", onClick: handleSubmit, disabled: readOnly || !taskInput.trim() || !repoId },
     );
   });
   // Clear the mirrored action when this view unmounts (e.g. the desktop
@@ -800,6 +804,7 @@ export function UnifiedAgentInterface({
   };
 
   const performAutoCommitAndPush = async (taskDescription: string) => {
+    if (readOnly) return;
     if (!repoId) return;
 
     try {
@@ -1456,7 +1461,7 @@ export function UnifiedAgentInterface({
             {/* Right button: Send/Stop */}
             <Button
               onClick={isSubmitting ? handleStop : handleSubmit}
-              disabled={!isSubmitting && (!taskInput.trim() || !repoId)}
+              disabled={readOnly || (!isSubmitting && (!taskInput.trim() || !repoId))}
               size="icon"
               variant={isSubmitting ? "destructive" : "default"}
               className="h-8 w-8"
@@ -1473,10 +1478,11 @@ export function UnifiedAgentInterface({
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
+                if (readOnly) return;
                 handleSubmit();
               }
             }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || readOnly}
             className="min-h-[60px] w-full"
           />
         </div>
@@ -1520,10 +1526,12 @@ export function UnifiedAgentInterface({
                   <Database className="h-4 w-4 mr-2" />
                   Raw LLM Logs
                 </TabsTrigger>
+                {!readOnly && (
                 <TabsTrigger value="prompt-editor" className="whitespace-nowrap">
                   <Wrench className="h-4 w-4 mr-2" />
                   Prompt Editor
                 </TabsTrigger>
+                )}
               </TabsList>
             </div>
             
@@ -1691,12 +1699,14 @@ export function UnifiedAgentInterface({
               />
             </TabsContent>
             
+            {!readOnly && (
             <TabsContent value="prompt-editor" className="flex-1 overflow-hidden">
               <AgentPromptEditor 
                 projectId={projectId}
                 shareToken={shareToken}
               />
             </TabsContent>
+            )}
           </Tabs>
         </DialogContent>
       </Dialog>

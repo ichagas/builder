@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,8 @@ interface CommitHistoryProps {
 }
 
 export function CommitHistory({ projectId, shareToken }: CommitHistoryProps) {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope).
+  const { readOnly } = useVersionScopeContext();
   const { toast } = useToast();
 
   const [commits, setCommits] = useState<Commit[]>([]);
@@ -85,6 +88,7 @@ export function CommitHistory({ projectId, shareToken }: CommitHistoryProps) {
   };
 
   const handleRestore = async (commitId: string, commitSha: string) => {
+    if (readOnly) return;
     if (!repoId || !projectId || !repoInfo) return;
 
     try {

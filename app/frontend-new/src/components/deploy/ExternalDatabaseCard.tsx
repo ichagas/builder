@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,12 +41,15 @@ export function ExternalDatabaseCard({
   onExplore,
   showExploreOnly = false,
 }: ExternalDatabaseCardProps) {
+  // P4 (NV-06): menus are portaled outside the ReadOnlyGuard, so mutating items disable themselves.
+  const { readOnly } = useVersionScopeContext();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleTestConnection = async () => {
+    if (readOnly) return;
     setIsLoading(true);
     setLoadingAction("test");
 
@@ -87,6 +91,7 @@ export function ExternalDatabaseCard({
   };
 
   const handleDelete = async () => {
+    if (readOnly) return;
     setIsLoading(true);
     setLoadingAction("delete");
 
@@ -156,17 +161,18 @@ export function ExternalDatabaseCard({
                       Explore Database
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={handleTestConnection}>
+                  <DropdownMenuItem onClick={handleTestConnection} disabled={readOnly}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Test Connection
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowEditDialog(true)} disabled={readOnly}>
                     <Settings className="h-4 w-4 mr-2" />
                     Edit Connection
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => setShowDeleteDialog(true)}
+                    disabled={readOnly}
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -213,17 +219,18 @@ export function ExternalDatabaseCard({
                       Explore Database
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={handleTestConnection}>
+                  <DropdownMenuItem onClick={handleTestConnection} disabled={readOnly}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Test Connection
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowEditDialog(true)} disabled={readOnly}>
                     <Settings className="h-4 w-4 mr-2" />
                     Edit Connection
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => setShowDeleteDialog(true)}
+                    disabled={readOnly}
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />

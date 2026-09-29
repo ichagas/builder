@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { readOnlyWrite, gateOpener } from "@/features/versions/scope/readOnly";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { RequirementsTree } from "@/components/requirements/RequirementsTree";
@@ -16,17 +18,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePublishRequirementsPrimaryAction } from "./requirements.primaryAction";
 
 export default function Requirements() {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const { user } = useAuth();
   const hasAccessToken = !!shareToken || !!user;
-  const { requirements, isLoading, addRequirement, updateRequirement, deleteRequirement, refresh } = useRealtimeRequirements(
+  const { requirements, isLoading, addRequirement: addRequirementRaw, updateRequirement: updateRequirementRaw, deleteRequirement: deleteRequirementRaw, refresh } = useRealtimeRequirements(
     projectId!,
     shareToken || null,
     hasAccessToken
   );
-  const [showAIDialog, setShowAIDialog] = useState(false);
-  const [linkReq, setLinkReq] = useState<{ id: string; title: string } | null>(null);
+  const addRequirement = readOnlyWrite(readOnly, addRequirementRaw);
+  const updateRequirement = readOnlyWrite(readOnly, updateRequirementRaw);
+  const deleteRequirement = readOnlyWrite(readOnly, deleteRequirementRaw);
+  const [showAIDialog, setShowAIDialogRaw] = useState(false);
+  const [linkReq, setLinkReqRaw] = useState<{ id: string; title: string } | null>(null);
   const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined);
 
   // T042 (WP-D1): "Add epic" is the page's primary action, declared in the
@@ -34,12 +41,15 @@ export default function Requirements() {
   // Publish it here (where addRequirement/isLoading actually live) rather
   // than duplicating the realtime subscription in the route-level hook --
   // see requirements.primaryAction.ts.
+  const setShowAIDialog = gateOpener(readOnly, setShowAIDialogRaw);
+  const setLinkReq = gateOpener(readOnly, setLinkReqRaw);
+
   usePublishRequirementsPrimaryAction(
     projectId && hasAccessToken
       ? {
           label: "Add epic",
           onClick: () => addRequirement(null, "EPIC", "New Epic").then(() => { toast.success("Added"); }),
-          disabled: isLoading,
+          disabled: readOnly || isLoading,
           disabledReason: isLoading ? "Loading requirements…" : undefined,
         }
       : undefined
