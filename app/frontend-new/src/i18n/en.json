@@ -115,7 +115,92 @@
       },
       "loading": "Loading portfolio…",
       "crumb_one": "Team · {{count}} member",
-      "crumb_other": "Team · {{count}} members"
+      "crumb_other": "Team · {{count}} members",
+      "openApplication": "Open →"
+    },
+    "app": {
+      "crumb": "{{team}} / Applications",
+      "loading": "Loading application…",
+      "notFound": {
+        "title": "Application not found",
+        "description": "You may not have access to this application, or it may have been removed."
+      },
+      "error": {
+        "title": "Couldn't load this application",
+        "description": "Try again in a moment."
+      },
+      "empty": {
+        "title": "No repositories yet",
+        "description": "Repositories join this application through onboarding."
+      },
+      "emptyFiltered": {
+        "title": "No repositories match this filter"
+      },
+      "nextStep": {
+        "freshFindings": {
+          "title_one": "{{count}} repository has new findings",
+          "title_other": "{{count}} repositories have new findings",
+          "body": "Select \"New findings\" to see which repositories need a look.",
+          "cta": "Show them"
+        }
+      },
+      "adoption": {
+        "title": "Standards adoption",
+        "meta": "{{onLatest}}/{{total}} on {{version}}"
+      },
+      "kv": {
+        "newFindings": "New findings",
+        "warnings": "Repos with warnings",
+        "prsOpen": "Update PRs open",
+        "exceptions": "Exceptions"
+      },
+      "filters": {
+        "all": "All",
+        "attention": "Needs attention",
+        "behind": "Behind",
+        "new": "New findings"
+      },
+      "groupBy": {
+        "ariaLabel": "Group by",
+        "part": "By part",
+        "stack": "By stack"
+      },
+      "repositoriesHeading": "Repositories",
+      "repositoriesMeta": "{{shown}} of {{total}}",
+      "repoRow": {
+        "behind": "behind",
+        "findings_one": "{{count}} new finding",
+        "findings_other": "{{count}} new findings",
+        "pr": {
+          "behind": "Behind",
+          "inSync": "In sync"
+        }
+      },
+      "group": {
+        "send_one": "Send update PR ({{count}})",
+        "send_other": "Send update PRs ({{count}})",
+        "sendConfirm_one": "Send {{count}} update PR?",
+        "sendConfirm_other": "Send {{count}} update PRs?",
+        "sendAll_one": "Send all update PRs ({{count}})",
+        "sendAll_other": "Send all update PRs ({{count}})",
+        "sendAllConfirm_one": "Send {{count}} update PR for this application?",
+        "sendAllConfirm_other": "Send {{count}} update PRs for this application?"
+      },
+      "exceptions": {
+        "heading_one": "Exceptions · {{count}}",
+        "heading_other": "Exceptions · {{count}}",
+        "empty": "No exceptions for this application",
+        "expires": "Expires {{date}}",
+        "expired": "Expired {{date}}",
+        "create": {
+          "repository": "Repository",
+          "rule": "Rule",
+          "rulePlaceholder": "e.g. Red recon",
+          "reason": "Reason (optional)",
+          "expiresAt": "Expires",
+          "submit": "Request exception"
+        }
+      }
     }
   },
   "versions": {

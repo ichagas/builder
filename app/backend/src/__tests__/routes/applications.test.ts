@@ -136,6 +136,12 @@ function installFixtureDb() {
     if (sql.includes("FROM public.mesh_exceptions me")) {
       return { rows: [] };
     }
+    // T131 (WP-A2): GET /:appId's latest-run-per-repository query — checked
+    // before the "FROM public.mesh_runs mr" (GET /runs) branch since both
+    // contain "FROM public.mesh_runs".
+    if (sql.includes("SELECT DISTINCT ON (repository_id)")) {
+      return { rows: params[0]?.includes("repo-1") ? LATEST_RUN_ROWS : [] };
+    }
     if (sql.includes("FROM public.mesh_runs mr")) {
       return { rows: MESH_RUN_ROWS };
     }
@@ -169,6 +175,18 @@ const MESH_RUN_ROWS = [
     report_url: "https://example/report.json",
     received_at: "2026-09-20T10:00:00Z",
     day: "2026-09-20T00:00:00Z",
+  },
+];
+
+const LATEST_RUN_ROWS = [
+  {
+    repository_id: "repo-1",
+    run_id: "run-1",
+    verdicts: { green: "pass", yellow: "pass", red: "pass", blue: "pass" },
+    pr_state: "open",
+    pr_number: 214,
+    new_findings: 0,
+    received_at: "2026-09-20T10:00:00Z",
   },
 ];
 
@@ -218,6 +236,21 @@ describe("GET /applications/:appId — response shape and adoption", () => {
       ratio: 0.5,
     });
     expect(res.body.exceptions).toEqual([]);
+  });
+
+  it("includes each repository's latest mesh run verdicts for the grouped grid (T131, WP-A2)", async () => {
+    const res = await request(createApp(MEMBER_USER_ID)).get(`/applications/${APP_ID}`);
+    expect(res.status).toBe(200);
+    const repo1 = res.body.repositories.find((r: any) => r.id === "repo-1");
+    const repo2 = res.body.repositories.find((r: any) => r.id === "repo-2");
+    expect(repo1.latest_run).toMatchObject({
+      run_id: "run-1",
+      verdicts: { green: "pass", yellow: "pass", red: "pass", blue: "pass" },
+      pr_state: "open",
+    });
+    // repo-2 has no mesh run — absent from the map, so `latest_run` is null
+    // (RepoRow/MeshDots then render "none", not a false "pass").
+    expect(repo2.latest_run).toBeNull();
   });
 
   it("surfaces not_reporting per repository (research D-10, 7-day rule) — T124", async () => {

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { FilterChips } from "@/components/shell/FilterChips";
@@ -64,7 +64,7 @@ function formatRelative(iso: string | null): string {
   return `${days} days ago`;
 }
 
-function ApplicationRow({ app, filter }: { app: PortfolioApplication; filter: string }) {
+function ApplicationRow({ app, filter, teamId }: { app: PortfolioApplication; filter: string; teamId: string }) {
   const { t } = useTranslation();
   // contracts/design-system.md §3: useUiPrefs' `exp.<appId>` key persists
   // expand/collapse per application across visits, like the prototype's
@@ -96,6 +96,10 @@ function ApplicationRow({ app, filter }: { app: PortfolioApplication; filter: st
             {t("assurance.portfolio.notReportingBadge", { count: app.not_reporting_count })}
           </span>
         ) : null}
+        {/* T131, WP-A2: opens the application page (NA-03/NA-04). */}
+        <Link to={`/assurance/t/${teamId}/apps/${app.id}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">
+          {t("assurance.portfolio.openApplication")}
+        </Link>
       </div>
       {app.repositories.length > 0 ? <AdoptionBar segments={adoptionSegments(app.repositories)} className="mx-pad" /> : null}
       {expanded ? (
@@ -192,7 +196,7 @@ export function TeamPortfolio() {
                 </div>
                 <div className="flex flex-col gap-2">
                   {data.applications.map((app) => (
-                    <ApplicationRow key={app.id} app={app} filter={filter} />
+                    <ApplicationRow key={app.id} app={app} filter={filter} teamId={teamId} />
                   ))}
                 </div>
               </div>

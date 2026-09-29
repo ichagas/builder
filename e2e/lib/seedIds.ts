@@ -50,4 +50,9 @@ export const seed = {
   memberName: "E2E Member",
   // Renumbered from ...901 at merge: WP-O1 and WP-V1 also used 901.
   azureDevOpsConnectionId: "00000000-0000-4000-8000-000000000903",
+  // T131, WP-A2: application page (NA-03/NA-04) -- assuranceApp1's two
+  // repositories, in different `part` groups ("api"/"worker").
+  assuranceRepo1Id: "00000000-0000-4000-8000-000000000821", // e2e-goa/permits-api, part "api", on the latest pack
+  assuranceRepo2Id: "00000000-0000-4000-8000-000000000822", // e2e-goa/permits-worker, part "worker", behind + not reporting
+  assuranceExceptionId: "00000000-0000-4000-8000-000000000841",
 } as const;

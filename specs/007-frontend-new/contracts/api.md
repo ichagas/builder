@@ -45,7 +45,7 @@ Token access: every route accepts `?token=` and authorizes through `authorize_pr
 | GET | `/teams/mine` | Teams for the switcher |
 | GET | `/teams` | All teams (organization admins) |
 | GET | `/teams/:teamId/portfolio` | Apps + repos + totals (one call for the portfolio) |
-| GET | `/applications/:appId` | Application page (repos, adoption, exceptions) |
+| GET | `/applications/:appId` | Application page (repos, adoption, exceptions). Each repository also carries `latest_run` (its newest mesh run: `verdicts` per check, `pr_state`, `pr_number`, `new_findings`; null if it never reported) for the per-check grid (added by WP-A2) |
 | GET | `/applications/:appId/runs?days=7` | Mesh runs on PRs to the default branch, grouped by day (open and merged) |
 | GET | `/mesh/runs/:runId` | Evidence (verdicts per agent + report URL) |
 | POST | `/applications/:appId/update-prs` | Send update PRs (body: repo ids or group) |

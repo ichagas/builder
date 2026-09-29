@@ -3,12 +3,15 @@
  * TeamSwitcher and the team portfolio -- NA-01 (team switcher lists the
  * caller's teams, plus every team in the organization for organization
  * admins, D-8) and NA-02 (team portfolio: applications with Standards
- * adoption, mesh reporting status and "not reporting" after 7 days).
+ * adoption, mesh reporting status and "not reporting" after 7 days). And
+ * WP-A2 (T131): the application page -- NA-03 (repositories grouped by
+ * part, each with its latest mesh run's per-check verdicts and the
+ * Standards adoption bar) and NA-04 (group actions to send update PRs,
+ * with confirmation, and the application's mesh exceptions).
  *
- * WP-A2..A6/O1 extend this file with the application page, mesh runs,
- * packs/policy, All teams and onboarding as their own tests land; T135
- * (the final 15-repo-seed spec) is the canonical end state -- this is the
- * first slice.
+ * WP-A3..A6/O1 extend this file with mesh runs/evidence, packs/policy, All
+ * teams and onboarding as their own tests land; T135 (the final 15-repo-seed
+ * spec) is the canonical end state -- this is an early slice.
  *
  * Only exists in app/frontend-new (contracts/routes.md: "-- (new, US5,
  * US6)"), so this whole file is APP=new-only, same as shell/axe-shell.spec.ts.
@@ -87,6 +90,119 @@ test.describe("NA-02: team portfolio", () => {
     await expect(page.getByText("Licensing API")).toBeVisible();
     await expect(page.getByText("e2e-goa/licensing-api")).toBeVisible();
     await expect(page.getByText("1 not reporting").first()).toBeVisible();
+  });
+
+  test("opens the application page from the portfolio (T131, WP-A2)", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}`);
+    await expect(page.getByText("Permits API")).toBeVisible();
+
+    // Two "Open →" links exist (one per application) -- scope to Permits
+    // API's row via its testid container.
+    await page
+      .locator('[data-testid="assurance-app-row"]', { hasText: "Permits API" })
+      .getByRole("link", { name: /open/i })
+      .click();
+
+    await expect(page).toHaveURL(new RegExp(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}$`));
+    await expect(page.getByRole("heading", { name: "Permits API" })).toBeVisible();
+  });
+});
+
+test.describe("NA-03: application page", () => {
+  test("shows repositories grouped by part, adoption, and per-check mesh verdicts", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+
+    await expect(page.getByRole("heading", { name: "Permits API" })).toBeVisible();
+    await expect(page.getByText("e2e-goa/permits-api")).toBeVisible();
+    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
+
+    // Adoption bar: 1 repo on 2026.1 (permits-worker, behind), 1 on 2026.2
+    // (permits-api, latest) -- seed.sql's application_repositories rows.
+    await expect(page.getByRole("img", { name: /1 on 2026\.1, 1 on 2026\.2/ })).toBeVisible();
+
+    // Grouped by `part` by default: "api" (permits-api) and "worker"
+    // (permits-worker) are separate groups.
+    await expect(page.getByText(/^api · 1$/)).toBeVisible();
+    await expect(page.getByText(/^worker · 1$/)).toBeVisible();
+
+    // permits-worker's latest mesh run (seed.sql, run 832) has a yellow
+    // warning -- MeshDots' aria-label names each agent's verdict.
+    await expect(page.getByLabel(/Assurance Mesh: Green Pass, Yellow Warning, Red Pass, Blue Skipped/)).toBeVisible();
+  });
+
+  test("filters to repositories behind the latest pack (URL-held state)", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+    await expect(page.getByText("e2e-goa/permits-api")).toBeVisible();
+
+    await page.getByRole("button", { name: /^behind/i }).click();
+    await expect(page).toHaveURL(/[?&]f=behind/);
+    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
+    await expect(page.getByText("e2e-goa/permits-api")).not.toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
+    await expect(page.getByText("e2e-goa/permits-api")).not.toBeVisible();
+  });
+
+  test("the fresh-findings banner filters to repositories with new findings", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+    // permits-worker's latest run has 1 new finding (seed.sql, run 832).
+    await expect(page.getByText(/1 repository has new findings/i)).toBeVisible();
+
+    await page.getByRole("button", { name: /show them/i }).click();
+    await expect(page).toHaveURL(/[?&]f=new/);
+    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
+    await expect(page.getByText("e2e-goa/permits-api")).not.toBeVisible();
+  });
+
+  test("lists the application's exceptions", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+
+    // seed.sql: one exception on permits-worker ("Red recon").
+    await page.getByText(/Exceptions · 1/).click();
+    await expect(page.getByTestId("assurance-exception-row")).toContainText("e2e-goa/permits-worker");
+    await expect(page.getByTestId("assurance-exception-row")).toContainText("Red recon");
+  });
+});
+
+test.describe("NA-04: group actions and exceptions", () => {
+  test("sending update PRs for a group requires confirmation (ActionButton two-step confirm)", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
+
+    // permits-worker is behind (2026.1) with no update PR open -- its
+    // "worker" group gets a "Send update PR(s)" action.
+    const sendButton = page.getByRole("button", { name: /send update prs? \(1\)/i });
+    await expect(sendButton).toBeVisible();
+    await sendButton.click();
+
+    // First click arms the confirmation (ActionButton's `confirm` copy);
+    // the mutation only runs on the second click.
+    await expect(page.getByRole("button", { name: /send 1 update prs?\?/i })).toBeVisible();
+    await page.getByRole("button", { name: /send 1 update prs?\?/i }).click();
+
+    // POST /applications/:appId/update-prs returns 207 (per-repository
+    // results) even when the sandbox's GitHub App isn't configured in this
+    // environment, so this only asserts the button leaves its pending
+    // state -- not that a PR actually opened (that's GitHub-App-config
+    // dependent, out of this WP's E2E scope).
+    await expect(sendButton.or(page.getByRole("button", { name: /failed/i }))).not.toHaveAttribute("aria-busy", "true");
+  });
+
+  test("requests an exception for a repository", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+    await page.getByText(/Exceptions · 1/).click();
+
+    await page.getByLabel("Rule").fill("Red recon");
+    await page.getByLabel("Reason (optional)").fill("Nightly batch job only");
+    await page.getByLabel("Expires").fill("2027-06-01");
+    await page.getByRole("button", { name: "Request exception" }).click();
+
+    // The new exception appears once the mutation invalidates the
+    // application query (contracts/design-system.md: "mutations invalidate
+    // the right queries").
+    await expect(page.getByText(/Exceptions · 2/)).toBeVisible();
+    await expect(page.getByTestId("assurance-exception-row").filter({ hasText: "Nightly batch job only" })).toBeVisible();
   });
 });
 
@@ -204,6 +320,27 @@ test.describe("Assurance axe: zero violations", () => {
       }, theme);
       await page.goto(`/assurance/t/${seed.assuranceTeamId}`);
       await expect(page.getByRole("heading", { name: "Permits Platform" })).toBeVisible();
+
+      const results = await new AxeBuilder({ page }).analyze();
+      const description = results.violations
+        .map((v) => `[${theme}/${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+        .join("\n");
+      expect(results.violations, description).toEqual([]);
+    });
+
+    test(`application page -- ${theme} theme`, async ({ page }, testInfo) => {
+      await page.addInitScript((t) => {
+        try {
+          window.localStorage.setItem("theme", t);
+        } catch {
+          // ignore
+        }
+      }, theme);
+      await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+      await expect(page.getByRole("heading", { name: "Permits API" })).toBeVisible();
+      // Open the Exceptions disclosure and its create-exception form too,
+      // so axe also covers the form controls (T131, WP-A2).
+      await page.getByText(/Exceptions/).click();
 
       const results = await new AxeBuilder({ page }).analyze();
       const description = results.violations
