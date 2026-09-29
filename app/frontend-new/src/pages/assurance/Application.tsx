@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { FilterChips } from "@/components/shell/FilterChips";
@@ -343,6 +343,9 @@ export function Application() {
                 })}
               </span>
             </div>
+            <Link to={`/assurance/t/${teamId}/apps/${appId}/runs`} className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline">
+              {t("assurance.runs.link")}
+            </Link>
             {data.repositories.length > 0 ? <AdoptionBar segments={adoptionSegments(data.repositories)} /> : null}
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>

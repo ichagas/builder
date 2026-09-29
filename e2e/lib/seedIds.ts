@@ -104,4 +104,10 @@ export const seed = {
   changeNodeOtherId: "00000000-0000-4000-8000-000000000928", // "Marketing site" (not affected)
   changeShipItemId: "00000000-0000-4000-8000-00000000092b", // WI-923: on Ship, with a preview
   changeLockedItemId: "00000000-0000-4000-8000-00000000092c", // WI-922: shipped in released v2.0.0
+  // T132, WP-A3: mesh runs by day and evidence (NA-05) -- extra runs on
+  // assuranceApp1's repositories, older than each repo's latest run.
+  runApiMergedId: "00000000-0000-4000-8000-000000000961", // permits-api, 2 days ago, merged PR 209
+  runApiClosedId: "00000000-0000-4000-8000-000000000962", // permits-api, 3 days ago, closed PR 208 (excluded)
+  runWorkerFailId: "00000000-0000-4000-8000-000000000963", // permits-worker, 12 days ago, merged PR 207, Red fail, 2 findings
+  runWorkerOldId: "00000000-0000-4000-8000-000000000964", // permits-worker, 20 days ago, open PR 206
 } as const;

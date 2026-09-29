@@ -4,6 +4,7 @@ import { useNoPrimaryAction, type SimpleRoute } from "./types";
 
 const TeamPortfolio = lazyWithRetry(() => import("@/pages/assurance/TeamPortfolio"));
 const Application = lazyWithRetry(() => import("@/pages/assurance/Application"));
+const AppRuns = lazyWithRetry(() => import("@/pages/assurance/AppRuns"));
 const OnboardingWizard = lazyWithRetry(() => import("@/pages/assurance/OnboardingWizard"));
 
 /**
@@ -23,6 +24,8 @@ const OnboardingWizard = lazyWithRetry(() => import("@/pages/assurance/Onboardin
 export const ASSURANCE_ROUTES: SimpleRoute[] = [
   { path: "t/:teamId", title: "Team portfolio", usePrimaryAction: useNoPrimaryAction, Component: TeamPortfolio },
   { path: "t/:teamId/apps/:appId", title: "Application", usePrimaryAction: useNoPrimaryAction, Component: Application },
+  // T132, WP-A3, NA-05: mesh runs by day + evidence (`?days=`, `?run=`).
+  { path: "t/:teamId/apps/:appId/runs", title: "Mesh runs", usePrimaryAction: useNoPrimaryAction, Component: AppRuns },
   {
     path: "t/:teamId/onboard/:step?",
     title: "Onboard an app",

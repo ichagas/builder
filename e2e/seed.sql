@@ -443,4 +443,21 @@ VALUES ('00000000-0000-4000-8000-00000000092a', '00000000-0000-4000-8000-0000000
         'Order total includes discounts', 'A valid discount code lowers the checkout total')
 ON CONFLICT (id) DO NOTHING;
 
+-- WP-A3 (T132) mesh runs by day and evidence (NA-05); ids ...960-...96f.
+-- Extra runs on assuranceApp1's repositories, all OLDER than the runs above
+-- (831: 1 day, 832: 10 days) so each repository's *latest* run -- which
+-- NA-03/NA-04 assert on -- is unchanged.
+--   961 permits-api    2 days ago  merged PR 209, all pass
+--   962 permits-api    3 days ago  closed PR 208 (never listed: closed-unmerged)
+--   963 permits-worker 12 days ago merged PR 207, Red fail, 2 new findings (14-day window+)
+--   964 permits-worker 20 days ago open PR 206 (30-day window only)
+INSERT INTO public.mesh_runs
+  (id, repository_id, commit_sha, pr_number, base_branch, pr_state, trigger, pack_version, verdicts, new_findings, asvs_passed, alberta_passed, report_url, received_at)
+VALUES
+  ('00000000-0000-4000-8000-000000000961', '00000000-0000-4000-8000-000000000821', 'e2e-commit-961', 209, 'main', 'merged', 'pull_request', '2026.2', '{"green":"pass","yellow":"pass","red":"pass","blue":"pass"}'::jsonb, 0, 285, 62, 'https://example.test/e2e/reports/961.json', now() - interval '2 days'),
+  ('00000000-0000-4000-8000-000000000962', '00000000-0000-4000-8000-000000000821', 'e2e-commit-962', 208, 'main', 'closed', 'pull_request', '2026.2', '{"green":"pass","yellow":"pass","red":"pass","blue":"pass"}'::jsonb, 0, 285, 62, NULL, now() - interval '3 days'),
+  ('00000000-0000-4000-8000-000000000963', '00000000-0000-4000-8000-000000000822', 'e2e-commit-963', 207, 'main', 'merged', 'pull_request', '2026.1', '{"green":"pass","yellow":"pass","red":"fail","blue":"pass"}'::jsonb, 2, 270, 58, 'https://example.test/e2e/reports/963.json', now() - interval '12 days'),
+  ('00000000-0000-4000-8000-000000000964', '00000000-0000-4000-8000-000000000822', 'e2e-commit-964', 206, 'main', 'open', 'pull_request', '2026.1', '{"green":"pass","yellow":"pass","red":"pass","blue":"pass"}'::jsonb, 0, 268, 57, NULL, now() - interval '20 days')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

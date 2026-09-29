@@ -406,3 +406,110 @@ test.describe("Assurance axe: zero violations", () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// WP-A3 (T132): NA-05 mesh runs by day and evidence. Seed: 831 (1 day ago,
+// permits-api, open PR 210) and 832 (10 days, permits-worker, open PR 211)
+// from WP-A2, plus 961-964 (seed.sql, WP-A3 block). Read-only: the "open an
+// issue" action is only armed, never confirmed (it would call GitHub).
+// ---------------------------------------------------------------------------
+test.describe("NA-05 mesh runs and evidence", () => {
+  const runsUrl = (query = "") => `/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}/runs${query}`;
+  const runRow = (page: import("@playwright/test").Page, pr: number) =>
+    page.getByTestId("assurance-run-row").filter({ hasText: new RegExp(`PR #${pr}\\b`) });
+
+  test("the application page links to the runs view", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
+    await page.getByRole("link", { name: "Mesh runs by day" }).click();
+    await expect(page).toHaveURL(new RegExp(`/apps/${seed.assuranceApp1Id}/runs$`));
+    await expect(page.getByRole("heading", { name: "Mesh runs", level: 1 })).toBeVisible();
+  });
+
+  test("groups the last 7 days' runs by day, open and merged only", async ({ page }) => {
+    await page.goto(runsUrl());
+    await expect(page.getByTestId("assurance-runs-day")).toHaveCount(2);
+    await expect(runRow(page, 210)).toBeVisible(); // open, 1 day ago
+    await expect(runRow(page, 209)).toContainText("merged"); // merged, 2 days ago
+    // closed-unmerged (208) and anything older than 7 days are absent.
+    await expect(runRow(page, 208)).toHaveCount(0);
+    await expect(runRow(page, 211)).toHaveCount(0);
+  });
+
+  test("widening the window is URL-held and survives reload", async ({ page }) => {
+    await page.goto(runsUrl());
+    await expect(runRow(page, 210)).toBeVisible();
+    await page.getByRole("button", { name: "Last 14 days" }).click();
+    await expect(page).toHaveURL(/[?&]days=14/);
+    await expect(runRow(page, 211)).toBeVisible();
+    await expect(runRow(page, 207)).toBeVisible();
+    await expect(runRow(page, 206)).toHaveCount(0);
+
+    await page.reload();
+    await expect(runRow(page, 207)).toBeVisible();
+
+    await page.getByRole("button", { name: "Last 30 days" }).click();
+    await expect(runRow(page, 206)).toBeVisible();
+  });
+
+  test("shows the evidence for a run (verdict per check, counts, report link)", async ({ page }) => {
+    await page.goto(runsUrl("?days=14"));
+    await runRow(page, 207).click();
+    await expect(page).toHaveURL(new RegExp(`[?&]run=${seed.runWorkerFailId}`));
+
+    const evidence = page.getByTestId("assurance-run-evidence");
+    await expect(evidence.getByTestId("assurance-run-verdict-red")).toHaveText("Fail");
+    await expect(evidence.getByTestId("assurance-run-verdict-green")).toHaveText("Pass");
+    await expect(evidence.getByText("270", { exact: true })).toBeVisible(); // ASVS passed
+    await expect(evidence.getByRole("link", { name: "Open the full report" })).toHaveAttribute(
+      "href",
+      "https://example.test/e2e/reports/963.json",
+    );
+
+    // Selection is in the URL: a reload keeps the evidence open.
+    await page.reload();
+    await expect(page.getByTestId("assurance-run-evidence")).toBeVisible();
+
+    // Toggling the row closes it.
+    await runRow(page, 207).click();
+    await expect(page.getByTestId("assurance-run-evidence")).toHaveCount(0);
+  });
+
+  test("opening an issue for new findings needs a confirmation step", async ({ page }) => {
+    await page.goto(runsUrl(`?days=14&run=${seed.runWorkerFailId}`));
+    const evidence = page.getByTestId("assurance-run-evidence");
+    await evidence.getByRole("button", { name: "Open an issue" }).click();
+    await expect(evidence.getByRole("button", { name: /open an issue for the new findings\?/i })).toBeVisible();
+    // A run without new findings offers no such action.
+    await page.goto(runsUrl(`?run=${seed.runApiMergedId}`));
+    await expect(page.getByTestId("assurance-run-evidence")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open an issue" })).toHaveCount(0);
+  });
+
+  for (const theme of ["light", "dark"] as const) {
+    test(`axe: zero violations -- ${theme} theme`, async ({ page }, testInfo) => {
+      await page.addInitScript((t) => {
+        try {
+          window.localStorage.setItem("theme", t);
+        } catch {
+          // ignore
+        }
+      }, theme);
+      await page.goto(runsUrl(`?days=14&run=${seed.runWorkerFailId}`));
+      await expect(page.getByTestId("assurance-run-evidence")).toBeVisible();
+
+      const results = await new AxeBuilder({ page }).analyze();
+      const description = results.violations
+        .map((v) => `[${theme}/${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+        .join("\n");
+      expect(results.violations, description).toEqual([]);
+    });
+  }
+
+  test("has no horizontal scroll at phone width", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(runsUrl(`?days=14&run=${seed.runWorkerFailId}`));
+    await expect(page.getByTestId("assurance-run-evidence")).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
