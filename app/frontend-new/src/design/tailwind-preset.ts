@@ -32,6 +32,7 @@ function softGroup(name: string) {
   return {
     DEFAULT: themeColor(`--${name}-rgb`),
     soft: themeColor(`--${name}-soft-rgb`),
+    foreground: themeColor(`--${name}-foreground-rgb`),
   };
 }
 

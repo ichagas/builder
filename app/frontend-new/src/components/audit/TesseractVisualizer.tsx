@@ -113,13 +113,13 @@ export function TesseractVisualizer({
   // Get polarity display info
   const getPolarityInfo = (polarity: number) => {
     if (polarity > 0.5) {
-      return { label: "HIGH", color: "bg-ok text-white", textColor: "text-ok" };
+      return { label: "HIGH", color: "bg-ok text-ok-foreground", textColor: "text-ok" };
     } else if (polarity > 0) {
-      return { label: "MED", color: "bg-warn text-white", textColor: "text-warn" };
+      return { label: "MED", color: "bg-warn text-warn-foreground", textColor: "text-warn" };
     } else if (polarity === 0) {
       return { label: "NEUTRAL", color: "bg-muted text-muted-foreground", textColor: "text-muted-foreground" };
     } else {
-      return { label: "LOW", color: "bg-bad text-white", textColor: "text-bad" };
+      return { label: "LOW", color: "bg-bad text-bad-foreground", textColor: "text-bad" };
     }
   };
 
@@ -515,15 +515,15 @@ export function TesseractVisualizer({
               <span>{d2Label} Items</span>
             </div>
             <div className="border-l pl-2 flex items-center gap-1">
-              <Badge className="bg-ok text-white text-[10px] h-4 px-1">HIGH</Badge>
+              <Badge className="bg-ok text-ok-foreground text-[10px] h-4 px-1">HIGH</Badge>
               <span className="hidden sm:inline">Strong Alignment</span>
             </div>
             <div className="flex items-center gap-1">
-              <Badge className="bg-warn text-white text-[10px] h-4 px-1">MED</Badge>
+              <Badge className="bg-warn text-warn-foreground text-[10px] h-4 px-1">MED</Badge>
               <span className="hidden sm:inline">Partial</span>
             </div>
             <div className="flex items-center gap-1">
-              <Badge className="bg-bad text-white text-[10px] h-4 px-1">LOW</Badge>
+              <Badge className="bg-bad text-bad-foreground text-[10px] h-4 px-1">LOW</Badge>
               <span className="hidden sm:inline">Gap</span>
             </div>
           </div>

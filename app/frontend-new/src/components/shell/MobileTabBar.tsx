@@ -25,7 +25,7 @@ export function MobileTabBar({ items, ariaLabel = "Project" }: MobileTabBarProps
   return (
     <nav
       aria-label={ariaLabel}
-      className="fixed inset-x-0 bottom-0 z-20 flex h-14 items-stretch border-t border-rail-line bg-rail-bg pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 flex h-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] items-stretch border-t border-rail-line bg-rail-bg pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {items.map((item) => (
         <NavLink

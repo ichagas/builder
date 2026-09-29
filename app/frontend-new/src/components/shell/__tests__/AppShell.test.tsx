@@ -154,4 +154,25 @@ describe("AppShell primary action mirroring", () => {
     );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
+
+  it("reserves mobile-only bottom padding for the fixed tab bar via the shared --tabbar-h token", () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <AppShell globalBar={<div />} mobileTabBar={<div data-testid="tabbar" />}>
+          <div />
+        </AppShell>
+      </MemoryRouter>,
+    );
+    const main = screen.getByRole("main");
+    expect(main.className).toContain("max-md:pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))]");
+    expect(main.className).not.toMatch(/(^|\s)pb-/);
+    rerender(
+      <MemoryRouter>
+        <AppShell globalBar={<div />}>
+          <div />
+        </AppShell>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("main").className).not.toContain("--tabbar-h");
+  });
 });

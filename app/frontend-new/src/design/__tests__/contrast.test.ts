@@ -33,6 +33,7 @@ const LIGHT = {
   warnSoft: "#FCEEDB",
   bad: "#C0262D",
   badSoft: "#FBE4E5",
+  statusForeground: "#FFFFFF",
   tBug: "#C0262D",
   tBugSoft: "#FBE4E5",
   tFeat: "#2451D6",
@@ -69,6 +70,7 @@ const DARK = {
   warnSoft: "#3A2B12",
   bad: "#F2807C",
   badSoft: "#3A1720",
+  statusForeground: "#0B1830",
   tBug: "#F2807C",
   tBugSoft: "#3A1720",
   tFeat: "#6C93FF",
@@ -99,6 +101,12 @@ describe("token contrast (WCAG AA, ratio >= 4.5:1)", () => {
     ["dark ok/surface", DARK.ok, DARK.surface],
     ["dark warn/surface", DARK.warn, DARK.surface],
     ["dark bad/surface", DARK.bad, DARK.surface],
+    ["light ok-foreground/ok", LIGHT.statusForeground, LIGHT.ok],
+    ["light warn-foreground/warn", LIGHT.statusForeground, LIGHT.warn],
+    ["light bad-foreground/bad", LIGHT.statusForeground, LIGHT.bad],
+    ["dark ok-foreground/ok", DARK.statusForeground, DARK.ok],
+    ["dark warn-foreground/warn", DARK.statusForeground, DARK.warn],
+    ["dark bad-foreground/bad", DARK.statusForeground, DARK.bad],
   ])("%s >= 4.5:1", (_label, fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
   });

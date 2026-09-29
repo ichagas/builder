@@ -78,9 +78,9 @@ export function ActionButton({
       aria-busy={status === "pending"}
       className={cn(
         "relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-xs px-4 text-sm font-semibold",
-        tone === "danger" ? "bg-bad text-white" : tone === "ghost" ? "border border-line bg-surface text-ink" : "bg-primary text-primary-foreground",
+        tone === "danger" ? "bg-bad text-bad-foreground" : tone === "ghost" ? "border border-line bg-surface text-ink" : "bg-primary text-primary-foreground",
         (disabled || status === "pending") && "cursor-not-allowed opacity-70",
-        status === "failed" && "bg-bad text-white",
+        status === "failed" && "bg-bad text-bad-foreground",
         className,
       )}
     >

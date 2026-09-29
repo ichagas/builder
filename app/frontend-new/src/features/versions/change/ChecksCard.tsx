@@ -55,12 +55,12 @@ export function ChecksCard({
             <span className="text-xs text-muted-foreground">{check.passed ? t("versions.change.checks.passing") : t("versions.change.checks.waiting")}</span>
           </li>
         ))}
-        {loading ? (
-          <li role="status" className="px-pad py-2.5 text-sm text-muted-foreground">
-            {t("versions.change.checks.loading")}
-          </li>
-        ) : null}
       </ul>
+      {loading ? (
+        <p role="status" className="border-t border-line px-pad py-2.5 text-sm text-muted-foreground">
+          {t("versions.change.checks.loading")}
+        </p>
+      ) : null}
     </section>
   );
 }

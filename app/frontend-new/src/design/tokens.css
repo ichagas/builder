@@ -54,6 +54,10 @@
   --warn-soft: #FCEEDB; --warn-soft-rgb: 252 238 219;
   --bad: #C0262D; --bad-rgb: 192 38 45;
   --bad-soft: #FBE4E5; --bad-soft-rgb: 251 228 229;
+  /* Ink for text on a solid --ok/--warn/--bad fill (bg-bad text-bad-foreground). */
+  --ok-foreground: #FFFFFF; --ok-foreground-rgb: 255 255 255;
+  --warn-foreground: #FFFFFF; --warn-foreground-rgb: 255 255 255;
+  --bad-foreground: #FFFFFF; --bad-foreground-rgb: 255 255 255;
   --run: #D97706; --run-rgb: 217 119 6;
   --run-soft: #FCE8D2; --run-soft-rgb: 252 232 210;
 
@@ -138,7 +142,7 @@
 
   /* Layout */
   --rail-w: 248px; --rail-w-collapsed: 76px;
-  --bar-h: 52px; --timeline-h: 76px; --tabbar-h: 62px;
+  --bar-h: 52px; --timeline-h: 76px; --tabbar-h: 56px;
 
   /* Elevation */
   --shadow: none;
@@ -210,6 +214,10 @@
   --warn-soft: #3A2B12; --warn-soft-rgb: 58 43 18;
   --bad: #F2807C; --bad-rgb: 242 128 124;
   --bad-soft: #3A1720; --bad-soft-rgb: 58 23 32;
+  /* Dark fills are light tones: white text is only ~2.6:1, so use dark ink. */
+  --ok-foreground: #0B1830; --ok-foreground-rgb: 11 24 48;
+  --warn-foreground: #0B1830; --warn-foreground-rgb: 11 24 48;
+  --bad-foreground: #0B1830; --bad-foreground-rgb: 11 24 48;
   --run: #F2A93B; --run-rgb: 242 169 59;
   --run-soft: #3A2B12; --run-soft-rgb: 58 43 18;
 
