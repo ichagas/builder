@@ -66,7 +66,8 @@
     },
     "rail": {
       "ariaLabel": "Assurance",
-      "portfolio": "Portfolio"
+      "portfolio": "Portfolio",
+      "onboard": "Onboard"
     },
     "mode": {
       "label": "Standards"
@@ -360,6 +361,89 @@
         "toggleLabel": "Enable the Cyber Risk sandbox for {{app}}",
         "saved": "Cyber Risk sandbox updated",
         "saveFailed": "Couldn't update the Cyber Risk sandbox"
+      }
+    }
+  },
+  "onboarding": {
+    "wizard": {
+      "title": "Onboard an app",
+      "crumb": "{{team}} / Onboard an app",
+      "crumbFallback": "Onboard an app",
+      "continue": "Continue",
+      "loading": "Loading…",
+      "steps": {
+        "team": "Team & app",
+        "connect": "Connect repos",
+        "sandbox": "Run in sandbox",
+        "output": "Review output",
+        "prs": "Open pull requests"
+      },
+      "notFound": {
+        "title": "Onboarding run not found",
+        "description": "It may have been cancelled, or you may not have access to it."
+      },
+      "error": {
+        "title": "Couldn't load this onboarding run",
+        "description": "Try again in a moment."
+      },
+      "cancel": {
+        "label": "Cancel onboarding",
+        "confirm": "Cancel this run?"
+      },
+      "comingSoon": {
+        "title": "Run in sandbox is coming in a future update",
+        "body": "Your repository selection is saved. You can add or remove repositories here until the sandbox step ships."
+      },
+      "team": {
+        "teamLabel": "Team",
+        "appNameLabel": "Application name",
+        "appNamePlaceholder": "e.g. Permits API",
+        "error": "Couldn't start onboarding. Try again.",
+        "banner": {
+          "title": "Applications belong to a team",
+          "body": "Everyone on {{team}} sees this application in their portfolio once it's onboarded."
+        },
+        "created": {
+          "title": "Draft started",
+          "body": "Continue to connect the repositories that make up this application."
+        }
+      },
+      "connect": {
+        "save": "Save selection",
+        "error": "Couldn't save the repository selection. Try again.",
+        "selectedHeading": "Selected repositories",
+        "selectedCount_one": "{{count}} selected",
+        "selectedCount_other": "{{count}} selected",
+        "selectedEmpty": "No repositories selected yet",
+        "remove": "Remove {{name}}",
+        "removeShort": "Remove",
+        "browseHeading": "Import repositories",
+        "source": {
+          "github": "GitHub",
+          "azure": "Azure DevOps"
+        },
+        "archived": "Archived",
+        "disabled": "Disabled",
+        "searchPlaceholder": "Search repositories",
+        "selectAll": "Select all",
+        "clearAll": "Clear all",
+        "browseLoading": "Loading repositories…",
+        "browseEmpty": {
+          "title": "No repositories to import",
+          "description": "Ask an organization admin to configure this source on Admin → Integrations."
+        },
+        "browseError": {
+          "title": "Couldn't load repositories",
+          "description": "Try again in a moment, or ask an organization admin to check this connection on Admin → Integrations."
+        },
+        "noRun": {
+          "title": "Start onboarding first",
+          "description": "Go back to Team & app to start a draft run."
+        },
+        "banner": {
+          "title": "Pick every repository that belongs to this app",
+          "body": "Imported from your organization's configured GitHub or Azure DevOps connection. Leave out archived or experimental repositories."
+        }
       }
     }
   }

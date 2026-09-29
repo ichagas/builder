@@ -55,4 +55,16 @@ export const seed = {
   assuranceRepo1Id: "00000000-0000-4000-8000-000000000821", // e2e-goa/permits-api, part "api", on the latest pack
   assuranceRepo2Id: "00000000-0000-4000-8000-000000000822", // e2e-goa/permits-worker, part "worker", behind + not reporting
   assuranceExceptionId: "00000000-0000-4000-8000-000000000841",
+  // US6 Onboarding wizard (T150, WP-O1) -- a `github_app` integration
+  // connection scoped to owner "e2e-goa" (the same namespace US5's seeded
+  // repositories use) for assuranceTeamId's organization, so NO-02's
+  // `PUT .../repositories` scope check (services/onboarding/
+  // repositoryScope.ts) passes for an "e2e-goa/..." full_name without ever
+  // calling the real GitHub API (that check is DB-only) -- see
+  // us6.onboarding.spec.ts for why the live import list itself isn't
+  // exercised here (no real GitHub App installation in the e2e stack).
+  // Renumbered from ...901 at merge: WP-A6 and WP-V1 also used 901.
+  onboardingGitHubConnectionId: "00000000-0000-4000-8000-000000000904",
+  onboardingAllowedOwner: "e2e-goa",
+  onboardingOutOfScopeFullName: "e2e-unauthorized-org/some-repo",
 } as const;
