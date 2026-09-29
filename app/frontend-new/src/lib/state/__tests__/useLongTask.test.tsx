@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { __resetLongTasksForTests, cancelLongTask, settleLongTask, useLongTask, STALE_RUNNING_MS } from "../useLongTask";
+import { __resetLongTasksForTests, cancelLongTask, settleLongTask, startLongTask, useLongTask, STALE_RUNNING_MS } from "../useLongTask";
 
 afterEach(() => {
   act(() => __resetLongTasksForTests());
@@ -139,5 +139,31 @@ describe("useLongTask", () => {
       });
       expect(result.current.tasks.find((t) => t.id === "r-1")?.status).toBe("running");
     });
+  });
+
+  it("an old removal timer cannot prune a restarted task that finished again", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useLongTask());
+    act(() => result.current.start({ id: "run-1", label: "First" }).done());
+    act(() => vi.advanceTimersByTime(4 * 60 * 1000));
+    let handle!: ReturnType<typeof result.current.start>;
+    act(() => {
+      handle = result.current.start({ id: "run-1", label: "Second" });
+    });
+    act(() => handle.done());
+    // The first run's 5 minute window ends here; the second run's has 4 minutes left.
+    act(() => vi.advanceTimersByTime(60 * 1000 + 1000));
+    expect(result.current.tasks.find((t) => t.id === "run-1")).toMatchObject({ label: "Second", status: "done" });
+    act(() => vi.advanceTimersByTime(5 * 60 * 1000));
+    expect(result.current.tasks.find((t) => t.id === "run-1")).toBeUndefined();
+  });
+
+  it("__resetLongTasksForTests clears pending removal timers", () => {
+    vi.useFakeTimers();
+    act(() => {
+      startLongTask({ id: "r", label: "x" }).done();
+    });
+    act(() => __resetLongTasksForTests());
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
