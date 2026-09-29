@@ -78,6 +78,13 @@ export function TeamSwitcher({ className }: TeamSwitcherProps) {
             </DropdownMenuItem>
           ))
         )}
+        {isAdmin ? (
+          <>
+            <DropdownMenuSeparator />
+            {/* T134 (WP-A5, NA-07): the organization-wide overview, org admins only. */}
+            <DropdownMenuItem onSelect={() => navigate("/assurance/all")}>{t("assurance.switcher.organizationOverview")}</DropdownMenuItem>
+          </>
+        ) : null}
         {otherTeams.length > 0 ? (
           <>
             <DropdownMenuSeparator />

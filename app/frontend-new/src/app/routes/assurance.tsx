@@ -4,6 +4,7 @@ import { useNoPrimaryAction, type SimpleRoute } from "./types";
 
 const TeamPortfolio = lazyWithRetry(() => import("@/pages/assurance/TeamPortfolio"));
 const Application = lazyWithRetry(() => import("@/pages/assurance/Application"));
+const AllTeams = lazyWithRetry(() => import("@/pages/assurance/AllTeams"));
 const OnboardingWizard = lazyWithRetry(() => import("@/pages/assurance/OnboardingWizard"));
 
 /**
@@ -29,4 +30,5 @@ export const ASSURANCE_ROUTES: SimpleRoute[] = [
     usePrimaryAction: useOnboardingWizardPrimaryAction,
     Component: OnboardingWizard,
   },
+  { path: "all", title: "All teams", usePrimaryAction: useNoPrimaryAction, Component: AllTeams },
 ];

@@ -9,6 +9,7 @@ import { UndoBar } from "@/components/shell/UndoBar";
 import { usePublishCommandPaletteItems } from "@/components/shell/CommandPaletteItemsContext";
 import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { TeamSwitcher } from "@/components/assurance/TeamSwitcher";
+import { useAdmin } from "@/contexts/AdminContext";
 import { useTeamsMine } from "@/features/assurance/api";
 import type { CommandPaletteItem } from "@/components/shell/CommandPalette";
 
@@ -32,6 +33,7 @@ export function AssuranceLayout() {
   const openPalette = useOpenCommandPalette();
   const { teamId } = useParams<{ teamId?: string }>();
   const { data: teams = [] } = useTeamsMine();
+  const { isAdmin } = useAdmin();
 
   const paletteItems: CommandPaletteItem[] = teams.map((team) => ({
     id: `assurance-team-${team.id}`,
@@ -48,6 +50,8 @@ export function AssuranceLayout() {
   const railSections = [
     { id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref },
     { id: "onboard", label: t("assurance.rail.onboard"), href: onboardHref },
+    // T134 (WP-A5, NA-07): the organization overview is for organization admins only.
+    ...(isAdmin ? [{ id: "organization", label: t("assurance.rail.organization"), href: "/assurance/all" }] : []),
   ];
 
   return (
