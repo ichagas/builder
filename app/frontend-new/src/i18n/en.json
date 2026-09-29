@@ -711,10 +711,10 @@
       }
     },
     "sandbox": {
-      "start": "Run in sandbox",
+      "start": "Start sandbox run",
       "startDisabled": "Save a repository selection first",
       "startError": "Couldn't start the sandbox run. Try again.",
-      "review": "Review output",
+      "review": "Continue to review",
       "startOver": "Start over",
       "longTask": "Sandbox run: {{name}}",
       "reposHeading": "Repositories in this run",

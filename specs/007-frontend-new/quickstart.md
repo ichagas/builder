@@ -140,3 +140,14 @@ Two supported outcomes — pick one per environment:
 - Did not flip `primary_frontend` to `"new"` anywhere by default — the
   cutover (step 3 above) is always an explicit, later action taken once
   `next.<domain>` is verified and the final regression run is green.
+
+## Onboarding: real sandbox run (T152)
+
+CI never starts a real sandbox job: `e2e/new/us6.onboarding.spec.ts` reads seeded runs in fixed states (`e2e/seed.sql`, ids `…990`–`…99f`) and mocks the start and pull-request calls with `page.route`. The sandbox job apply is BLOCKED-EXTERNAL, so the real path is checked by hand once it exists:
+
+1. Backend env: `ONBOARDING_JOB_DISPATCHER=azure` with `ONBOARDING_JOB_SUBSCRIPTION_ID`, `ONBOARDING_JOB_RESOURCE_GROUP` and `ONBOARDING_JOB_NAME` (the Container Apps Job), the dedicated onboarding sandbox Key Vault, and a GitHub App installation (or Azure DevOps connection) configured on Admin, then Integrations, with the target owner in its scope. For a local-only smoke test, `ONBOARDING_JOB_DISPATCHER=local` (or `memory`) runs a placeholder job.
+2. Open `/assurance/t/<teamId>/onboard`, name the app, pick one or two repositories you can safely open pull requests against, and save the selection.
+3. Continue to "Run in sandbox" and press "Start sandbox run". Check: log lines stream in without a reload; the status pill shows the run; closing the tab and reopening `?run=<id>` still shows the outcome.
+4. On "Review output" check detected profile, stack, build and CI per repository, the baseline counts, and the generated files. A repository the job could not process shows its reason and is left out.
+5. On "Open pull requests" press the button twice (confirm). Check one PR per repository on GitHub or Azure Repos with the generated CI, PR chips with numbers in the wizard, and the application in the team portfolio. Press it again: nothing duplicates (the call is idempotent).
+6. Cancel path: start a run and use "Cancel onboarding" while it runs; the run ends `cancelled` and the job execution is stopped.

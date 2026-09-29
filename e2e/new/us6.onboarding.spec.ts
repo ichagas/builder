@@ -7,8 +7,11 @@
  * is refused with 403, a case-insensitive duplicate in one selection is
  * refused with 422, and a saved selection survives a reload).
  *
- * WP-O2 (T151/T152) extends this file with steps 3-5 (run in sandbox --
- * mocked in CI, review output, open pull requests) as they land.
+ * WP-O2 (T151/T152) appends NO-03..NO-05 (run in sandbox, review output, open
+ * pull requests) in the delimited block at the end of this file. The sandbox
+ * job itself is BLOCKED-EXTERNAL, so those tests either read seeded runs in
+ * fixed states (seed.sql, ids ...990-...99f) or mock the job/PR endpoints with
+ * `page.route`; the real run is documented in specs/007-frontend-new/quickstart.md.
  *
  * Only exists in app/frontend-new (contracts/routes.md: "-- (new, US5,
  * US6)"), same as us5.assurance.spec.ts.
@@ -150,9 +153,9 @@ test.describe("NO-02: connect repos -- scope, duplicates, saved selection", () =
     await expect(page.getByText(fullName)).toBeVisible();
     await expect(page.getByText("1 selected")).toBeVisible();
 
-    // Steps 3-5 aren't implemented by this WP yet -- a lock-toned banner
-    // says so instead of a dead "Continue" (WP-O2, T151).
-    await expect(page.getByText("Run in sandbox is coming in a future update")).toBeVisible();
+    // Once the selection is saved the primary action becomes "Continue" to
+    // the sandbox step (WP-O2, T151).
+    await expect(page.getByText("Selection saved")).toBeVisible();
 
     await page.reload();
     await expect(page.getByText(fullName)).toBeVisible();
@@ -215,3 +218,235 @@ test.describe("Onboarding wizard axe: zero violations", () => {
     });
   }
 });
+
+// ===========================================================================
+// WP-O2 (T152): NO-03 / NO-04 / NO-05 -- steps 3-5. Written, run in the batch test pass.
+// ===========================================================================
+
+const ONBOARD = `/assurance/t/${seed.assuranceTeamId}/onboard`;
+
+/** A run as the API returns it, read from the (seeded or real) run; the tests override fields to mock states. */
+async function readRun(runId: string): Promise<any> {
+  return api.get(`/api/v1/onboarding/runs/${runId}`, defaultOwner);
+}
+
+async function expectNoHorizontalOverflow(page: import("@playwright/test").Page) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+}
+
+test.describe("NO-03: run in the sandbox with a live log", () => {
+  test("a running run shows the log region waiting for progress", async ({ page }) => {
+    await page.goto(`${ONBOARD}/sandbox?run=${seed.onboardingRunningRunId}`);
+    await expect(page.getByText("Sandbox is running")).toBeVisible();
+    const log = page.getByRole("log", { name: "Sandbox log" });
+    await expect(log).toBeVisible();
+    await expect(log).toContainText("Waiting for the sandbox");
+    await expect(page.getByText("e2e-goa/onboard-running")).toBeVisible();
+    // Cancel stays available while the job runs.
+    await expect(page.getByRole("button", { name: /cancel/i })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("a finished run shows its recorded log and continues to the output review", async ({ page }) => {
+    await page.goto(`${ONBOARD}/sandbox?run=${seed.onboardingReadyRunId}`);
+    await expect(page.getByText("Sandbox finished")).toBeVisible();
+    const log = page.getByRole("log", { name: "Sandbox log" });
+    await expect(log).toContainText("detected node");
+    await page.getByRole("button", { name: "Continue to review" }).click();
+    await expect(page).toHaveURL(new RegExp(`/onboard/output\\?run=${seed.onboardingReadyRunId}`));
+    await expect(page.getByTestId("onboarding-output")).toBeVisible();
+  });
+
+  test("a failed job shows a clear failure and a way to start over", async ({ page }) => {
+    await page.goto(`${ONBOARD}/sandbox?run=${seed.onboardingFailedRunId}`);
+    await expect(page.getByText("The sandbox run failed")).toBeVisible();
+    await expect(page.getByRole("log", { name: "Sandbox log" })).toContainText("sandbox job failed");
+    await page.getByRole("button", { name: "Start over" }).click();
+    await expect(page).toHaveURL(new RegExp(`${ONBOARD}$`));
+    await expect(page.getByLabel("Application name")).toBeVisible();
+  });
+
+  test("starting the (mocked) sandbox job streams to completion without a reload", async ({ page }) => {
+    const run = await createDraftRun(unique("E2E Mock Sandbox App"));
+    const saved = await rawRequest("PUT", `/api/v1/onboarding/runs/${run.id}/repositories`, {
+      repositories: [{ fullName: `${seed.onboardingAllowedOwner}/mock-sandbox`, selected: true }],
+    });
+    expect(saved.status).toBe(200);
+    const base = saved.body;
+
+    // The sandbox job is BLOCKED-EXTERNAL: mock the start call and the run's
+    // status. The run reports "running" for two polls, then "ready" with its log.
+    let started = false;
+    let polls = 0;
+    await page.route(`**/api/v1/onboarding/runs/${run.id}/start`, async (route) => {
+      started = true;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...base, status: "running" }) });
+    });
+    await page.route(new RegExp(`/api/v1/onboarding/runs/${run.id}$`), async (route) => {
+      if (route.request().method() !== "GET" || !started) return route.continue();
+      polls += 1;
+      const ready = polls > 2;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...base,
+          status: ready ? "ready" : "running",
+          log_blob: ready ? "cloned mock-sandbox\ndetected node\ngenerated 1 file" : null,
+        }),
+      });
+    });
+
+    await page.goto(`${ONBOARD}/sandbox?run=${run.id}`);
+    await expect(page.getByText("Ready to run in the sandbox")).toBeVisible();
+    await page.getByRole("button", { name: "Start sandbox run" }).click();
+    await expect(page.getByText("Sandbox is running")).toBeVisible();
+    await expect(page.getByText("Sandbox finished")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("log", { name: "Sandbox log" })).toContainText("generated 1 file");
+    await expect(page.getByRole("button", { name: "Continue to review" })).toBeVisible();
+  });
+
+  test("steps beyond what the run has unlocked are not reachable", async ({ page }) => {
+    await page.goto(`${ONBOARD}/prs?run=${seed.onboardingRunningRunId}`);
+    // A running run clamps to the sandbox step; output and PR steps stay locked.
+    await expect(page.getByText("Sandbox is running")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Review output" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Open pull requests" })).toBeDisabled();
+  });
+});
+
+test.describe("NO-04: review the sandbox output", () => {
+  test("shows what was detected and generated per repository, and a per-repository failure", async ({ page }) => {
+    await page.goto(`${ONBOARD}/output?run=${seed.onboardingReadyRunId}`);
+    const cards = page.getByTestId("onboarding-output-repo");
+    await expect(cards).toHaveCount(2);
+
+    const ok = cards.filter({ hasText: "e2e-goa/onboard-ready" });
+    await expect(ok.getByText("Node.js")).toBeVisible();
+    await expect(ok.getByText("npm ci && npm run build")).toBeVisible();
+    await expect(ok.getByText("3 green")).toBeVisible();
+    await expect(ok.getByText("2 blue")).toBeVisible();
+    await ok.getByText(".github/workflows/assurance-mesh.yml").click();
+    await expect(ok.getByText("name: assurance-mesh")).toBeVisible();
+
+    const broken = cards.filter({ hasText: "e2e-goa/onboard-broken" });
+    await expect(broken.getByRole("alert")).toContainText("clone failed: repository is empty");
+
+    await expect(page.getByText(/1 of 2 repositories have generated files/)).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("continues to pull requests, and writes nothing to a repository yet", async ({ page }) => {
+    let mutations = 0;
+    page.on("request", (req) => {
+      if (req.url().includes("/api/v1/onboarding/") && req.method() !== "GET") mutations += 1;
+    });
+    await page.goto(`${ONBOARD}/output?run=${seed.onboardingReadyRunId}`);
+    await page.getByRole("button", { name: "Continue to pull requests" }).click();
+    await expect(page).toHaveURL(new RegExp(`/onboard/prs\\?run=${seed.onboardingReadyRunId}`));
+    expect(mutations).toBe(0);
+  });
+
+  test("the output of a run that has not finished is a clean error, not a crash", async ({ page }) => {
+    await page.route(`**/api/v1/onboarding/runs/${seed.onboardingReadyRunId}/output`, (route) =>
+      route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "Output is not available while the run is \"running\"" }) }),
+    );
+    await page.goto(`${ONBOARD}/output?run=${seed.onboardingReadyRunId}`);
+    await expect(page.getByText("Couldn't load the output")).toBeVisible();
+  });
+});
+
+test.describe("NO-05: open the pull requests", () => {
+  test("opens one PR per repository only after an explicit confirm, then shows the result", async ({ page }) => {
+    const base = await readRun(seed.onboardingReadyRunId);
+    const opened = {
+      ...base,
+      status: "prs_open",
+      application_id: seed.assuranceApp1Id,
+      warnings: ["e2e-goa/onboard-broken: no generated files to open a PR from"],
+      repositories: base.repositories.map((r: any) =>
+        r.id === seed.onboardingReadyRepoId ? { ...r, pr_number: 7, pr_state: "open" } : r,
+      ),
+    };
+    let posts = 0;
+    let confirmBody: unknown;
+    await page.route(`**/api/v1/onboarding/runs/${seed.onboardingReadyRunId}/pull-requests`, async (route) => {
+      posts += 1;
+      confirmBody = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(opened) });
+    });
+
+    await page.goto(`${ONBOARD}/prs?run=${seed.onboardingReadyRunId}`);
+    await expect(page.getByTestId("onboarding-prs")).toBeVisible();
+
+    // Two-step confirm: the first click only asks; nothing is sent yet.
+    const open = page.getByRole("button", { name: /^open 1 pull request/i });
+    await open.click();
+    await expect(page.getByRole("button", { name: "Open 1 pull request in your repository?" })).toBeVisible();
+    expect(posts).toBe(0);
+    await page.getByRole("button", { name: "Open 1 pull request in your repository?" }).click();
+
+    await expect(page.getByText("PR #7 · open")).toBeVisible();
+    expect(posts).toBe(1);
+    expect(confirmBody).toEqual({ confirm: true });
+    await expect(page.getByTestId("onboarding-pr-warnings")).toContainText("no generated files");
+    await expect(page.getByRole("link", { name: "View application" })).toHaveAttribute(
+      "href",
+      `/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`,
+    );
+  });
+
+  test("a failed PR attempt shows a plain error and leaves the action available to retry", async ({ page }) => {
+    await page.route(`**/api/v1/onboarding/runs/${seed.onboardingReadyRunId}/pull-requests`, (route) =>
+      route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "upstream exploded: secret-stack-trace" }) }),
+    );
+    await page.goto(`${ONBOARD}/prs?run=${seed.onboardingReadyRunId}`);
+    await page.getByRole("button", { name: /^open 1 pull request/i }).click();
+    await page.getByRole("button", { name: "Open 1 pull request in your repository?" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Couldn't open the pull requests" })).toBeVisible();
+    await expect(page.getByText("secret-stack-trace")).toHaveCount(0);
+  });
+
+  test("a run with opened PRs shows them and links to the application", async ({ page }) => {
+    await page.goto(`${ONBOARD}/prs?run=${seed.onboardingPrsOpenRunId}`);
+    await expect(page.getByText("Pull requests opened")).toBeVisible();
+    await expect(page.getByText("PR #42 · open")).toBeVisible();
+    await page.getByRole("link", { name: "View application" }).click();
+    await expect(page).toHaveURL(new RegExp(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}$`));
+    await expect(page.getByText("Permits API").first()).toBeVisible();
+  });
+});
+
+test.describe("Onboarding steps 3-5 axe: zero violations", () => {
+  const screens: Array<[string, () => string]> = [
+    ["Sandbox running", () => `${ONBOARD}/sandbox?run=${seed.onboardingRunningRunId}`],
+    ["Sandbox finished", () => `${ONBOARD}/sandbox?run=${seed.onboardingReadyRunId}`],
+    ["Sandbox failed", () => `${ONBOARD}/sandbox?run=${seed.onboardingFailedRunId}`],
+    ["Review output", () => `${ONBOARD}/output?run=${seed.onboardingReadyRunId}`],
+    ["Pull requests", () => `${ONBOARD}/prs?run=${seed.onboardingPrsOpenRunId}`],
+  ];
+  for (const theme of ["light", "dark"] as const) {
+    for (const [name, url] of screens) {
+      test(`${name} -- ${theme} theme`, async ({ page }, testInfo) => {
+        await page.addInitScript((t) => {
+          try {
+            window.localStorage.setItem("theme", t);
+          } catch {
+            // ignore
+          }
+        }, theme);
+        await page.goto(url());
+        await expect(page.getByRole("heading").first()).toBeVisible();
+        await expect(page.locator("main, [role=main], body").first()).toBeVisible();
+
+        const results = await new AxeBuilder({ page }).analyze();
+        const description = results.violations
+          .map((v) => `[${theme}/${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+          .join("\n");
+        expect(results.violations, description).toEqual([]);
+      });
+    }
+  }
+});
+// ===== end WP-O2 (T152) =====

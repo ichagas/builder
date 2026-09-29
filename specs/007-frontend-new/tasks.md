@@ -136,8 +136,8 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 ## Phase 11: US6, onboard an app (P3, built new)
 
 - [x] T150 [US6] (WP-O1) Wizard steps 1–2. NO-01, NO-02.
-- [ ] T151 [US6] (WP-O2) Steps 3–5 with the live sandbox log, output review and PRs. NO-03…NO-05.
-- [ ] T152 [US6] E2E `e2e/new/us6.onboarding.spec.ts` (sandbox mocked in CI; real run documented in `quickstart.md`).
+- [x] T151 [US6] (WP-O2) Steps 3–5 with the live sandbox log, output review and PRs. NO-03…NO-05.
+- [x] T152 [US6] E2E `e2e/new/us6.onboarding.spec.ts` (sandbox mocked in CI; real run documented in `quickstart.md`).
 
 ## Phase 12: Polish
 

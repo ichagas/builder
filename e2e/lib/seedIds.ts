@@ -104,4 +104,16 @@ export const seed = {
   changeNodeOtherId: "00000000-0000-4000-8000-000000000928", // "Marketing site" (not affected)
   changeShipItemId: "00000000-0000-4000-8000-00000000092b", // WI-923: on Ship, with a preview
   changeLockedItemId: "00000000-0000-4000-8000-00000000092c", // WI-922: shipped in released v2.0.0
+
+  // US6 onboarding steps 3-5 (T152, WP-O2, NO-03/04/05) -- ids ...990-...99f. Runs on
+  // assuranceTeamId in fixed states (see seed.sql), read-only in the tests.
+  onboardingReadyRunId: "00000000-0000-4000-8000-000000000990",
+  onboardingReadyRepoId: "00000000-0000-4000-8000-000000000991", // e2e-goa/onboard-ready, one generated file
+  onboardingReadyBrokenRepoId: "00000000-0000-4000-8000-000000000992", // e2e-goa/onboard-broken, sandbox error
+  onboardingRunningRunId: "00000000-0000-4000-8000-000000000993",
+  onboardingRunningRepoId: "00000000-0000-4000-8000-000000000994",
+  onboardingFailedRunId: "00000000-0000-4000-8000-000000000995",
+  onboardingFailedRepoId: "00000000-0000-4000-8000-000000000996",
+  onboardingPrsOpenRunId: "00000000-0000-4000-8000-000000000997", // linked to Permits API (811), PR #42 open
+  onboardingPrsOpenRepoId: "00000000-0000-4000-8000-000000000998",
 } as const;
