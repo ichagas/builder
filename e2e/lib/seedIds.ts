@@ -67,4 +67,16 @@ export const seed = {
   onboardingGitHubConnectionId: "00000000-0000-4000-8000-000000000904",
   onboardingAllowedOwner: "e2e-goa",
   onboardingOutOfScopeFullName: "e2e-unauthorized-org/some-repo",
+  // US4 Change page (T111, WP-V2, NV-03/NV-04) -- own project, ids ...920-...92f.
+  changeProjectId: "00000000-0000-4000-8000-000000000920",
+  changeVersionReleasedId: "00000000-0000-4000-8000-000000000921", // v2.0.0, current
+  changeVersionNextId: "00000000-0000-4000-8000-000000000922", // v2.1.0
+  changeVersionHotfixId: "00000000-0000-4000-8000-000000000923", // v2.0.1
+  changeBugId: "00000000-0000-4000-8000-000000000924", // WI-920: Define, design skipped, bug report, one delta
+  changeEnhancementId: "00000000-0000-4000-8000-000000000925", // WI-921: Design, affects the two nodes below
+  changeNodeApiId: "00000000-0000-4000-8000-000000000926", // "Checkout API"
+  changeNodeDbId: "00000000-0000-4000-8000-000000000927", // "Orders database"
+  changeNodeOtherId: "00000000-0000-4000-8000-000000000928", // "Marketing site" (not affected)
+  changeShipItemId: "00000000-0000-4000-8000-00000000092b", // WI-923: on Ship, with a preview
+  changeLockedItemId: "00000000-0000-4000-8000-00000000092c", // WI-922: shipped in released v2.0.0
 } as const;
