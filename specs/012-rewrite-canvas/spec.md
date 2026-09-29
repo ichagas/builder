@@ -92,16 +92,16 @@ A user opens the change heatmap and change log, generates an infographic of the 
 
 ### Functional Requirements
 
-- **FR-001**: Selected node (`?node=`), selected edge (`?edge=`), active layer (`?layer=`), isolate mode (`?isolate=`), visible node types (`?types=`), open panel (`?panel=`) and viewport (`?vp=x,y,z`, rounded and debounced) MUST live in the URL through `useUrlState`, and restore on reload and back/forward without remounting the layout.
+- **FR-001**: Selected node, selected edge, active layer, isolate mode, visible node types, open panel and viewport (position and zoom, rounded and debounced) MUST be part of the page address, and restore on reload and back/forward without reloading the surrounding layout.
 - **FR-002**: The page MUST NOT call `toast` for actions with a place on screen; node and edge edits, delete, paste, clear, layer changes, AI runs, enhancement, infographic and save results MUST report on the field, the node, the panel or the inspector. A toast is allowed only for events with no place on screen.
-- **FR-003**: The page MUST NOT open modal dialogs. Node and edge properties, AI Architect, infographic, agent-prompt editing, layers and change views MUST use the shell `Inspector`, and the page-local `CanvasMobileSheet` MUST be removed. Clear canvas uses two-step confirmation plus `UndoBar`.
-- **FR-004**: Nodes, edges, layers, node types, change log and project data MUST be read and written through TanStack Query with keyed queries and mutations; realtime updates (`useRealtimeCanvas`, `useRealtimeLayers`) apply to the cache. Optimistic updates MUST be used for moves and property edits, with rollback on failure.
-- **FR-005**: AI Architect, critic, iterative enhancement and infographic runs MUST register with `useLongTask`, and the primary action MUST stay "AI Architect".
+- **FR-003**: The page MUST NOT open modal dialogs. Node and edge properties, AI Architect, infographic, agent-prompt editing, layers and change views MUST open in the shell inspector panel, and the page-local mobile sheet MUST be removed. Clear canvas uses two-step confirmation plus an undo window.
+- **FR-004**: Nodes, edges, layers, node types, change log and project data MUST be read and written through one shared data layer, and realtime changes MUST show without a reload. Moves and property edits MUST show immediately and roll back visibly on failure.
+- **FR-005**: AI Architect, critic, iterative enhancement and infographic runs MUST be listed in the global status indicator, and the primary action MUST stay "AI Architect".
 - **FR-006**: Saved data (node and edge shape, layers, zones, notes, labels, node type definitions) MUST stay unchanged so existing canvases open and save identically; no API or schema change.
 - **FR-007**: Copy, paste, lasso, isolate, delete, undo and keyboard shortcuts MUST keep working with the same shortcuts, and touch alternatives MUST exist for each.
 - **FR-008**: Full-bleed layout MUST be kept (no page padding), and the canvas MUST keep viewport culling for large graphs.
 - **FR-009**: Only design-system tokens MUST be used (including node and mini-map colors via tokens); PR-08 MUST pass at 1440 and 390 with axe, no new violation types.
-- **FR-010**: No file in the Canvas feature MUST exceed 400 lines; the page MUST compose canvas, palette, inspector content and toolbar components.
+- **FR-010**: The page MUST compose canvas, palette, inspector content and toolbar parts rather than one monolith (size limit in implementation notes).
 
 ### Compatibility & Operational Requirements *(mandatory for brownfield changes)*
 
@@ -125,16 +125,25 @@ A user opens the change heatmap and change log, generates an infographic of the 
 ### Measurable Outcomes
 
 - **SC-001**: Reload restores selection, layer, isolate mode, type filter, open panel and viewport in 100% of tested cases (today 0 of 6).
-- **SC-002**: `toast` calls in the page and `components/canvas/` drop from 92 (38 in the page, 54 in components) to at most 8.
+- **SC-002**: Toast call sites in the page and its canvas components drop from 92 (38 in the page, 54 in components) to at most 8.
 - **SC-003**: Modal dialogs drop from about 4 to 0, and the page-local mobile sheet is deleted.
-- **SC-004**: A 500-node canvas keeps pan and drag at 30 frames per second or better on the reference laptop, equal to or better than today.
-- **SC-005**: PR-08 passes at 1440 and 390 with no new axe types, and no file in the feature exceeds 400 lines.
+- **SC-004**: On a 500-node canvas, pan and drag stay at 30 frames per second or better on the CI E2E runner (measured with the browser's frame timing in the performance check) and no more than 10% below the restyled page measured the same way before the rewrite starts.
+- **SC-005**: PR-08 passes at 1440 and 390 with no new axe types.
 - **SC-006**: A property edit shows its new value on the canvas within 100 ms (optimistic) and rolls back visibly within 3 seconds when the save fails.
 
 ## Assumptions
 
 - The restyled page (T046) is the behavior baseline.
 - React Flow stays as the diagram engine.
-- The `Inspector` supports being opened from a URL key and holds long forms (node properties) in the same way at desktop and phone detents.
-- Chat (008) has settled the streaming, long-task and undo patterns.
+- The inspector panel can be opened from the page address and holds long forms (node properties) in the same way at desktop and phone detents.
+- Chat (008) has settled the streaming, status-indicator and undo patterns.
 - Phase R starts after cutover (T073).
+
+## Implementation notes (for plan)
+
+Non-binding hints for the plan phase. They are not requirements.
+
+- Address keys: `node`, `edge`, `layer`, `isolate`, `types`, `panel`, `vp=x,y,z`, through `useUrlState`.
+- Data: TanStack Query with keyed queries, optimistic mutations and rollback; `useRealtimeCanvas` and `useRealtimeLayers` apply to the cache.
+- Shell: `Inspector` (replaces `CanvasMobileSheet`), `UndoBar`, `useLongTask`.
+- Structure: no file in the feature over 400 lines; React Flow stays, with viewport culling.

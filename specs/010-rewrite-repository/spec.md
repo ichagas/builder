@@ -107,16 +107,16 @@ A user manages the personal access token used to sync and opens a larger IDE vie
 
 ### Functional Requirements
 
-- **FR-001**: The active tab (`?tab=`), repository (`?repo=`), file (`?file=`, optional `line`) and IDE view (`?view=ide`) MUST live in the URL through `useUrlState` and restore on reload and back/forward without remounting the layout.
+- **FR-001**: The active tab, repository, file (with optional line) and IDE view MUST be part of the page address and restore on reload and back/forward without reloading the surrounding layout.
 - **FR-002**: The page MUST NOT call `toast` for actions with a place on screen; create, link, clone, save, stage, delete, commit, push, pull, ZIP upload and PAT changes MUST report pending, done and failed on the control, the tree row, the repository card or the inspector. Results of push and pull MUST stay visible on the card until the next run.
-- **FR-003**: The page MUST NOT open modal dialogs. The create-repository flows, sync review, content search, PAT management and the connect banner details MUST use the shell `Inspector`; create and rename MUST be inline tree edits; delete uses two-step confirmation and `UndoBar`.
-- **FR-004**: Repositories, file trees, file contents, staged changes, commit log and sync status MUST be read and written through TanStack Query with keyed queries and mutations; realtime (`useRealtimeRepos`) updates the cache. The 25 direct function calls in the page MUST move into hooks under the feature folder.
-- **FR-005**: Push, pull, clone, ZIP extraction and repository creation MUST register with `useLongTask`.
+- **FR-003**: The page MUST NOT open modal dialogs. The create-repository flows, sync review, content search, PAT management and the connect banner details MUST open in the shell inspector panel; create and rename MUST be inline tree edits; delete uses two-step confirmation and an undo window.
+- **FR-004**: Repositories, file trees, file contents, staged changes, commit log and sync status MUST be read and written through one shared data layer, and realtime changes MUST show without a reload. The page components MUST NOT call backend functions directly.
+- **FR-005**: Push, pull, clone, ZIP extraction and repository creation MUST be listed in the global status indicator while they run.
 - **FR-006**: The file tree, code editor, create-file and rename pieces MUST be shared components with a documented props contract that the Build rewrite (011) imports, and both pages MUST behave identically for those interactions.
 - **FR-007**: Staging semantics, commit and sync behavior, PAT storage, the Prime repository concept and every function endpoint MUST be unchanged (PR-11 list); no API or schema change.
 - **FR-008**: The page MUST keep the "Uncommitted changes will not be pushed" protection as an inline, blocking-on-confirm warning, and the "set a Prime repository first" and "add a repository first" guards as inline hints.
 - **FR-009**: Only design-system tokens MUST be used; PR-11 MUST pass at 1440 and 390 with axe, no new violation types.
-- **FR-010**: No file in the Repository feature MUST exceed 400 lines.
+- **FR-010**: The page MUST be split into focused parts (size limit in implementation notes).
 
 ### Compatibility & Operational Requirements *(mandatory for brownfield changes)*
 
@@ -139,11 +139,11 @@ A user manages the personal access token used to sync and opens a larger IDE vie
 ### Measurable Outcomes
 
 - **SC-001**: Reload restores repository, file, tab and IDE view in 100% of tested cases (today: tab only).
-- **SC-002**: `toast` calls in the page and `components/repository/` drop from 52 (32 in the page, 20 in components) to at most 4.
+- **SC-002**: Toast call sites in the page and its repository components drop from 52 (32 in the page, 20 in components) to at most 4.
 - **SC-003**: Modal dialogs drop from about 8 to 0.
-- **SC-004**: Direct function and fetch calls in page files drop from about 25 to 0; every one lives in a query or mutation hook.
+- **SC-004**: Backend calls made directly from page components drop from about 25 to 0; every one goes through the shared data layer.
 - **SC-005**: A failed push leaves a visible error on the card after reload, in 100% of tested cases.
-- **SC-006**: PR-11 passes at 1440 and 390 with no new axe types, no file in the feature exceeds 400 lines, and Build (011) reuses the shared tree and editor without a copy.
+- **SC-006**: PR-11 passes at 1440 and 390 with no new axe types, and Build (011) reuses the shared tree and editor without a copy.
 
 ## Assumptions
 
@@ -152,3 +152,12 @@ A user manages the personal access token used to sync and opens a larger IDE vie
 - The staged model is server-side (`staging-operations`) and stays so.
 - Build (011) follows this feature and reuses its shared components; if Build is rewritten first, this spec's FR-006 moves there.
 - Phase R starts after cutover (T073).
+
+## Implementation notes (for plan)
+
+Non-binding hints for the plan phase. They are not requirements.
+
+- Address keys: `tab`, `repo`, `file`, `line`, `view=ide`, through `useUrlState`.
+- Data: TanStack Query with keyed queries and mutations; `useRealtimeRepos` updates the cache; hooks under the feature folder replace the ~25 direct function calls.
+- Shell: `Inspector`, `UndoBar`, `useLongTask`.
+- Structure: no file in the feature over 400 lines; 0 direct `fetch`/`functions.invoke` in page files.
