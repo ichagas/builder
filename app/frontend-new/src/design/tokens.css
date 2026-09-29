@@ -138,7 +138,7 @@
 
   /* Layout */
   --rail-w: 248px; --rail-w-collapsed: 76px;
-  --bar-h: 52px; --timeline-h: 76px; --tabbar-h: 62px;
+  --bar-h: 52px; --timeline-h: 76px; --tabbar-h: 56px;
 
   /* Elevation */
   --shadow: none;

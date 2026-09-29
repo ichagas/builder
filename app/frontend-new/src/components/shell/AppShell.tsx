@@ -82,7 +82,11 @@ export function AppShell({
           {rail}
           <div className="flex min-w-0 flex-1 flex-col">
             {timeline ? <nav aria-label="Versions">{timeline}</nav> : null}
-            <main ref={mainRef} id="page" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto focus:outline-none">
+            <main ref={mainRef} id="page" tabIndex={-1} className={cn(
+                "min-h-0 flex-1 overflow-y-auto focus:outline-none",
+                // The fixed MobileTabBar (md:hidden) overlays the bottom of this scroller.
+                mobileTabBar && "max-md:pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))]",
+              )}>
               {children ?? <Outlet />}
             </main>
           </div>
