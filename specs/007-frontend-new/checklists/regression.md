@@ -2,34 +2,34 @@
 
 Regression rows are defined in [contracts/routes.md](../contracts/routes.md) §2. The same Playwright spec (`e2e/regression/pr-xx.spec.ts`) runs against the legacy app (`APP=legacy`, gate T017) and the new app (`APP=new`). Every row must pass on the new app at **1440** (desktop) and **390** (mobile), with axe showing **no new violations** compared with `e2e/baselines/axe-legacy.json`. PR-22 is the new shell, covered by `e2e/shell/*` (`npm run test:shell`).
 
-**Final run for cutover (T071, WP-X0):** run 2026-09-29 on the **local stack, not staging** (staging BLOCKED-EXTERNAL until T015 apply), branch `wp/final-test`, APP=new, one file chunk (max 3 specs) per Playwright call, fresh reseeded stack per chunk and per project. PR-01..21 pass on both viewports; PR-22 and new capabilities have 3 mobile app defects (below), so T071 stays open.
+**Final run for cutover (T071, WP-X0):** run 2026-09-29 on the **local stack, not staging** (staging BLOCKED-EXTERNAL until T015 apply), branch `wp/final-test`, APP=new, one file chunk (max 3 specs) per Playwright call, fresh reseeded stack per chunk and per project. PR-01..21 passed on both viewports; PR-22 and new capabilities had 3 mobile app defects. **Targeted re-run after the N3 review fixes and the mobile shell fixes (2026-09-29, local stack, branch `wp/rerun`, APP=new):** the remount MobileTabBar failure and NO-01 are fixed; NO-03 still fails at 390 (new cause, below); PR-14 mobile is flaky (pre-existing). T071 stays open.
 
 ## Status by row
 
 | Row | Area | Restyle WP | Legacy (T017) | New app, latest run | axe vs legacy | Final (T071) |
 |---|---|---|---|---|---|---|
-| PR-01 | Projects home | P2 | ✅ | ✅ 1440 / ✅ 390 (batch 2 run) | ✅ better | ✅ 1440 / ✅ 390 |
+| PR-01 | Projects home | P2 | ✅ | ✅ 1440 / ✅ 390 (batch 2 run) | ✅ better | ✅ 1440 / ✅ 390 (re-run 2026-09-29: ✅ / ✅) |
 | PR-02 | Project settings | P3 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
 | PR-03 | Access | P3 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
 | PR-04 | Requirements | D1 | ✅ | ✅ / ✅ | ✅ 0 violations | ✅ 1440 / ✅ 390 |
 | PR-05 | Project standards | D2 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
 | PR-06 | Artifacts | D3 | ✅ | ✅ / ✅ | ✅ 0 violations | ✅ 1440 / ✅ 390 |
 | PR-07 | Chat | D4 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
-| PR-08 | Canvas | G1 | ✅ | ✅ / ✅ (G1 restyle) | ✅ better | ✅ 1440 / ✅ 390 |
+| PR-08 | Canvas | G1 | ✅ | ✅ / ✅ (G1 restyle) | ✅ better | ✅ 1440 / ✅ 390 (re-run 2026-09-29: ✅ / ✅) |
 | PR-09 | Specifications | G2 | ✅ | ✅ / ✅ | ✅ subset | ✅ 1440 / ✅ 390 |
 | PR-10 | Build agent | B1 | ✅ | ✅ / ✅ (B1 restyle) | ✅ no new | ✅ 1440 / ✅ 390 |
-| PR-11 | Repository | B2 | ✅ | ✅ / ✅ (B2 restyle) | ✅ no new | ✅ 1440 / ✅ 390 |
-| PR-12 | Database | B3 | ✅ | ✅ / ✅ (B3 restyle) | ✅ better | ✅ 1440 / ✅ 390 |
+| PR-11 | Repository | B2 | ✅ | ✅ / ✅ (B2 restyle) | ✅ no new | ✅ 1440 / ✅ 390 (re-run 2026-09-29: ✅ / ✅) |
+| PR-12 | Database | B3 | ✅ | ✅ / ✅ (B3 restyle) | ✅ better | ✅ 1440 / ✅ 390 (re-run 2026-09-29: ✅ / ✅) |
 | PR-13 | Environments | S1 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
-| PR-14 | Audit | S2 | ✅ | ✅ / ✅ (S2 restyle) | ✅ no new | ✅ 1440 / ✅ 390 |
-| PR-15 | Present | S3 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
+| PR-14 | Audit | S2 | ✅ | ✅ / ✅ (S2 restyle) | ✅ no new | ✅ 1440 / ⚠️ 390 (re-run: 1440 ✅; 390 flaky, see below) |
+| PR-15 | Present | S3 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 (re-run 2026-09-29: ✅ / ✅) |
 | PR-16 | Standards Library | L1 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
 | PR-17 | Tech Stacks | L2 | ✅ | ✅ / ✅ | ✅ better | ✅ 1440 / ✅ 390 |
 | PR-18 | Build Books | L3 | ✅ | ✅ / ✅ (L3 restyle) | ✅ 0 violations | ✅ 1440 / ✅ 390 |
 | PR-19 | Gallery | L4 | ✅ | ✅ / ✅ (L4 restyle) | ✅ no new | ✅ 1440 / ✅ 390 |
 | PR-20 | Settings and admin | L5 | ✅ | ✅ / ✅ (L5 restyle) | ✅ better (auth 0) | ✅ 1440 / ✅ 390 |
 | PR-21 | Public | P1 | ✅ | ✅ / ✅ (P1 restyle) | ✅ legal 0, landing no new | ✅ 1440 / ✅ 390 |
-| PR-22 | Shell (new) | F3, F3b, F6 | n/a | ✅ shell suite 105 passed / 0 failed | ✅ shell axe 0 violations | ✅ 1440 / ❌ 390 (remount: MobileTabBar test blocked by canvas content, see below) |
+| PR-22 | Shell (new) | F3, F3b, F6 | n/a | ✅ shell suite 105 passed / 0 failed | ✅ shell axe 0 violations | ✅ 1440 / ✅ 390 (re-run: shell 47+33 desktop, 54+33 mobile, incl. remount MobileTabBar) |
 
 ## Runs
 
@@ -70,3 +70,23 @@ Failures (390, us6.onboarding):
 ### Test fixes (e2e/new/us4.versions.spec.ts, both were strict-mode locator ambiguities, assertions unchanged in intent)
 - NV-01: `strip.getByText("First release")` matched the sr-only "Milestone: First release" plus the visible label (added by P1 a11y); now `{ exact: true }`.
 - NV-05: `getByText("Release v1.0.1 first")` matched two elements (summary and check row); now `.first()`.
+
+
+## Targeted re-run after fixes (T071), 2026-09-29, local stack, `wp/rerun`
+
+Scope: N3 review fixes plus mobile shell fixes (isolate, `--shell-bottom-inset`, tab bar label truncation). One fresh stack per chunk, `--workers=1`, APP=new.
+
+| File(s) | 1440 | 390 |
+|---|---|---|
+| shell: axe-shell, mobile-reach, redirects | 47 passed, 9 skipped | 54 passed, 2 skipped |
+| shell/remount (MobileTabBar test now passes) + us6.onboarding | 33 passed, 1 skipped | 32 passed, 1 skipped, **1 failed (NO-03)**; NO-01 now passes |
+| us4.versions + us5.assurance (NV-05 passed, not flaky in this run) | 91 passed | 91 passed |
+| pr-08, pr-11, pr-12 | 3 passed | 3 passed |
+| pr-14, pr-15, pr-01 | 3 passed | 2 passed, **1 flaky (pr-14)** |
+
+Fixed: (1) remount MobileTabBar (Canvas content over the tab bar), (2) NO-01 Cancel button covered by the fixed bars. The Assurance tab bar no longer overflows. PR-15 fullscreen preview and pr-01 mobile primary action pass at 390 with `<main>` isolating.
+
+Open:
+- **NO-03 (390), `e2e/new/us6.onboarding.spec.ts` "a running run shows the log region waiting for progress":** `scrollWidth - clientWidth` is 19 (max 1). Not the tab bar any more. Cause: `app/frontend-new/src/components/shell/Stepper.tsx` renders `<li className="flex-1">` for 5 steps with no `min-w-0`, and the step labels ("4. Review output", "5. Open pull requests") are not truncated, so the step list is about 409 px wide at 390. Fix in the app: `min-w-0` on the `li`/button, and truncate or wrap the labels.
+- **PR-14 (390), `e2e/regression/pr-14.spec.ts` flaky:** fails about 1 in 3 runs (mobile only; desktop 5/5 pass). Failure: after opening the "Select session" combobox and pressing Escape, `getByRole('button', { name: 'Start New Audit' })` is not found for 60 s; the snapshot shows the combobox still `expanded`, so the Select popover did not close and the page stays aria-hidden. Also reproduced on the pre-fix commit 8d4e595 (2 of 6 failed), so it predates the mobile shell fixes and the N3 fixes. Likely an Escape-versus-Radix-Select-open race on touch emulation; a test-side wait on the open listbox, or an app-side fix, is needed. No assertion changed.
+- NV-05 (us4.versions): passed on both viewports in the re-run (no failure to characterize).
