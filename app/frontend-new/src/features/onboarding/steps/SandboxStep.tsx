@@ -80,7 +80,9 @@ export function SandboxStep({
   );
 
   const blobLines = React.useMemo(() => (run.log_blob ? run.log_blob.split("\n").filter(Boolean) : []), [run.log_blob]);
-  const logLines: string[] = lines.length > 0 ? lines.map((l) => l.text) : blobLines;
+  // Live lines stay until the run has stopped and its stored log has arrived.
+  const logLines: string[] =
+    !running && blobLines.length > 0 ? blobLines : lines.length > 0 ? lines.map((l) => l.text) : blobLines;
 
   return (
     <div className="flex flex-col gap-4">
