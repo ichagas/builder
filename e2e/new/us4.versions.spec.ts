@@ -33,7 +33,7 @@ test.describe("NV-01: version timeline", () => {
     const strip = page.getByRole("tablist", { name: "Version timeline" });
     await expect(strip.getByRole("tab", { name: /v1\.4\.2/ })).toHaveAttribute("aria-selected", "true");
     await expect(strip.getByRole("tab", { name: /v1\.5\.0/ })).toBeVisible();
-    await expect(strip.getByText("First release")).toBeVisible();
+    await expect(strip.getByText("First release", { exact: true })).toBeVisible();
   });
 
   test("selecting a version on the strip opens All versions", async ({ page }) => {
@@ -285,7 +285,7 @@ test.describe("NV-05 release", () => {
     await page.goto(nextUrl);
 
     await expect(page.getByRole("heading", { name: "Release v1.1.0", level: 1 })).toBeVisible();
-    await expect(page.getByText("Release v1.0.1 first")).toBeVisible();
+    await expect(page.getByText("Release v1.0.1 first").first()).toBeVisible();
     await expect(page.getByTestId("release-checks").locator("[data-check='no-open-earlier-version']")).toHaveAttribute(
       "data-state",
       "fail",
