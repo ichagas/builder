@@ -115,5 +115,65 @@
       },
       "loading": "Loading portfolio…"
     }
+  },
+  "versions": {
+    "crumb": "Versions",
+    "title": {
+      "current": "Current release {{version}}",
+      "building": "Before first release",
+      "default": "All versions"
+    },
+    "loading": "Loading versions…",
+    "error": {
+      "title": "Couldn't load versions",
+      "description": "Try again in a moment."
+    },
+    "buildingBanner": {
+      "title": "Everything you build now becomes {{version}}",
+      "body": "After the first release, each bug fix, enhancement and feature is scheduled into a new version. Released versions are read-only."
+    },
+    "triageBanner": {
+      "title_one": "{{count}} request isn't scheduled",
+      "title_other": "{{count}} requests aren't scheduled",
+      "body": "Choose a version for each one. High-severity bugs can go into a hotfix."
+    },
+    "notScheduled": {
+      "heading": "Not scheduled"
+    },
+    "triage": {
+      "suggestHotfix": "Suggested: hotfix, because this is a high-severity bug.",
+      "suggestNextBug": "Suggested: next release. Use a hotfix only for high-severity bugs.",
+      "suggestNext": "Suggested: next release.",
+      "scheduleIn": "Schedule in {{version}}",
+      "addToHotfix": "Add to hotfix {{version}}",
+      "startHotfix": "Start a hotfix",
+      "decline": "Decline",
+      "declineConfirm": "Decline this change?",
+      "scheduledUndo": "{{key}} scheduled",
+      "declinedUndo": "{{key}} declined"
+    },
+    "inProgress": {
+      "heading": "In progress"
+    },
+    "lane": {
+      "building": "First release",
+      "hotfix": "Hotfix",
+      "next": "Next release",
+      "planned": "Planned",
+      "changeCount_one": "{{count}} change",
+      "changeCount_other": "{{count}} changes",
+      "activeCount_one": "{{count}} ready",
+      "activeCount_other": "{{count}} ready",
+      "firstRelease": "First release",
+      "currentRelease": "Current release",
+      "released": "Released"
+    },
+    "released": {
+      "heading": "Released"
+    },
+    "empty": {
+      "title": "No versions yet",
+      "description": "Versions appear here once this project starts building."
+    }
   }
 }

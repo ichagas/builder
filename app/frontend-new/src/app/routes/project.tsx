@@ -27,6 +27,7 @@ const Deploy = lazyWithRetry(() => import("@/pages/project/Deploy"));
 const Audit = lazyWithRetry(() => import("@/pages/project/Audit"));
 const Present = lazyWithRetry(() => import("@/pages/project/Present"));
 const ProjectSettings = lazyWithRetry(() => import("@/pages/project/ProjectSettings"));
+const Versions = lazyWithRetry(() => import("@/pages/project/Versions"));
 
 /**
  * Project settings row (T041, WP-P3). See contracts/routes.md §1:
@@ -41,6 +42,20 @@ export const PROJECT_SETTINGS_ROUTE: SimpleRoute = {
   title: "Project Settings",
   usePrimaryAction: useNoPrimaryAction,
   Component: ProjectSettings,
+};
+
+/**
+ * All versions row (T110, WP-V1, NV-02). See contracts/routes.md §1:
+ * "-- (new, US4) | `/p/:id/versions`, ... | Project | WP-V1...V4". Lives
+ * outside `PROJECT_TOOL_ROUTES` for the same reason `PROJECT_SETTINGS_ROUTE`
+ * does -- it isn't a phase/tool under `v/current/...` -- so `app/router.tsx`
+ * mounts it as its own child route of `ProjectLayout`.
+ */
+export const PROJECT_VERSIONS_ROUTE: SimpleRoute = {
+  path: "versions",
+  title: "All versions",
+  usePrimaryAction: useNoPrimaryAction,
+  Component: Versions,
 };
 
 /**

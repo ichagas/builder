@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Outlet, useLocation, useParams } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell/AppShell";
 import { GlobalBar } from "@/components/shell/GlobalBar";
@@ -18,14 +18,26 @@ import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { useShareToken } from "@/hooks/useShareToken";
 import { useRealtimeProject } from "@/hooks/useRealtimeProject";
 import type { Database } from "@/integrations/pronghorn-api/types";
+import { useVersions } from "@/features/versions/api";
+import { useRealtimeVersions } from "@/features/versions/useRealtimeVersions";
+import { buildTimeline, modeKindFor } from "@/features/versions/timeline";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 
 /**
- * A single "Building" version until B1 ships the versions feature (D-7,
- * T110+) -- see the doc comment on ProjectLayout below.
+ * The "current version" a project route is scoped to. Backed by real data
+ * from `GET /projects/:projectId/versions` (T110, WP-V1) via
+ * `buildTimeline` -- `id`/`label` fall back to a single synthetic
+ * "Building" node (D-7) for a project with no `versions` rows yet (before
+ * B1's first release, or before this migration ran for it).
  */
-export const CURRENT_VERSION = { id: "building", label: "Building" } as const;
+export interface CurrentVersionInfo {
+  id: string;
+  label: string;
+}
+
+/** Fallback used before the versions query resolves, and by tests/stories that don't stub it. */
+export const CURRENT_VERSION: CurrentVersionInfo = { id: "building", label: "Building" };
 
 /**
  * ProjectLayoutData (T041). What `ProjectLayout` loads once for every
@@ -46,7 +58,7 @@ export interface ProjectLayoutData {
   shareToken: string | null;
   isTokenSet: boolean;
   tokenMissing: boolean;
-  currentVersion: typeof CURRENT_VERSION;
+  currentVersion: CurrentVersionInfo;
   refreshProject: () => void;
 }
 
@@ -62,18 +74,26 @@ export function useProjectLayoutData(): ProjectLayoutData {
 }
 
 /**
- * ProjectLayout (T033/T041). See contracts/routes.md §1, "Layout: Project":
- * `/p/:projectId/v/current/<phase>/<tool>` and `/p/:projectId/settings`.
+ * ProjectLayout (T033/T041, versions wiring T110/WP-V1). See
+ * contracts/routes.md §1, "Layout: Project": `/p/:projectId/v/current/
+ * <phase>/<tool>`, `/p/:projectId/settings` and (new, US4) `/p/:projectId/
+ * versions`. `v/current` always resolves to whichever version
+ * `currentVersion` names (routes.md), so the phase/tool URLs don't change
+ * even though the version they scope to is now real.
  *
- * Per D-7 there is a single "Building" version until B1 ships the versions
- * feature (T110+), so the Rail/TimelineStrip here show one building node
- * and phase state is just "active" (matches the current URL) vs "todo" —
- * done/skipped only become meaningful once versions carry real change
- * tracking.
+ * The Rail/TimelineStrip below render the real version timeline (`GET
+ * /projects/:projectId/versions`, NV-01) via `buildTimeline` -- a project
+ * with no `versions` rows yet falls back to the single "Building" node
+ * D-7 describes. Per-version scoping of the phase tools themselves (an
+ * open version's changes shown above the existing tool, a released
+ * version's read-only banner) is WP-V4 (T113-T114), not this task --
+ * phase state here is still just "active" (matches the current URL) vs
+ * "todo".
  */
 export function ProjectLayout() {
   const { projectId = "" } = useParams<{ projectId: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const openPalette = useOpenCommandPalette();
 
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
@@ -83,6 +103,10 @@ export function ProjectLayout() {
     shareToken,
     !!projectId && isTokenSet,
   );
+
+  const { data: versions } = useVersions(projectId || undefined, shareToken);
+  useRealtimeVersions(projectId || undefined);
+  const timeline = React.useMemo(() => buildTimeline(versions ?? []), [versions]);
 
   // Same RPC ProjectSettings has always used to gate its owner-only
   // sections (`authorize_project_access`) -- loaded once here so every
@@ -102,6 +126,11 @@ export function ProjectLayout() {
   });
   const isOwner = role === "owner";
 
+  const currentVersion: CurrentVersionInfo = React.useMemo(
+    () => ({ id: timeline.currentId, label: timeline.currentLabel }),
+    [timeline.currentId, timeline.currentLabel],
+  );
+
   const projectLayoutData: ProjectLayoutData = React.useMemo(
     () => ({
       projectId,
@@ -113,10 +142,10 @@ export function ProjectLayout() {
       shareToken,
       isTokenSet,
       tokenMissing,
-      currentVersion: CURRENT_VERSION,
+      currentVersion,
       refreshProject,
     }),
-    [projectId, project, isProjectLoading, role, isRoleLoading, isOwner, shareToken, isTokenSet, tokenMissing, refreshProject],
+    [projectId, project, isProjectLoading, role, isRoleLoading, isOwner, shareToken, isTokenSet, tokenMissing, currentVersion, refreshProject],
   );
 
   // Read-only access banner (T041): informs viewer/editor share-token
@@ -159,23 +188,35 @@ export function ProjectLayout() {
   );
   usePublishCommandPaletteItems(paletteItems);
 
+  // No per-version phase/tool routes yet (WP-V4, T113-T114): selecting any
+  // node on the strip takes you to the All versions page (NV-02), the one
+  // place to see/triage a version other than the current one right now.
+  const goToVersions = React.useCallback(() => navigate(`/p/${projectId}/versions`), [navigate, projectId]);
+
+  const versionCardText =
+    timeline.currentKind === "building"
+      ? `Everything you build now becomes ${timeline.currentLabel}.`
+      : `Current release ${timeline.currentLabel}.`;
+
   return (
     <ProjectLayoutContext.Provider value={projectLayoutData}>
       <AppShell
-        globalBar={<GlobalBar onSearch={openPalette} mode={{ kind: "building", label: "Building" }} statusPill={<StatusCenter />} />}
+        globalBar={
+          <GlobalBar
+            onSearch={openPalette}
+            mode={{ kind: modeKindFor(timeline.currentKind), label: timeline.currentLabel }}
+            statusPill={<StatusCenter />}
+          />
+        }
         rail={
           <Rail
             sections={[{ id: "versions", label: "All versions", href: `/p/${projectId}/versions` }]}
             phases={phases}
-            versionCard={<span className="text-xs text-rail-muted">One building version — versions ship in a later milestone.</span>}
+            versionCard={<span className="text-xs text-rail-muted">{versionCardText}</span>}
           />
         }
         timeline={
-          <TimelineStrip
-            nodes={[{ id: "building", label: "Building", kind: "building" }]}
-            selectedId="building"
-            onSelect={() => {}}
-          />
+          <TimelineStrip nodes={timeline.nodes} flags={timeline.flags} selectedId={timeline.currentId} onSelect={goToVersions} />
         }
         mobileTabBar={
           <MobileTabBar

@@ -184,4 +184,49 @@ VALUES
   ('00000000-0000-4000-8000-000000000824', '00000000-0000-4000-8000-000000000813', 'github', 'e2e-goa/licensing-api', 'main', 'github_actions', 'java', 'Java 21', 'api', '2026.2', NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- US4 Versions and changes (T110, WP-V1) -------------------------------------
+-- Its own project (not the shared baseline project 101): a real version
+-- timeline and triage inbox here must never shift a PR-xx regression spec
+-- that navigates the baseline project's `v/current/...` routes (those keep
+-- exercising the D-7 "no versions yet" -> single "Building" node fallback).
+INSERT INTO public.projects (id, name, description, org_id, created_by, organization)
+VALUES (
+  '00000000-0000-4000-8000-000000000102',
+  'E2E Versions Project',
+  'Seeded baseline project for the US4 versions/triage e2e coverage (NV-01, NV-02).',
+  '00000000-0000-4000-8000-000000000001',
+  '00000000-0000-4000-8000-0000000000a1',
+  'E2E Test Org'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- One released "current" version (with the first-release flag) and one
+-- open "next" version work is scheduled into -- NV-01's timeline needs
+-- both a released node and an open one to show something other than the
+-- D-7 fallback.
+INSERT INTO public.versions (id, project_id, name, kind, is_current, is_first_release, released_at, git_tag)
+VALUES
+  ('00000000-0000-4000-8000-000000000901', '00000000-0000-4000-8000-000000000102', 'v1.4.2', 'released', true, true, now() - interval '60 days', 'v1.4.2'),
+  ('00000000-0000-4000-8000-000000000902', '00000000-0000-4000-8000-000000000102', 'v1.5.0', 'next', false, false, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- Triage inbox (NV-02): a high-severity bug (suggests a hotfix) and an
+-- enhancement with no severity (suggests the next open version), both
+-- unscheduled (version_id NULL, status 'triage'); plus one change already
+-- scheduled into v1.5.0 so the "In progress" lane shows a non-zero count.
+INSERT INTO public.work_items (id, project_id, key, version_id, type, severity, title, source, evidence, status)
+VALUES
+  ('00000000-0000-4000-8000-000000000911', '00000000-0000-4000-8000-000000000102', 'WI-1', NULL, 'bug', 'high',
+   'Confirmation email shows the wrong submission date', 'Reported by the test team',
+   'Applicants use this date as proof they applied before the deadline. Dates are sent in UTC, so after 5pm the email shows tomorrow''s date.',
+   'triage'),
+  ('00000000-0000-4000-8000-000000000912', '00000000-0000-4000-8000-000000000102', 'WI-2', NULL, 'enhancement', NULL,
+   'Show the eligibility result faster', 'Requested by the caseworker lead',
+   'Applicants wait about 3 seconds for the result today.',
+   'triage'),
+  ('00000000-0000-4000-8000-000000000913', '00000000-0000-4000-8000-000000000102', 'WI-3', '00000000-0000-4000-8000-000000000902', 'feature', NULL,
+   'Applicants can save a draft and return later', 'Requested by the program area', NULL,
+   'active')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
