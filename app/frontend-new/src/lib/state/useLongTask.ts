@@ -97,6 +97,26 @@ export function startLongTask(input: StartLongTaskInput): LongTaskHandle {
   };
 }
 
+/**
+ * Settles a task that is still running (no-op for unknown or already
+ * settled ids), so an independent tracker and the screen that started the
+ * task can both report the outcome without restarting it.
+ */
+export function settleLongTask(id: string, status: "done" | "failed"): void {
+  const existing = tasks.get(id);
+  if (!existing || existing.status !== "running") return;
+  setTask(id, { status });
+  setTimeout(() => {
+    tasks.delete(id);
+    notify();
+  }, FINISHED_RETENTION_MS);
+}
+
+/** Removes a task from the list without recording an outcome. */
+export function cancelLongTask(id: string): void {
+  if (tasks.delete(id)) notify();
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);

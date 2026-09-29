@@ -11,6 +11,7 @@ import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { TeamSwitcher } from "@/components/assurance/TeamSwitcher";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useTeamsMine } from "@/features/assurance/api";
+import { useOnboardingRunTracker } from "@/features/onboarding/useOnboardingRunTracker";
 import type { CommandPaletteItem } from "@/components/shell/CommandPalette";
 
 /**
@@ -43,6 +44,7 @@ export function AssuranceLayout() {
     hint: "Team",
   }));
   usePublishCommandPaletteItems(paletteItems);
+  useOnboardingRunTracker();
 
   const portfolioHref = teamId ? `/assurance/t/${teamId}` : teams[0] ? `/assurance/t/${teams[0].id}` : "/assurance";
   const onboardHref = teamId ? `/assurance/t/${teamId}/onboard` : teams[0] ? `/assurance/t/${teams[0].id}/onboard` : "/assurance";

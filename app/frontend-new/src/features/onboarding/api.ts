@@ -115,14 +115,17 @@ export const onboardingKeys = {
   azureImport: (teamId: string, query: string) => ["onboarding", "azure-repos", teamId, query] as const,
 };
 
+/** GET /onboarding/runs/:id, parsed. Shared by the wizard and the long-task tracker. */
+export async function fetchOnboardingRun(runId: string): Promise<OnboardingRun> {
+  const data = await apiClient.get<unknown>(`/api/v1/onboarding/runs/${runId}`);
+  return onboardingRunSchema.parse(data);
+}
+
 /** GET /onboarding/runs/:id -- wizard state (NO-01, NO-02). */
 export function useOnboardingRun(runId: string | undefined): UseQueryResult<OnboardingRun> {
   return useQuery({
     queryKey: onboardingKeys.run(runId ?? ""),
-    queryFn: async () => {
-      const data = await apiClient.get<unknown>(`/api/v1/onboarding/runs/${runId}`);
-      return onboardingRunSchema.parse(data);
-    },
+    queryFn: () => fetchOnboardingRun(runId as string),
     enabled: !!runId,
     // Fallback for a dropped realtime connection while the sandbox job runs
     // (T151): the run's status is the source of truth, the channel only adds

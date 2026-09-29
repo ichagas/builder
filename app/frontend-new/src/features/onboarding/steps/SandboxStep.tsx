@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NextStepBanner } from "@/components/shell/NextStepBanner";
 import { ActionButton } from "@/components/shell/ActionButton";
 import { EmptyState } from "@/components/shell/atoms";
-import { useLongTask } from "@/lib/state/useLongTask";
+import { settleLongTask, useLongTask } from "@/lib/state/useLongTask";
 import { usePublishOnboardingWizardPrimaryAction } from "@/pages/assurance/onboardingWizard.primaryAction";
 import type { OnboardingRun } from "../api";
 import { extractErrorMessage } from "../errors";
@@ -37,23 +37,22 @@ export function SandboxStep({
 
   // Register the sandbox run as a long task while it runs and settle it when
   // the status leaves "running" (a run that was already finished when the
-  // page opened never had a task, so nothing is settled for it). Leaving the
-  // wizard mid-run just stops updating: the job keeps running server-side.
-  const wasRunning = React.useRef(false);
+  // page opened never had a task, so settling is a no-op). Leaving the wizard
+  // mid-run is covered by `useOnboardingRunTracker` (AssuranceLayout), which
+  // keeps polling the run and settles the task; the job keeps running
+  // server-side either way.
   React.useEffect(() => {
-    const input = {
-      id: `onboarding-${run.id}`,
-      label: t("onboarding.sandbox.longTask", { name: run.application_name }),
-      channel: `onboarding-${run.id}`,
-    };
+    const id = `onboarding-${run.id}`;
     if (run.status === "running") {
-      wasRunning.current = true;
-      startLongTask(input);
-    } else if (wasRunning.current && (run.status === "ready" || run.status === "failed")) {
-      wasRunning.current = false;
-      const handle = startLongTask(input);
-      if (run.status === "ready") handle.done();
-      else handle.fail();
+      startLongTask({
+        id,
+        label: t("onboarding.sandbox.longTask", { name: run.application_name }),
+        channel: id,
+      });
+    } else if (run.status === "ready") {
+      settleLongTask(id, "done");
+    } else if (run.status === "failed" || run.status === "cancelled") {
+      settleLongTask(id, "failed");
     }
   }, [run.status, run.id, run.application_name, startLongTask, t]);
 
