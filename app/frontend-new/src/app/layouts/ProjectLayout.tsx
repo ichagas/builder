@@ -21,6 +21,7 @@ import type { Database } from "@/integrations/pronghorn-api/types";
 import { useVersions } from "@/features/versions/api";
 import { useRealtimeVersions } from "@/features/versions/useRealtimeVersions";
 import { buildTimeline, modeKindFor } from "@/features/versions/timeline";
+import { SCOPED_TOOL_PATH, TOOL_PATH } from "./toolPaths";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 
@@ -169,7 +170,7 @@ export function ProjectLayout() {
   ) : null;
 
   // NV-06 (WP-V4): `/p/:id/v/<versionId>/<phase>/<tool>` is the same tool scoped to that version.
-  const scopedToolMatch = /^\/p\/[^/]+\/v\/(?!current\/)[^/]+\/([^/]+)\/([^/]+)/.exec(location.pathname);
+  const scopedToolMatch = SCOPED_TOOL_PATH.exec(location.pathname);
   const phases: RailPhase[] = PHASE_ORDER.map(({ id, label }) => {
     const firstTool = PROJECT_TOOL_ROUTES.find((route) => route.phase === id)?.tool ?? "";
     const href = `/p/${projectId}/v/current/${id}/${firstTool}`;
@@ -193,7 +194,7 @@ export function ProjectLayout() {
   // No per-version phase/tool routes yet (WP-V4, T113-T114): selecting any
   // node on the strip takes you to the All versions page (NV-02), the one
   // place to see/triage a version other than the current one right now.
-  const toolMatch = /^\/p\/[^/]+\/v\/[^/]+\/([^/]+)\/([^/]+)/.exec(location.pathname);
+  const toolMatch = TOOL_PATH.exec(location.pathname);
   const goToVersions = React.useCallback(
     (nodeId?: string) => {
       // NV-06: on a phase tool, selecting another version reopens the same tool scoped to it.
