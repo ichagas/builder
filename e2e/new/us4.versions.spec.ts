@@ -204,6 +204,132 @@ test.describe("NV-06 version scoping", () => {
         const results = await new AxeBuilder({ page }).analyze();
         const description = results.violations
           .map((v) => `[${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+          .join("\n");
+        expect(results.violations, description).toEqual([]);
+      });
+    }
+  });
+});
+
+// ===========================================================================
+// NV-05 release (T112, WP-V3). Own seed projects (e2e/seed.sql ids 930..93f):
+// no repository is linked (a real merge/tag needs GitHub), so the release
+// itself is exercised with the checks GET and the release POST mocked; the
+// checks, ordering, carry-over and read-only states use the real backend.
+// ===========================================================================
+test.describe("NV-05 release", () => {
+  const FIRST = seed.releaseFirstProjectId;
+  const ORDERED = seed.releaseOrderedProjectId;
+  const firstUrl = `/p/${FIRST}/v/v1.0.0/ship/release`;
+  const nextUrl = `/p/${ORDERED}/v/v1.1.0/ship/release`;
+  const hotfixUrl = `/p/${ORDERED}/v/v1.0.1/ship/release`;
+
+  test("first release: an unfinished change and a missing repository block it", async ({ page }) => {
+    await page.goto(firstUrl);
+
+    await expect(page.getByRole("heading", { name: "Release v1.0.0", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Release checks for v1.0.0" })).toBeVisible();
+
+    const checks = page.getByTestId("release-checks");
+    await expect(checks.locator("[data-check='work-items-resolved']")).toHaveAttribute("data-state", "fail");
+    await expect(checks.locator("[data-check='repository-linked']")).toHaveAttribute("data-state", "fail");
+    await expect(page.getByRole("button", { name: "Release v1.0.0" })).toBeDisabled();
+
+    // Drafted notes list the shipped change; carry-over only applies after the first release.
+    await expect(page.getByTestId("release-notes").getByText("Applicants can upload supporting documents")).toBeVisible();
+    await expect(page.getByTestId("release-carry")).toHaveCount(0);
+  });
+
+  test("versions release in order: v1.1.0 is blocked by the open hotfix v1.0.1", async ({ page }) => {
+    await page.goto(nextUrl);
+
+    await expect(page.getByRole("heading", { name: "Release v1.1.0", level: 1 })).toBeVisible();
+    await expect(page.getByText("Release v1.0.1 first")).toBeVisible();
+    await expect(page.getByTestId("release-checks").locator("[data-check='no-open-earlier-version']")).toHaveAttribute(
+      "data-state",
+      "fail",
+    );
+    await expect(page.getByRole("button", { name: "Release v1.1.0" })).toBeDisabled();
+
+    await page.getByRole("link", { name: "Open release v1.0.1" }).click();
+    await expect(page).toHaveURL(new RegExp(`/p/${ORDERED}/v/v1\\.0\\.1/ship/release$`));
+    await expect(page.getByRole("heading", { name: "Release v1.0.1", level: 1 })).toBeVisible();
+  });
+
+  test("shows the unfinished change carrying over to the next version", async ({ page }) => {
+    await page.goto(nextUrl);
+
+    const carry = page.getByTestId("release-carry");
+    await expect(carry.getByText("1 unfinished change moves to v1.2.0 when you release.")).toBeVisible();
+    await expect(carry.getByText("Add a print view for the decision letter")).toBeVisible();
+    await expect(page.getByTestId("release-notes").getByText("Status page shows a stale case count")).toBeVisible();
+  });
+
+  test("a released version is read-only", async ({ page }) => {
+    await page.goto(`/p/${ORDERED}/v/v1.0.0/ship/release`);
+
+    await expect(page.getByText("v1.0.0 is released and read-only")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Release v1\.0\.0/ })).toHaveCount(0);
+  });
+
+  test("release needs a second confirming click and goes to All versions", async ({ page }) => {
+    let releasePosts = 0;
+    await page.route("**/release-checks**", (route) =>
+      route.fulfill({
+        json: {
+          projectId: ORDERED,
+          canRelease: true,
+          checks: [{ id: "repository-linked", label: "A repository is linked for tagging and merges", passed: true }],
+        },
+      }),
+    );
+    await page.route(`**/versions/${seed.releaseOrderedHotfixVersionId}/release**`, (route) => {
+      releasePosts += 1;
+      return route.fulfill({
+        json: {
+          version: {
+            id: seed.releaseOrderedHotfixVersionId,
+            project_id: ORDERED,
+            name: "v1.0.1",
+            kind: "released",
+            is_current: true,
+            is_first_release: false,
+            released_at: new Date().toISOString(),
+            released_by: null,
+            release_notes: "- Fixed: Confirmation email drops the case number",
+            git_tag: "v1.0.1",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            deployTriggered: false,
+            deployReason: "no-deployment-configured",
+          },
+          carriedOverWorkItemIds: [],
+        },
+      });
+    });
+
+    await page.goto(hotfixUrl);
+    await page.getByRole("button", { name: "Release v1.0.1" }).click();
+    // First click only asks to confirm.
+    await expect(page.getByRole("button", { name: "Confirm: release v1.0.1" })).toBeVisible();
+    expect(releasePosts).toBe(0);
+
+    await page.getByRole("button", { name: "Confirm: release v1.0.1" }).click();
+    await expect(page).toHaveURL(new RegExp(`/p/${ORDERED}/versions$`));
+    expect(releasePosts).toBe(1);
+  });
+
+  test("the release page has zero axe violations", async ({ page }, testInfo) => {
+    await page.goto(nextUrl);
+    await expect(page.getByRole("heading", { name: "Release checks for v1.1.0" })).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    const description = results.violations
+      .map((v) => `[${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+      .join("\n");
+    expect(results.violations, description).toEqual([]);
+  });
+});
 
 // =============================================================================
 // WP-V2 (T111): NV-03/NV-04 change page. Appended block; WP-V3/WP-V4 append
@@ -385,125 +511,5 @@ test.describe("NV-03/NV-04 change page axe: zero violations", () => {
         expect(results.violations, description).toEqual([]);
       });
     }
-
-// ====================================================================
-// NV-05 release (T112, WP-V3). Own seed projects (e2e/seed.sql ids 930..93f):
-// no repository is linked (a real merge/tag needs GitHub), so the release
-// itself is exercised with the checks GET and the release POST mocked; the
-// checks, ordering, carry-over and read-only states use the real backend.
-// ===========================================================================
-test.describe("NV-05 release", () => {
-  const FIRST = seed.releaseFirstProjectId;
-  const ORDERED = seed.releaseOrderedProjectId;
-  const firstUrl = `/p/${FIRST}/v/v1.0.0/ship/release`;
-  const nextUrl = `/p/${ORDERED}/v/v1.1.0/ship/release`;
-  const hotfixUrl = `/p/${ORDERED}/v/v1.0.1/ship/release`;
-
-  test("first release: an unfinished change and a missing repository block it", async ({ page }) => {
-    await page.goto(firstUrl);
-
-    await expect(page.getByRole("heading", { name: "Release v1.0.0", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Release checks for v1.0.0" })).toBeVisible();
-
-    const checks = page.getByTestId("release-checks");
-    await expect(checks.locator("[data-check='work-items-resolved']")).toHaveAttribute("data-state", "fail");
-    await expect(checks.locator("[data-check='repository-linked']")).toHaveAttribute("data-state", "fail");
-    await expect(page.getByRole("button", { name: "Release v1.0.0" })).toBeDisabled();
-
-    // Drafted notes list the shipped change; carry-over only applies after the first release.
-    await expect(page.getByTestId("release-notes").getByText("Applicants can upload supporting documents")).toBeVisible();
-    await expect(page.getByTestId("release-carry")).toHaveCount(0);
-  });
-
-  test("versions release in order: v1.1.0 is blocked by the open hotfix v1.0.1", async ({ page }) => {
-    await page.goto(nextUrl);
-
-    await expect(page.getByRole("heading", { name: "Release v1.1.0", level: 1 })).toBeVisible();
-    await expect(page.getByText("Release v1.0.1 first")).toBeVisible();
-    await expect(page.getByTestId("release-checks").locator("[data-check='no-open-earlier-version']")).toHaveAttribute(
-      "data-state",
-      "fail",
-    );
-    await expect(page.getByRole("button", { name: "Release v1.1.0" })).toBeDisabled();
-
-    await page.getByRole("link", { name: "Open release v1.0.1" }).click();
-    await expect(page).toHaveURL(new RegExp(`/p/${ORDERED}/v/v1\\.0\\.1/ship/release$`));
-    await expect(page.getByRole("heading", { name: "Release v1.0.1", level: 1 })).toBeVisible();
-  });
-
-  test("shows the unfinished change carrying over to the next version", async ({ page }) => {
-    await page.goto(nextUrl);
-
-    const carry = page.getByTestId("release-carry");
-    await expect(carry.getByText("1 unfinished change moves to v1.2.0 when you release.")).toBeVisible();
-    await expect(carry.getByText("Add a print view for the decision letter")).toBeVisible();
-    await expect(page.getByTestId("release-notes").getByText("Status page shows a stale case count")).toBeVisible();
-  });
-
-  test("a released version is read-only", async ({ page }) => {
-    await page.goto(`/p/${ORDERED}/v/v1.0.0/ship/release`);
-
-    await expect(page.getByText("v1.0.0 is released and read-only")).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Release v1\.0\.0/ })).toHaveCount(0);
-  });
-
-  test("release needs a second confirming click and goes to All versions", async ({ page }) => {
-    let releasePosts = 0;
-    await page.route("**/release-checks**", (route) =>
-      route.fulfill({
-        json: {
-          projectId: ORDERED,
-          canRelease: true,
-          checks: [{ id: "repository-linked", label: "A repository is linked for tagging and merges", passed: true }],
-        },
-      }),
-    );
-    await page.route(`**/versions/${seed.releaseOrderedHotfixVersionId}/release**`, (route) => {
-      releasePosts += 1;
-      return route.fulfill({
-        json: {
-          version: {
-            id: seed.releaseOrderedHotfixVersionId,
-            project_id: ORDERED,
-            name: "v1.0.1",
-            kind: "released",
-            is_current: true,
-            is_first_release: false,
-            released_at: new Date().toISOString(),
-            released_by: null,
-            release_notes: "- Fixed: Confirmation email drops the case number",
-            git_tag: "v1.0.1",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            deployTriggered: false,
-            deployReason: "no-deployment-configured",
-          },
-          carriedOverWorkItemIds: [],
-        },
-      });
-    });
-
-    await page.goto(hotfixUrl);
-    await page.getByRole("button", { name: "Release v1.0.1" }).click();
-    // First click only asks to confirm.
-    await expect(page.getByRole("button", { name: "Confirm: release v1.0.1" })).toBeVisible();
-    expect(releasePosts).toBe(0);
-
-    await page.getByRole("button", { name: "Confirm: release v1.0.1" }).click();
-    await expect(page).toHaveURL(new RegExp(`/p/${ORDERED}/versions$`));
-    expect(releasePosts).toBe(1);
-  });
-
-  test("the release page has zero axe violations", async ({ page }, testInfo) => {
-    await page.goto(nextUrl);
-    await expect(page.getByRole("heading", { name: "Release checks for v1.1.0" })).toBeVisible();
-
-    const results = await new AxeBuilder({ page }).analyze();
-    const description = results.violations
-      .map((v) => `[${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
-      .join("\n");
-    expect(results.violations, description).toEqual([]);
-  });
-=======
   }
 });
