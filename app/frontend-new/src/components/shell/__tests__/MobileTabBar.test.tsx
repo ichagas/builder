@@ -32,4 +32,17 @@ describe("MobileTabBar", () => {
       expect(screen.getByRole("link", { name: new RegExp(item.label) })).toHaveAttribute("href", item.href);
     });
   });
+
+  it("lets items shrink (min-w-0) and keeps the full label as accessible name when a shortLabel is shown", () => {
+    render(
+      <MemoryRouter>
+        <MobileTabBar items={[...items.slice(0, 4), { id: "org", label: "Organization", shortLabel: "Org", href: "/a/all" }]} />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole("link", { name: "Organization" });
+    expect(link).toHaveClass("min-w-0", "flex-1");
+    expect(screen.getByText("Org")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("Organization")).toHaveClass("sr-only");
+    screen.getAllByRole("link").forEach((l) => expect(l).toHaveClass("min-w-0"));
+  });
 });

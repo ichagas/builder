@@ -58,6 +58,12 @@ export function AssuranceLayout() {
     ...(isAdmin ? [{ id: "organization", label: t("assurance.rail.organization"), href: "/assurance/all" }] : []),
   ];
 
+  // Five items must fit 390px: tab bar shows compact labels, accessible name stays the full label.
+  const tabItems = railSections.map((section) => ({
+    ...section,
+    shortLabel: t(`assurance.rail.short.${section.id}`),
+  }));
+
   return (
     <AppShell
       globalBar={
@@ -69,7 +75,7 @@ export function AssuranceLayout() {
         />
       }
       rail={<Rail ariaLabel={t("assurance.rail.ariaLabel")} sections={railSections} />}
-      mobileTabBar={<MobileTabBar ariaLabel={t("assurance.rail.ariaLabel")} items={railSections} />}
+      mobileTabBar={<MobileTabBar ariaLabel={t("assurance.rail.ariaLabel")} items={tabItems} />}
       undoBar={<UndoBar />}
     >
       <Outlet />

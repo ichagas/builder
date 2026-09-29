@@ -70,7 +70,15 @@ export function AppShell({
 
   return (
     <PrimaryActionProvider>
-      <div className={cn("flex min-h-dvh flex-col bg-bg text-ink", className)}>
+      <div
+        className={cn(
+          "flex min-h-dvh flex-col bg-bg text-ink",
+          // Total bottom inset covered by the fixed mobile chrome (contracts/design-system.md §2.1).
+          mobileTabBar && "[--shell-bottom-inset:calc(var(--tabbar-h)+env(safe-area-inset-bottom))]",
+          "max-md:has-[#mobile-primary-action]:[--shell-bottom-inset:calc(var(--tabbar-h)+var(--action-bar-h)+env(safe-area-inset-bottom))]",
+          className,
+        )}
+      >
         <a
           href="#page"
           className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-xs focus:bg-surface focus:px-3 focus:py-2 focus:text-ink focus:shadow"
@@ -83,9 +91,10 @@ export function AppShell({
           <div className="flex min-w-0 flex-1 flex-col">
             {timeline ? <nav aria-label={t("shell.nav.versions")}>{timeline}</nav> : null}
             <main ref={mainRef} id="page" tabIndex={-1} className={cn(
-                "min-h-0 flex-1 overflow-y-auto focus:outline-none",
-                // The fixed MobileTabBar (md:hidden) overlays the bottom of this scroller.
-                mobileTabBar && "max-md:pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))]",
+                // `max-md:isolate` contains page z-indices below the fixed bars (§2.1).
+                "min-h-0 flex-1 overflow-y-auto focus:outline-none max-md:isolate",
+                // Fixed MobileTabBar / PrimaryActionSlot overlay the bottom of this scroller.
+                "max-md:pb-[var(--shell-bottom-inset,0px)]",
               )}>
               {children ?? <Outlet />}
             </main>

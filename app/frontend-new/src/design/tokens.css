@@ -145,6 +145,7 @@
   /* Layout */
   --rail-w: 248px; --rail-w-collapsed: 76px;
   --bar-h: 52px; --timeline-h: 76px; --tabbar-h: 56px;
+  --action-bar-h: 52px; /* mobile primary action: 44px button + 8px gap */
 
   /* Elevation */
   --shadow: none;
