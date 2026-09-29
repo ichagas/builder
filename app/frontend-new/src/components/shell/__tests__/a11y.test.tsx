@@ -15,7 +15,7 @@ describe("MeshDots screen-reader semantics (T160)", () => {
   it("is one labelled image: the four letters are hidden from assistive tech", () => {
     render(<MeshDots statuses={{ green: "pass", yellow: "warn", red: "fail", blue: "skip" }} />);
     const img = screen.getByRole("img");
-    expect(img).toHaveAccessibleName("Assurance Mesh: Green Pass, Yellow Warning, Red Fail, Blue Skipped");
+    expect(img).toHaveAccessibleName("Assurance mesh: Green Pass, Yellow Warning, Red Fail, Blue Skipped");
     // children are aria-hidden, so no other accessible text nodes are exposed
     expect(img.querySelectorAll('[aria-hidden="true"]').length).toBe(4);
   });

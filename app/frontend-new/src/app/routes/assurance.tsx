@@ -1,6 +1,7 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useOnboardingWizardPrimaryAction } from "@/pages/assurance/onboardingWizard.primaryAction";
 import { useNoPrimaryAction, type SimpleRoute } from "./types";
+import i18n from "@/i18n";
 
 const TeamPortfolio = lazyWithRetry(() => import("@/pages/assurance/TeamPortfolio"));
 const Application = lazyWithRetry(() => import("@/pages/assurance/Application"));
@@ -25,18 +26,18 @@ const Policy = lazyWithRetry(() => import("@/pages/assurance/Policy"));
  * `PrimaryActionSlot` don't implement `ActionSpec.confirm`/`.undo`).
  */
 export const ASSURANCE_ROUTES: SimpleRoute[] = [
-  { path: "t/:teamId", title: "Team portfolio", usePrimaryAction: useNoPrimaryAction, Component: TeamPortfolio },
-  { path: "t/:teamId/apps/:appId", title: "Application", usePrimaryAction: useNoPrimaryAction, Component: Application },
+  { path: "t/:teamId", get title() { return i18n.t("shell.routes.teamPortfolio"); }, usePrimaryAction: useNoPrimaryAction, Component: TeamPortfolio },
+  { path: "t/:teamId/apps/:appId", get title() { return i18n.t("shell.routes.application"); }, usePrimaryAction: useNoPrimaryAction, Component: Application },
   // T132, WP-A3, NA-05: mesh runs by day + evidence (`?days=`, `?run=`).
-  { path: "t/:teamId/apps/:appId/runs", title: "Mesh runs", usePrimaryAction: useNoPrimaryAction, Component: AppRuns },
+  { path: "t/:teamId/apps/:appId/runs", get title() { return i18n.t("shell.routes.meshRuns"); }, usePrimaryAction: useNoPrimaryAction, Component: AppRuns },
   {
     path: "t/:teamId/onboard/:step?",
-    title: "Onboard an app",
+    get title() { return i18n.t("shell.routes.onboard"); },
     usePrimaryAction: useOnboardingWizardPrimaryAction,
     Component: OnboardingWizard,
   },
   // T133, WP-A4 (NA-06): organization-level pages (no team in the path).
-  { path: "packs", title: "Standards packs", usePrimaryAction: useNoPrimaryAction, Component: Packs },
-  { path: "policy", title: "Mesh policy", usePrimaryAction: useNoPrimaryAction, Component: Policy },
-  { path: "all", title: "All teams", usePrimaryAction: useNoPrimaryAction, Component: AllTeams },
+  { path: "packs", get title() { return i18n.t("shell.routes.packs"); }, usePrimaryAction: useNoPrimaryAction, Component: Packs },
+  { path: "policy", get title() { return i18n.t("shell.routes.policy"); }, usePrimaryAction: useNoPrimaryAction, Component: Policy },
+  { path: "all", get title() { return i18n.t("shell.routes.allTeams"); }, usePrimaryAction: useNoPrimaryAction, Component: AllTeams },
 ];

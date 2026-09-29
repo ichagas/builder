@@ -12,6 +12,7 @@ import { useTeamsMine, useTeamsAll, useTeamPortfolio, type PortfolioApplication,
 import { useRealtimeTeamPortfolio } from "@/features/assurance/useRealtimeTeamPortfolio";
 import { useAdmin } from "@/contexts/AdminContext";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 
 /**
  * TeamPortfolio (T130, WP-A1, NA-02). The team portfolio: applications with
@@ -31,7 +32,7 @@ function repoStack(repo: PortfolioRepository): { profile: StackProfile; label: s
   if (repo.profile === "dotnet" || repo.profile === "node" || repo.profile === "java" || repo.profile === "python") {
     return { profile: repo.profile, label: repo.stack_label ?? repo.profile };
   }
-  return { profile: FALLBACK_PROFILE, label: repo.stack_label ?? "Unclassified" };
+  return { profile: FALLBACK_PROFILE, label: repo.stack_label ?? i18n.t("assurance.app.unclassified") };
 }
 
 function adoptionSegments(repos: PortfolioRepository[]): AdoptionSegment[] {
@@ -51,7 +52,7 @@ function adoptionSegments(repos: PortfolioRepository[]): AdoptionSegment[] {
     count: byVersion.get(version) ?? 0,
     latest: version === latest,
   }));
-  if (unpinned > 0) segments.push({ version: "Unpinned", count: unpinned });
+  if (unpinned > 0) segments.push({ version: i18n.t("assurance.app.unpinned"), count: unpinned });
   return segments;
 }
 
@@ -59,9 +60,9 @@ function formatRelative(iso: string | null): string {
   if (!iso) return "";
   const ms = Date.now() - new Date(iso).getTime();
   const days = Math.floor(ms / (24 * 60 * 60 * 1000));
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
+  if (days <= 0) return i18n.t("shell.timeline.today");
+  if (days === 1) return i18n.t("shell.timeline.oneDayAgo");
+  return i18n.t("shell.timeline.daysAgo", { count: days });
 }
 
 function ApplicationRow({ app, filter, teamId }: { app: PortfolioApplication; filter: string; teamId: string }) {

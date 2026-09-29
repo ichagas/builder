@@ -142,7 +142,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 ## Phase 12: Polish
 
 - [x] T160 [P] Accessibility pass on the shell and new screens (keyboard, screen reader labels for MeshDots and TimelineStrip).
-- [ ] T161 [P] Copy pass per `contracts/design-system.md` §4 on shell and new screens.
+- [x] T161 [P] Copy pass per `contracts/design-system.md` §4 on shell and new screens.
 - [x] T162 [P] `specs/007-frontend-new/quickstart.md`: run, E2E, mock auth, seed.
 
 ## Phase R: Optional page rewrites (after cutover, one spec each)

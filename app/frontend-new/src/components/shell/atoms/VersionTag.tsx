@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * VersionTag (T023). Mono badge naming a version ("v1.0.0", "v1.1.0-rc").
@@ -15,6 +16,7 @@ export interface VersionTagProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function VersionTag({ version, locked, className, ...props }: VersionTagProps) {
+  const { t } = useTranslation();
   return (
     <span
       className={cn(
@@ -24,7 +26,7 @@ export function VersionTag({ version, locked, className, ...props }: VersionTagP
       {...props}
     >
       {version}
-      {locked ? <Lock aria-label="Locked" className="h-3.5 w-3.5" /> : null}
+      {locked ? <Lock aria-label={t("shell.locked")} className="h-3.5 w-3.5" /> : null}
     </span>
   );
 }

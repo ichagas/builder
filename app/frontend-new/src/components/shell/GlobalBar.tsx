@@ -44,7 +44,7 @@ export function GlobalBar({ switcher, mode, onSearch, statusPill, accountMenu, l
         <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-xs bg-primary text-sm font-bold text-primary-foreground">
           P
         </span>
-        <span className="hidden sm:inline">Pronghorn</span>
+        <span className="hidden sm:inline">{t("shell.brand")}</span>
       </a>
       {switcher}
       {mode ? <ModeBadge {...mode} className="hidden md:inline-flex" /> : null}

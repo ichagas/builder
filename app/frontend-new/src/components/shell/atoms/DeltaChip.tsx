@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * DeltaChip (T023). Pill used for "what changed" verdicts (new requirement,
@@ -8,12 +9,6 @@ import { cn } from "@/lib/utils";
  * `.delta-regression`, `shared/app.js` `deltaChip()`.
  */
 export type DeltaKind = "new" | "changed" | "regression";
-
-const DEFAULT_LABEL: Record<DeltaKind, string> = {
-  new: "New",
-  changed: "Changed",
-  regression: "Regression",
-};
 
 const CLASSES: Record<DeltaKind, string> = {
   new: "bg-ok-soft text-ok",
@@ -27,6 +22,7 @@ export interface DeltaChipProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function DeltaChip({ kind, children, className, ...props }: DeltaChipProps) {
+  const { t } = useTranslation();
   return (
     <span
       className={cn(
@@ -36,7 +32,7 @@ export function DeltaChip({ kind, children, className, ...props }: DeltaChipProp
       )}
       {...props}
     >
-      {children ?? DEFAULT_LABEL[kind]}
+      {children ?? t(`shell.atoms.delta.${kind}`)}
     </span>
   );
 }

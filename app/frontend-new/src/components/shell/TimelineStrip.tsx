@@ -54,7 +54,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
     const hidden = nodes.filter((_, i) => hiddenIndexes.has(i));
     const moreNode: TimelineNode = {
       id: "__more__",
-      label: `${hidden.length} more`,
+      label: t("shell.timeline.more", { count: hidden.length }),
       sub: hidden.length ? `${hidden[0].label} – ${hidden[hidden.length - 1].label}` : undefined,
       kind: "more",
     };
@@ -71,7 +71,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
       out.push(n);
     });
     return out;
-  }, [nodes, expanded, visibleHistoryCount]);
+  }, [nodes, expanded, visibleHistoryCount, t]);
 
   const flagsByAfterId = React.useMemo(() => {
     const map = new Map<string, TimelineFlag[]>();

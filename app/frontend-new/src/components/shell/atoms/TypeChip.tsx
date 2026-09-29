@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * TypeChip (T023). Change-type indicator for work items / changes.
@@ -11,13 +12,6 @@ import { cn } from "@/lib/utils";
  * `.type` rule carries no font-family override.
  */
 export type ChangeType = "bug" | "feature" | "enhancement" | "base";
-
-const LABEL: Record<ChangeType, string> = {
-  bug: "Bug",
-  feature: "Feature",
-  enhancement: "Enhancement",
-  base: "Baseline",
-};
 
 const CLASSES: Record<ChangeType, string> = {
   bug: "bg-bug-soft text-bug",
@@ -33,6 +27,7 @@ export interface TypeChipProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function TypeChip({ type, label, className, ...props }: TypeChipProps) {
+  const { t } = useTranslation();
   return (
     <span
       className={cn(
@@ -42,7 +37,7 @@ export function TypeChip({ type, label, className, ...props }: TypeChipProps) {
       )}
       {...props}
     >
-      {label ?? LABEL[type]}
+      {label ?? t(`shell.atoms.type.${type}`)}
     </span>
   );
 }

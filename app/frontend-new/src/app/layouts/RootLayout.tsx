@@ -7,6 +7,7 @@ import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { LIBRARY_ROUTES } from "@/app/routes/library";
 import type { CommandPaletteItem } from "@/components/shell/CommandPalette";
+import i18n from "@/i18n";
 
 const LIBRARY_PALETTE_ITEMS: CommandPaletteItem[] = LIBRARY_ROUTES.filter((route) => !route.path.includes(":")).map((route) => ({
   id: `library-${route.path}`,
@@ -16,7 +17,7 @@ const LIBRARY_PALETTE_ITEMS: CommandPaletteItem[] = LIBRARY_ROUTES.filter((route
 }));
 
 const ROOT_PALETTE_ITEMS: CommandPaletteItem[] = [
-  { id: "projects-home", label: "Projects", group: "projects", href: "/projects" },
+  { id: "projects-home", get label() { return i18n.t("shell.nav.projects"); }, group: "projects", href: "/projects" },
   ...LIBRARY_PALETTE_ITEMS,
 ];
 
@@ -26,7 +27,7 @@ const ROOT_PALETTE_ITEMS: CommandPaletteItem[] = [
 // "All teams" (T130), so a non-admin never even sees the entry.
 const ADMIN_INTEGRATIONS_PALETTE_ITEM: CommandPaletteItem = {
   id: "admin-integrations",
-  label: "Integrations",
+  get label() { return i18n.t("shell.nav.integrations"); },
   group: "projects",
   href: "/admin/integrations",
 };

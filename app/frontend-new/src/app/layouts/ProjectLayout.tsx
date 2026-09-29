@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppShell } from "@/components/shell/AppShell";
 import { GlobalBar } from "@/components/shell/GlobalBar";
 import { Rail } from "@/components/shell/Rail";
@@ -22,6 +23,7 @@ import { useVersions } from "@/features/versions/api";
 import { useRealtimeVersions } from "@/features/versions/useRealtimeVersions";
 import { buildTimeline, modeKindFor } from "@/features/versions/timeline";
 import { SCOPED_TOOL_PATH, TOOL_PATH } from "./toolPaths";
+import i18n from "@/i18n";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 
@@ -38,7 +40,12 @@ export interface CurrentVersionInfo {
 }
 
 /** Fallback used before the versions query resolves, and by tests/stories that don't stub it. */
-export const CURRENT_VERSION: CurrentVersionInfo = { id: "building", label: "Building" };
+export const CURRENT_VERSION: CurrentVersionInfo = {
+  id: "building",
+  get label() {
+    return i18n.t("shell.timeline.building");
+  },
+};
 
 /**
  * ProjectLayoutData (T041). What `ProjectLayout` loads once for every
@@ -92,6 +99,7 @@ export function useProjectLayoutData(): ProjectLayoutData {
  * "todo".
  */
 export function ProjectLayout() {
+  const { t } = useTranslation();
   const { projectId = "" } = useParams<{ projectId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -159,12 +167,8 @@ export function ProjectLayout() {
     <div className="px-4 pt-3">
       <NextStepBanner
         tone={role === "viewer" ? "lock" : "info"}
-        title={role === "viewer" ? "Read-only access" : "Editor access"}
-        body={
-          role === "viewer"
-            ? "You're viewing this project with a shared viewer link. Changes aren't available."
-            : "You're editing this project with a shared editor link."
-        }
+        title={t(role === "viewer" ? "shell.access.viewer.title" : "shell.access.editor.title")}
+        body={t(role === "viewer" ? "shell.access.viewer.body" : "shell.access.editor.body")}
       />
     </div>
   ) : null;
@@ -210,8 +214,8 @@ export function ProjectLayout() {
 
   const versionCardText =
     timeline.currentKind === "building"
-      ? `Everything you build now becomes ${timeline.currentLabel}.`
-      : `Current release ${timeline.currentLabel}.`;
+      ? t("shell.versionCard.building", { version: timeline.currentLabel })
+      : t("shell.versionCard.current", { version: timeline.currentLabel });
 
   return (
     <ProjectLayoutContext.Provider value={projectLayoutData}>
@@ -225,7 +229,7 @@ export function ProjectLayout() {
         }
         rail={
           <Rail
-            sections={[{ id: "versions", label: "All versions", href: `/p/${projectId}/versions` }]}
+            sections={[{ id: "versions", label: t("shell.nav.allVersions"), href: `/p/${projectId}/versions` }]}
             phases={phases}
             versionCard={<span className="text-xs text-rail-muted">{versionCardText}</span>}
           />
@@ -236,7 +240,7 @@ export function ProjectLayout() {
         mobileTabBar={
           <MobileTabBar
             items={[
-              { id: "versions", label: "Versions", href: `/p/${projectId}/versions` },
+              { id: "versions", label: t("shell.nav.versions"), href: `/p/${projectId}/versions` },
               ...phases.map((phase) => ({ id: phase.id, label: phase.label, href: phase.href })),
             ]}
           />

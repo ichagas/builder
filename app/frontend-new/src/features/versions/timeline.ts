@@ -1,5 +1,6 @@
 import type { TimelineFlag, TimelineNode, TimelineNodeKind, ModeKind } from "@/components/shell/types";
 import type { Version } from "./api";
+import i18n from "@/i18n";
 
 /**
  * Maps `GET /projects/:projectId/versions` rows onto `TimelineStrip`'s
@@ -24,7 +25,6 @@ export interface TimelineData {
 export type VersionEra = "building" | "released";
 
 const FALLBACK_ID = "building";
-const FALLBACK_LABEL = "Building";
 
 /** `versions.kind` (data-model.md) -> `TimelineNode.kind` (design-system.md). */
 function nodeKindFor(version: Version): TimelineNodeKind {
@@ -37,16 +37,16 @@ function nodeKindFor(version: Version): TimelineNodeKind {
 }
 
 function changeCountLabel(count: number): string {
-  return `${count} ${count === 1 ? "change" : "changes"}`;
+  return i18n.t("shell.timeline.changeCount", { count });
 }
 
 function formatRelative(iso: string | null): string | undefined {
   if (!iso) return undefined;
   const ms = Date.now() - new Date(iso).getTime();
   const days = Math.floor(ms / (24 * 60 * 60 * 1000));
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
+  if (days <= 0) return i18n.t("shell.timeline.today");
+  if (days === 1) return i18n.t("shell.timeline.oneDayAgo");
+  return i18n.t("shell.timeline.daysAgo", { count: days });
 }
 
 function subLabelFor(version: Version, kind: TimelineNodeKind): string | undefined {
@@ -55,6 +55,7 @@ function subLabelFor(version: Version, kind: TimelineNodeKind): string | undefin
 }
 
 export function buildTimeline(versions: Version[]): TimelineData {
+  const FALLBACK_LABEL = i18n.t("shell.timeline.building");
   if (versions.length === 0) {
     return {
       nodes: [{ id: FALLBACK_ID, label: FALLBACK_LABEL, kind: "building" }],
@@ -73,7 +74,7 @@ export function buildTimeline(versions: Version[]): TimelineData {
   const flags: TimelineFlag[] = [];
   const firstRelease = versions.find((version) => version.is_first_release);
   if (firstRelease) {
-    flags.push({ afterId: firstRelease.id, label: "First release", pending: firstRelease.kind !== "released" });
+    flags.push({ afterId: firstRelease.id, label: i18n.t("shell.timeline.firstRelease"), pending: firstRelease.kind !== "released" });
   }
 
   const current = versions.find((version) => version.is_current);

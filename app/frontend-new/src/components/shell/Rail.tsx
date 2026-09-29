@@ -31,13 +31,13 @@ export interface RailProps {
   ariaLabel?: string;
 }
 
-export function Rail({ sections, phases, versionCard, ariaLabel = "Project" }: RailProps) {
+export function Rail({ sections, phases, versionCard, ariaLabel }: RailProps) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useBoolPref("rail.collapsed", false);
 
   return (
     <nav
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? t("shell.nav.project")}
       className={cn(
         "hidden shrink-0 flex-col overflow-y-auto border-r border-rail-line bg-rail-bg text-rail-ink md:flex",
         collapsed ? "w-[76px]" : "w-[248px]",

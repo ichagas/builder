@@ -13,6 +13,7 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { useTeamsMine } from "@/features/assurance/api";
 import { useOnboardingRunTracker } from "@/features/onboarding/useOnboardingRunTracker";
 import type { CommandPaletteItem } from "@/components/shell/CommandPalette";
+import i18n from "@/i18n";
 
 /**
  * AssuranceLayout (T130, WP-A1). See contracts/routes.md §1 ("Layout:
@@ -40,7 +41,7 @@ export function AssuranceLayout() {
     label: team.name,
     group: "projects" as const,
     href: `/assurance/t/${team.id}`,
-    hint: "Team",
+    hint: t("assurance.paletteTeamHint"),
   }));
   usePublishCommandPaletteItems(paletteItems);
   useOnboardingRunTracker();

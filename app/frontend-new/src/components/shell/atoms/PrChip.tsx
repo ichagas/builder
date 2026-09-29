@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * PrChip (T023). Small mono chip naming a pull request and its state.
@@ -25,7 +26,14 @@ export interface PrChipProps extends Omit<React.HTMLAttributes<HTMLSpanElement>,
 }
 
 export function PrChip({ number, state, children, className, ...props }: PrChipProps) {
-  const content = children ?? (number !== undefined ? `PR #${number}${state ? ` · ${state}` : ""}` : undefined);
+  const { t } = useTranslation();
+  const content =
+    children ??
+    (number !== undefined
+      ? state
+        ? t("shell.atoms.pr.labelWithState", { number, state: t(`shell.atoms.pr.state.${state}`) })
+        : t("shell.atoms.pr.label", { number })
+      : undefined);
 
   return (
     <span

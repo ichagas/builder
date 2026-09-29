@@ -1,6 +1,7 @@
 import { lazyWithRetry } from "@/app/lazyWithRetry";
 import { useDashboardPrimaryAction } from "@/pages/dashboard.primaryAction";
 import { useNoPrimaryAction, type SimpleRoute } from "./types";
+import i18n from "@/i18n";
 
 const Dashboard = lazyWithRetry(() => import("@/pages/Dashboard"));
 const Settings = lazyWithRetry(() => import("@/pages/Settings"));
@@ -20,5 +21,5 @@ export const ROOT_ROUTES: SimpleRoute[] = [
   // — (new, US5, WP-A6): contracts/routes.md §1. Org admins only (FR-013,
   // NA-08) — AdminIntegrations itself renders a no-access state for anyone
   // else; the backend (`requireOrgAdmin`) is the real enforcement.
-  { path: "admin/integrations", title: "Integrations", usePrimaryAction: useNoPrimaryAction, Component: AdminIntegrations },
+  { path: "admin/integrations", get title() { return i18n.t("shell.routes.integrations"); }, usePrimaryAction: useNoPrimaryAction, Component: AdminIntegrations },
 ];

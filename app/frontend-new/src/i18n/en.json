@@ -30,7 +30,7 @@
       "title": "Page not found",
       "body": "The page you're looking for doesn't exist or may have moved.",
       "searchPlaceholder": "Search projects and tools",
-      "projectsLink": "Go to Projects"
+      "projectsLink": "Go to projects"
     },
     "longTask": {
       "audit": {
@@ -42,10 +42,99 @@
       "deploy": {
         "running": "Deploying {{name}}"
       }
-    }
+    },
+    "brand": "Pronghorn",
+    "nav": {
+      "project": "Project",
+      "versions": "Versions",
+      "allVersions": "All versions",
+      "projects": "Projects",
+      "integrations": "Integrations"
+    },
+    "timeline": {
+      "building": "Building",
+      "firstRelease": "First release",
+      "changeCount_one": "{{count}} change",
+      "changeCount_other": "{{count}} changes",
+      "today": "today",
+      "oneDayAgo": "1 day ago",
+      "daysAgo": "{{count}} days ago",
+      "more": "{{count}} more"
+    },
+    "locked": "Locked",
+    "phases": {
+      "define": "Define",
+      "design": "Design",
+      "build": "Build",
+      "ship": "Ship"
+    },
+    "phaseState": {
+      "todo": "not started",
+      "active": "active",
+      "done": "done",
+      "skipped": "skipped",
+      "base": "baseline"
+    },
+    "phaseAria": "{{label}}: {{state}}",
+    "phaseAriaNote": "{{label}}: {{state}}. {{note}}",
+    "access": {
+      "viewer": {
+        "title": "Read-only access",
+        "body": "You're viewing this project with a shared viewer link. Changes aren't available."
+      },
+      "editor": {
+        "title": "Editor access",
+        "body": "You're editing this project with a shared editor link."
+      }
+    },
+    "versionCard": {
+      "building": "Everything you build now becomes {{version}}.",
+      "current": "Current release {{version}}."
+    },
+    "atoms": {
+      "delta": {
+        "new": "New",
+        "changed": "Changed",
+        "regression": "Regression"
+      },
+      "type": {
+        "bug": "Bug",
+        "feature": "Feature",
+        "enhancement": "Enhancement",
+        "base": "Baseline"
+      },
+      "pr": {
+        "notOpened": "Not opened",
+        "label": "PR #{{number}}",
+        "labelWithState": "PR #{{number}} · {{state}}",
+        "state": {
+          "open": "open",
+          "merged": "merged",
+          "none": "none"
+        }
+      },
+      "adoption": {
+        "onVersion": "{{count}} on {{version}}"
+      }
+    },
+    "routes": {
+      "projectsHome": "Projects",
+      "integrations": "Integrations",
+      "teamPortfolio": "Team portfolio",
+      "application": "Application",
+      "meshRuns": "Mesh runs",
+      "onboard": "Onboard an application",
+      "packs": "Standards packs",
+      "policy": "Mesh policy",
+      "allTeams": "All teams",
+      "allVersions": "All versions",
+      "release": "Release",
+      "change": "Change"
+    },
+    "actionFailed": "{{label}} failed. Try again."
   },
   "commandPalette": {
-    "placeholder": "Search projects, tools, library…",
+    "placeholder": "Search projects, tools, library",
     "empty": "No results found.",
     "groups": {
       "projects": "Projects",
@@ -61,8 +150,8 @@
       "yourTeams": "Your teams",
       "allTeams": "All teams",
       "noTeams": "You're not on a team yet",
-      "appCount_one": "{{count}} app",
-      "appCount_other": "{{count}} apps",
+      "appCount_one": "{{count}} application",
+      "appCount_other": "{{count}} applications",
       "organizationOverview": "Organization overview"
     },
     "rail": {
@@ -81,8 +170,8 @@
       "applicationsHeading": "Applications and repositories",
       "applicationsMeta_one": "{{count}} application",
       "applicationsMeta_other": "{{count}} applications",
-      "repoCount_one": "{{count}} repo",
-      "repoCount_other": "{{count}} repos",
+      "repoCount_one": "{{count}} repository",
+      "repoCount_other": "{{count}} repositories",
       "filters": {
         "all": "All",
         "notReporting": "Not reporting"
@@ -101,7 +190,7 @@
         "title_one": "{{count}} repository hasn't reported in 7 days",
         "title_other": "{{count}} repositories haven't reported in 7 days",
         "body": "A repository that stops reporting shows here until its next merge to the default branch.",
-        "cta": "Show them"
+        "cta": "Show repositories"
       },
       "empty": {
         "title": "No applications yet",
@@ -121,7 +210,7 @@
       "loading": "Loading portfolio…",
       "crumb_one": "Team · {{count}} member",
       "crumb_other": "Team · {{count}} members",
-      "openApplication": "Open →"
+      "openApplication": "Open application"
     },
     "app": {
       "crumb": "{{team}} / Applications",
@@ -146,7 +235,7 @@
           "title_one": "{{count}} repository has new findings",
           "title_other": "{{count}} repositories have new findings",
           "body": "Select \"New findings\" to see which repositories need a look.",
-          "cta": "Show them"
+          "cta": "Show repositories"
         }
       },
       "adoption": {
@@ -155,7 +244,7 @@
       },
       "kv": {
         "newFindings": "New findings",
-        "warnings": "Repos with warnings",
+        "warnings": "Repositories with warnings",
         "prsOpen": "Update PRs open",
         "exceptions": "Exceptions"
       },
@@ -205,7 +294,12 @@
           "expiresAt": "Expires",
           "submit": "Request exception"
         }
-      }
+      },
+      "unclassified": "Unclassified",
+      "otherPart": "Other",
+      "unpinned": "Unpinned",
+      "repoNote": "Standards {{pack}}",
+      "repoNoteBehind": "Standards {{pack}} · behind"
     },
     "runs": {
       "link": "Mesh runs by day",
@@ -252,7 +346,7 @@
       "evidence": {
         "heading": "Run evidence",
         "loading": "Loading evidence…",
-        "error": "Couldn't load this run's evidence",
+        "error": "Couldn't load this run's evidence. Try again in a moment.",
         "verdictsLabel": "Verdict per check",
         "newFindings": "New findings",
         "asvs": "ASVS passed",
@@ -286,16 +380,16 @@
         "team": "Adoption for team",
         "latest": "Latest pack",
         "pack": "Standards pack",
-        "repos_one": "{{count}} repo",
-        "repos_other": "{{count}} repos",
-        "loading": "Loading Standards packs…",
+        "repos_one": "{{count}} repository",
+        "repos_other": "{{count}} repositories",
+        "loading": "Loading standards packs…",
         "error": {
-          "title": "Couldn't load Standards packs",
+          "title": "Couldn't load standards packs",
           "description": "Try again in a moment."
         },
         "empty": {
-          "title": "No packs published yet",
-          "description": "Published Standards packs appear here."
+          "title": "No standards packs published yet",
+          "description": "Published standards packs appear here."
         }
       },
       "policy": {
@@ -333,10 +427,10 @@
         "inherited": "inherited",
         "modeAria": "{{check}} policy mode",
         "apply": "Apply {{check}}",
-        "loosenConfirm": "Loosen {{check}}? Confirm",
+        "loosenConfirm": "Confirm: loosen {{check}}",
         "saved": "Mesh policy updated",
-        "saveFailed": "Couldn't update mesh policy",
-        "undoFailed": "Couldn't undo the change to {{check}}",
+        "saveFailed": "Couldn't update mesh policy. Try again.",
+        "undoFailed": "Couldn't undo the change to {{check}}. Try again.",
         "undoText": "{{check}} set back to {{mode}}",
         "loading": "Loading mesh policy…",
         "error": {
@@ -357,19 +451,19 @@
         "application": "Application",
         "request": "Request an exception",
         "loading": "Loading exceptions…",
-        "error": "Couldn't load exceptions",
+        "error": "Couldn't load exceptions. Try again in a moment.",
         "empty": "No exceptions for this application.",
         "noApps": "This team has no applications yet.",
-        "expires": "expires {{date}}",
-        "expired": "expired {{date}}"
+        "expires": "Expires {{date}}",
+        "expired": "Expired {{date}}"
       }
     },
     "teams": {
-      "crumb": "Organization · Assurance Mesh",
+      "crumb": "Organization · Assurance mesh",
       "title": "All teams",
       "loading": "Loading teams…",
       "heading": "Teams",
-      "meta": "{{teams}} teams · {{apps}} apps · {{repos}} repositories",
+      "meta": "{{teams}} teams · {{apps}} applications · {{repos}} repositories",
       "banner": {
         "title": "Assurance view across every team",
         "body": "Select a team to see its applications and repositories."
@@ -378,7 +472,7 @@
         "all": "All",
         "attention": "Needs attention"
       },
-      "partialError": "Some team totals could not be loaded.",
+      "partialError": "Some team totals couldn't be loaded. Reload to try again.",
       "noAccess": {
         "title": "Organization admins only",
         "description": "Only organization admins can see every team. Use the team switcher to open one of your own teams."
@@ -398,13 +492,14 @@
         "ariaLabel": "Teams",
         "team": "Team",
         "members": "Members",
-        "apps": "Apps",
-        "repos": "Repos",
+        "apps": "Applications",
+        "repos": "Repositories",
         "onLatest": "On {{pack}}",
         "onLatestNone": "On latest",
         "notReporting": "Not reporting"
       }
-    }
+    },
+    "paletteTeamHint": "Team"
   },
   "versions": {
     "crumb": "Versions",
@@ -423,8 +518,8 @@
       "body": "After the first release, each bug fix, enhancement and feature is scheduled into a new version. Released versions are read-only."
     },
     "triageBanner": {
-      "title_one": "{{count}} request isn't scheduled",
-      "title_other": "{{count}} requests aren't scheduled",
+      "title_one": "{{count}} change isn't scheduled",
+      "title_other": "{{count}} changes aren't scheduled",
       "body": "Choose a version for each one. High-severity bugs can go into a hotfix."
     },
     "notScheduled": {
@@ -489,7 +584,7 @@
         "heading": "Changes in {{version}}",
         "body": "What this version changes, shown above the tool.",
         "loading": "Loading changes…",
-        "error": "Couldn't load this version's changes.",
+        "error": "Couldn't load this version's changes. Try again in a moment.",
         "empty": "No changes are scheduled into this version yet.",
         "noDeltas": "No requirement changes recorded."
       },
@@ -555,7 +650,7 @@
         "body_other": "{{count}} unfinished changes move to {{version}} when you release."
       },
       "error": {
-        "failed": "The release didn't go out. Nothing was changed."
+        "failed": "The release didn't go out and nothing was changed. Try again."
       },
       "open": "Release",
       "openLabel": "Release {{version}}"
@@ -673,7 +768,7 @@
         "title": "Requirement",
         "criterionLabel": "New acceptance criterion (optional)",
         "add": "Add requirement change",
-        "addFailed": "Couldn't add the requirement change.",
+        "addFailed": "Couldn't add the requirement change. Try again.",
         "kinds": {
           "new": "New",
           "changed": "Changed",
@@ -748,15 +843,15 @@
       "notConfigured": "Not configured",
       "account": "Installed on {{account}}",
       "connectionHeading": "This organization's import scope",
-      "connectionDescription": "The GitHub users or organizations this organization's onboarding import list may draw repositories from. The App's own credentials are shared platform-wide -- nothing here is a secret.",
+      "connectionDescription": "The GitHub users or organizations this organization's onboarding import list may draw repositories from. The App's own credentials are shared platform-wide, so nothing here is a secret.",
       "ownersLabel": "Owners (GitHub users or organizations)",
       "ownersPlaceholder": "goa-standards, another-org",
       "displayNameLabel": "Display name",
       "displayNamePlaceholder": "e.g. GOA GitHub import",
-      "save": "Save",
+      "save": "Save connection",
       "saved": "GitHub App connection saved",
-      "saveFailed": "Couldn't save the GitHub App connection",
-      "empty": "No GitHub connection configured yet -- onboarding's import list will be empty until you add one."
+      "saveFailed": "Couldn't save the GitHub App connection. Try again.",
+      "empty": "No GitHub connection configured yet. Onboarding's import list stays empty until you add one."
     },
     "azureDevOps": {
       "heading": "Azure DevOps",
@@ -779,7 +874,7 @@
       "projectsPlaceholder": "Permits, Licensing",
       "add": "Add connection",
       "added": "Azure DevOps connection added",
-      "addFailed": "Couldn't add the Azure DevOps connection"
+      "addFailed": "Couldn't add the Azure DevOps connection. Try again."
     },
     "connection": {
       "status": {
@@ -793,11 +888,11 @@
       "neverTested": "Never tested",
       "test": "Test connection",
       "testSucceeded": "Connection is working",
-      "testFailed": "Connection test failed",
+      "testFailed": "Connection test failed. Check the details and test again.",
       "remove": "Remove",
       "removeConfirm": "Remove this connection?",
       "removed": "Connection removed",
-      "removeFailed": "Couldn't remove this connection -- it may still be in use"
+      "removeFailed": "Couldn't remove this connection. It may still be in use."
     },
     "meshPolicy": {
       "heading": "Mesh policy",
@@ -815,7 +910,7 @@
         "block": "Block"
       },
       "saved": "Mesh policy updated",
-      "saveFailed": "Couldn't update mesh policy",
+      "saveFailed": "Couldn't update mesh policy. Try again.",
       "loading": "Loading mesh policy…",
       "sandbox": {
         "heading": "Cyber Risk sandbox",
@@ -826,20 +921,20 @@
         "appPlaceholder": "Choose an application",
         "toggleLabel": "Enable the Cyber Risk sandbox for {{app}}",
         "saved": "Cyber Risk sandbox updated",
-        "saveFailed": "Couldn't update the Cyber Risk sandbox"
+        "saveFailed": "Couldn't update the Cyber Risk sandbox. Try again."
       }
     }
   },
   "onboarding": {
     "wizard": {
-      "title": "Onboard an app",
-      "crumb": "{{team}} / Onboard an app",
-      "crumbFallback": "Onboard an app",
+      "title": "Onboard an application",
+      "crumb": "{{team}} / Onboard an application",
+      "crumbFallback": "Onboard an application",
       "continue": "Continue",
       "loading": "Loading…",
       "steps": {
-        "team": "Team & app",
-        "connect": "Connect repos",
+        "team": "Team and application",
+        "connect": "Connect repositories",
         "sandbox": "Run in sandbox",
         "output": "Review output",
         "prs": "Open pull requests"
@@ -900,7 +995,7 @@
         },
         "noRun": {
           "title": "Start onboarding first",
-          "description": "Go back to Team & app to start a draft run."
+          "description": "Go back to Team and application to start a draft run."
         },
         "banner": {
           "title": "Pick every repository that belongs to this app",
@@ -1024,7 +1119,7 @@
   "a11y": {
     "homeLink": "Pronghorn home",
     "mesh": {
-      "label": "Assurance Mesh: {{summary}}",
+      "label": "Assurance mesh: {{summary}}",
       "entry": "{{agent}} {{status}}",
       "agent": {
         "green": "Green",

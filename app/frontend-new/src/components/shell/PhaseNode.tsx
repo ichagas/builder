@@ -3,6 +3,7 @@ import { Check, Circle, MinusCircle } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { RailPhase } from "./types";
+import { useTranslation } from "react-i18next";
 
 /**
  * PhaseNode (T025). One Define/Design/Build/Ship entry inside `Rail`'s
@@ -25,10 +26,16 @@ export interface PhaseNodeProps {
 }
 
 export function PhaseNode({ phase, collapsed }: PhaseNodeProps) {
+  const { t } = useTranslation();
+  const state = t(`shell.phaseState.${phase.state}`);
   return (
     <NavLink
       to={phase.href}
-      aria-label={phase.note ? `${phase.label}: ${phase.state}. ${phase.note}` : `${phase.label}: ${phase.state}`}
+      aria-label={
+        phase.note
+          ? t("shell.phaseAriaNote", { label: phase.label, state, note: phase.note })
+          : t("shell.phaseAria", { label: phase.label, state })
+      }
       className={({ isActive }) =>
         cn(
           "flex items-center gap-2 rounded-xs px-2.5 py-2 text-sm text-rail-muted hover:bg-rail-hover hover:text-rail-ink",

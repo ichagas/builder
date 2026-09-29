@@ -13,6 +13,7 @@ import { useBuildPrimaryAction } from "@/pages/project/build.primaryAction";
 import { useAuditPrimaryAction } from "@/pages/project/audit.primaryAction";
 import { useReleasePrimaryAction } from "@/features/versions/release/release.primaryAction";
 import { useChangePrimaryAction } from "@/pages/project/change.primaryAction";
+import i18n from "@/i18n";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -57,7 +58,7 @@ export const PROJECT_SETTINGS_ROUTE: SimpleRoute = {
  */
 export const PROJECT_VERSIONS_ROUTE: SimpleRoute = {
   path: "versions",
-  title: "All versions",
+  get title() { return i18n.t("shell.routes.allVersions"); },
   usePrimaryAction: useNoPrimaryAction,
   Component: Versions,
 };
@@ -70,7 +71,7 @@ export const PROJECT_VERSIONS_ROUTE: SimpleRoute = {
  */
 export const PROJECT_RELEASE_ROUTE: SimpleRoute = {
   path: "v/:version/ship/release",
-  title: "Release",
+  get title() { return i18n.t("shell.routes.release"); },
   usePrimaryAction: useReleasePrimaryAction,
   Component: VersionRelease,
 };
@@ -83,7 +84,7 @@ export const PROJECT_RELEASE_ROUTE: SimpleRoute = {
  */
 export const PROJECT_CHANGE_ROUTE: SimpleRoute = {
   path: "changes/:changeId/:step?",
-  title: "Change",
+  get title() { return i18n.t("shell.routes.change"); },
   usePrimaryAction: useChangePrimaryAction,
   Component: Change,
 };
@@ -119,8 +120,8 @@ export const PROJECT_TOOL_ROUTES: ProjectToolRoute[] = [
 ];
 
 export const PHASE_ORDER: Array<{ id: "define" | "design" | "build" | "ship"; label: string }> = [
-  { id: "define", label: "Define" },
-  { id: "design", label: "Design" },
-  { id: "build", label: "Build" },
-  { id: "ship", label: "Ship" },
+  { id: "define", get label() { return i18n.t("shell.phases.define"); } },
+  { id: "design", get label() { return i18n.t("shell.phases.design"); } },
+  { id: "build", get label() { return i18n.t("shell.phases.build"); } },
+  { id: "ship", get label() { return i18n.t("shell.phases.ship"); } },
 ];
