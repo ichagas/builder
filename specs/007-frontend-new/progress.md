@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** PAUSED by the user after batch N2a (merged; review fixes + test fixes on branches, not merged). See the last "Paused state". Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** batch N2b in progress (A3, A4, A5, O2 + N2a defect fixes), 2026-09-29. Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -256,3 +256,8 @@ Open branches/worktrees: `wp/X3`, `wp/V2`, `wp/V3`, `wp/V4` (merged; delete), `w
 3. Delete merged wp/* branches and worktrees.
 4. Batch N2b (A3 T132, A4 T133 dedupe with useMeshPolicy, A5 T134+T135, O2 T151+T152), seed blocks …960/970/980/990; then batch test + review.
 5. N3 polish T160–T162 (include read-only for Canvas/Monaco/Artifacts/Build), final T071 regression in chunks, T074, T170–T171.
+
+## Resumed 2026-09-29
+
+- Merged `wp/N2a-fix` (8a63a97) and `wp/N2a-test` (0366b31) via an integration agent, no conflicts; spec fix c7f40dd (released-version assertion ignores tabs/disclosures that ReadOnlyGuard keeps enabled). Verified: tsc OK, **898 FE tests**, lint 0 errors, build OK, 320 e2e tests listed. N2a branches and worktrees removed.
+- **Batch N2b dispatched** (code-only, in parallel): N2a-defects (4 E2E app defects: list markup, useUrlState functional updates, AppShell mobile bottom padding, dark danger contrast), A3 (T132, seed …960), A4 (T133, …970, reuse A6's mesh-policy hooks), A5 (T134+T135, …980 + …9b0), O2 (T151+T152, …990). Then: integration agent merges, orchestrator verifies, ONE tester runs us5 + us6 + the N2a failures serially, ONE reviewer.
