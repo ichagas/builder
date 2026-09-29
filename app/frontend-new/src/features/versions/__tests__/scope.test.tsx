@@ -86,7 +86,7 @@ describe("VersionScope", () => {
         ];
       }
       if (url.includes("/requirement-changes")) {
-        return [{ work_item_id: "wi1", requirement_id: "r1", kind: "changed", title: "Upload limit", criterion: "10 MB" }];
+        return [{ id: "d1", work_item_id: "wi1", requirement_id: "r1", kind: "changed", title: "Upload limit", criterion: "10 MB", created_at: "", updated_at: "" }];
       }
       return [];
     });

@@ -1,7 +1,7 @@
 import { Check, Circle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import type { ReleaseCheck } from "../change.api";
+import type { ReleaseCheck } from "../shared";
 import type { StepStates } from "./steps";
 
 /**

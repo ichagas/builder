@@ -1,7 +1,7 @@
 import { Check, Info, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import type { ReleaseCheck } from "../release.api";
+import type { ReleaseCheck } from "../shared";
 import { isInformationalCheck } from "./logic";
 
 /**

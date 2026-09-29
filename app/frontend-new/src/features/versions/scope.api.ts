@@ -1,7 +1,7 @@
-import { z } from "zod";
 import { useQueries, type UseQueryResult } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
-import { useVersions, useWorkItems, versionsKeys, type Version, type WorkItem } from "./api";
+import { requirementChangesKey, requirementChangesSchema, withToken, type RequirementChange } from "./shared";
+import { useVersions, useWorkItems, type Version, type WorkItem } from "./api";
 
 /**
  * Version scoping (T113, WP-V4, NV-06). Hooks behind `VersionScope`: which
@@ -9,19 +9,6 @@ import { useVersions, useWorkItems, versionsKeys, type Version, type WorkItem } 
  * version) its changes plus their requirement deltas. Kept out of `api.ts`
  * so it merges cleanly with WP-V2/V3's additions.
  */
-
-export const requirementChangeKindSchema = z.enum(["new", "changed", "regression"]);
-export type RequirementChangeKind = z.infer<typeof requirementChangeKindSchema>;
-
-/** A row from GET /work-items/:id/requirement-changes. */
-export const requirementChangeSchema = z.object({
-  work_item_id: z.string(),
-  requirement_id: z.string().nullable(),
-  kind: requirementChangeKindSchema,
-  title: z.string(),
-  criterion: z.string().nullable(),
-});
-export type RequirementChange = z.infer<typeof requirementChangeSchema>;
 
 export type ScopeMode = "none" | "released" | "open";
 
@@ -72,10 +59,6 @@ export interface OpenVersionChanges {
   changes: VersionChangeDeltas[];
 }
 
-function withToken(path: string, token?: string | null): string {
-  return token ? `${path}?token=${encodeURIComponent(token)}` : path;
-}
-
 /** The open version's changes (declined ones left out) with each one's requirement deltas. */
 export function useOpenVersionChanges(
   projectId: string | undefined,
@@ -86,10 +69,10 @@ export function useOpenVersionChanges(
   const visible = (items.data ?? []).filter((item) => item.status !== "declined");
   const deltaQueries = useQueries({
     queries: visible.map((item) => ({
-      queryKey: [...versionsKeys.all(projectId ?? ""), "requirement-changes", item.id] as const,
+      queryKey: requirementChangesKey(projectId ?? "", item.id),
       queryFn: async () => {
         const data = await apiClient.get<unknown>(withToken(`/api/v1/work-items/${item.id}/requirement-changes`, shareToken));
-        return z.array(requirementChangeSchema).parse(data);
+        return requirementChangesSchema.parse(data);
       },
       enabled: !!versionId,
     })),

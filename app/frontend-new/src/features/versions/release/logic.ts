@@ -1,5 +1,5 @@
 import type { Version, WorkItem } from "../api";
-import type { ReleaseCheck } from "../release.api";
+import type { ReleaseCheck } from "../shared";
 
 /**
  * Pure release-page logic (NV-05). Mirrors the backend's rules in
