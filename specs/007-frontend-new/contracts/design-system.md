@@ -19,7 +19,7 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Brand | `--primary #2451D6`, `--primary-soft #E3EAFC`, `--focus #2451D6` |
 | Status | `--ok #127B3B`, `--warn #B05109`, `--bad #C0262D`, `--run #D97706` + `-soft` variants |
 | Status foreground | `--ok-foreground`, `--warn-foreground`, `--bad-foreground`: `#FFFFFF` in light, `#0B1830` in dark; text/icons on solid ok/warn/bad fills |
-| Phases | `--c-define #7C3AED`, `--c-design #0891B2`, `--c-build #D97706`, `--c-ship #16A34A` |
+| Phases | `--c-define-ink` (`#6D28D9` light / `#C4B5FD` dark: text on define-tinted chips, AA), `--c-define #7C3AED`, `--c-design #0891B2`, `--c-build #D97706`, `--c-ship #16A34A` |
 | Change types | `--t-bug`, `--t-feat`, `--t-enh`, `--t-base` + `-soft` |
 | Mesh agents | `--m-green #16A34A`, `--m-yellow #CA8A04`, `--m-red #DC2626`, `--m-blue #2563EB` |
 | Mode band | `--mode-building #4C8DFF`, `--mode-released #2FBF71`, `--mode-connected #A78BFA` |

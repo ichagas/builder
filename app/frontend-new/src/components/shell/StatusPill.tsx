@@ -38,12 +38,12 @@ export function StatusPill({ runningCount, failedCount = 0, onClick, expanded, .
       aria-label={ariaLabel}
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 text-xs font-semibold",
-        failedCount > 0 ? "text-bad" : runningCount > 0 ? "text-run" : "text-muted-foreground",
+        failedCount > 0 ? "text-bad" : runningCount > 0 ? "text-ink" : "text-muted-foreground",
       )}
       {...rest}
     >
       {runningCount > 0 ? (
-        <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+        <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin text-run" />
       ) : (
         <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", failedCount > 0 ? "bg-bad" : "bg-muted")} />
       )}

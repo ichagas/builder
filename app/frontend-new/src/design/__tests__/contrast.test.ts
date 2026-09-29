@@ -23,6 +23,9 @@ const LIGHT = {
   ink: "#0F1D35",
   muted: "#4F5F78",
   primary: "#2451D6",
+  primarySoft: "#E3EAFC",
+  define: "#7C3AED",
+  defineInk: "#6D28D9",
   primaryForeground: "#FFFFFF",
   // Fix round 1, item 4: #13803D on ok-soft was 4.28:1 and #B45309 on
   // warn-soft was 4.40:1 — both below AA. Darkened minimally (see
@@ -63,6 +66,9 @@ const DARK = {
   ink: "#E9EEF7",
   muted: "#9FB0CC",
   primary: "#6C93FF",
+  primarySoft: "#1B2C55",
+  define: "#A78BFA",
+  defineInk: "#C4B5FD",
   primaryForeground: "#0B1830",
   ok: "#3DDC84",
   okSoft: "#123626",
@@ -212,5 +218,42 @@ describe("categorical palette hue separation (>= 25° from ok/warn/bad)", () => 
     })
   )("%s >= 25°", (_label, catHue, statusHue) => {
     expect(hueDistance(catHue, statusHue)).toBeGreaterThanOrEqual(MIN_HUE_SEPARATION);
+  });
+});
+
+/**
+ * T160 (WP-P1): every tinted-chip / tinted-pill pairing in the shell and the
+ * new screens. `merged` PrChip is `bg-define/10 text-define-ink`; the tint is
+ * composited over each surface it can sit on (surface, bg, surface-2,
+ * primary-soft) and the worst case must clear AA. Also primary on
+ * primary-soft (FilterChips / TimelineStrip / tab pills), muted on surface-2
+ * (inactive chips, hover), primary on surface (PrChip open), and the warn /
+ * ink on surface-2 (StatusPill count; raw --c-run text failed there).
+ */
+function mixHex(fg: string, base: string, alpha: number): string {
+  const c = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [f, b] = [c(fg), c(base)];
+  return "#" + f.map((v, i) => Math.round(v * alpha + b[i] * (1 - alpha)).toString(16).padStart(2, "0")).join("");
+}
+
+describe("tinted chip pairs (T160, WCAG AA, ratio >= 4.5:1)", () => {
+  const themes = { light: LIGHT, dark: DARK } as const;
+  const rows = (["light", "dark"] as const).flatMap((name) => {
+    const t = themes[name];
+    const bases = { surface: t.surface, bg: t.bg, surface2: t.surface2, primarySoft: t.primarySoft };
+    return [
+      ...Object.entries(bases).map(
+        ([baseName, base]) => [`${name} define-ink on define/10 over ${baseName} (PrChip merged)`, t.defineInk, mixHex(t.define, base, 0.1)] as const,
+      ),
+      [`${name} primary/primary-soft (FilterChips, TimelineStrip, tab pills)`, t.primary, t.primarySoft] as const,
+      [`${name} primary/surface (PrChip open, FilterChips border)`, t.primary, t.surface] as const,
+      [`${name} muted/surface-2 (inactive chips, hover)`, t.muted, t.surface2] as const,
+      [`${name} muted/bg`, t.muted, t.bg] as const,
+      [`${name} ink/surface-2 (StatusPill count)`, t.ink, t.surface2] as const,
+    ];
+  });
+
+  it.each(rows)("%s", (_label, fg, bg) => {
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 });

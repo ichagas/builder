@@ -63,6 +63,8 @@
 
   /* Phases */
   --c-define: #7C3AED; --c-define-rgb: 124 58 237;
+  /* Text ink for define-tinted chips (PrChip merged): --c-define itself is 4.1:1 on its own 10% tint. */
+  --c-define-ink: #6D28D9; --c-define-ink-rgb: 109 40 217;
   --c-design: #0891B2; --c-design-rgb: 8 145 178;
   --c-build: #D97706; --c-build-rgb: 217 119 6;
   --c-ship: #16A34A; --c-ship-rgb: 22 163 74;
@@ -223,6 +225,7 @@
 
   /* Phases */
   --c-define: #A78BFA; --c-define-rgb: 167 139 250;
+  --c-define-ink: #C4B5FD; --c-define-ink-rgb: 196 181 253;
   --c-design: #22C3DE; --c-design-rgb: 34 195 222;
   --c-build: #F2A93B; --c-build-rgb: 242 169 59;
   --c-ship: #3DDC84; --c-ship-rgb: 61 220 132;
