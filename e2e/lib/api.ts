@@ -43,6 +43,7 @@ async function request<T>(
 export const api = {
   get: <T>(path: string, user: MockAuthUser) => request<T>("GET", path, user),
   post: <T>(path: string, user: MockAuthUser, body?: unknown) => request<T>("POST", path, user, body),
+  put: <T>(path: string, user: MockAuthUser, body?: unknown) => request<T>("PUT", path, user, body),
   patch: <T>(path: string, user: MockAuthUser, body?: unknown) => request<T>("PATCH", path, user, body),
   delete: <T>(path: string, user: MockAuthUser) => request<T>("DELETE", path, user),
 

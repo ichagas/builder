@@ -17,7 +17,7 @@
  * US6)"), so this whole file is APP=new-only, same as shell/axe-shell.spec.ts.
  */
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, seed } from "../fixtures";
+import { test, expect, seed, api, defaultOwner } from "../fixtures";
 
 test.skip(process.env.APP !== "new", "The Assurance console only exists in app/frontend-new");
 
@@ -219,14 +219,70 @@ test.describe("NA-08: Admin -> Integrations", () => {
   });
 
   test.describe("as an organization admin", () => {
+    // These tests write shared org-level state (the org's github_app
+    // connection, the organization mesh policy, Permits API's sandbox flag).
+    // Snapshot it before each test and put it back afterwards (or delete any
+    // connection the test created) so no later spec sees the mutation, e.g.
+    // onboarding's import scope depends on the seeded github_app owners.
+    interface ConnectionSnapshot {
+      id: string;
+      displayName: string;
+      owners: string[];
+    }
+    interface PolicySnapshot {
+      connections: ConnectionSnapshot[];
+      orgModes: Record<string, string>;
+      sandbox: boolean;
+    }
+    let snapshot: PolicySnapshot;
+
+    const policyPath = (scope: string, scopeId: string) => `/api/v1/mesh/policy?scope=${scope}&scopeId=${scopeId}`;
+    async function readState(): Promise<PolicySnapshot> {
+      const integrations = await api.get<{
+        githubAppConnections: Array<{ id: string; displayName: string; scope: { owners?: string[] } }>;
+      }>("/api/v1/admin/integrations", defaultOwner);
+      const org = await api.get<{ effective: Record<string, string> }>(policyPath("organization", seed.orgId), defaultOwner);
+      const appPolicy = await api.get<{ cyberRiskSandbox: boolean }>(policyPath("application", seed.assuranceApp1Id), defaultOwner);
+      return {
+        connections: integrations.githubAppConnections.map((c) => ({
+          id: c.id,
+          displayName: c.displayName,
+          owners: c.scope.owners ?? [],
+        })),
+        orgModes: org.effective,
+        sandbox: appPolicy.cyberRiskSandbox,
+      };
+    }
+
+    test.beforeEach(async () => {
+      snapshot = await readState();
+    });
+
+    test.afterEach(async () => {
+      const current = await readState();
+      const wasThere = new Set(snapshot.connections.map((c) => c.id));
+      for (const c of current.connections) {
+        if (!wasThere.has(c.id)) await api.delete(`/api/v1/admin/integrations/${c.id}`, defaultOwner);
+      }
+      for (const c of snapshot.connections) {
+        await api.patch(`/api/v1/admin/integrations/${c.id}`, defaultOwner, { displayName: c.displayName, owners: c.owners });
+      }
+      for (const [agent, mode] of Object.entries(snapshot.orgModes)) {
+        if (current.orgModes[agent] !== mode) {
+          await api.put(policyPath("organization", seed.orgId), defaultOwner, { agent, mode });
+        }
+      }
+      if (current.sandbox !== snapshot.sandbox) {
+        await api.put(policyPath("application", seed.assuranceApp1Id), defaultOwner, { cyberRiskSandbox: snapshot.sandbox });
+      }
+    });
+
     test("shows the platform GitHub App status and this org's Azure DevOps connection", async ({ page }) => {
       await page.goto("/admin/integrations");
       await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "GitHub App" })).toBeVisible();
 
-      // seed.sql's azure_devops connection (id 901) -- no github_app
-      // connection is seeded, so onboarding's import scope starts empty
-      // (contracts/api.md "Admin: Integrations") until this test adds one.
+      // seed.sql's azure_devops connection (id 903).
       await expect(page.getByText("GOA Azure DevOps")).toBeVisible();
       await expect(page.getByText("https://dev.azure.com/e2e-goa")).toBeVisible();
       await expect(page.getByText("No secret stored")).toBeVisible();
