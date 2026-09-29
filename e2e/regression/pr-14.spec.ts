@@ -23,9 +23,16 @@ test("PR-14 audit: loads, session selector empty, new-audit dialog opens, reload
   await expect(page.getByText("No Audit Session Selected")).toBeVisible();
 
   // main read: session selector has no sessions for a fresh project
-  await page.getByRole("combobox").filter({ hasText: /Select session/i }).click();
+  const sessionSelect = page.getByRole("combobox").filter({ hasText: /Select session/i });
+  await sessionSelect.click();
   await expect(page.getByText("No sessions yet")).toBeVisible();
+  // Radix mounts the list (text visible) a beat before its dismissable layer
+  // (Escape listener, outside-pointer lock on <body>) is live; an Escape
+  // pressed in that gap is dropped and the list stays open. Wait for the
+  // layer, press Escape, then assert the list really closed.
+  await expect(page.locator("body")).toHaveCSS("pointer-events", "none");
   await page.keyboard.press("Escape");
+  await expect(sessionSelect).toHaveAttribute("aria-expanded", "false");
 
   // main write entry point: New Audit configuration dialog opens
   await page.getByRole("button", { name: "Start New Audit" }).click();
