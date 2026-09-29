@@ -3,9 +3,11 @@ import * as React from "react";
 /**
  * Controls that only navigate or reveal, never change data: Radix tab
  * triggers, disclosure summaries / anything with `aria-expanded`, and
- * anything a tool marks with `data-readonly-allow`.
+ * anything a tool marks with `data-readonly-allow`. A Radix Select trigger
+ * also carries `aria-expanded` but it is a form control (role "combobox"),
+ * so it is NOT navigation and gets disabled (P4).
  */
-const NAVIGATION = '[role="tab"], [aria-expanded], summary, [data-readonly-allow]';
+const NAVIGATION = '[role="tab"], [aria-expanded]:not([role="combobox"]), summary, [data-readonly-allow]';
 const CONTROLS = "button, input, select, textarea";
 
 /**

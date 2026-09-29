@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { useParams } from "react-router-dom";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,8 @@ interface TechStack {
 }
 
 export default function Standards() {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -142,6 +145,7 @@ export default function Standards() {
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     setSaving(true);
     try {
       // Calculate deltas for standards using real-time data

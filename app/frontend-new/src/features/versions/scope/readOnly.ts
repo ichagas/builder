@@ -1,5 +1,5 @@
 /**
- * P4 (NV-06): helpers that make the Artifacts page read-only on a released
+ * P4 (NV-06): helpers that make a phase tool read-only on a released
  * version. With `readOnly` false both return their argument unchanged, so the
  * legacy behaviour (and `v/current`) is untouched.
  */

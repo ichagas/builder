@@ -5,6 +5,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { Table2, Eye, Copy, Code, Columns, Play, Trash2, Edit, Download } from "lucide-react";
 
 export type TreeItemContextType = 
@@ -88,6 +89,8 @@ export function DatabaseTreeContextMenu({
   onDeleteAllMigrations,
   onDropSchema,
 }: DatabaseTreeContextMenuProps) {
+  // P4 (NV-06): the menu is portaled outside the ReadOnlyGuard; every drop/delete entry disables itself.
+  const { readOnly } = useVersionScopeContext();
   const handleCopyName = () => {
     const fullName = schema ? `"${schema}"."${name}"` : name;
     navigator.clipboard.writeText(fullName);
@@ -128,6 +131,7 @@ export function DatabaseTreeContextMenu({
             <ContextMenuSeparator />
             <ContextMenuItem 
               onClick={() => onDropTable?.(schema, name)}
+              disabled={readOnly}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -253,6 +257,7 @@ export function DatabaseTreeContextMenu({
             <ContextMenuSeparator />
             <ContextMenuItem 
               onClick={() => onDeleteQuery?.(extra)}
+              disabled={readOnly}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -279,6 +284,7 @@ export function DatabaseTreeContextMenu({
             <ContextMenuSeparator />
             <ContextMenuItem 
               onClick={() => onDeleteMigration?.(extra)}
+              disabled={readOnly}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -291,7 +297,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_tables" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllTables?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Tables ({extra.items.length})
@@ -302,7 +309,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_views" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllViews?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Views ({extra.items.length})
@@ -313,7 +321,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_functions" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllFunctions?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Functions ({extra.items.length})
@@ -324,7 +333,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_triggers" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllTriggers?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Triggers ({extra.items.length})
@@ -335,7 +345,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_indexes" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllIndexes?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Indexes ({extra.items.length})
@@ -346,7 +357,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_sequences" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllSequences?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Sequences ({extra.items.length})
@@ -357,7 +369,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_types" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllTypes?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Types ({extra.items.length})
@@ -368,7 +381,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_constraints" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDropAllConstraints?.(schema, extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Constraints ({extra.items.length})
@@ -379,7 +393,8 @@ export function DatabaseTreeContextMenu({
         {type === "category_migrations" && extra?.items?.length > 0 && (
           <ContextMenuItem 
             onClick={() => onDeleteAllMigrations?.(extra.items)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete All Migrations ({extra.items.length})
@@ -390,7 +405,8 @@ export function DatabaseTreeContextMenu({
         {type === "schema" && (
           <ContextMenuItem 
             onClick={() => onDropSchema?.(name, extra)}
-            className="text-destructive focus:text-destructive"
+            disabled={readOnly}
+              className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Drop All Objects

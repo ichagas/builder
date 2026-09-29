@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +46,8 @@ export function DatabaseAgentInterface({
   onMigrationRefresh,
   onCollapse
 }: DatabaseAgentInterfaceProps) {
+  // P4 (NV-06): no start/stop/send on a released version; history stays viewable.
+  const { readOnly } = useVersionScopeContext();
   const { messages: loadedMessages, loading: messagesLoading } = useInfiniteAgentMessages(projectId, shareToken, "database");
   
   const [messages, setMessages] = useState<any[]>([]);
@@ -267,7 +270,7 @@ export function DatabaseAgentInterface({
   // Removed aggressive scroll position preservation - was causing unwanted scrolling
   
   const handleSubmit = async () => {
-    if (!taskInput.trim() || isSubmitting) return;
+    if (readOnly || !taskInput.trim() || isSubmitting) return;
     if (!databaseId && !connectionId) {
       toast.error("No database selected");
       return;
@@ -511,6 +514,7 @@ export function DatabaseAgentInterface({
   };
   
   const handleStop = async () => {
+    if (readOnly) return;
     if (abortControllerRef.current) {
       isStoppingRef.current = true;  // Mark as intentional stop
       abortControllerRef.current.abort();
@@ -779,7 +783,7 @@ export function DatabaseAgentInterface({
               {/* Right button: Send/Stop */}
               <Button
                 onClick={isSubmitting ? handleStop : handleSubmit}
-                disabled={!isSubmitting && (!taskInput.trim() || (!databaseId && !connectionId))}
+                disabled={readOnly || (!isSubmitting && (!taskInput.trim() || (!databaseId && !connectionId)))}
                 size="icon"
                 variant={isSubmitting ? "destructive" : "default"}
                 className="h-8 w-8"
@@ -796,10 +800,11 @@ export function DatabaseAgentInterface({
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
+                  if (readOnly) return;
                   handleSubmit();
                 }
               }}
-              disabled={isSubmitting}
+              disabled={isSubmitting || readOnly}
               className="min-h-[60px] w-full resize-none text-sm"
             />
 

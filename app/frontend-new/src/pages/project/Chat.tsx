@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { readOnlyWrite, gateOpener } from "@/features/versions/scope/readOnly";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -38,15 +40,21 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { usePublishChatPrimaryAction } from "./chat.primaryAction";
 
 export default function Chat() {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const {
     sessions,
-    createSession,
-    deleteSession,
-    updateSession,
-    cloneSession,
+    createSession: createSessionRaw,
+    deleteSession: deleteSessionRaw,
+    updateSession: updateSessionRaw,
+    cloneSession: cloneSessionRaw,
   } = useRealtimeChatSessions(projectId, shareToken, isTokenSet);
+  const createSession = readOnlyWrite(readOnly, createSessionRaw);
+  const deleteSession = readOnlyWrite(readOnly, deleteSessionRaw);
+  const updateSession = readOnlyWrite(readOnly, updateSessionRaw);
+  const cloneSession = readOnlyWrite(readOnly, cloneSessionRaw);
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
@@ -72,11 +80,14 @@ export default function Chat() {
     updateStreamingMessage,
     addTemporaryMessage,
     saveAssistantMessage,
-    deleteMessage,
+    deleteMessage: deleteMessageRaw,
   } = useRealtimeChatMessages(selectedSessionId || undefined, shareToken, isTokenSet && !!selectedSessionId, projectId);
 
+  const deleteMessage = readOnlyWrite(readOnly, deleteMessageRaw);
+
   // Use artifacts hook for proper broadcast when saving artifacts
-  const { addArtifact } = useRealtimeArtifacts(projectId, shareToken, isTokenSet);
+  const { addArtifact: addArtifactRaw } = useRealtimeArtifacts(projectId, shareToken, isTokenSet);
+  const addArtifact = readOnlyWrite(readOnly, addArtifactRaw);
 
   // Fetch project settings for model configuration
   const { data: project } = useQuery({
@@ -172,6 +183,7 @@ export default function Chat() {
   }, [selectedSessionId]);
 
   const handleNewChat = async () => {
+    if (readOnly) return;
     const newSession = await createSession();
     if (newSession) {
       setSelectedSessionId(newSession.id);
@@ -187,6 +199,7 @@ export default function Chat() {
   );
 
   const handleSummarizeChat = async () => {
+    if (readOnly) return;
     if (!selectedSessionId || isProcessing) return;
 
     const session = sessions.find((s) => s.id === selectedSessionId);
@@ -204,6 +217,7 @@ export default function Chat() {
   };
 
   const handleRegenerateSummary = async () => {
+    if (readOnly) return;
     if (!selectedSessionId || isProcessing) return;
     
     // Clear existing summary and regenerate
@@ -346,6 +360,7 @@ export default function Chat() {
   };
 
   const handleSaveMessageAsArtifact = async (messageContent: string) => {
+    if (readOnly) return;
     if (!projectId || isProcessing) return;
 
     setIsProcessing(true);
@@ -364,6 +379,7 @@ export default function Chat() {
   };
 
   const handleSendMessage = async () => {
+    if (readOnly) return;
     if (!inputMessage.trim() || !selectedSessionId || isStreaming) return;
 
     const userMessage = inputMessage.trim();
@@ -592,6 +608,7 @@ export default function Chat() {
   };
 
   const handleSaveFullChatAsArtifact = async () => {
+    if (readOnly) return;
     if (!selectedSessionId || !projectId || messages.length === 0 || isProcessing) {
       toast.error("No messages to save");
       return;
@@ -621,6 +638,7 @@ export default function Chat() {
   };
 
   const handleSaveSummaryAsArtifact = async () => {
+    if (readOnly) return;
     if (!selectedSessionId || !projectId || isProcessing) return;
 
     const session = sessions.find((s) => s.id === selectedSessionId);
@@ -647,11 +665,13 @@ export default function Chat() {
   };
 
   const handleStartRename = (sessionId: string, currentTitle: string) => {
+    if (readOnly) return;
     setEditingSessionId(sessionId);
     setEditingTitle(currentTitle || "");
   };
 
   const handleSaveRename = async (sessionId: string) => {
+    if (readOnly) return;
     if (!editingTitle.trim()) {
       setEditingSessionId(null);
       return;
@@ -1098,13 +1118,14 @@ export default function Chat() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
+                          if (readOnly) return;
                           handleSendMessage();
                         }
                       }}
                       placeholder="Type your message... (Shift+Enter for new line)"
                       className="resize-none"
                       rows={3}
-                      disabled={isStreaming}
+                      disabled={isStreaming || readOnly}
                     />
                     <div className="flex flex-col gap-2">
                       <Button 

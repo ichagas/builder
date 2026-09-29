@@ -65,7 +65,7 @@ import { cn } from "@/lib/utils";
 import { getEdgeFunctionName } from "@/config/aiModels";
 import { usePublishArtifactsPrimaryAction } from "./artifacts.primaryAction";
 import { useVersionScopeContext } from "@/features/versions/scope/context";
-import { readOnlyWrite, gateOpener } from "./artifacts.readOnly";
+import { readOnlyWrite, gateOpener } from "@/features/versions/scope/readOnly";
 
 export default function Artifacts() {
   const { projectId } = useParams<{ projectId: string }>();

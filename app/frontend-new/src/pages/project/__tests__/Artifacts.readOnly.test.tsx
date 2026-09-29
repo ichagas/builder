@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VersionScopeContext } from "@/features/versions/scope/context";
-import { gateOpener, readOnlyWrite } from "../artifacts.readOnly";
+import { gateOpener, readOnlyWrite } from "@/features/versions/scope/readOnly";
 import Artifacts from "../Artifacts";
 
 /** P4 (NV-06): Artifacts on a released version. Writes, editing, dialogs and collaboration cannot start. */

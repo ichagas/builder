@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
+import { readOnlyWrite, gateOpener } from "@/features/versions/scope/readOnly";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { useUrlState } from "@/lib/state/useUrlState";
@@ -42,12 +44,15 @@ type AuditSessionListItem = {
 };
 
 export default function Audit() {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken } = useShareToken(projectId!);
   
   const [sessions, setSessions] = useState<AuditSessionListItem[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>();
-  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [configDialogOpen, setConfigDialogOpenRaw] = useState(false);
+  const setConfigDialogOpen = gateOpener(readOnly, setConfigDialogOpenRaw);
   const [isStarting, setIsStarting] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -145,7 +150,7 @@ export default function Audit() {
   }, [session, graphNodes, d1Elements.length, d2Elements.length]);
 
   const resumeOrchestrator = useCallback(async (sessionToResume: AuditSession) => {
-    if (isResuming) return;
+    if (readOnly || isResuming) return;
     
     setIsResuming(true);
     console.log("Resuming stale audit session:", sessionToResume.id);
@@ -220,6 +225,7 @@ export default function Audit() {
 
   // Manual resume handler
   const handleManualResume = async () => {
+    if (readOnly) return;
     if (!session) return;
     await resumeOrchestrator(session);
   };
@@ -232,6 +238,7 @@ export default function Audit() {
   };
 
   const handleStartAudit = async (config: AuditConfiguration) => {
+    if (readOnly) return;
     setIsStarting(true);
     manualStopRef.current = false;
     try {
@@ -406,6 +413,7 @@ export default function Audit() {
   };
 
   const handlePauseResume = async () => {
+    if (readOnly) return;
     if (!session) return;
     const newStatus = session.status === "paused" ? "running" : "paused";
     await updateSessionStatus(session.id, newStatus);
@@ -413,6 +421,7 @@ export default function Audit() {
   };
 
   const handleStop = async () => {
+    if (readOnly) return;
     if (!session) return;
     // Set manual stop flag to prevent auto-resume
     manualStopRef.current = true;
@@ -422,6 +431,7 @@ export default function Audit() {
 
   // Save complete pipeline results to database
   const handleSaveResults = async () => {
+    if (readOnly) return;
     if (!session || !pipelineResults || isSaving) return;
     
     setIsSaving(true);

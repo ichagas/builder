@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { FileSpreadsheet, FileJson, Upload, X, Loader2, ClipboardPaste } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +25,8 @@ export default function FileUploader({
   accept = ".xlsx,.xls,.csv,.json",
   maxSizeMB = 20
 }: FileUploaderProps) {
+  // P4 (NV-06): no file drop on a released version.
+  const { readOnly } = useVersionScopeContext();
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -178,12 +181,13 @@ export default function FileUploader({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (readOnly) return;
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       handleFile(files[0]);
     }
-  }, [handleFile]);
+  }, [readOnly, handleFile]);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

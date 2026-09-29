@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,8 @@ interface AgentResult {
 }
 
 export default function Specifications() {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const [projectName, setProjectName] = useState<string>("project");
@@ -105,7 +108,7 @@ export default function Specifications() {
 
   // Save specification to database
   const saveSpecification = useCallback(async (agentId: string, agentTitle: string, content: string) => {
-    if (!projectId || !isTokenSet) return null;
+    if (readOnly || !projectId || !isTokenSet) return null;
     
     try {
       const { data, error } = await pronghornApi.rpc("insert_specification_with_token", {
@@ -135,7 +138,7 @@ export default function Specifications() {
       console.error("Failed to save specification:", err);
       return null;
     }
-  }, [projectId, shareToken, isTokenSet, selectedContent, loadSavedSpecifications, broadcastSpecificationRefresh]);
+  }, [readOnly, projectId, shareToken, isTokenSet, selectedContent, loadSavedSpecifications, broadcastSpecificationRefresh]);
 
   // Load project settings
   useEffect(() => {
@@ -416,6 +419,7 @@ export default function Specifications() {
   };
 
   const generateSpecifications = async () => {
+    if (readOnly) return;
     if (!projectId || !projectSettings || !hasSelectedContent()) {
       toast.error("Please select project content first");
       return;
@@ -495,6 +499,7 @@ export default function Specifications() {
   };
 
   const retryAgent = async (agentId: string) => {
+    if (readOnly) return;
     const agent = agents.find(a => a.id === agentId);
     if (!agent || !projectSettings || !hasSelectedContent()) return;
 
@@ -595,6 +600,7 @@ export default function Specifications() {
 
   // Handle deleting a saved specification
   const handleDeleteSavedSpec = async (specId: string) => {
+    if (readOnly) return;
     try {
       const { error } = await pronghornApi.rpc("delete_specification_with_token", {
         p_specification_id: specId,
@@ -618,6 +624,7 @@ export default function Specifications() {
 
   // Handle saving specification as artifact
   const handleSaveAsArtifact = async (spec: SavedSpecification) => {
+    if (readOnly) return;
     if (!projectId) return;
     
     toast.loading("Saving as artifact...", { id: "save-artifact" });
@@ -642,6 +649,7 @@ export default function Specifications() {
 
   // Handle setting a version as latest
   const handleSetAsLatest = async (specId: string) => {
+    if (readOnly) return;
     try {
       const { error } = await pronghornApi.rpc("set_specification_latest_with_token", {
         p_specification_id: specId,
