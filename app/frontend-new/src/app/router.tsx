@@ -11,6 +11,7 @@ import { lazyWithRetry } from "./lazyWithRetry";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { RootLayout } from "./layouts/RootLayout";
 import { ProjectLayout } from "./layouts/ProjectLayout";
+import { VersionScope } from "@/features/versions/scope/VersionScope";
 import { AssuranceLayout } from "./layouts/AssuranceLayout";
 import { ROOT_ROUTES } from "./routes/root";
 import { LIBRARY_ROUTES } from "./routes/library";
@@ -110,9 +111,25 @@ export const router = createBrowserRouter([
             element: <PROJECT_VERSIONS_ROUTE.Component />,
             handle: PROJECT_VERSIONS_ROUTE,
           },
+          // NV-06 (T113, WP-V4): the one place phase tools get version
+          // scoping. `v/current` is a passthrough (D-7 fallback, PR-xx
+          // specs); `v/:versionId` renders the same tool under VersionScope.
           ...PROJECT_TOOL_ROUTES.map((route) => ({
             path: `v/current/${route.phase}/${route.tool}`,
-            element: <route.Component />,
+            element: (
+              <VersionScope>
+                <route.Component />
+              </VersionScope>
+            ),
+            handle: route,
+          })),
+          ...PROJECT_TOOL_ROUTES.map((route) => ({
+            path: `v/:versionId/${route.phase}/${route.tool}`,
+            element: (
+              <VersionScope>
+                <route.Component />
+              </VersionScope>
+            ),
             handle: route,
           })),
         ],

@@ -140,3 +140,73 @@ test.describe("Versions axe: zero violations", () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// NV-06 version scoping (T113, WP-V4). Phase tools under
+// /p/:id/v/:versionId/<phase>/<tool>: a released version is a read-only
+// baseline (banner + disabled controls); an open version shows its changes'
+// requirement deltas above the tool; v/current stays untouched (D-7).
+// Seed: versionCurrentId (v1.4.2, released), versionNextId (v1.5.0, open, WI-3
+// with two requirement deltas 940/941).
+// ---------------------------------------------------------------------------
+test.describe("NV-06 version scoping", () => {
+  const RELEASED_URL = `/p/${PROJECT_ID}/v/${seed.versionCurrentId}/define/requirements`;
+  const OPEN_URL = `/p/${PROJECT_ID}/v/${seed.versionNextId}/define/requirements`;
+
+  test("a released version shows the read-only banner and locks the tool", async ({ page }) => {
+    await page.goto(RELEASED_URL);
+
+    await expect(page.getByText(/v1\.4\.2 is released and read-only/)).toBeVisible();
+    const locked = page.getByTestId("version-scope-readonly");
+    await expect(locked).toBeVisible();
+    // Every native control inside the tool is disabled.
+    await expect(locked.locator("button:enabled, input:enabled, textarea:enabled, select:enabled")).toHaveCount(0);
+  });
+
+  test("an open version shows its changes and requirement deltas above the tool", async ({ page }) => {
+    await page.goto(OPEN_URL);
+
+    const panel = page.getByTestId("version-scope-changes");
+    await expect(panel.getByRole("heading", { name: "Changes in v1.5.0" })).toBeVisible();
+    await expect(panel.getByText("Applicants can save a draft and return later")).toBeVisible();
+    await expect(panel.getByText("Saved drafts")).toBeVisible();
+    await expect(panel.getByText("Application submission")).toBeVisible();
+    await expect(panel.getByText("New", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Changed", { exact: true })).toBeVisible();
+    // The tool itself is not locked.
+    await expect(page.getByTestId("version-scope-readonly")).toHaveCount(0);
+  });
+
+  test("v/current is unscoped (no banner, no changes panel)", async ({ page }) => {
+    await page.goto(REQUIREMENTS_URL);
+
+    await expect(page.getByTestId("version-scope")).toHaveCount(0);
+    await expect(page.getByText(/read-only$/)).toHaveCount(0);
+  });
+
+  test("selecting another version on the strip reopens the same tool scoped to it", async ({ page }) => {
+    await page.goto(REQUIREMENTS_URL);
+
+    await page.getByRole("tablist", { name: "Version timeline" }).getByRole("tab", { name: /v1\.5\.0/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/v/${seed.versionNextId}/define/requirements`));
+    await expect(page.getByTestId("version-scope-changes")).toBeVisible();
+  });
+
+  test.describe("axe: zero violations", () => {
+    for (const [name, url, testId] of [
+      ["released version", RELEASED_URL, "version-scope-readonly"],
+      ["open version", OPEN_URL, "version-scope-changes"],
+    ] as const) {
+      test(`${name}`, async ({ page }, testInfo) => {
+        await page.goto(url);
+        await expect(page.getByTestId(testId)).toBeVisible();
+
+        const results = await new AxeBuilder({ page }).analyze();
+        const description = results.violations
+          .map((v) => `[${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+          .join("\n");
+        expect(results.violations, description).toEqual([]);
+      });
+    }
+  });
+});

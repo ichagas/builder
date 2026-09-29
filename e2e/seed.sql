@@ -321,4 +321,15 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- NV-06 Version scoping (T113, WP-V4) -------------------------------------
+-- Requirement deltas on WI-3 (scheduled into v1.5.0), rendered above the
+-- phase tool when browsing /p/<versions project>/v/<v1.5.0 id>/...
+INSERT INTO public.work_item_requirement_changes (id, work_item_id, requirement_id, kind, title, criterion)
+VALUES
+  ('00000000-0000-4000-8000-000000000940', '00000000-0000-4000-8000-000000000913', NULL, 'new',
+   'Saved drafts', 'A draft is kept for 30 days'),
+  ('00000000-0000-4000-8000-000000000941', '00000000-0000-4000-8000-000000000913', NULL, 'changed',
+   'Application submission', 'Submitting clears the saved draft')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
