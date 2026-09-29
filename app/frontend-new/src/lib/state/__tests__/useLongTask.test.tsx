@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { __resetLongTasksForTests, cancelLongTask, settleLongTask, useLongTask } from "../useLongTask";
+import { __resetLongTasksForTests, cancelLongTask, settleLongTask, useLongTask, STALE_RUNNING_MS } from "../useLongTask";
 
 afterEach(() => {
   act(() => __resetLongTasksForTests());
@@ -78,5 +78,66 @@ describe("useLongTask", () => {
     expect(result.current.tasks).toHaveLength(2);
     act(() => cancelLongTask("b"));
     expect(result.current.tasks.map((t) => t.id)).toEqual(["a"]);
+  });
+
+  describe("stale running tasks", () => {
+    it("marks a running task failed after the TTL with no update, then prunes it", () => {
+      vi.useFakeTimers();
+      const { result } = renderHook(() => useLongTask());
+      act(() => {
+        result.current.start({ id: "stuck-1", label: "Stuck" });
+      });
+      act(() => {
+        vi.advanceTimersByTime(STALE_RUNNING_MS - 1);
+      });
+      expect(result.current.runningCount).toBe(1);
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(result.current.runningCount).toBe(0);
+      expect(result.current.tasks.find((t) => t.id === "stuck-1")?.status).toBe("failed");
+      act(() => {
+        vi.advanceTimersByTime(5 * 60 * 1000);
+      });
+      expect(result.current.tasks).toEqual([]);
+    });
+
+    it("update() resets the TTL", () => {
+      vi.useFakeTimers();
+      const { result } = renderHook(() => useLongTask());
+      let handle!: ReturnType<typeof result.current.start>;
+      act(() => {
+        handle = result.current.start({ id: "live-1", label: "Live" });
+      });
+      act(() => {
+        vi.advanceTimersByTime(STALE_RUNNING_MS - 1000);
+      });
+      act(() => handle.update(50));
+      act(() => {
+        vi.advanceTimersByTime(STALE_RUNNING_MS - 1000);
+      });
+      expect(result.current.tasks.find((t) => t.id === "live-1")?.status).toBe("running");
+    });
+
+    it("done() cancels the stale timer, and a restarted task is not pruned by an old timer", () => {
+      vi.useFakeTimers();
+      const { result } = renderHook(() => useLongTask());
+      let handle!: ReturnType<typeof result.current.start>;
+      act(() => {
+        handle = result.current.start({ id: "r-1", label: "Run" });
+      });
+      act(() => handle.done());
+      act(() => {
+        vi.advanceTimersByTime(STALE_RUNNING_MS - 1000);
+      });
+      // Restart the same id shortly before the old retention timer fires.
+      act(() => {
+        result.current.start({ id: "r-1", label: "Run again" });
+      });
+      act(() => {
+        vi.advanceTimersByTime(5 * 60 * 1000);
+      });
+      expect(result.current.tasks.find((t) => t.id === "r-1")?.status).toBe("running");
+    });
   });
 });

@@ -1,9 +1,229 @@
 # Quickstart: `app/frontend-new` (spec 007)
 
-> This file currently has only the "Cutover" section, written as part of
-> T073 (WP-X2). The rest of the quickstart (local dev setup, running the
-> app, running tests) is T162's job — do not treat this file as complete
-> until T162 lands.
+How to run the redesigned frontend, run the E2E suites against it, sign in with
+mock auth, and seed data. Everything below was written from the scripts and
+config in the repo (`e2e/`, `app/frontend-new/`); when one changes, change this
+file. The Cutover section (T073) and the onboarding sandbox check (T152) follow.
+
+Contents: [Run the app](#run-the-app-locally) | [Backend](#backend) | [E2E stack](#e2e-stack) | [Running suites](#running-the-e2e-suites) | [Mock auth](#mock-auth) | [Seed data](#seed-data) | [Axe baselines](#axe-baselines) | [Low-memory machines](#low-memory-machines) | [Cutover](#cutover-t073-switching-the-primary-host-to-frontend-new) | [Onboarding sandbox](#onboarding-real-sandbox-run-t152)
+
+## Run the app locally
+
+```bash
+cd app/frontend-new
+npm ci
+cp .env.example .env      # then edit
+npm run dev               # vite, http://localhost:8080 (vite.config.ts server.port)
+```
+
+Checks used before every commit (all in `app/frontend-new/`): `npm run lint`
+(0 errors; token lint is in error mode), `npx tsc -p tsconfig.app.json
+--noEmit`, `npm test` (vitest), `npm run build`.
+
+Environment variables (`.env.example` documents each):
+
+| Variable | Meaning |
+| --- | --- |
+| `VITE_API_BASE_URL` | Backend / APIM base URL. Default `http://localhost:8080` in the example; point it at your local backend port (for example `http://localhost:3001`, the root `.env.example` `PORT`). Vite itself uses 8080, so the two must differ. |
+| `VITE_APIM_SUBSCRIPTION_KEY` | Only when the gateway enforces subscription keys; blank locally. |
+| `VITE_WS_URL` | Realtime WebSocket URL; blank derives `ws(s)://` from `VITE_API_BASE_URL`. |
+| `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_TENANT_ID` | Entra app registration ids (MSAL). `VITE_AZURE_*` is accepted as a fallback. |
+| `VITE_AZURE_REDIRECT_URI` | OAuth redirect URI; must match the registration and the origin you serve from. |
+| `VITE_AUTH_MODE` | `mock` or `msal`. See [Mock auth](#mock-auth): the app does not branch on it; the E2E harness fakes sign-in through MSAL's cache. |
+| `VITE_APP_CHANNEL` | `next` marks this build as the redesigned app on `next.<domain>`. |
+| `VITE_GITHUB_ORG`, `VITE_COLLABORATION_SNAPSHOT_PREFETCH_LIMIT` | Optional. |
+
+Real sign-in needs a real Entra app registration whose redirect URI matches
+`VITE_AZURE_REDIRECT_URI`. Without one, use the E2E stack below, which signs in
+with a fake tenant.
+
+## Backend
+
+For day-to-day work you normally use the E2E stack (next section), which starts
+Postgres and the API for you with safe defaults. To run the API by hand:
+
+```bash
+docker compose up -d db db-generated-apps   # root docker-compose.yml; ports POSTGRES_PORT/POSTGRES_GENAPPS_PORT (5432/5433)
+cd app/backend
+npm ci
+npm run start:dev                           # ts-node src/index.ts; or `npm run dev` (nodemon, loads ../../.env and ./.env)
+npm test                                    # jest
+```
+
+Configuration comes from the root `.env` (copy `.env.example`) and
+`app/backend/.env.example` (`ENTRA_*`, not `AZURE_*`). Apply `infra/migrations/*.sql`
+to a fresh database yourself in that case; the E2E stack does it automatically.
+
+## E2E stack
+
+The harness in `e2e/` (see also `e2e/README.md`) runs the same Playwright
+specs against either app. Needs Docker (Postgres) plus `npm ci` in
+`app/backend`, the app under test, and `e2e/`.
+
+```bash
+e2e/scripts/stack.sh up                   # Postgres x2 (compose profile "e2e") + API on :3140
+e2e/scripts/serve-app.sh new 8141         # app/frontend-new via vite dev on :8141 (or: legacy 8140)
+# ... run tests ...
+e2e/scripts/stack.sh down                 # stops the API, `compose down -v` (data is gone)
+```
+
+Defaults (all overridable by env): `COMPOSE_PROJECT_NAME=pronghorn-e2e`,
+`DB_PORT=55432`, `GENAPPS_DB_PORT=55433`, `API_PORT=3140`. Conventional app
+ports: 8140 legacy, 8141 new (the API's CORS allowlist covers 8140-8149 by
+default; use `ALLOWED_ORIGINS` for anything else). `stack.sh up` starts the API
+with `NODE_ENV=test`, fake Entra ids, `RATE_LIMIT_MAX=100000`, a fake storage
+account and a scratch `STORAGE_BASE_PATH`; the API log is
+`e2e/.run/<project>/api.log`. `serve-app.sh` exports the `VITE_*` values the
+mock auth needs (`VITE_API_BASE_URL`, `VITE_AUTH_MODE=mock`, the fake tenant and
+client ids, `VITE_AZURE_REDIRECT_URI`) and execs `npx vite --port <port>
+--strictPort`. If vite fails with `EAFNOSUPPORT` on `::` (some sandboxes), run
+vite yourself with `--host 127.0.0.1` and the same env vars.
+
+A second stack in parallel (only on machines with the memory for it, see
+[Low-memory machines](#low-memory-machines)) needs the same `COMPOSE_PROJECT_NAME`,
+`DB_PORT`, `GENAPPS_DB_PORT`, `API_PORT` exported in every shell; see
+`e2e/README.md`.
+
+## Running the E2E suites
+
+`e2e/playwright.config.ts`: two projects, `desktop` (1440x900) and `mobile`
+(390x844), both Desktop Chrome; `fullyParallel: false`; 45 s test timeout;
+`testMatch` covers `regression/**`, `shell/**` and `new/**`. `BASE_URL`
+(default `http://localhost:${FE_PORT:-8140}`) picks the served app and `APP`
+(`legacy` default, or `new`) picks the URL shape in `e2e/routes.ts`; tests
+navigate only through `routes.*` helpers. `API_PORT` must be exported for the
+test process too when you changed it.
+
+```bash
+cd e2e && npm ci
+npm run test:legacy            # APP=legacy, :8140, regression/ only, then builds axe-legacy.json
+npm run test:new               # APP=new, :8141, regression/ + shell/ (PR-01..PR-22)
+npm run test:shell             # APP=new, :8141, shell/ only (remount, redirects, mobile reach, shell axe)
+npm run test:new-capabilities  # APP=new, :8141, new/ (us4.versions, us5.assurance, us6.onboarding)
+```
+
+Each npm script honors `BASE_URL` or `FE_PORT`. Iterate on one file and one
+viewport:
+
+```bash
+APP=new BASE_URL=http://localhost:8141 npx playwright test new/us5.assurance.spec.ts --project=desktop --workers=1 --reporter=list
+npx playwright test --list      # parses every spec without starting a browser or stack
+npx tsc --noEmit -p e2e         # type-check the specs
+```
+
+Specs import `test`/`expect` from `e2e/fixtures.ts`, never from
+`@playwright/test`. The `new/` specs are `APP=new` only. Reports:
+`npm run report` (HTML in `e2e/playwright-report`). Playwright is pinned to an
+exact version (see `e2e/README.md`, "Playwright browser version").
+
+Not covered by CI (needs external services or an LLM): a real GitHub App
+install, Container Apps deploys, blob uploads, LLM-driven flows, and the real
+onboarding sandbox job (see the manual T152 check below).
+
+## Mock auth
+
+Nothing in either app branches on `VITE_AUTH_MODE`. Sign-in in the E2E harness
+works in two halves, and the values must agree (`e2e/lib/config.ts`,
+`stack.sh`, `serve-app.sh` all use the same defaults):
+
+- **Browser side:** the `page` fixture in `e2e/fixtures.ts` calls
+  `buildMsalCacheEntries()` (`e2e/lib/msalCache.ts`) and writes MSAL's
+  localStorage cache with an init script before any page script runs, so
+  `@azure/msal-browser` finds an already signed-in account and an id token, with
+  no network calls. The token is HS256-signed with the JWT secret.
+- **API side:** the backend `authMiddleware` first tries Azure AD/JWKS
+  validation; it fails with the fake tenant, and it then accepts the token as a
+  local JWT signed with `JWT_SECRET`.
+
+| Setting | Default | Override env var |
+| --- | --- | --- |
+| Tenant id | `00000000-e2e-4000-8000-tenantid0001` | `E2E_ENTRA_TENANT_ID` |
+| Client id | `00000000-e2e-4000-8000-clientid0001` | `E2E_ENTRA_CLIENT_ID` |
+| JWT secret | `e2e-local-jwt-secret-do-not-use-in-prod` | `E2E_JWT_SECRET` |
+| API base URL | `http://localhost:${API_PORT:-3140}` | `API_BASE_URL` |
+
+Users (ids in `e2e/lib/seedIds.ts`): the default signed-in user is the
+**owner**, `e2e-owner@pronghorn.test` (`seed.ownerUserId`), an organization
+admin (`user_roles.role = 'admin'`) and owner of the seeded team. The **member**,
+`e2e-member@pronghorn.test` (`seed.memberUserId`), is a plain organization
+member with no admin role; use it for access-control checks. Sign in as another
+user in a spec with `test.use({ mockUser: { id, email, name } })`, or as nobody
+(share-token specs) with `test.use({ mockUser: null })`. For direct API calls
+inside a spec use `api.get/post/put/delete(...)` and `tokenFor(user)` from
+`e2e/lib/api.ts`.
+
+To run the new app in your own browser against the E2E stack, serve it with
+`serve-app.sh new <port>` and seed the same MSAL cache entries by hand (copy the
+keys `buildMsalCacheEntries` produces into localStorage). There is no login
+button flow for the fake tenant.
+
+## Seed data
+
+`e2e/seed.sql` is staged into Postgres' `docker-entrypoint-initdb.d` after all
+`infra/migrations/*.sql` (as `zz-seed.sql`) by `stack.sh up`. The Postgres data
+directory is tmpfs, so **every `stack.sh up` is a fresh, reseeded database**.
+To reseed, recreate the stack: `stack.sh down && stack.sh up` (there is no
+partial reseed; the old `npm run seed` script pointed at a file that never
+existed and was removed).
+
+Rules for editing the seed:
+
+- **Additive and idempotent.** Every insert is `ON CONFLICT (...) DO NOTHING`
+  with a fixed id. Never reorder or rewrite another WP's rows (several WPs merge
+  into this file); append a new commented block.
+- **Fixed ids, mirrored in `e2e/lib/seedIds.ts`.** Specs use `seed.*`, never
+  hardcoded UUIDs. Ids look like `00000000-0000-4000-8000-000000000NNN`.
+- **One id block per WP** (the last three hex digits are the block): baseline
+  `001`-`7xx`; assurance team and apps `80x`-`84x`; versions/change pages
+  `90x`-`92x`; release tool `930`-`93f`; mesh runs `960`-`96f`; packs and policy
+  `970`-`97f`; onboarding steps 3-5 `990`-`99f`; all-teams `9b0`-`9be`. Check
+  `seed.sql` and `seedIds.ts` for the next free block before adding one, and put
+  the block range in the comment above your rows. Do not reuse an id another
+  block already holds.
+- Keep seed data for a new capability on its own project/team where possible, so
+  it cannot shift the PR-xx regression specs that navigate the baseline project.
+- No secrets in the seed (a security check rejects them); connections seed
+  metadata only.
+- Each spec still creates whatever it tests the creation of through the UI.
+
+## Axe baselines
+
+Every regression spec calls `recordAxeBaseline(page, pageId, testInfo)`, which
+appends one line per (page, viewport) to
+`e2e/baselines/axe-legacy.raw.jsonl` (the raw file is shared by `APP=legacy` and
+`APP=new`; both npm scripts delete it first). It only records; it never fails a
+test.
+
+- `npm run test:legacy` then runs `scripts/build-axe-baseline.mjs`, which writes
+  `baselines/axe-legacy.json` (max serious+critical per page and viewport). This
+  is the reference for "no new violations" (spec D-13).
+- For the new app, run `test:new` (or a subset) and then
+  `node scripts/build-axe-baseline-new.mjs`. It aggregates the same raw file,
+  diffs each row against `axe-legacy.json`, and writes `baselines/axe-new-f3.json`
+  (the output name is hard-coded, `outPath` in the script). The other
+  `axe-new-*.json` files are per-WP copies that testers renamed after a run;
+  copy or rename the output the same way to keep a batch's result.
+- The shell (`shell/axe-shell.spec.ts`) and the new-capability specs assert axe
+  directly with `@axe-core/playwright` and target **zero violations**, not just
+  zero serious/critical; they don't need a baseline file.
+
+## Low-memory machines
+
+The local Mac has 8 GB of RAM: one Docker/E2E stack at a time, and code work
+(lint, tsc, unit tests) can stay parallel. To keep it stable:
+
+- Run **one stack** (`stack.sh up`) and one served app at a time; run
+  `stack.sh down` before starting another WP's or branch's stack. Prefer the
+  default ports and project name.
+- Pass `--workers=1` to Playwright (`playwright.config.ts` leaves workers
+  unset locally, which means half the cores), and run **one spec file per call**
+  and, when iterating, one `--project` (desktop or mobile).
+- Unit tests: `npm test -- --maxWorkers=2` in `app/frontend-new` (and
+  `npx jest --maxWorkers=2` in `app/backend`).
+- Do not run `npm run build` or a full vitest run while the E2E stack and a
+  Playwright run are active; run them before or after.
+- Skip the e2e run entirely when you only need a fast check: `npx playwright test
+  --list` and `npx tsc --noEmit -p e2e` catch most spec breakage without Docker.
 
 ## Cutover (T073: switching the primary host to `frontend-new`)
 

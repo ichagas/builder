@@ -24,6 +24,13 @@ vi.mock("@/lib/apiClient", () => ({
   },
 }));
 
+const orgRowsMock = vi.fn();
+vi.mock("@/integrations/pronghorn-api/client", () => ({
+  pronghornApi: {
+    from: () => ({ select: () => ({ limit: () => orgRowsMock() }) }),
+  },
+}));
+
 import { AdminIntegrations } from "../AdminIntegrations";
 
 function renderPage() {
@@ -42,6 +49,7 @@ describe("AdminIntegrations", () => {
     useAdminMock.mockReset();
     getMock.mockReset();
     putMock.mockReset();
+    orgRowsMock.mockReset();
   });
 
   it("shows a no-access state for a non-admin, without calling the admin endpoint", async () => {
@@ -96,5 +104,36 @@ describe("AdminIntegrations", () => {
     expect(screen.getByDisplayValue("GOA GitHub import")).toBeInTheDocument();
 
     await waitFor(() => expect(getMock).toHaveBeenCalledWith("/api/v1/mesh/policy?scope=organization&scopeId=org1"));
+  });
+
+  it("sets the org policy for an org admin with zero teams (org id from the organization row)", async () => {
+    useAdminMock.mockReturnValue({ isAdmin: true, loading: false });
+    orgRowsMock.mockResolvedValue({ data: [{ id: "org-fallback" }] });
+    getMock.mockImplementation(async (url: string) => {
+      if (url === "/api/v1/admin/integrations") {
+        return {
+          githubApp: { configured: true, installationId: "1", accountLogin: "goa-standards", ok: true },
+          githubAppConnections: [],
+          azureDevOps: [],
+        };
+      }
+      if (url === "/api/v1/teams/mine" || url === "/api/v1/teams") return [];
+      if (url.startsWith("/api/v1/mesh/policy")) {
+        return {
+          scope: "organization",
+          scopeId: "org-fallback",
+          effective: { green: "issue", yellow: "issue", red: "issue", blue: "issue" },
+          cyberRiskSandbox: false,
+          explicit: [],
+        };
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(getMock).toHaveBeenCalledWith("/api/v1/mesh/policy?scope=organization&scopeId=org-fallback"),
+    );
   });
 });
