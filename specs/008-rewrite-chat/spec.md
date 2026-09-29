@@ -3,7 +3,7 @@
 **Feature Branch**: `008-rewrite-chat`  
 **Created**: 2026-09-29  
 **Status**: Draft  
-**Input**: User description: "Rewrite the project Chat page (`app/frontend-new/src/pages/project/Chat.tsx`, route `/p/:id/v/current/define/chat`) with inline feedback instead of toasts, an inspector instead of dialogs, state held in the URL and TanStack Query for data. Selected in `specs/007-frontend-new/phase-r-selection.md` (order 1 of 5)."
+**Input**: User description: "Rewrite the project Chat page (`app/frontend-new/src/pages/project/Chat.tsx`, route `/p/:id/v/current/define/chat`) with inline feedback instead of toasts, an inspector instead of dialogs, and state held in the URL. Selected in `specs/007-frontend-new/phase-r-selection.md` (order 1 of 4)."
 
 **Related**: `specs/007-frontend-new/contracts/design-system.md` (shell components, state hooks), `contracts/routes.md` (route and PR-07), `contracts/api.md` (endpoints are reused unchanged). Regression baseline: PR-07.
 
@@ -79,11 +79,11 @@ A user generates an AI summary of a conversation, reads it in the inspector, and
 
 ### Edge Cases
 
-- Reload while an answer is streaming: the persisted messages are shown; whether the interrupted answer resumes is [NEEDS CLARIFICATION: should an in-flight AI response survive a reload, which needs server-side run state, or is showing the messages saved so far enough?].
+- Reload while an answer is streaming: the messages saved so far are shown and the interrupted answer does not resume. Resuming would need server-side run state, which chat does not have today and this rewrite does not add (see Assumptions; compare 011, whose agent runs are server-side).
 - Two tabs open on the same session: new messages from either tab appear in both through the existing realtime hooks.
 - A session deleted in another tab while it is open here: an inline notice replaces the thread and the URL is cleaned.
 - Session list empty: an empty state with "Start a conversation" as the primary action.
-- Attached context grows very large: the composer shows the attached count and blocks send with an inline message when the limit is exceeded.
+- Attached context grows very large: the composer shows the attached count. The current page enforces no client-side limit on message or attached-context size (the only bound is the assistant's output cap: the project's maximum tokens, default 32,768, and 4,096 for summaries), and this rewrite adds none. If the service rejects a request as too large, the failed message shows the error inline with "Retry" (User Story 2, scenario 3).
 - Token expired or share token invalid: the existing `TokenRecoveryMessage` behavior is kept.
 - Only the user's own text is in the composer draft: a draft per session survives a session switch, and is lost on reload (acceptable; drafts are not URL state).
 
@@ -91,16 +91,16 @@ A user generates an AI summary of a conversation, reads it in the inspector, and
 
 ### Functional Requirements
 
-- **FR-001**: The selected session MUST live in the URL (`?session=<id>`) and the page MUST restore it on reload, back/forward and link open, without remounting the project layout.
+- **FR-001**: The selected session MUST be part of the page address and the page MUST restore it on reload, back/forward and link open, without reloading the surrounding project layout.
 - **FR-002**: The page MUST NOT call `toast` for any action that has a place on screen. Every action listed in the stories reports pending, done and failed on the control that started it (`ActionButton`), on the affected row, or in the inspector. A toast is allowed only for events with no place on screen.
-- **FR-003**: The page MUST NOT open a modal dialog. The summary view, the project-context picker and message details MUST use the shell `Inspector` (right panel on desktop, bottom sheet with peek/half/full detents at 768px and below). Destructive actions use two-step confirmation on the button plus `UndoBar`, not a dialog.
-- **FR-004**: All data reads and writes (sessions, messages, project header, requirements, canvas nodes, artifacts) MUST go through TanStack Query with keyed queries and mutations, with realtime updates applied to the query cache. Direct `fetch` inside event handlers MUST be replaced by mutations or a shared streaming helper.
+- **FR-003**: The page MUST NOT open a modal dialog. The summary view, the project-context picker and message details MUST open in the shell inspector panel (right panel on desktop, bottom sheet at 768px and below). Destructive actions use two-step confirmation on the button plus an undo window, not a dialog.
+- **FR-004**: Every read and write of sessions, messages, project header, requirements, canvas nodes and artifacts MUST go through one shared data layer, and realtime updates MUST show on screen without a reload. No component may issue ad-hoc network requests from event handlers.
 - **FR-005**: The AI streaming behavior (endpoint selection, system prompt, attached-context format, persistence of the assistant message) MUST be unchanged, so the same conversations produce the same stored messages (contract: `contracts/api.md` §1, no changes).
-- **FR-006**: Long AI operations (streaming answer, summary) MUST register with `useLongTask` so the `StatusPill` shows them while the user is on other pages.
+- **FR-006**: Long AI operations (streaming answer, summary) MUST be listed in the global status indicator while the user is on other pages.
 - **FR-007**: The primary action MUST remain "Start a conversation" (route metadata), and the sessions sidebar toggle MUST keep its accessible name.
 - **FR-008**: The page MUST keep the share-token behavior of `useShareToken` and `TokenRecoveryMessage`.
 - **FR-009**: Only tokens from the design system MUST be used (token lint passes); the page MUST pass PR-07 at 1440 and 390 and axe with no new violations against the restyled baseline.
-- **FR-010**: The rewrite MUST split the page into components and hooks each under 400 lines (no file over 400 lines in the Chat feature).
+- **FR-010**: The page MUST be split into focused parts so that no single part carries the whole page (limit in implementation notes).
 
 ### Compatibility & Operational Requirements *(mandatory for brownfield changes)*
 
@@ -108,6 +108,7 @@ A user generates an AI summary of a conversation, reads it in the inspector, and
 - **CR-002**: No breaking change. Old links without `?session` open the sessions list with the most recent session selected, as today.
 - **CR-003**: No new privileged action. Sessions remain scoped by project access and share token; the summary and save actions use the existing authorization.
 - **CR-004**: Verification: unit tests for the hooks and components, PR-07 at 1440 and 390 with axe, a new E2E for reload restore and undo delete, then a smoke test on the staging stack after deploy.
+- **CR-005**: On a released version (the version scope is read-only), the page MUST stay inert: send, create, rename, clone, delete and save-as-artifact are disabled with the reason shown, while browsing sessions and reading messages and summaries keep working.
 
 ### Key Entities
 
@@ -121,16 +122,27 @@ A user generates an AI summary of a conversation, reads it in the inspector, and
 ### Measurable Outcomes
 
 - **SC-001**: A reload on an open session returns the user to the same conversation in 100% of tested cases (PR-07 extended E2E), against 0% today.
-- **SC-002**: `toast` calls in the Chat page and its components drop from 23 to at most 2 (events with no place on screen); the goal is 0.
+- **SC-002**: Toast notifications raised by the Chat page and its components drop from 23 call sites to at most 2 (events with no place on screen); the goal is 0.
 - **SC-003**: Modal dialogs on the page drop from 1 (plus the project selector) to 0.
-- **SC-004**: Direct `fetch` and `functions.invoke` calls in the page files drop to 0 outside the shared streaming helper and mutations.
-- **SC-005**: No visible regression: PR-07 passes at 1440 and 390, axe violations equal or fewer than the restyled baseline, and no file in the feature is longer than 400 lines.
+- **SC-004**: Ad-hoc network requests issued from page components drop to 0; all go through the shared data layer.
+- **SC-005**: No visible regression: PR-07 passes at 1440 and 390, and axe violations are equal or fewer than the restyled baseline.
 - **SC-006**: First message appears on screen within 100 ms of pressing send (optimistic).
 
 ## Assumptions
 
 - The restyled page (T045) is the behavior baseline; nothing is redesigned beyond the four goals.
 - Realtime hooks (`useRealtimeChatSessions`, `useRealtimeChatMessages`) stay and feed the query cache.
-- The shell components named in `contracts/design-system.md` (`Inspector`, `ActionButton`, `UndoBar`, `StatusCenter`) and the `useUrlState`, `useUndo`, `useLongTask` hooks exist and are used as documented.
+- The shell components and state hooks named in `contracts/design-system.md` exist and are used as documented.
+- Chat answers are streamed by a client-initiated request and there is no server-side run state for them. This is why a reload mid-answer keeps only the saved messages; agent runs in Build (011) are server-side, which is why they can reopen after reload.
 - Phase R starts after cutover (T073); this spec is not a prerequisite for it.
 - French translation keys are not required for this rewrite (research D-16), but new strings should go through `react-i18next` keys where the codebase already does so.
+
+## Implementation notes (for plan)
+
+Non-binding hints for the plan phase. They are not requirements.
+
+- Address: `?session=<id>` via `useUrlState`, with `?t=` kept for share tokens.
+- Data: TanStack Query with keyed queries and mutations; realtime hooks feed the query cache; one shared streaming helper.
+- Feedback and shell: `ActionButton`, `Inspector` (peek/half/full detents), `UndoBar` (7 s), `StatusPill` via `useLongTask`.
+- Structure: components and hooks each under 400 lines; no direct `fetch` or `functions.invoke` in page files outside the streaming helper and mutations.
+- Read-only: rely on the `VersionScope` readOnly guard plus explicit `disabled` on the mutating controls.
