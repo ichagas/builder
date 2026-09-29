@@ -82,7 +82,7 @@ export function FindingsTable({ findings, onRowClick }: FindingsTableProps) {
         </div>
         
         <Select value={severityFilter} onValueChange={setSeverityFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger data-readonly-allow className="w-[180px]">
             <SelectValue placeholder="Filter by severity" />
           </SelectTrigger>
           <SelectContent>

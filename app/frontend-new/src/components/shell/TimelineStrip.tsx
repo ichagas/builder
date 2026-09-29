@@ -39,6 +39,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
   const { t } = useTranslation();
   const [expanded, setExpanded] = useBoolPref("tl.expanded", false);
   const selectedRef = React.useRef<HTMLButtonElement>(null);
+  const hintId = React.useId();
 
   React.useEffect(() => {
     // jsdom (unit tests) doesn't implement scrollIntoView; guard the call.
@@ -86,81 +87,87 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
   const tabNodes = displayNodes.filter((n) => n.kind !== "more");
   const tabStopId = tabNodes.some((n) => n.id === selectedId) ? selectedId : tabNodes[0]?.id;
 
+  const moreNode = displayNodes.find((n) => n.kind === "more");
+  const tabList = displayNodes.filter((n) => n.kind !== "more");
+
+  // The "N more" and "Fewer" buttons sit outside the tablist: a tablist may only
+  // own tabs. The collapsed range is always the oldest history, so "more" leads.
   return (
     <div
-      role="tablist"
-      aria-label={t("a11y.timeline.label")}
-      aria-describedby="timeline-hint"
-      onKeyDown={handleTablistKeyDown}
       className={cn(
         "flex items-stretch gap-1 overflow-x-auto border-b border-line bg-surface px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
-      <span id="timeline-hint" className="sr-only">
+      <span id={hintId} className="sr-only">
         {t("a11y.timeline.hint")}
       </span>
-      {displayNodes.map((node) => {
-        if (node.kind === "more") {
+      {moreNode ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title={moreNode.sub}
+          className="flex min-h-11 shrink-0 flex-col items-center justify-center rounded-xs px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-2"
+        >
+          <span className="font-semibold">{moreNode.label}</span>
+          {moreNode.sub ? <span>{moreNode.sub}</span> : null}
+        </button>
+      ) : null}
+      <div
+        role="tablist"
+        aria-label={t("a11y.timeline.label")}
+        aria-describedby={hintId}
+        onKeyDown={handleTablistKeyDown}
+        className="flex items-stretch gap-1"
+      >
+        {tabList.map((node) => {
+          const isSelected = node.id === selectedId;
+          const nodeFlags = flagsByAfterId.get(node.id) ?? [];
           return (
-            <button
-              key={node.id}
-              type="button"
-              onClick={() => setExpanded(true)}
-              title={node.sub}
-              className="flex min-h-11 shrink-0 flex-col items-center justify-center rounded-xs px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-2"
-            >
-              <span className="font-semibold">{node.label}</span>
-              {node.sub ? <span>{node.sub}</span> : null}
-            </button>
-          );
-        }
-        const isSelected = node.id === selectedId;
-        const nodeFlags = flagsByAfterId.get(node.id) ?? [];
-        return (
-          <React.Fragment key={node.id}>
-            <button
-              ref={isSelected ? selectedRef : undefined}
-              type="button"
-              role="tab"
-              aria-selected={isSelected}
-              tabIndex={node.id === tabStopId ? 0 : -1}
-              onClick={() => onSelect(node.id)}
-              className={cn(
-                "flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xs px-2.5 py-1 text-xs",
-                isSelected ? "bg-primary-soft text-primary" : "text-muted-foreground hover:bg-surface-2",
-              )}
-            >
-              <span className="flex items-center gap-1 font-mono font-semibold">
-                {node.verdict ? <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", VERDICT_DOT[node.verdict])} /> : null}
-                {node.label}
-              </span>
-              {node.sub ? <span>{node.sub}</span> : null}
-              {KIND_WITH_TEXT.has(node.kind) ? <span className="sr-only">{t(`a11y.timeline.kind.${node.kind}`)}</span> : null}
-            </button>
-            {nodeFlags.map((flag) => (
-              <span
-                key={flag.label}
+            <React.Fragment key={node.id}>
+              <button
+                ref={isSelected ? selectedRef : undefined}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                tabIndex={node.id === tabStopId ? 0 : -1}
+                onClick={() => onSelect(node.id)}
                 className={cn(
-                  "flex shrink-0 items-center gap-1 self-center rounded-xs border border-line px-2 py-1 text-xs",
-                  flag.pending ? "text-muted-foreground" : "text-ok",
+                  "flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xs px-2.5 py-1 text-xs",
+                  isSelected ? "bg-primary-soft text-primary" : "text-muted-foreground hover:bg-surface-2",
                 )}
               >
-                <Flag aria-hidden="true" className="h-3.5 w-3.5" />
-                <span className="sr-only">{t(flag.pending ? "a11y.timeline.flagPending" : "a11y.timeline.flagDone", { label: flag.label })}</span>
-                <span aria-hidden="true">{flag.label}</span>
-              </span>
-            ))}
-          </React.Fragment>
-        );
-      })}
+                <span className="flex items-center gap-1 font-mono font-semibold">
+                  {node.verdict ? <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", VERDICT_DOT[node.verdict])} /> : null}
+                  {node.label}
+                </span>
+                {node.sub ? <span>{node.sub}</span> : null}
+                {KIND_WITH_TEXT.has(node.kind) ? <span className="sr-only">{t(`a11y.timeline.kind.${node.kind}`)}</span> : null}
+              </button>
+              {nodeFlags.map((flag) => (
+                <span
+                  key={flag.label}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1 self-center rounded-xs border border-line px-2 py-1 text-xs",
+                    flag.pending ? "text-muted-foreground" : "text-ok",
+                  )}
+                >
+                  <Flag aria-hidden="true" className="h-3.5 w-3.5" />
+                  <span className="sr-only">{t(flag.pending ? "a11y.timeline.flagPending" : "a11y.timeline.flagDone", { label: flag.label })}</span>
+                  <span aria-hidden="true">{flag.label}</span>
+                </span>
+              ))}
+            </React.Fragment>
+          );
+        })}
+      </div>
       {expanded ? (
         <button
           type="button"
           onClick={() => setExpanded(false)}
           className="min-h-11 shrink-0 rounded-xs px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-2"
         >
-          Fewer
+          {t("shell.timeline.fewer")}
         </button>
       ) : null}
     </div>

@@ -86,7 +86,7 @@ export function ProjectActivityHeatmap({ projectId, shareToken, isTokenSet = tru
             </div>
           </div>
           <Select value={granularity} onValueChange={setGranularity}>
-            <SelectTrigger className="w-28">
+            <SelectTrigger data-readonly-allow className="w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

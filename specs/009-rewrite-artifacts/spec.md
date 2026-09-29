@@ -2,8 +2,8 @@
 
 **Feature Branch**: `009-rewrite-artifacts`  
 **Created**: 2026-09-29  
-**Status**: Draft  
-**Input**: User description: "Rewrite the project Artifacts page (`app/frontend-new/src/pages/project/Artifacts.tsx`, route `/p/:id/v/current/define/artifacts`) with inline feedback instead of toasts, one inspector instead of nine dialogs, folder, view and opened artifact held in the URL, and TanStack Query for data. Selected in `specs/007-frontend-new/phase-r-selection.md` (order 2 of 5)."
+**Status**: Deferred (does not meet 2 of 5 D-14 criteria under the strict reading, see `007-frontend-new/phase-r-selection.md`; spec kept for later)  
+**Input**: User description: "Rewrite the project Artifacts page (`app/frontend-new/src/pages/project/Artifacts.tsx`, route `/p/:id/v/current/define/artifacts`) with inline feedback instead of toasts, one inspector instead of nine dialogs, folder, view and opened artifact held in the URL, and TanStack Query for data. Selected in `specs/007-frontend-new/phase-r-selection.md` (scored 1 of 5 on the strict D-14 reading, so deferred)."
 
 **Related**: `specs/007-frontend-new/contracts/design-system.md`, `contracts/routes.md` (PR-06), `contracts/api.md` (reused unchanged). Follows the patterns settled in `specs/008-rewrite-chat/`.
 
@@ -92,16 +92,16 @@ A user asks for an AI summary of an artifact, and opens the collaboration editor
 
 ### Functional Requirements
 
-- **FR-001**: Selected folder (`?folder=`), view mode (`?view=cards|table|gallery|tree`), search (`?q=`), provenance filter (`?f=`), sort (`?sort=`) and opened artifact (`?artifact=`, plus `mode=edit|collab`) MUST live in the URL through `useUrlState`, and the page MUST restore them on reload and back/forward without remounting the layout.
+- **FR-001**: Selected folder, view mode (cards, table, gallery, tree), search, provenance filter, sort and opened artifact (with its edit or collaboration mode) MUST be part of the page address, and the page MUST restore them on reload and back/forward without reloading the surrounding layout.
 - **FR-002**: The page MUST NOT call `toast` for actions that have a place on screen; upload, save, move, rename, clone, download, summarize, enhance and import MUST report pending, done and failed on the row, the control or the inspector. A toast is allowed only for events with no place on screen.
-- **FR-003**: The page MUST NOT open modal dialogs. Add, edit, preview, move, create-folder, visual recognition, enhance image and summary MUST use the shell `Inspector` (or an inline tree row for create-folder). Delete uses two-step confirmation and `UndoBar`. The collaboration editor MUST be a routed view, not a dialog.
-- **FR-004**: Artifacts, folders, artifact content and the project header MUST be read and written through TanStack Query with keyed queries and mutations; realtime events (`useRealtimeArtifacts`) update the cache. Content for large artifacts MUST load lazily when the artifact is opened.
-- **FR-005**: Long operations (uploads, summarize, enhance, recognition) MUST register with `useLongTask`.
+- **FR-003**: The page MUST NOT open modal dialogs. Add, edit, preview, move, create-folder, visual recognition, enhance image and summary MUST open in the shell inspector panel (or an inline tree row for create-folder). Delete uses two-step confirmation and an undo window. The collaboration editor MUST be a routed view, not a dialog.
+- **FR-004**: Artifacts, folders, artifact content and the project header MUST be read and written through one shared data layer, and realtime changes MUST show without a reload. Content for large artifacts MUST load only when the artifact is opened.
+- **FR-005**: Long operations (uploads, summarize, enhance, recognition) MUST be listed in the global status indicator.
 - **FR-006**: The primary action MUST stay "Add artifact", and every icon-only control MUST have an accessible name at every viewport.
 - **FR-007**: All artifact types, viewers and export formats listed under PR-06 MUST keep working with the same stored data and file formats; no schema or API change.
 - **FR-008**: The page MUST respect share-token access (read-only, token kept in the URL).
 - **FR-009**: Only design-system tokens MUST be used, and the page MUST pass PR-06 at 1440 and 390 with axe at zero violations (the restyled baseline is zero).
-- **FR-010**: No file in the Artifacts feature MUST exceed 400 lines; the page file MUST be a composition of list, tree, toolbar and inspector components.
+- **FR-010**: The page MUST be a composition of list, tree, toolbar and inspector parts rather than one monolith (size limit in implementation notes).
 
 ### Compatibility & Operational Requirements *(mandatory for brownfield changes)*
 
@@ -123,16 +123,25 @@ A user asks for an AI summary of an artifact, and opens the collaboration editor
 ### Measurable Outcomes
 
 - **SC-001**: Reload restores folder, view, search, filter, sort and opened artifact in 100% of tested cases (today 0 of 6).
-- **SC-002**: Toast calls in the page and `components/artifacts/` drop from 43 (7 in the page, 36 in components) to at most 3.
+- **SC-002**: Toast call sites in the page and its artifact components drop from 43 (7 in the page, 36 in components) to at most 3.
 - **SC-003**: Modal dialogs drop from about 9 to 0; the collaboration editor is a route.
 - **SC-004**: A batch of 10 uploads, 2 failing, shows 10 individual outcomes on screen and needs no toast to be understood.
-- **SC-005**: PR-06 passes at 1440 and 390 with 0 axe violations, no file in the feature exceeds 400 lines.
+- **SC-005**: PR-06 passes at 1440 and 390 with 0 axe violations.
 - **SC-006**: Opening a text artifact from the URL shows content within 1 second on the staging stack with a warm cache.
 
 ## Assumptions
 
 - The restyled page (T044) is the behavior baseline.
-- The `Inspector` component supports stacked sections (viewer, actions, move) and can be opened from a URL key.
+- The inspector panel supports stacked sections (viewer, actions, move) and can be opened from the page address.
 - The collaboration components in `components/collaboration/` are reused as is inside the routed view.
-- Chat's rewrite (008) has settled the streaming helper, `useLongTask` registration and the undo pattern; this spec reuses them.
+- Chat's rewrite (008) has settled the streaming, status-indicator and undo patterns; this spec reuses them.
 - Phase R starts after cutover (T073).
+
+## Implementation notes (for plan)
+
+Non-binding hints for the plan phase. They are not requirements.
+
+- Address keys: `folder`, `view=cards|table|gallery|tree`, `q`, `f`, `sort`, `artifact`, `mode=edit|collab`, through `useUrlState`.
+- Data: TanStack Query with keyed queries and mutations; `useRealtimeArtifacts` updates the cache; lazy content load per artifact.
+- Shell: `Inspector`, `UndoBar`, `useLongTask`.
+- Structure: no file in the feature over 400 lines.

@@ -10,6 +10,7 @@ describe("ReadOnlyGuard (P4)", () => {
       <button aria-expanded="false">disclosure</button>
       <button role="tab">tab</button>
       <button data-readonly-allow>allowed</button>
+      <button role="combobox" aria-expanded="false" data-readonly-allow>view picker</button>
     </>
   );
 
@@ -20,6 +21,7 @@ describe("ReadOnlyGuard (P4)", () => {
     expect(screen.getByText("disclosure")).toBeEnabled();
     expect(screen.getByText("tab")).toBeEnabled();
     expect(screen.getByText("allowed")).toBeEnabled();
+    expect(screen.getByText("view picker")).toBeEnabled();
   });
 
   it("does nothing when inactive", () => {

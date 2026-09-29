@@ -98,6 +98,9 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
   // P4 (NV-06): Monaco is read-only and nothing is staged on a released version.
   // Also covers the IDE modal and the Build staging panel, which reuse this editor.
   const { readOnly } = useVersionScopeContext();
+  // Monaco's onMount runs once; read the latest value through a ref so a scope change after mount is honored.
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
 
   // Resolved content values
   const content = isBufferMode ? bufferContent : internalContent;
@@ -479,7 +482,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(({
             onMount={(editor) => {
               const modifiedEditor = editor.getModifiedEditor();
               modifiedEditor.onDidChangeModelContent(() => {
-                if (readOnly) return;
+                if (readOnlyRef.current) return;
                 const value = modifiedEditor.getValue();
                 setContent(value);
               });

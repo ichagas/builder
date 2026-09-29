@@ -7,14 +7,17 @@ import { FileTreeContextMenu } from "../FileTreeContextMenu";
 
 /** P4 (NV-06): the Repository editor and file-tree menu on a released version. */
 
-const monaco = vi.hoisted(() => ({ options: {} as Record<string, unknown> }));
+const monaco = vi.hoisted(() => ({ options: {} as Record<string, unknown>, diffOnMount: undefined as undefined | ((e: unknown) => void) }));
 
 vi.mock("@monaco-editor/react", () => ({
   default: (props: { options: Record<string, unknown> }) => {
     monaco.options = props.options;
     return <div data-testid="monaco" />;
   },
-  DiffEditor: () => <div data-testid="monaco-diff" />,
+  DiffEditor: (props: { onMount?: (e: unknown) => void }) => {
+    monaco.diffOnMount = props.onMount;
+    return <div data-testid="monaco-diff" />;
+  },
 }));
 vi.mock("@/integrations/pronghorn-api/client", () => ({
   pronghornApi: {
@@ -75,5 +78,18 @@ describe("FileTreeContextMenu (P4)", () => {
   it("wraps the entry in the context-menu trigger otherwise", () => {
     const { container } = render(withScope(false, menu));
     expect(container.querySelector("[data-state]")).not.toBeNull();
+  });
+
+  it("diff editor ignores changes after the scope flips to read-only following mount", () => {
+    const diffEditor = (
+      <CodeEditor fileId={null} filePath="src/a.ts" repoId="repo" bufferContent="a" bufferOriginalContent="b" showDiff onClose={() => {}} />
+    );
+    const { rerender } = render(withScope(false, diffEditor));
+    let handler: () => void = () => {};
+    const modified = { onDidChangeModelContent: (cb: () => void) => (handler = cb), getValue: vi.fn(() => "edited") };
+    monaco.diffOnMount?.({ getModifiedEditor: () => modified });
+    rerender(withScope(true, diffEditor));
+    handler();
+    expect(modified.getValue).not.toHaveBeenCalled();
   });
 });

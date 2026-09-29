@@ -169,3 +169,10 @@ Fixed "VS Code Dark+"-style palette for the code/file-browsing widgets — file 
 ## 4. Copy rules
 
 Sentence case. Buttons name the action ("Send update PRs (3)", not "Submit"). No toast for anything that has a place on screen. Errors say what happened and how to fix it. Mono font only for identifiers (WI-42, branches, versions, repo names).
+
+## 5. Accessibility rules (T160; LAYOUT CONTRACT CHANGE)
+
+- **Focus-visible.** One global rule in `src/index.css`: `:focus-visible { outline: 2px solid rgb(var(--focus-rgb)); outline-offset: 2px; }`. It uses the `--focus` token (`--focus-rgb` for the rgb form), never `--primary`, so focus can be re-pointed independently of the brand color. `--focus` is at least 3:1 against surface and background in both themes (WCAG 1.4.11). Components that draw their own ring use `focus-visible:ring-focus`.
+- **44px targets at 768px and below.** Every interactive control on a phone is at least `--row-min` (44px) high and wide: use `Button size="touch"` (or `lg`), or `min-h-11 min-w-11` on custom controls, and keep spacing so targets do not overlap. Desktop density (40px default) is unchanged.
+- **Roving tablist.** A `role="tablist"` is one tab stop: the selected tab has `tabIndex=0`, the others `-1`, and the container's `onKeyDown` is `handleTablistKeyDown` from `src/lib/a11y/rovingTabs.ts` (Left/Right wrap, Home, End move focus only; Enter/Space activates). Only `role="tab"` elements go inside a tablist; other buttons (for example "more") sit outside it.
+- **Inspector focus management.** On open, `Inspector` remembers the element that opened it and moves focus into the panel; on close (unmount) it returns focus to that element if it is still in the document. Escape closes it from anywhere inside.

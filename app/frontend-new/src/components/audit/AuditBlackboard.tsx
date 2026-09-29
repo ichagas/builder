@@ -162,7 +162,7 @@ export function AuditBlackboard({
             />
           </div>
           <Select value={filterRole} onValueChange={setFilterRole}>
-            <SelectTrigger className="w-[130px] h-9">
+            <SelectTrigger data-readonly-allow className="w-[130px] h-9">
               <SelectValue placeholder="Role" />
             </SelectTrigger>
             <SelectContent>
@@ -175,7 +175,7 @@ export function AuditBlackboard({
             </SelectContent>
           </Select>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[130px] h-9">
+            <SelectTrigger data-readonly-allow className="w-[130px] h-9">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>

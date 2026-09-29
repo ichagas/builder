@@ -625,7 +625,7 @@ export default function Audit() {
           <div className="mb-6 flex flex-wrap items-center gap-2">
             {/* Session Selector */}
             <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
-              <SelectTrigger className="w-[160px] md:w-[220px]">
+              <SelectTrigger data-readonly-allow className="w-[160px] md:w-[220px]">
                 <SelectValue placeholder="Select session..." />
               </SelectTrigger>
               <SelectContent>

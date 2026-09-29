@@ -147,7 +147,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 ## Phase R: Optional page rewrites (after cutover, one spec each)
 
-- [X] T170 Apply the research D-14 criteria and pick the pages. Current candidates: Canvas, Artifacts, Repository, Build, Chat.
+- [X] T170 Apply the research D-14 criteria and pick the pages. Current candidates: Canvas, Artifacts, Repository, Build, Chat. Result (strict D-14): Chat, Repository, Build, Canvas selected; Artifacts deferred (`phase-r-selection.md`).
 - [X] T171 For each selected page, create `specs/0xx-rewrite-<page>/` with `/speckit.specify` (goals: inline feedback instead of toasts, inspector instead of dialogs, URL-held state, TanStack Query).
 
 ## Dependencies

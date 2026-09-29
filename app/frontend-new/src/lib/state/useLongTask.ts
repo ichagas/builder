@@ -65,14 +65,30 @@ function armStale(id: string) {
   );
 }
 
+/** One pending removal per task id, so a restart can cancel the old one. */
+const removalTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function clearRemoval(id: string) {
+  const timer = removalTimers.get(id);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    removalTimers.delete(id);
+  }
+}
+
 function scheduleRemoval(id: string) {
-  setTimeout(() => {
-    const t = tasks.get(id);
-    if (t && t.status !== "running") {
-      tasks.delete(id);
-      notify();
-    }
-  }, FINISHED_RETENTION_MS);
+  clearRemoval(id);
+  removalTimers.set(
+    id,
+    setTimeout(() => {
+      removalTimers.delete(id);
+      const t = tasks.get(id);
+      if (t && t.status !== "running") {
+        tasks.delete(id);
+        notify();
+      }
+    }, FINISHED_RETENTION_MS),
+  );
 }
 
 const tasks = new Map<string, LongTask>();
@@ -106,6 +122,8 @@ export function startLongTask(input: StartLongTaskInput): LongTaskHandle {
   // reuse the existing entry instead of resetting its startedAt/status, so
   // the status pill shows one row per run, not one per caller.
   const existing = tasks.get(input.id);
+  // A restarted task must not be pruned by the removal timer of its previous run.
+  clearRemoval(input.id);
   if (existing && existing.status === "running") {
     tasks.set(input.id, {
       ...existing,
@@ -158,6 +176,7 @@ export function settleLongTask(id: string, status: "done" | "failed"): void {
 /** Removes a task from the list without recording an outcome. */
 export function cancelLongTask(id: string): void {
   clearStale(id);
+  clearRemoval(id);
   if (tasks.delete(id)) notify();
 }
 
@@ -179,6 +198,8 @@ export function useLongTasks(): LongTask[] {
 export function __resetLongTasksForTests(): void {
   staleTimers.forEach((timer) => clearTimeout(timer));
   staleTimers.clear();
+  removalTimers.forEach((timer) => clearTimeout(timer));
+  removalTimers.clear();
   tasks.clear();
   notify();
 }

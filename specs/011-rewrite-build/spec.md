@@ -105,21 +105,21 @@ A user opens the raw LLM logs and the log viewer to debug a run.
 
 ### Functional Requirements
 
-- **FR-001**: The agent session (`?session=`), the selected file (`?file=`), and the desktop tab and mobile tab MUST live in the URL through `useUrlState`, replacing the two separate keys (`tab`, `mobileTab`) with one `tab` key that the layout maps per viewport, and restore on reload and back/forward without remounting the layout.
+- **FR-001**: The agent session, the selected file, and the active tab (one tab choice that the layout maps to the desktop or phone arrangement) MUST be part of the page address and restore on reload and back/forward without reloading the surrounding layout. Links saved with the old separate desktop and phone tab choices MUST keep working (CR-002).
 - **FR-002**: The page MUST NOT call `toast` for actions with a place on screen; run, stop, save, stage, discard, create, rename, delete, configuration and commit MUST report pending, done and failed on the control, the tree row, the panel or the inspector. A toast is allowed only for events with no place on screen.
-- **FR-003**: The page MUST NOT open modal dialogs. Configuration, commit details, log viewers, the large-file warning and create/rename MUST use the shell `Inspector`, inline warnings or inline tree edits; delete and discard use two-step confirmation and `UndoBar`.
-- **FR-004**: Agent sessions, messages, progress, files, staged changes and commit history MUST be read and written through TanStack Query with keyed queries and mutations; realtime updates the cache. Direct function calls in the page (about 11) MUST move into hooks.
-- **FR-005**: Agent runs MUST register with `useLongTask`, and the primary action MUST switch between "Run agent" and "Stop agent" (live primary action store), with a disabled reason when no Prime repository exists.
+- **FR-003**: The page MUST NOT open modal dialogs. Configuration, commit details, log viewers, the large-file warning and create/rename MUST open in the shell inspector panel, inline warnings or inline tree edits; delete and discard use two-step confirmation and an undo window.
+- **FR-004**: Agent sessions, messages, progress, files, staged changes and commit history MUST be read and written through one shared data layer, and realtime changes MUST show without a reload. The page components MUST NOT call backend functions directly.
+- **FR-005**: Agent runs MUST be listed in the global status indicator, and the page's primary action MUST switch between "Run agent" and "Stop agent" following the run state, with a disabled reason when no Prime repository exists.
 - **FR-006**: The file tree, code editor, create-file and rename pieces MUST be the shared components delivered by the Repository rewrite (010); Build MUST NOT keep its own copies.
 - **FR-007**: Agent behavior, endpoints, staging semantics, the file buffer, and the raw log contents MUST be unchanged (PR-10 list); no API or schema change.
-- **FR-008**: Resizable desktop panels MUST keep their sizes as a per-viewer preference (`useUiPrefs`), and panels MUST collapse into the URL tab model on phones.
+- **FR-008**: Resizable desktop panels MUST keep their sizes as a per-viewer preference, and panels MUST collapse into the tab model on phones.
 - **FR-009**: Only design-system tokens MUST be used; PR-10 MUST pass at 1440 and 390 with axe, no new violation types.
-- **FR-010**: No file in the Build feature MUST exceed 400 lines.
+- **FR-010**: The page MUST be split into focused parts (size limit in implementation notes).
 
 ### Compatibility & Operational Requirements *(mandatory for brownfield changes)*
 
 - **CR-001**: Affected contracts: `/p/:id/v/current/build/agent` query keys (`tab`, `session`, `file`, `t`; the legacy `mobileTab` is read once and rewritten to `tab`), agent session, message and log tables, the agent run and abort functions, staging and commit functions, realtime channels. No change to any endpoint or table.
-- **CR-002**: The legacy `mobileTab` key stays readable for one release so saved links keep working.
+- **CR-002**: Old links keep working: the legacy `tab` and `mobileTab` values in saved links are read once and mapped to the single tab choice (the address is then rewritten), and the legacy `mobileTab` key stays readable for one release.
 - **CR-003**: Security impact: running the agent writes to the repository through staging; write access checks stay server-side and unchanged. Prompts and raw logs may contain secrets and stay limited to users with project access; nothing is written to URLs beyond ids.
 - **CR-004**: Verification: unit tests, PR-10 at 1440 and 390 with axe, new E2E for reload mid-run, stop, stage and discard with undo; an agent run verified end to end on staging.
 
@@ -136,17 +136,26 @@ A user opens the raw LLM logs and the log viewer to debug a run.
 
 ### Measurable Outcomes
 
-- **SC-001**: Reload during a run reopens the same run with live progress in 100% of tested cases.
-- **SC-002**: `toast` calls in the page and `components/build/` drop from 83 (22 in the page, 61 in components) to at most 5.
+- **SC-001**: Reload during a run reopens the same run with live progress in 100% of tested cases. This depends on run state being kept on the server (see Assumptions); Chat (008) has no such state, which is why its answers do not resume after a reload.
+- **SC-002**: Toast call sites in the page and its build components drop from 83 (22 in the page, 61 in components) to at most 5.
 - **SC-003**: Modal dialogs drop from about 4 to 0.
-- **SC-004**: Direct function calls in page files drop from about 11 to 0.
+- **SC-004**: Backend calls made directly from page components drop from about 11 to 0.
 - **SC-005**: Duplicate file-tree, editor, create and rename code between Build and Repository drops to 0 files.
-- **SC-006**: PR-10 passes at 1440 and 390, no file in the feature exceeds 400 lines.
+- **SC-006**: PR-10 passes at 1440 and 390 with no new axe violation types.
 
 ## Assumptions
 
 - The restyled page (T048) is the behavior baseline.
 - The Repository rewrite (010) lands first and exports the shared file components.
-- Agent execution stays server-side; the page is a client for it.
+- Agent execution stays server-side and its run state (status, progress, messages) is stored on the server; the page is a client for it. Reload during a run therefore reopens the run, unlike Chat (008), whose streamed answers have no server-side run state.
 - `StatusCenter` already lists agent sessions from realtime (as in the design system).
 - Phase R starts after cutover (T073).
+
+## Implementation notes (for plan)
+
+Non-binding hints for the plan phase. They are not requirements.
+
+- Address: `?session=`, `?file=`, one `tab` key (replacing `tab` + `mobileTab`), through `useUrlState`.
+- Data: TanStack Query with keyed queries and mutations; realtime updates the cache; the ~11 direct function calls in the page move into hooks.
+- Shell: `Inspector`, `UndoBar`, `useLongTask`, live primary action store (`createPrimaryActionStore`), `useUiPrefs` for panel sizes.
+- Structure: no file in the feature over 400 lines.
