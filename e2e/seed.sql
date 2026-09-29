@@ -443,4 +443,53 @@ VALUES ('00000000-0000-4000-8000-00000000092a', '00000000-0000-4000-8000-0000000
         'Order total includes discounts', 'A valid discount code lowers the checkout total')
 ON CONFLICT (id) DO NOTHING;
 
+-- US5 All teams (T134/T135, WP-A5, NA-07): 15 more repositories across two new
+-- teams in the same organization. Ids: teams/apps in the 980..98f block, the
+-- 15 repositories in the second block 9b0..9be (16 ids were not enough for
+-- 2 teams + 3 apps + 15 repos). Full names are "e2e-goa/a5-*".
+-- Isolation: existing NA-01..NA-08 specs only address teams 801/802 by id,
+-- app 811..813 and repos 821..824, so these never change their counts. The
+-- two teams only add rows to the "All teams" section of the switcher (names
+-- avoid "Permits Platform" and "Licensing", which those specs match).
+-- Fleet Services (980, 10 repos): 6 on the latest pack 2026.2, 4 not reporting.
+-- Harbor Ops (981, 5 repos): 4 on 2026.2, 1 not reporting. e2e-member (not an
+-- org admin) is a plain member of Fleet Services only, so /assurance/all and
+-- Harbor Ops are refused for them while Fleet Services stays readable.
+INSERT INTO public.teams (id, organization_id, name)
+VALUES
+  ('00000000-0000-4000-8000-000000000980', '00000000-0000-4000-8000-000000000001', 'Fleet Services'),
+  ('00000000-0000-4000-8000-000000000981', '00000000-0000-4000-8000-000000000001', 'Harbor Ops')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.team_members (team_id, user_id, role)
+VALUES ('00000000-0000-4000-8000-000000000980', '00000000-0000-4000-8000-0000000000a2', 'member')
+ON CONFLICT (team_id, user_id) DO NOTHING;
+
+INSERT INTO public.applications (id, team_id, name, owner_label, onboarded_at)
+VALUES
+  ('00000000-0000-4000-8000-000000000982', '00000000-0000-4000-8000-000000000980', 'Fleet Core', 'Fleet squad', now() - interval '40 days'),
+  ('00000000-0000-4000-8000-000000000983', '00000000-0000-4000-8000-000000000980', 'Fleet Field', 'Fleet squad', now() - interval '20 days'),
+  ('00000000-0000-4000-8000-000000000984', '00000000-0000-4000-8000-000000000981', 'Harbor Core', 'Harbor squad', now() - interval '15 days')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.application_repositories
+  (id, application_id, provider, full_name, default_branch, ci_provider, profile, stack_label, part, pinned_pack, last_report_at)
+VALUES
+  ('00000000-0000-4000-8000-0000000009b0', '00000000-0000-4000-8000-000000000982', 'github', 'e2e-goa/a5-fleet-core-api', 'main', 'github_actions', 'dotnet', '.NET 8', 'api', '2026.2', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-0000000009b1', '00000000-0000-4000-8000-000000000982', 'github', 'e2e-goa/a5-fleet-core-web', 'main', 'github_actions', 'node', 'Node 20', 'web', '2026.2', now() - interval '2 days'),
+  ('00000000-0000-4000-8000-0000000009b2', '00000000-0000-4000-8000-000000000982', 'github', 'e2e-goa/a5-fleet-core-worker', 'main', 'github_actions', 'dotnet', '.NET 8', 'worker', '2026.1', now() - interval '12 days'),
+  ('00000000-0000-4000-8000-0000000009b3', '00000000-0000-4000-8000-000000000982', 'github', 'e2e-goa/a5-fleet-core-db', 'main', 'github_actions', 'java', 'Java 21', 'db', '2026.2', now() - interval '3 days'),
+  ('00000000-0000-4000-8000-0000000009b4', '00000000-0000-4000-8000-000000000982', 'github', 'e2e-goa/a5-fleet-core-events', 'main', 'github_actions', 'node', 'Node 20', 'events', '2026.1', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-0000000009b5', '00000000-0000-4000-8000-000000000982', 'github', 'e2e-goa/a5-fleet-core-gateway', 'main', 'github_actions', 'node', 'Node 20', 'gateway', '2026.2', NULL),
+  ('00000000-0000-4000-8000-0000000009b6', '00000000-0000-4000-8000-000000000982', 'github', 'e2e-goa/a5-fleet-core-batch', 'main', 'github_actions', 'python', 'Python 3.12', 'batch', NULL, now() - interval '20 days'),
+  ('00000000-0000-4000-8000-0000000009b7', '00000000-0000-4000-8000-000000000983', 'github', 'e2e-goa/a5-fleet-field-app', 'main', 'github_actions', 'node', 'Node 20', 'app', '2026.2', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-0000000009b8', '00000000-0000-4000-8000-000000000983', 'github', 'e2e-goa/a5-fleet-field-sync', 'main', 'github_actions', 'dotnet', '.NET 8', 'sync', '2026.1', now() - interval '9 days'),
+  ('00000000-0000-4000-8000-0000000009b9', '00000000-0000-4000-8000-000000000983', 'github', 'e2e-goa/a5-fleet-field-tools', 'main', 'github_actions', 'python', 'Python 3.12', 'tools', '2026.2', now() - interval '4 hours'),
+  ('00000000-0000-4000-8000-0000000009ba', '00000000-0000-4000-8000-000000000984', 'github', 'e2e-goa/a5-harbor-api', 'main', 'github_actions', 'java', 'Java 21', 'api', '2026.2', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-0000000009bb', '00000000-0000-4000-8000-000000000984', 'github', 'e2e-goa/a5-harbor-ui', 'main', 'github_actions', 'node', 'Node 20', 'web', '2026.2', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-0000000009bc', '00000000-0000-4000-8000-000000000984', 'github', 'e2e-goa/a5-harbor-ingest', 'main', 'github_actions', 'dotnet', '.NET 8', 'ingest', '2026.1', now() - interval '1 day'),
+  ('00000000-0000-4000-8000-0000000009bd', '00000000-0000-4000-8000-000000000984', 'github', 'e2e-goa/a5-harbor-reports', 'main', 'github_actions', 'python', 'Python 3.12', 'reports', '2026.2', now() - interval '8 days'),
+  ('00000000-0000-4000-8000-0000000009be', '00000000-0000-4000-8000-000000000984', 'github', 'e2e-goa/a5-harbor-cli', 'main', 'github_actions', 'node', 'Node 20', 'cli', '2026.2', now() - interval '1 day')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;

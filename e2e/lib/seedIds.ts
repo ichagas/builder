@@ -104,4 +104,12 @@ export const seed = {
   changeNodeOtherId: "00000000-0000-4000-8000-000000000928", // "Marketing site" (not affected)
   changeShipItemId: "00000000-0000-4000-8000-00000000092b", // WI-923: on Ship, with a preview
   changeLockedItemId: "00000000-0000-4000-8000-00000000092c", // WI-922: shipped in released v2.0.0
+  // US5 All teams (T134/T135, WP-A5, NA-07): two more teams and 15 repositories
+  // (second id block 9b0..9be). memberUserId is a plain member of Fleet Services.
+  allTeamsFleetId: "00000000-0000-4000-8000-000000000980", // Fleet Services: 10 repos, 6 on 2026.2, 4 not reporting
+  allTeamsHarborId: "00000000-0000-4000-8000-000000000981", // Harbor Ops: 5 repos, 4 on 2026.2, 1 not reporting
+  allTeamsFleetCoreAppId: "00000000-0000-4000-8000-000000000982",
+  allTeamsFleetFieldAppId: "00000000-0000-4000-8000-000000000983",
+  allTeamsHarborCoreAppId: "00000000-0000-4000-8000-000000000984",
+  allTeamsFirstRepoId: "00000000-0000-4000-8000-0000000009b0", // e2e-goa/a5-fleet-core-api ... 9be e2e-goa/a5-harbor-cli
 } as const;
