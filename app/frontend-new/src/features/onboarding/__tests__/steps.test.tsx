@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, renderHook, screen } from "@testing-library/react";
+import { render, renderHook, screen, act, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SandboxStep } from "../steps/SandboxStep";
@@ -57,6 +57,20 @@ describe("SandboxStep", () => {
     expect(result.current.find((t) => t.id === "onboarding-run1")).toMatchObject({ status: "running", channel: "onboarding-run1" });
   });
 
+  it("settles the long task as failed when the run is cancelled", () => {
+    const { rerender } = renderWith(<SandboxStep run={makeRun({ status: "running" })} onContinue={vi.fn()} onStartOver={vi.fn()} />);
+    const tasks = renderHook(() => useLongTasks());
+    expect(tasks.result.current.find((t) => t.id === "onboarding-run1")?.status).toBe("running");
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <SandboxStep run={makeRun({ status: "cancelled" })} onContinue={vi.fn()} onStartOver={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(tasks.result.current.find((t) => t.id === "onboarding-run1")?.status).toBe("failed");
+  });
+
   it("offers start over when the job failed", () => {
     renderWith(<SandboxStep run={makeRun({ status: "failed" })} onContinue={vi.fn()} onStartOver={vi.fn()} />);
     expect(screen.getByText("The sandbox run failed")).toBeInTheDocument();
@@ -106,5 +120,35 @@ describe("PullRequestsStep", () => {
     expect(screen.getByText(/already onboarded to another application/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View application" })).toHaveAttribute("href", "/assurance/t/t1/apps/app1");
     expect(screen.getByText("Pull requests opened")).toBeInTheDocument();
+  });
+});
+
+describe("useOnboardingRunTracker", () => {
+  it("keeps polling a running task after the wizard unmounts and settles it when the run is ready", async () => {
+    const { useOnboardingRunTracker } = await import("../useOnboardingRunTracker");
+    const { startLongTask } = await import("@/lib/state/useLongTask");
+    act(() => {
+      startLongTask({ id: "onboarding-run1", label: "Sandbox", channel: "onboarding-run1" });
+    });
+    getMock.mockResolvedValue(makeRun({ status: "ready" }));
+    const queryClient = new QueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    renderHook(() => useOnboardingRunTracker(), { wrapper });
+    const tasks = renderHook(() => useLongTasks());
+    await waitFor(() => expect(tasks.result.current.find((t) => t.id === "onboarding-run1")?.status).toBe("done"));
+  });
+
+  it("settles as failed when the run was cancelled", async () => {
+    const { useOnboardingRunTracker } = await import("../useOnboardingRunTracker");
+    const { startLongTask } = await import("@/lib/state/useLongTask");
+    act(() => {
+      startLongTask({ id: "onboarding-run1", label: "Sandbox" });
+    });
+    getMock.mockResolvedValue(makeRun({ status: "cancelled" }));
+    const queryClient = new QueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    renderHook(() => useOnboardingRunTracker(), { wrapper });
+    const tasks = renderHook(() => useLongTasks());
+    await waitFor(() => expect(tasks.result.current.find((t) => t.id === "onboarding-run1")?.status).toBe("failed"));
   });
 });

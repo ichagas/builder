@@ -56,6 +56,19 @@ describe("useRealtimeOnboardingLog", () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: onboardingKeys.run("run1") });
   });
 
+  it("keeps the lines when enabled flips false, and clears them when the run changes", () => {
+    const { wrapper } = setup();
+    const { result, rerender } = renderHook(({ id, on }) => useRealtimeOnboardingLog(id, on), {
+      wrapper,
+      initialProps: { id: "run1", on: true },
+    });
+    act(() => handlers.onboarding_progress({ payload: { type: "log", message: "cloning" } }));
+    rerender({ id: "run1", on: false });
+    expect(result.current.map((l) => l.text)).toEqual(["cloning"]);
+    rerender({ id: "run2", on: false });
+    expect(result.current).toEqual([]);
+  });
+
   it("removes the channel on unmount and stays closed when disabled", () => {
     const { wrapper } = setup();
     const { unmount } = renderHook(() => useRealtimeOnboardingLog("run1", true), { wrapper });

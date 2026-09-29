@@ -1,13 +1,14 @@
 import { useMemo } from "react";
 import { useQueries, type UseQueryResult } from "@tanstack/react-query";
-import apiClient from "@/lib/apiClient";
 import {
   assuranceKeys,
-  teamPortfolioSchema,
+  fetchTeamPortfolio,
+  PORTFOLIO_STALE_TIME_MS,
   useTeamsAll,
   type OrgTeamSummary,
   type TeamPortfolio,
 } from "./api";
+import { usePacks, type StandardsPack } from "./governance.api";
 
 /**
  * All teams (T134, WP-A5, NA-07). The organization-wide assurance overview
@@ -41,13 +42,37 @@ export interface AllTeamsOverview {
   totals: { teams: number; applications: number; repositories: number; notReporting: number };
 }
 
-/** The highest pack version pinned anywhere in the organization ("2026.2" > "2026.1"). */
-export function latestPackOf(portfolios: (TeamPortfolio | undefined)[]): string | null {
+/** Compares dotted numeric versions segment by segment ("2026.10" > "2026.9"). */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".");
+  const pb = b.split(".");
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = Number.parseInt(pa[i] ?? "0", 10);
+    const y = Number.parseInt(pb[i] ?? "0", 10);
+    if (Number.isNaN(x) || Number.isNaN(y)) {
+      const c = (pa[i] ?? "").localeCompare(pb[i] ?? "");
+      if (c !== 0) return c;
+    } else if (x !== y) {
+      return x - y;
+    }
+  }
+  return 0;
+}
+
+/**
+ * The organization's latest pack: the newest `published_at` in the packs
+ * list when available, otherwise the highest pinned version compared
+ * numerically by segment.
+ */
+export function latestPackOf(portfolios: (TeamPortfolio | undefined)[], packs?: StandardsPack[]): string | null {
+  if (packs && packs.length > 0) {
+    return packs.reduce((best, p) => (Date.parse(p.published_at) > Date.parse(best.published_at) ? p : best)).version;
+  }
   let latest: string | null = null;
   for (const p of portfolios) {
     for (const app of p?.applications ?? []) {
       for (const repo of app.repositories) {
-        if (repo.pinned_pack && (latest === null || repo.pinned_pack > latest)) latest = repo.pinned_pack;
+        if (repo.pinned_pack && (latest === null || compareVersions(repo.pinned_pack, latest) > 0)) latest = repo.pinned_pack;
       }
     }
   }
@@ -61,12 +86,14 @@ export function useAllTeamsOverview(enabled: boolean): AllTeamsOverview {
   const portfolioQueries: UseQueryResult<TeamPortfolio>[] = useQueries({
     queries: teams.map((team) => ({
       queryKey: assuranceKeys.portfolio(team.id),
-      queryFn: async () => teamPortfolioSchema.parse(await apiClient.get<unknown>(`/api/v1/teams/${team.id}/portfolio`)),
+      queryFn: () => fetchTeamPortfolio(team.id),
+      staleTime: PORTFOLIO_STALE_TIME_MS,
     })),
   });
 
   const portfolios = portfolioQueries.map((q) => q.data);
-  const latestPack = latestPackOf(portfolios);
+  const { data: packs } = usePacks(enabled);
+  const latestPack = latestPackOf(portfolios, packs);
 
   const rows: TeamOverviewRow[] = teams.map((team, i) => {
     const portfolio = portfolios[i];

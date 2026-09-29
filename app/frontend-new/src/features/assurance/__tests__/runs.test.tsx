@@ -132,6 +132,18 @@ describe("AppRuns (NA-05)", () => {
     expect(await screen.findByTestId("assurance-run-issue-result")).toHaveTextContent("Issue opened: #42");
   });
 
+  it("explains a ?run outside the window, and can widen the window or clear it", async () => {
+    mockApi();
+    renderPage("?run=run-old");
+    expect(await screen.findByTestId("assurance-run-missing")).toHaveTextContent("not in the last 7 days");
+    await userEvent.click(screen.getByRole("button", { name: "Show the last 14 days" }));
+    expect(screen.getByTestId("loc").textContent).toContain("days=14");
+    expect(screen.getByTestId("loc").textContent).toContain("run=run-old");
+    await userEvent.click(await screen.findByRole("button", { name: "Clear selection" }));
+    await waitFor(() => expect(screen.queryByTestId("assurance-run-missing")).not.toBeInTheDocument());
+    expect(screen.getByTestId("loc").textContent).not.toContain("run=");
+  });
+
   it("shows an empty state when there are no runs", async () => {
     mockApi({ appId: APP_ID, days: 7, runsByDay: [] });
     renderPage();

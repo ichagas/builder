@@ -264,7 +264,7 @@ function TeamStep({
             onChange={(e) => setApplicationName(e.target.value)}
             disabled={!!run}
             placeholder={t("onboarding.wizard.team.appNamePlaceholder")}
-            className="h-10 rounded-xs border border-line bg-surface px-3 text-sm text-ink disabled:opacity-70"
+            className="min-h-11 rounded-xs border border-line bg-surface px-3 text-sm text-ink disabled:opacity-70 sm:min-h-10"
           />
         </label>
         {submitError ? (
@@ -407,7 +407,7 @@ function ConnectStep({
                     type="button"
                     onClick={() => toggle(fullName)}
                     aria-label={t("onboarding.wizard.connect.remove", { name: fullName })}
-                    className="shrink-0 text-xs font-medium text-muted-foreground hover:text-ink"
+                    className="inline-flex min-h-11 shrink-0 items-center px-2 text-xs font-medium text-muted-foreground hover:text-ink sm:min-h-9"
                   >
                     {t("onboarding.wizard.connect.removeShort")}
                   </button>
@@ -448,13 +448,13 @@ function ConnectStep({
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("onboarding.wizard.connect.searchPlaceholder")}
             aria-label={t("onboarding.wizard.connect.searchPlaceholder")}
-            className="h-9 flex-1 rounded-xs border border-line bg-surface px-3 text-sm text-ink"
+            className="min-h-11 flex-1 rounded-xs border border-line bg-surface px-3 text-sm text-ink sm:min-h-9"
           />
           <button
             type="button"
             onClick={toggleAll}
             disabled={selectableVisible.length === 0}
-            className="h-9 rounded-xs border border-line bg-surface px-3 text-xs font-semibold text-ink disabled:opacity-50"
+            className="min-h-11 rounded-xs border border-line bg-surface px-3 text-xs font-semibold text-ink disabled:opacity-50 sm:min-h-9"
           >
             {allVisibleSelected ? t("onboarding.wizard.connect.clearAll") : t("onboarding.wizard.connect.selectAll")}
           </button>
@@ -475,7 +475,7 @@ function ConnectStep({
         ) : (
           <ul className="divide-y divide-line border-t border-line">
             {options.map((option) => (
-              <li key={option.fullName} className="flex items-center gap-3 px-4 py-2 text-sm">
+              <li key={option.fullName} className="flex min-h-11 items-center gap-3 px-4 py-2 text-sm">
                 <input
                   type="checkbox"
                   id={`repo-${option.fullName}`}
@@ -484,7 +484,7 @@ function ConnectStep({
                   onChange={() => toggle(option.fullName)}
                   className="h-[18px] w-[18px]"
                 />
-                <label htmlFor={`repo-${option.fullName}`} className="min-w-0 flex-1 truncate text-ink">
+                <label htmlFor={`repo-${option.fullName}`} className="flex min-h-11 min-w-0 flex-1 items-center truncate text-ink sm:min-h-0">
                   <code>{option.fullName}</code>
                 </label>
                 {option.disabledReason ? (

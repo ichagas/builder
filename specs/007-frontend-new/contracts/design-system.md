@@ -18,6 +18,7 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Text | `--ink #0F1D35`, `--muted #4F5F78` |
 | Brand | `--primary #2451D6`, `--primary-soft #E3EAFC`, `--focus #2451D6` |
 | Status | `--ok #127B3B`, `--warn #B05109`, `--bad #C0262D`, `--run #D97706` + `-soft` variants |
+| Status foreground | `--ok-foreground`, `--warn-foreground`, `--bad-foreground`: `#FFFFFF` in light, `#0B1830` in dark; text/icons on solid ok/warn/bad fills |
 | Phases | `--c-define #7C3AED`, `--c-design #0891B2`, `--c-build #D97706`, `--c-ship #16A34A` |
 | Change types | `--t-bug`, `--t-feat`, `--t-enh`, `--t-base` + `-soft` |
 | Mesh agents | `--m-green #16A34A`, `--m-yellow #CA8A04`, `--m-red #DC2626`, `--m-blue #2563EB` |
@@ -28,7 +29,7 @@ Defined on `:root` (light) and `[data-theme="dark"]` / `prefers-color-scheme: da
 | Type | `--font "IBM Plex Sans"`, `--mono "IBM Plex Mono"` (identifiers only), `--fs 14px`, `--h1 26px/600`, `--h2 14px/600` |
 | Shape | `--radius 4px`, `--radius-s 3px`, `--radius-pill 3px` |
 | Density | `--row 48px` (min target 44px), `--pad 14px`, `--gap 14px` |
-| Layout | `--rail-w 248px` (collapsed 76px), `--bar-h 52px`, `--timeline-h 76px`, `--tabbar-h 62px` |
+| Layout | `--rail-w 248px` (collapsed 76px), `--bar-h 52px`, `--timeline-h 76px`, `--tabbar-h 56px` |
 | Elevation | `--shadow none`, `--shadow-pop 0 10px 28px rgba(11,24,48,.28)` |
 
 Dark theme: invert surfaces (`--bg #0E1626`, `--surface #142036`…) while keeping status and phase hues, with contrast ≥ 4.5:1. The rail and global bar stay navy in both themes.

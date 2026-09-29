@@ -5,6 +5,19 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Packs } from "@/pages/assurance/Packs";
 import { Policy } from "@/pages/assurance/Policy";
+import { triggerUndo, dismissUndo } from "@/lib/state/useUndo";
+
+const toastError = vi.fn();
+vi.mock("sonner", () => ({ toast: { error: (...a: unknown[]) => toastError(...a), success: vi.fn() } }));
+
+const orgRows = vi.fn();
+vi.mock("@/integrations/pronghorn-api/client", () => ({
+  pronghornApi: {
+    from: () => ({ select: () => ({ limit: () => orgRows() }) }),
+    channel: () => ({ on() { return this; }, subscribe() { return this; } }),
+    removeChannel: vi.fn(),
+  },
+}));
 
 const useAdminMock = vi.fn();
 vi.mock("@/contexts/AdminContext", () => ({ useAdmin: () => useAdminMock() }));
@@ -71,6 +84,9 @@ function renderAt(ui: React.ReactElement, url: string) {
 beforeEach(() => {
   getMock.mockReset().mockImplementation(async (url: string) => route(url));
   putMock.mockReset().mockResolvedValue(policyBody({ green: "issue", yellow: "issue", red: "block", blue: "issue" }));
+  toastError.mockReset();
+  dismissUndo();
+  orgRows.mockReset().mockResolvedValue({ data: [{ id: "org-fallback" }] });
   useAdminMock.mockReset().mockReturnValue({ isAdmin: false, loading: false });
 });
 
@@ -111,6 +127,31 @@ describe("Policy", () => {
     expect(putMock).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /Loosen Red/ }));
     await waitFor(() => expect(putMock).toHaveBeenCalledWith(`/api/v1/mesh/policy?scope=organization&scopeId=${ORG}`, { agent: "red", mode: "off" }));
+  });
+
+  it("surfaces an error when the undo write fails", async () => {
+    useAdminMock.mockReturnValue({ isAdmin: true, loading: false });
+    const user = userEvent.setup();
+    renderAt(<Policy />, "/assurance/policy");
+    const green = await screen.findByRole("combobox", { name: "Green policy mode" });
+    await user.selectOptions(green, "block");
+    await user.click(screen.getByRole("button", { name: "Apply Green" }));
+    await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+    putMock.mockRejectedValueOnce(new Error("403"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Green policy mode" })).toBeInTheDocument());
+    triggerUndo();
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("Couldn't undo the change to Green"));
+  });
+
+  it("finds the organization for an admin with no teams", async () => {
+    useAdminMock.mockReturnValue({ isAdmin: true, loading: false });
+    getMock.mockImplementation(async (url: string) => {
+      if (url === "/api/v1/teams/mine" || url === "/api/v1/teams") return [];
+      return route(url);
+    });
+    renderAt(<Policy />, "/assurance/policy");
+    await screen.findByRole("combobox", { name: "Red policy mode" });
+    expect(getMock).toHaveBeenCalledWith("/api/v1/mesh/policy?scope=organization&scopeId=org-fallback");
   });
 
   it("lists exceptions with an expired marker and links to the application page", async () => {

@@ -212,6 +212,11 @@
       "crumb": "{{team}} / {{app}}",
       "title": "Mesh runs",
       "backToApp": "Back to application",
+      "notInWindow": {
+        "message": "The selected run is not in the last {{count}} days.",
+        "widen": "Show the last {{count}} days",
+        "clear": "Clear selection"
+      },
       "loading": "Loading mesh runs…",
       "days_one": "Last {{count}} day",
       "days_other": "Last {{count}} days",
@@ -331,6 +336,7 @@
         "loosenConfirm": "Loosen {{check}}? Confirm",
         "saved": "Mesh policy updated",
         "saveFailed": "Couldn't update mesh policy",
+        "undoFailed": "Couldn't undo the change to {{check}}",
         "undoText": "{{check}} set back to {{mode}}",
         "loading": "Loading mesh policy…",
         "error": {

@@ -1,7 +1,8 @@
+import { useLayoutEffect } from "react";
 import { describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useUrlState } from "../useUrlState";
 
 function Probe({ defaultTab = "requirements" }: { defaultTab?: string }) {
@@ -113,5 +114,51 @@ describe("useUrlState consecutive setters", () => {
       await user.click(screen.getByText("both"));
     });
     expect(screen.getByTestId("vals").textContent).toBe("t2|a2");
+  });
+});
+
+function Source() {
+  const [, setA] = useUrlState("a", "");
+  const navigate = useNavigate();
+  return (
+    <button
+      onClick={() => {
+        setA("stale");
+        navigate("/y?keep=1");
+      }}
+    >
+      leave
+    </button>
+  );
+}
+
+function Target() {
+  const [, setB] = useUrlState("b", "");
+  const location = useLocation();
+  // Runs in the same tick as the click that navigated here.
+  useLayoutEffect(() => {
+    setB("fresh");
+  }, [setB]);
+  return <span data-testid="search">{location.search}</span>;
+}
+
+describe("useUrlState pending params across paths", () => {
+  it("a setter after navigate() to another path in the same tick does not carry the previous path's keys", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/x"]}>
+        <Routes>
+          <Route path="/x" element={<Source />} />
+          <Route path="/y" element={<Target />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await act(async () => {
+      await user.click(screen.getByText("leave"));
+    });
+    const params = new URLSearchParams(screen.getByTestId("search").textContent ?? "");
+    expect(params.get("b")).toBe("fresh");
+    expect(params.get("keep")).toBe("1");
+    expect(params.has("a")).toBe(false);
   });
 });

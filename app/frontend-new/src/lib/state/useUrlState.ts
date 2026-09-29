@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 /**
  * useUrlState (T032). See contracts/design-system.md §3:
@@ -29,9 +29,12 @@ const stringCodec: UrlStateCodec<string> = {
  * would each start from the same base and the second would overwrite the
  * first. Updates made in the same tick therefore compose through this
  * pending value (cleared in a microtask, i.e. once the handler has returned
- * and the router has re-rendered from the URL).
+ * and the router has re-rendered from the URL). The pending value is keyed
+ * by pathname: a setter running on a different path (a `navigate()` to
+ * another route in the same tick) starts from its own params instead of
+ * inheriting keys from the previous route.
  */
-let pendingParams: URLSearchParams | null = null;
+let pending: { path: string; params: URLSearchParams } | null = null;
 
 export function useUrlState(
   key: string,
@@ -49,6 +52,7 @@ export function useUrlState<T>(
   codec: UrlStateCodec<T> = stringCodec as unknown as UrlStateCodec<T>,
 ): [T, (next: T) => void] {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { pathname } = useLocation();
   const raw = searchParams.get(key);
 
   const value = useMemo(() => {
@@ -65,21 +69,22 @@ export function useUrlState<T>(
     (next: T) => {
       setSearchParams(
         (prev) => {
-          const params = new URLSearchParams(pendingParams ?? prev);
+          const base = pending && pending.path === pathname ? pending.params : prev;
+          const params = new URLSearchParams(base);
           const serialized = codec.serialize(next);
           if (serialized === null || serialized === undefined) {
             params.delete(key);
           } else {
             params.set(key, serialized);
           }
-          if (pendingParams === null) queueMicrotask(() => (pendingParams = null));
-          pendingParams = params;
+          if (pending === null) queueMicrotask(() => (pending = null));
+          pending = { path: pathname, params };
           return params;
         },
         { replace: true },
       );
     },
-    [key, setSearchParams, codec],
+    [key, pathname, setSearchParams, codec],
   );
 
   return [value, setValue];

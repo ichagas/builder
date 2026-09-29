@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { onboardingKeys } from "./api";
@@ -28,11 +28,19 @@ export function useRealtimeOnboardingLog(runId: string | undefined, enabled: boo
   const queryClient = useQueryClient();
   const [lines, setLines] = useState<OnboardingLogLine[]>([]);
 
+  const nextId = useRef(0);
+
+  // Lines belong to a run: clear them when the run changes, not when
+  // `enabled` flips false at the end of the run, so the live log stays on
+  // screen until the final `log_blob` takes over.
   useEffect(() => {
+    nextId.current = 0;
     setLines([]);
+  }, [runId]);
+
+  useEffect(() => {
     if (!runId || !enabled) return undefined;
 
-    let nextId = 0;
     const channel = pronghornApi
       .channel(`onboarding-${runId}`)
       .on("broadcast", { event: "onboarding_progress" }, (message: { payload?: unknown }) => {
@@ -45,7 +53,7 @@ export function useRealtimeOnboardingLog(runId: string | undefined, enabled: boo
         }
         const text = event.message ?? event.step ?? "";
         if (!text) return;
-        setLines((prev) => [...prev, { id: nextId++, kind: event.type, text, at: event.at }].slice(-MAX_LINES));
+        setLines((prev) => [...prev, { id: nextId.current++, kind: event.type, text, at: event.at }].slice(-MAX_LINES));
       })
       .subscribe();
 

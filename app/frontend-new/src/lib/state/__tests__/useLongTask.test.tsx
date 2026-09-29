@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { __resetLongTasksForTests, useLongTask } from "../useLongTask";
+import { __resetLongTasksForTests, cancelLongTask, settleLongTask, useLongTask } from "../useLongTask";
 
 afterEach(() => {
   act(() => __resetLongTasksForTests());
@@ -62,5 +62,21 @@ describe("useLongTask", () => {
     expect(result.current.tasks.some((t) => t.id === "sandbox-1")).toBe(true);
     act(() => vi.advanceTimersByTime(5 * 60 * 1000 + 1));
     expect(result.current.tasks.some((t) => t.id === "sandbox-1")).toBe(false);
+  });
+
+  it("settleLongTask settles only running tasks; cancelLongTask removes a task", () => {
+    const { result } = renderHook(() => useLongTask());
+    act(() => {
+      result.current.start({ id: "a", label: "A" });
+      result.current.start({ id: "b", label: "B" });
+    });
+    act(() => settleLongTask("a", "failed"));
+    expect(result.current.tasks.find((t) => t.id === "a")?.status).toBe("failed");
+    act(() => settleLongTask("a", "done"));
+    expect(result.current.tasks.find((t) => t.id === "a")?.status).toBe("failed");
+    act(() => settleLongTask("missing", "done"));
+    expect(result.current.tasks).toHaveLength(2);
+    act(() => cancelLongTask("b"));
+    expect(result.current.tasks.map((t) => t.id)).toEqual(["a"]);
   });
 });

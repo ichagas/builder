@@ -11,6 +11,7 @@ import { useOpenCommandPalette } from "@/app/CommandPaletteOpenContext";
 import { TeamSwitcher } from "@/components/assurance/TeamSwitcher";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useTeamsMine } from "@/features/assurance/api";
+import { useOnboardingRunTracker } from "@/features/onboarding/useOnboardingRunTracker";
 import type { CommandPaletteItem } from "@/components/shell/CommandPalette";
 
 /**
@@ -21,12 +22,11 @@ import type { CommandPaletteItem } from "@/components/shell/CommandPalette";
  * "Portfolio, Onboard, Applications list (count + worst status dot),
  * Organization."
  *
- * Portfolio (WP-A1, NA-01/NA-02) and Onboard (WP-O1, T150, NO-01/NO-02) are
- * wired here. Applications-list/Organization (Packs, Policy) sections
- * belong to WP-A2..A6 and are left off the Rail rather than linking to
- * routes that don't exist yet (contracts/routes.md's WP-A1..A6/O1..O2 own
- * those in later work packages) -- a minimal, additive change on top of
- * A1's Rail (which intentionally left Onboard off until this WP landed).
+ * The Rail and mobile tab bar carry Portfolio and Onboard (team-scoped, so
+ * they follow the selected team), Packs and Policy (organization-wide,
+ * WP-A4), and Organization for organization admins only (WP-A5). The layout
+ * also mounts `useOnboardingRunTracker`, which keeps sandbox long tasks
+ * honest after the onboarding wizard is left.
  */
 export function AssuranceLayout() {
   const { t } = useTranslation();
@@ -43,6 +43,7 @@ export function AssuranceLayout() {
     hint: "Team",
   }));
   usePublishCommandPaletteItems(paletteItems);
+  useOnboardingRunTracker();
 
   const portfolioHref = teamId ? `/assurance/t/${teamId}` : teams[0] ? `/assurance/t/${teams[0].id}` : "/assurance";
   const onboardHref = teamId ? `/assurance/t/${teamId}/onboard` : teams[0] ? `/assurance/t/${teams[0].id}/onboard` : "/assurance";

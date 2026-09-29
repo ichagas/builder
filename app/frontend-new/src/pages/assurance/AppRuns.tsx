@@ -66,6 +66,7 @@ export function AppRuns() {
   const [daysRaw] = useUrlState("days", "7");
   const days = (RUN_DAY_OPTIONS as readonly number[]).includes(Number(daysRaw)) ? Number(daysRaw) : 7;
   const [selectedRun, setSelectedRun] = useUrlState("run", "");
+  const [, setDays] = useUrlState("days", "7");
   const { data, isLoading, isError, error } = useAppRuns(appId, days);
   useRealtimeRuns(teamId, appId);
 
@@ -74,6 +75,9 @@ export function AppRuns() {
     [mine, allTeams, teamId],
   );
   const notFound = isError && (error as { statusCode?: number } | undefined)?.statusCode === 404;
+  const selectedInWindow = !!data && data.runsByDay.some((d) => d.runs.some((r) => r.id === selectedRun));
+  const missingRun = !!selectedRun && !!data && !selectedInWindow;
+  const widerDays = RUN_DAY_OPTIONS.find((d) => d > days);
   const total = data ? data.runsByDay.reduce((sum, d) => sum + d.runs.length, 0) : 0;
 
   return (
@@ -96,6 +100,28 @@ export function AppRuns() {
           {t("assurance.runs.backToApp")}
         </Link>
       </div>
+
+      {missingRun ? (
+        <div role="status" data-testid="assurance-run-missing" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xs border border-line bg-surface-2 px-pad py-2 text-sm text-ink">
+          <span className="min-w-0 flex-1">{t("assurance.runs.notInWindow.message", { count: days })}</span>
+          {widerDays ? (
+            <button
+              type="button"
+              onClick={() => setDays(String(widerDays))}
+              className="inline-flex min-h-11 items-center font-semibold text-primary underline sm:min-h-9"
+            >
+              {t("assurance.runs.notInWindow.widen", { count: widerDays })}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setSelectedRun("")}
+            className="inline-flex min-h-11 items-center font-semibold text-primary underline sm:min-h-9"
+          >
+            {t("assurance.runs.notInWindow.clear")}
+          </button>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div role="status" className="p-9 text-center text-muted-foreground">
