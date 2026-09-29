@@ -40,19 +40,29 @@ interface NodePropertiesPanelProps {
    * chrome. `isOpen`/`onToggle` are unused in this mode.
    */
   mobile?: boolean;
+  /**
+   * P4 (NV-06): released version. Every field and action is disabled; the
+   * panel stays open for inspection and the collapse/close controls keep working.
+   */
+  readOnly?: boolean;
 }
 
 export function NodePropertiesPanel({
   node,
   onClose,
-  onUpdate,
-  onDelete,
+  onUpdate: onUpdateProp,
+  onDelete: onDeleteProp,
   projectId,
   isOpen,
   onToggle,
-  onCreateMultipleNotesFromArtifacts,
+  onCreateMultipleNotesFromArtifacts: onCreateMultipleNotesProp,
   mobile,
+  readOnly = false,
 }: NodePropertiesPanelProps) {
+  // Released version: the mutating callbacks are neutralised even if a control slips past the fieldset.
+  const onUpdate = readOnly ? () => {} : onUpdateProp;
+  const onDelete = readOnly ? undefined : onDeleteProp;
+  const onCreateMultipleNotesFromArtifacts = readOnly ? undefined : onCreateMultipleNotesProp;
   const { token } = useShareToken(projectId);
   const [label, setLabel] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -239,7 +249,7 @@ export function NodePropertiesPanel({
   if (!node) return null;
 
   const body = (
-    <>
+    <fieldset disabled={readOnly} className="contents" data-testid="node-properties-fields">
       <ScrollArea className="flex-1">
             <div className="p-4 space-y-6">
               {/* Basic Info */}
@@ -421,7 +431,7 @@ export function NodePropertiesPanel({
           </Button>
         )}
       </div>
-    </>
+    </fieldset>
   );
 
   const selector = (

@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useEffect } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { NodeProps, NodeResizer, useReactFlow, Handle, Position } from "reactflow";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -30,6 +31,8 @@ export const NotesNode = memo(({ data, selected, id }: NodeProps<NotesNodeData>)
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(data.content || "");
   const { setNodes } = useReactFlow();
+  // P4 (NV-06): no in-node editing or resizing on a released version.
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token } = useShareToken(projectId);
 
@@ -39,8 +42,9 @@ export const NotesNode = memo(({ data, selected, id }: NodeProps<NotesNodeData>)
   }, [data.content]);
 
   const handleDoubleClick = useCallback(() => {
+    if (readOnly) return;
     setIsEditing(true);
-  }, []);
+  }, [readOnly]);
 
   const updateNodeData = useCallback((newContent: string) => {
     setNodes((nds) =>
@@ -139,7 +143,7 @@ export const NotesNode = memo(({ data, selected, id }: NodeProps<NotesNodeData>)
       <NodeResizer
         minWidth={150}
         minHeight={100}
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         lineClassName="border-primary"
         handleClassName="bg-primary border-2 border-background rounded"
         handleStyle={{ width: 32, height: 32 }}

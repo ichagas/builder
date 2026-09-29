@@ -7,6 +7,7 @@ import { Node } from "reactflow";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNodeTypes, CanvasNodeType, groupByCategory } from "@/hooks/useNodeTypes";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { getCategoryLabel, getCategoryOrder } from "@/lib/connectionLogic";
 
 interface CanvasPaletteProps {
@@ -45,6 +46,8 @@ export function CanvasPalette({
   mobile,
 }: CanvasPaletteProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  // P4 (NV-06): on a released version palette items cannot be dragged or click-added.
+  const { readOnly } = useVersionScopeContext();
   
   // Fetch node types from database (exclude legacy types for palette)
   const { data: nodeTypes, isLoading } = useNodeTypes(false);
@@ -59,11 +62,16 @@ export function CanvasPalette({
   const categoryOrder = getCategoryOrder();
 
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
+    if (readOnly) {
+      event.preventDefault();
+      return;
+    }
     event.dataTransfer.setData("application/reactflow", nodeType);
     event.dataTransfer.effectAllowed = "move";
   };
 
   const handleNodeClick = (e: React.MouseEvent, type: string) => {
+    if (readOnly) return;
     // Only trigger click-to-add on mobile/touch devices
     if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
       e.preventDefault();
@@ -133,10 +141,10 @@ export function CanvasPalette({
                             {categoryNodes.map((nodeType: CanvasNodeType) => (
                               <div key={nodeType.system_name} className="flex items-center justify-between gap-2 group">
                                 <div
-                                  draggable
+                                  draggable={!readOnly}
                                   onDragStart={(e) => onDragStart(e, nodeType.system_name)}
                                   onClick={(e) => handleNodeClick(e, nodeType.system_name)}
-                                  className={`flex items-center gap-2 px-3 py-2 rounded cursor-move flex-1 transition-colors ${
+                                  className={`flex items-center gap-2 px-3 py-2 rounded ${readOnly ? "cursor-default" : "cursor-move"} flex-1 transition-colors ${
                                     visibleNodeTypes.has(nodeType.system_name)
                                       ? "bg-muted hover:bg-muted/80"
                                       : "bg-muted/30 hover:bg-muted/50 opacity-50"

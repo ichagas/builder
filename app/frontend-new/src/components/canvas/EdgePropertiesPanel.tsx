@@ -25,18 +25,24 @@ interface EdgePropertiesPanelProps {
    * chrome. `isOpen`/`onToggle` are unused in this mode.
    */
   mobile?: boolean;
+  /** P4 (NV-06): released version; fields and actions are disabled, the panel stays open for inspection. */
+  readOnly?: boolean;
 }
 
 export function EdgePropertiesPanel({
   edge,
   onClose,
-  onUpdate,
-  onVisualUpdate,
-  onDelete,
+  onUpdate: onUpdateProp,
+  onVisualUpdate: onVisualUpdateProp,
+  onDelete: onDeleteProp,
   isOpen,
   onToggle,
   mobile,
+  readOnly = false,
 }: EdgePropertiesPanelProps) {
+  const onUpdate = readOnly ? () => {} : onUpdateProp;
+  const onVisualUpdate = readOnly ? () => {} : onVisualUpdateProp;
+  const onDelete = readOnly ? () => {} : onDeleteProp;
   const [label, setLabel] = useState("");
   const [lineType, setLineType] = useState("default");
   const [color, setColor] = useState("#64748b");
@@ -113,7 +119,7 @@ export function EdgePropertiesPanel({
   if (!edge) return null;
 
   const body = (
-    <>
+    <fieldset disabled={readOnly} className="contents" data-testid="edge-properties-fields">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           <div className="space-y-2">
@@ -186,7 +192,7 @@ export function EdgePropertiesPanel({
           Delete Edge
         </Button>
       </div>
-    </>
+    </fieldset>
   );
 
   if (mobile) {
