@@ -626,3 +626,116 @@ test.describe("NA-06 packs, policy, exceptions", () => {
     });
   }
 });
+
+
+// ---------------------------------------------------------------------------
+// NA-07 all teams (T134/T135, WP-A5). Runs in both the desktop (1440) and
+// mobile (390) projects. Seed: teams 801/802 plus "Fleet Services" (10 repos,
+// 6 on the latest pack 2026.2, 4 not reporting; e2e-member is a plain member)
+// and "Harbor Ops" (5 repos, 4 on 2026.2, 1 not reporting). Other WPs may add
+// teams, so the assertions address teams by name, never by total count.
+// ---------------------------------------------------------------------------
+test.describe("NA-07 all teams", () => {
+  test.describe("as an organization admin", () => {
+    test("lists every team with its repository totals, on-latest and not-reporting", async ({ page }) => {
+      await page.goto("/assurance/all");
+      await expect(page.getByRole("heading", { name: "All teams" })).toBeVisible();
+
+      const fleet = page.getByTestId("assurance-team-row").filter({ hasText: "Fleet Services" });
+      await expect(fleet).toHaveCount(1);
+      // members, apps, repos, on latest, not reporting
+      await expect(fleet.getByRole("cell")).toHaveText(["1", "2", "10", "6/10", "4"]);
+
+      const harbor = page.getByTestId("assurance-team-row").filter({ hasText: "Harbor Ops" });
+      await expect(harbor.getByRole("cell")).toHaveText(["0", "1", "5", "4/5", "1"]);
+
+      // Teams the admin doesn't belong to are listed too (D-8).
+      await expect(page.getByTestId("assurance-team-row").filter({ hasText: "Licensing" })).toHaveCount(1);
+      await expect(page.getByTestId("assurance-team-row").filter({ hasText: "Permits Platform" })).toHaveCount(1);
+    });
+
+    test("is reachable from the team switcher and a team row opens its portfolio", async ({ page }) => {
+      await page.goto(`/assurance/t/${seed.assuranceTeamId}`);
+      await page.getByRole("button", { name: "Switch team" }).click();
+      await page.getByRole("menuitem", { name: "Organization overview" }).click();
+      await expect(page).toHaveURL(/\/assurance\/all$/);
+
+      await page.getByRole("link", { name: "Harbor Ops" }).click();
+      await expect(page).toHaveURL(new RegExp(`/assurance/t/${seed.allTeamsHarborId}$`));
+      await expect(page.getByRole("heading", { name: "Harbor Ops" })).toBeVisible();
+      // 15-repo seed: the team's portfolio lists all five of its repositories once expanded.
+      await expect(page.getByText("Harbor Core")).toBeVisible();
+      await page.getByRole("button", { name: /Harbor Core/ }).click();
+      await expect(page.getByTestId("assurance-repo-row")).toHaveCount(5);
+    });
+
+    test("the attention filter and the sort are URL-held", async ({ page }) => {
+      await page.goto("/assurance/all");
+      await page.getByRole("button", { name: /^needs attention/i }).click();
+      await expect(page).toHaveURL(/[?&]f=attention/);
+      await expect(page.getByTestId("assurance-team-row").filter({ hasText: "Fleet Services" })).toHaveCount(1);
+      // Licensing's only repository has never reported, so it needs attention too; a fully
+      // reporting team would drop out. Sorting by not-reporting puts Fleet Services (4) first.
+      await page.getByRole("button", { name: "Not reporting", exact: true }).click();
+      await expect(page).toHaveURL(/[?&]s=notReporting/);
+      await expect(page.getByTestId("assurance-team-row").first()).toContainText("Fleet Services");
+    });
+
+    test("doesn't overflow horizontally at any width", async ({ page }) => {
+      await page.goto("/assurance/all");
+      await expect(page.getByTestId("assurance-all-teams-table")).toBeVisible();
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    });
+
+    for (const theme of ["light", "dark"] as const) {
+      test(`axe: zero violations -- ${theme} theme`, async ({ page }, testInfo) => {
+        await page.addInitScript((t) => {
+          try {
+            window.localStorage.setItem("theme", t);
+          } catch {
+            // ignore
+          }
+        }, theme);
+        await page.goto("/assurance/all");
+        await expect(page.getByRole("heading", { name: "All teams" })).toBeVisible();
+        await expect(page.getByTestId("assurance-team-row").first()).toBeVisible();
+
+        const results = await new AxeBuilder({ page }).analyze();
+        const description = results.violations
+          .map((v) => `[${theme}/${testInfo.project.name}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+          .join("\n");
+        expect(results.violations, description).toEqual([]);
+      });
+    }
+  });
+
+  test.describe("as a non-admin team member", () => {
+    test.use({ mockUser: { id: seed.memberUserId, email: seed.memberEmail, name: seed.memberName } });
+
+    test("can't see other teams: All teams is a no-access state", async ({ page }) => {
+      await page.goto("/assurance/all");
+      await expect(page.getByText("Organization admins only")).toBeVisible();
+      await expect(page.getByTestId("assurance-team-row")).toHaveCount(0);
+      await expect(page.getByText("Harbor Ops")).toHaveCount(0);
+    });
+
+    test("only sees their own team in the switcher, with no organization overview", async ({ page }) => {
+      await page.goto(`/assurance/t/${seed.allTeamsFleetId}`);
+      await expect(page.getByRole("heading", { name: "Fleet Services" })).toBeVisible();
+      await page.getByRole("button", { name: "Switch team" }).click();
+      await expect(page.getByRole("menuitem", { name: /fleet services/i })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: /harbor ops/i })).toHaveCount(0);
+      await expect(page.getByRole("menuitem", { name: "Organization overview" })).toHaveCount(0);
+    });
+
+    test("another team's portfolio is refused", async ({ page }) => {
+      await page.goto(`/assurance/t/${seed.allTeamsHarborId}`);
+      await expect(page.getByText("Harbor Core")).toHaveCount(0);
+      await expect(page.getByText("e2e-goa/a5-harbor-api")).toHaveCount(0);
+    });
+  });
+});

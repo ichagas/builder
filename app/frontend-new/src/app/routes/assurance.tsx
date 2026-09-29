@@ -5,6 +5,7 @@ import { useNoPrimaryAction, type SimpleRoute } from "./types";
 const TeamPortfolio = lazyWithRetry(() => import("@/pages/assurance/TeamPortfolio"));
 const Application = lazyWithRetry(() => import("@/pages/assurance/Application"));
 const AppRuns = lazyWithRetry(() => import("@/pages/assurance/AppRuns"));
+const AllTeams = lazyWithRetry(() => import("@/pages/assurance/AllTeams"));
 const OnboardingWizard = lazyWithRetry(() => import("@/pages/assurance/OnboardingWizard"));
 const Packs = lazyWithRetry(() => import("@/pages/assurance/Packs"));
 const Policy = lazyWithRetry(() => import("@/pages/assurance/Policy"));
@@ -37,4 +38,5 @@ export const ASSURANCE_ROUTES: SimpleRoute[] = [
   // T133, WP-A4 (NA-06): organization-level pages (no team in the path).
   { path: "packs", title: "Standards packs", usePrimaryAction: useNoPrimaryAction, Component: Packs },
   { path: "policy", title: "Mesh policy", usePrimaryAction: useNoPrimaryAction, Component: Policy },
+  { path: "all", title: "All teams", usePrimaryAction: useNoPrimaryAction, Component: AllTeams },
 ];

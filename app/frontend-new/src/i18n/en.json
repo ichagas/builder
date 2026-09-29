@@ -62,14 +62,16 @@
       "allTeams": "All teams",
       "noTeams": "You're not on a team yet",
       "appCount_one": "{{count}} app",
-      "appCount_other": "{{count}} apps"
+      "appCount_other": "{{count}} apps",
+      "organizationOverview": "Organization overview"
     },
     "rail": {
       "ariaLabel": "Assurance",
       "portfolio": "Portfolio",
       "onboard": "Onboard",
       "packs": "Standards packs",
-      "policy": "Mesh policy"
+      "policy": "Mesh policy",
+      "organization": "Organization"
     },
     "mode": {
       "label": "Standards"
@@ -354,6 +356,47 @@
         "noApps": "This team has no applications yet.",
         "expires": "expires {{date}}",
         "expired": "expired {{date}}"
+      }
+    },
+    "teams": {
+      "crumb": "Organization · Assurance Mesh",
+      "title": "All teams",
+      "loading": "Loading teams…",
+      "heading": "Teams",
+      "meta": "{{teams}} teams · {{apps}} apps · {{repos}} repositories",
+      "banner": {
+        "title": "Assurance view across every team",
+        "body": "Select a team to see its applications and repositories."
+      },
+      "filters": {
+        "all": "All",
+        "attention": "Needs attention"
+      },
+      "partialError": "Some team totals could not be loaded.",
+      "noAccess": {
+        "title": "Organization admins only",
+        "description": "Only organization admins can see every team. Use the team switcher to open one of your own teams."
+      },
+      "error": {
+        "title": "Couldn't load teams",
+        "description": "Try again in a moment."
+      },
+      "empty": {
+        "title": "No teams yet",
+        "description": "Teams appear here once they are created."
+      },
+      "emptyFiltered": {
+        "title": "Every team is reporting"
+      },
+      "table": {
+        "ariaLabel": "Teams",
+        "team": "Team",
+        "members": "Members",
+        "apps": "Apps",
+        "repos": "Repos",
+        "onLatest": "On {{pack}}",
+        "onLatestNone": "On latest",
+        "notReporting": "Not reporting"
       }
     }
   },
