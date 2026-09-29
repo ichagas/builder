@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** batch N2a (V2, V3, V4, X3) in progress; batch testing in effect (see "Batch testing"). Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** PAUSED by the user after batch N2a (merged; review fixes + test fixes on branches, not merged). See the last "Paused state". Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -241,3 +241,18 @@ Don't run the full E2E per feature. Merge **3–5 WPs per batch**, then ONE test
 - **Batch N2a** = X3 (N1 follow-ups: O1 unit tests, A6 NA-08 isolation; shell fix: PageHeader/PrimaryActionSlot honour ActionSpec.confirm/undo), V2 (T111), V3 (T112), V4 (T113 + T114). Test: us4 + us5 + us6 new-capability specs (N1 wasn't run yet). Seed id blocks: V2 …920–92f, V3 …930–93f, V4 …940–94f, X3 …950–95f.
 - **Batch N2b** = A3 (T132), A4 (T133), A5 (T134 + T135), O2 (T151 + T152). Seed blocks: A3 …960, A4 …970, A5 …980, O2 …990 (16 each).
 - **Batch N3** = polish T160–T162. Then the final regression (T071), fixes, T074, T170–T171.
+- **Merged batch N2a** into feature: X3 (N1 follow-ups: O1 unit tests, NA-08 isolation; PageHeader/PrimaryActionSlot honour ActionSpec.confirm/undo), V4 (T113/T114 VersionScope), V3 (T112 release tool), V2 (T111 change page). Orchestrator merge fixes: router/routes rows, en.json deep-merge, seed.sql V2 block re-inserted before COMMIT, us4.versions.spec.ts rebuilt (git had dropped NV-06's closing braces). Verified: lint 0 errors, tsc OK, **880 FE tests**, build OK, e2e tsc OK, 320 tests listed. From now on merges/conflicts go to an integration agent (user feedback).
+- **N2a review:** X3 CHANGES (ActionSpecButton async), V4 CHANGES (shared cache key vs different zod schemas; VersionScope fail-open + remount; header action live on released versions), V3 APPROVE, V2 CHANGES (cache collision; Change.run swallowed errors). **Fixed on `wp/N2a-fix`** (7 commits, not merged): versions/shared.ts, ReadOnlyGuard + shell ReadOnlyContext (header action disabled on released versions), fail-closed scope, resolveReleaseTarget id-or-name (routes.md updated), Change error state, toolPaths.ts regex tests, single scopedToolRoute factory. 898 FE tests, lint 0 errors, build OK. Still need deeper read-only: Canvas, Repository (Monaco), Artifacts editor, Build/Agent.
+- **N2a E2E** (one stack, serial; test fixes on `wp/N2a-test`, 2 commits, not merged): us4 40/1 desktop, 41/0 mobile; us5 22/1 desktop, 18/5 mobile; us6 9/1 + 9/1. v/current sanity (pr-07) green. **App defects open:** (1) ChecksCard.tsx:60 (and likely VersionRelease.tsx:161) loading `<li role=status>` in `<ul>` → axe list/aria-allowed-role; (2) AdminIntegrations sandbox picker: two useUrlState setters in one handler, second overwrites the first (sbTeam lost) → useUrlState should apply updates functionally; (3) AppShell `<main>` has no bottom padding for the 56px MobileTabBar → bottom content covered on mobile (4 us5 failures); (4) dark `--bad` token too light for white text (ActionButton danger, contrast 2.57).
+
+## Paused state (2026-09-28, after N2a): resume here
+
+Stopped on the user's instruction when the running agents finished. No agents running, no stack up, lock free.
+Open branches/worktrees: `wp/X3`, `wp/V2`, `wp/V3`, `wp/V4` (merged; delete), `wp/N2a-fix` (review fixes, to merge), `wp/N2a-test` (E2E test fixes, to merge), worktrees under `../PRONGHORN-BLUE-wt/`.
+
+**Next, in order:**
+1. Integration agent: merge `wp/N2a-fix` then `wp/N2a-test` into feature (both touch seed.sql/spec rarely; fix touched routes.md); orchestrator re-runs lint/tsc/unit/build + e2e --list.
+2. Fix agent for the 4 E2E app defects above (+ unit tests); then re-run ONLY the failing tests on one stack (us4 Ship axe, us5 NA-03/04/08 + app-page axe mobile, us6 Connect repos dark).
+3. Delete merged wp/* branches and worktrees.
+4. Batch N2b (A3 T132, A4 T133 dedupe with useMeshPolicy, A5 T134+T135, O2 T151+T152), seed blocks …960/970/980/990; then batch test + review.
+5. N3 polish T160–T162 (include read-only for Canvas/Monaco/Artifacts/Build), final T071 regression in chunks, T074, T170–T171.
