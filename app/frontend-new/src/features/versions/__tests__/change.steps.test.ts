@@ -12,6 +12,13 @@ describe("change steps (NV-03)", () => {
     expect(stepStates({ phase_state: null }).define).toBe("todo");
   });
 
+  it("reads the first todo step of an accepted change as active", () => {
+    expect(stepStates({ status: "active", phase_state: {} }).define).toBe("active");
+    expect(stepStates({ status: "active", phase_state: { define: "done", design: "skipped" } }).build).toBe("active");
+    expect(stepStates({ status: "triage", phase_state: {} }).define).toBe("todo");
+    expect(stepStates({ status: "active", phase_state: { define: "done", design: "done", build: "done" } }).ship).toBe("todo");
+  });
+
   it("resolves the step from the URL, else the first active, else the first todo", () => {
     const s = stepStates({ phase_state: { define: "done", design: "skipped", build: "active", ship: "todo" } });
     expect(resolveStep("design", s)).toBe("design");

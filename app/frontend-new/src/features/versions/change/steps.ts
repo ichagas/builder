@@ -17,14 +17,28 @@ export function isPhaseStep(value: string | undefined): value is PhaseStep {
   return !!value && (PHASE_STEPS as readonly string[]).includes(value);
 }
 
-/** `phase_state` with every step present (a missing key reads as "todo"). */
-export function stepStates(item: Pick<WorkItem, "phase_state">): StepStates {
+/**
+ * `phase_state` with every step present (a missing key reads as "todo").
+ *
+ * The backend never sets a step to "active" when a change is scheduled or
+ * accepted (`phase_state` keeps its all-"todo" default; only
+ * `steps/:step/complete` advances the *next* todo step). So an accepted
+ * change (`status: active`) with no active step reads its first todo step as
+ * active, which is what the prototype shows and what `complete` then does.
+ */
+export function stepStates(item: Pick<WorkItem, "phase_state"> & { status?: WorkItem["status"] }): StepStates {
   const raw = item.phase_state ?? {};
   const pick = (step: PhaseStep): PhaseState => {
     const value = raw[step];
     return value === "active" || value === "done" || value === "skipped" ? value : "todo";
   };
-  return { define: pick("define"), design: pick("design"), build: pick("build"), ship: pick("ship") };
+  const states: StepStates = { define: pick("define"), design: pick("design"), build: pick("build"), ship: pick("ship") };
+  if (item.status === "active" && !PHASE_STEPS.some((step) => states[step] === "active")) {
+    const first = PHASE_STEPS.find((step) => states[step] === "todo");
+    // Ship is never "completed" from this page, so it doesn't count as the working step.
+    if (first && first !== "ship") states[first] = "active";
+  }
+  return states;
 }
 
 /**
