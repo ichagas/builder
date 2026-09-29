@@ -36,10 +36,19 @@ Share tokens: legacy `/project/:id/<page>/t/:token` → new `/p/:id/<route>?t=:t
 | `/project/:id/present` | `/p/:id/v/current/ship/present` | Project | WP-S3 |
 | every `/project/:id/<page>/t/:token` | the route above + `?t=:token` | Project | WP-F3 (redirects) |
 | — (new, US4) | `/p/:id/versions`, `/p/:id/changes/:changeId/:step?`, `/p/:id/v/:version/ship/release` | Project | WP-V1…V4 (built new) |
-| — (new, US5, US6) | `/assurance/t/:teamId`, `/assurance/t/:teamId/apps/:appId`, `/assurance/t/:teamId/onboard/:step?`, `/assurance/all`, `/assurance/packs`, `/assurance/policy` | Assurance | WP-A1…A5, WP-O1…O2 (built new) |
+| — (new, US5, US6) | `/assurance/t/:teamId`, `/assurance/t/:teamId/apps/:appId`, `/assurance/t/:teamId/apps/:appId/runs`, `/assurance/t/:teamId/onboard/:step?`, `/assurance/all`, `/assurance/packs`, `/assurance/policy` | Assurance | WP-A1…A5, WP-O1…O2 (built new) |
 | `*` | NotFound with search and links to Projects and Assurance | Root | WP-F3 |
 
 `v/current` resolves to the selected version (D-7: a single "Building" version until B1). In `v/:version/...`, `:version` is a version **name** (canonical, e.g. `v1.1.0`, used in generated links) or a version **id** (the timeline strip navigates with ids); both resolve to the same version.
+
+**Assurance query-param conventions** (state held in the URL via `useUrlState`; defaults are omitted):
+
+| Route | Params |
+|---|---|
+| `/assurance/t/:teamId/apps/:appId/runs` | `?days=7\|14\|30` (window, default 7), `?run=<id>` (selected run; one outside the window shows a "not in this window" notice with a link to widen the window or clear it) |
+| `/assurance/packs` | none |
+| `/assurance/policy` | `?tab=policy\|exceptions`, `?scope=organization\|team\|application`, `?team=<id>`, `?app=<id>` |
+| `/assurance/all` | `?f=attention` (only teams needing attention), `?s=name\|repos\|notReporting` (sort) |
 
 ## 2. Regression checklist
 
