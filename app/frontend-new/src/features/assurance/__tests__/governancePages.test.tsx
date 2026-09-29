@@ -97,7 +97,7 @@ describe("Packs", () => {
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveTextContent("2026.2");
     expect(cards[0]).toHaveTextContent("Latest pack");
-    expect(cards[0]).toHaveTextContent("1 repo");
+    expect(cards[0]).toHaveTextContent("1 repository");
     expect(cards[0]).toHaveTextContent("Secrets scan");
     expect(cards[1]).toHaveTextContent("Standards pack");
   });
@@ -125,7 +125,7 @@ describe("Policy", () => {
     await user.selectOptions(red, "off");
     await user.click(screen.getByRole("button", { name: "Apply Red" }));
     expect(putMock).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /Loosen Red/ }));
+    await user.click(screen.getByRole("button", { name: /Confirm: loosen Red/ }));
     await waitFor(() => expect(putMock).toHaveBeenCalledWith(`/api/v1/mesh/policy?scope=organization&scopeId=${ORG}`, { agent: "red", mode: "off" }));
   });
 
@@ -140,7 +140,7 @@ describe("Policy", () => {
     putMock.mockRejectedValueOnce(new Error("403"));
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Green policy mode" })).toBeInTheDocument());
     triggerUndo();
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith("Couldn't undo the change to Green"));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("Couldn't undo the change to Green. Try again."));
   });
 
   it("finds the organization for an admin with no teams", async () => {
@@ -159,7 +159,7 @@ describe("Policy", () => {
     const rows = await screen.findAllByTestId("governance-exception-row");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("e2e/api");
-    expect(rows[1]).toHaveTextContent(/expired/);
+    expect(rows[1]).toHaveTextContent(/Expired/);
     expect(screen.getByRole("link", { name: "Request an exception" })).toHaveAttribute("href", `/assurance/t/${TEAM}/apps/${APP}`);
   });
 });

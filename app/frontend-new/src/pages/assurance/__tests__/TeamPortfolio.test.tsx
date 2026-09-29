@@ -125,7 +125,7 @@ describe("TeamPortfolio (NA-02)", () => {
     await screen.findByText("e2e-goa/permits-api");
     expect(screen.getByText("e2e-goa/permits-worker")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /show them/i }));
+    await user.click(screen.getByRole("button", { name: /show repositories/i }));
     await waitFor(() => expect(screen.queryByText("e2e-goa/permits-api")).not.toBeInTheDocument());
     expect(screen.getByText("e2e-goa/permits-worker")).toBeInTheDocument();
   });

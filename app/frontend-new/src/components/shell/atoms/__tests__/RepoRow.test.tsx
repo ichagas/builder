@@ -35,7 +35,7 @@ describe("RepoRow", () => {
 
   it("always renders the mesh verdict group", () => {
     render(<RepoRow name="repo" stack={{ profile: "java", label: "Java 17" }} mesh={{ green: "fail" }} />);
-    expect(screen.getByLabelText(/Assurance Mesh:/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Assurance mesh:/)).toBeInTheDocument();
   });
 
   // Fix round 1, item 3: onboarding.css:87-91 collapses the row to 2 columns
@@ -55,7 +55,7 @@ describe("RepoRow", () => {
     const findings = screen.getByText("baseline 4 · new 1");
     expect(findings.className).toContain("max-[900px]:col-span-full");
 
-    const mesh = screen.getByLabelText(/Assurance Mesh:/);
+    const mesh = screen.getByLabelText(/Assurance mesh:/);
     expect(mesh.className).toContain("max-[900px]:col-span-full");
   });
 });

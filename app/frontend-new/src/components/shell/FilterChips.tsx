@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useUrlState } from "@/lib/state/useUrlState";
+import { useTranslation } from "react-i18next";
 
 /**
  * FilterChips (T028). "URL-bound (?f=), with counts." See
@@ -21,10 +22,11 @@ export interface FilterChipsProps {
 }
 
 export function FilterChips({ options, paramKey = "f", defaultValue = "all", className }: FilterChipsProps) {
+  const { t } = useTranslation();
   const [active, setActive] = useUrlState(paramKey, defaultValue);
 
   return (
-    <div role="group" aria-label="Filters" className={cn("flex flex-wrap gap-1.5", className)}>
+    <div role="group" aria-label={t("shell.filters.ariaLabel")} className={cn("flex flex-wrap gap-1.5", className)}>
       {options.map((option) => {
         const isActive = option.id === active;
         return (

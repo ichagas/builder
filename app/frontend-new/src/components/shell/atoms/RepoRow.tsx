@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { MeshDots, type MeshAgentId, type MeshAgentStatus } from "./MeshDots";
 import { PrChip, type PrChipState } from "./PrChip";
 import { StackBadge, type StackProfile } from "./StackBadge";
+import { useTranslation } from "react-i18next";
 
 /**
  * RepoRow (T023). One repository line in the Assurance console's
@@ -23,6 +24,7 @@ export interface RepoRowProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function RepoRow({ name, note, stack, findings, mesh, pr, className, ...props }: RepoRowProps) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -47,7 +49,7 @@ export function RepoRow({ name, note, stack, findings, mesh, pr, className, ...p
       {pr && "number" in pr ? (
         <PrChip number={pr.number} state={pr.state} />
       ) : (
-        <PrChip state="none">{pr && "label" in pr ? pr.label : "Not opened"}</PrChip>
+        <PrChip state="none">{pr && "label" in pr ? pr.label : t("shell.atoms.pr.notOpened")}</PrChip>
       )}
     </div>
   );

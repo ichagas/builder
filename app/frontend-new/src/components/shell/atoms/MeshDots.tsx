@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * MeshDots (T023). Four small squares — one per Assurance Mesh agent
@@ -10,11 +11,11 @@ import { cn } from "@/lib/utils";
 export type MeshAgentId = "green" | "yellow" | "red" | "blue";
 export type MeshAgentStatus = "pass" | "warn" | "fail" | "skip" | "none";
 
-const AGENTS: { id: MeshAgentId; letter: string; name: string }[] = [
-  { id: "green", letter: "G", name: "Green" },
-  { id: "yellow", letter: "Y", name: "Yellow" },
-  { id: "red", letter: "R", name: "Red" },
-  { id: "blue", letter: "B", name: "Blue" },
+const AGENTS: { id: MeshAgentId; letter: string }[] = [
+  { id: "green", letter: "G" },
+  { id: "yellow", letter: "Y" },
+  { id: "red", letter: "R" },
+  { id: "blue", letter: "B" },
 ];
 
 const AGENT_BG: Record<MeshAgentId, string> = {
@@ -39,14 +40,6 @@ const AGENT_TEXT: Record<MeshAgentId, string> = {
   blue: "text-primary-foreground",
 };
 
-const STATUS_WORD: Record<MeshAgentStatus, string> = {
-  pass: "Pass",
-  warn: "Warning",
-  fail: "Fail",
-  skip: "Skipped",
-  none: "Not run",
-};
-
 // warn/fail get a ring in the corresponding status token; skip fades out;
 // none renders as an empty dashed square instead of a filled agent color.
 const STATUS_CLASSES: Record<MeshAgentStatus, string> = {
@@ -63,9 +56,14 @@ export interface MeshDotsProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function MeshDots({ statuses, className, ...props }: MeshDotsProps) {
-  const label = `Assurance Mesh: ${AGENTS.map(
-    (a) => `${a.name} ${STATUS_WORD[statuses[a.id] ?? "none"]}`,
-  ).join(", ")}`;
+  const { t } = useTranslation();
+  const agentName = (id: MeshAgentId) => t(`shell.atoms.mesh.agent.${id}`);
+  const statusWord = (status: MeshAgentStatus) => t(`shell.atoms.mesh.status.${status}`);
+  const label = t("shell.atoms.mesh.label", {
+    list: AGENTS.map((a) =>
+      t("shell.atoms.mesh.entry", { agent: agentName(a.id), status: statusWord(statuses[a.id] ?? "none") }),
+    ).join(", "),
+  });
 
   return (
     <span className={cn("inline-flex items-center gap-1", className)} aria-label={label} {...props}>
@@ -74,7 +72,7 @@ export function MeshDots({ statuses, className, ...props }: MeshDotsProps) {
         return (
           <span
             key={a.id}
-            title={`${a.name}: ${STATUS_WORD[status]}`}
+            title={t("shell.atoms.mesh.title", { agent: agentName(a.id), status: statusWord(status) })}
             className={cn(
               "grid h-[22px] w-[22px] place-items-center rounded-xs font-mono text-[11px] font-bold",
               AGENT_TEXT[a.id],

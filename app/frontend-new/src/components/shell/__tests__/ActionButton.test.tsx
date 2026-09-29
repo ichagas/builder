@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ActionButton, ActionSpecButton } from "../ActionButton";
 import { dismissUndo, useUndo } from "@/lib/state/useUndo";
+import { useTranslation } from "react-i18next";
 
 describe("ActionButton", () => {
   it("goes idle -> pending -> done and calls onAction", async () => {
@@ -19,8 +20,8 @@ describe("ActionButton", () => {
     const onAction = vi.fn().mockRejectedValueOnce(new Error("nope")).mockResolvedValueOnce(undefined);
     render(<ActionButton label="Deploy" onAction={onAction} />);
     await user.click(screen.getByRole("button"));
-    await screen.findByRole("button", { name: /failed — retry/i });
-    await user.click(screen.getByRole("button", { name: /failed — retry/i }));
+    await screen.findByRole("button", { name: /failed\. try again/i });
+    await user.click(screen.getByRole("button", { name: /failed\. try again/i }));
     expect(onAction).toHaveBeenCalledTimes(2);
   });
 
@@ -99,7 +100,7 @@ describe("ActionSpecButton (async onClick)", () => {
       </>,
     );
     await user.click(screen.getByRole("button", { name: "Ship" }));
-    await screen.findByRole("button", { name: "Ship failed — retry" });
+    await screen.findByRole("button", { name: "Ship failed. Try again." });
     expect(getUndoText()).toBe("");
   });
 });

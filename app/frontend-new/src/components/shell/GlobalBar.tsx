@@ -40,11 +40,11 @@ export function GlobalBar({ switcher, mode, onSearch, statusPill, accountMenu, l
       className={cn("relative flex h-14 shrink-0 items-center gap-3 border-b border-gbar-line bg-gbar px-3 text-gbar-ink", className)}
     >
       <span aria-hidden="true" className={cn("absolute inset-x-0 top-0 h-[3px]", mode ? BAND_CLASS[mode.kind] : "bg-transparent")} />
-      <a href={logoHref} className="flex shrink-0 items-center gap-2 font-semibold" aria-label="Pronghorn home">
+      <a href={logoHref} className="flex shrink-0 items-center gap-2 font-semibold" aria-label={t("shell.homeAria")}>
         <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-xs bg-primary text-sm font-bold text-primary-foreground">
           P
         </span>
-        <span className="hidden sm:inline">Pronghorn</span>
+        <span className="hidden sm:inline">{t("shell.brand")}</span>
       </a>
       {switcher}
       {mode ? <ModeBadge {...mode} className="hidden md:inline-flex" /> : null}

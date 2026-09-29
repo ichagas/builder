@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * AdoptionBar (T023). Proportional segments showing how many repositories
@@ -21,7 +22,9 @@ export interface AdoptionBarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function AdoptionBar({ segments, className, ...props }: AdoptionBarProps) {
-  const label = segments.map((s) => `${s.count} on ${s.version}`).join(", ");
+  const { t } = useTranslation();
+  const onVersion = (s: AdoptionSegment) => t("shell.atoms.adoption.onVersion", { count: s.count, version: s.version });
+  const label = segments.map(onVersion).join(", ");
 
   return (
     <div
@@ -33,7 +36,7 @@ export function AdoptionBar({ segments, className, ...props }: AdoptionBarProps)
       {segments.map((s) => (
         <span
           key={s.version}
-          title={`${s.count} on ${s.version}`}
+          title={onVersion(s)}
           style={{ flex: s.count }}
           className={cn(
             "flex min-w-0 items-center overflow-hidden whitespace-nowrap px-[10px] font-mono text-xs font-semibold",

@@ -3,6 +3,7 @@ import { Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBoolPref } from "@/lib/state/useUiPrefs";
 import type { TimelineFlag, TimelineNode } from "./types";
+import { useTranslation } from "react-i18next";
 
 /**
  * TimelineStrip (T026). See contracts/design-system.md §2:
@@ -32,6 +33,7 @@ export interface TimelineStripProps {
 }
 
 export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visibleHistoryCount = 3, className }: TimelineStripProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useBoolPref("tl.expanded", false);
   const selectedRef = React.useRef<HTMLButtonElement>(null);
 
@@ -49,7 +51,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
     const hidden = nodes.filter((_, i) => hiddenIndexes.has(i));
     const moreNode: TimelineNode = {
       id: "__more__",
-      label: `${hidden.length} more`,
+      label: t("shell.timeline.more", { count: hidden.length }),
       sub: hidden.length ? `${hidden[0].label} – ${hidden[hidden.length - 1].label}` : undefined,
       kind: "more",
     };
@@ -66,7 +68,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
       out.push(n);
     });
     return out;
-  }, [nodes, expanded, visibleHistoryCount]);
+  }, [nodes, expanded, visibleHistoryCount, t]);
 
   const flagsByAfterId = React.useMemo(() => {
     const map = new Map<string, TimelineFlag[]>();
@@ -77,7 +79,7 @@ export function TimelineStrip({ nodes, flags = [], selectedId, onSelect, visible
   return (
     <div
       role="tablist"
-      aria-label="Version timeline"
+      aria-label={t("shell.timeline.ariaLabel")}
       className={cn(
         "flex items-stretch gap-1 overflow-x-auto border-b border-line bg-surface px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,

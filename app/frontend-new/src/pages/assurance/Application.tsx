@@ -23,6 +23,7 @@ import {
 import { useRealtimeApplication } from "@/features/assurance/useRealtimeApplication";
 import { useAdmin } from "@/contexts/AdminContext";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 
 /**
  * Application (T131, WP-A2, NA-03/NA-04). The application page: repositories
@@ -58,7 +59,7 @@ function repoStack(repo: ApplicationRepository): { profile: StackProfile; label:
   if (repo.profile === "dotnet" || repo.profile === "node" || repo.profile === "java" || repo.profile === "python") {
     return { profile: repo.profile, label: repo.stack_label ?? repo.profile };
   }
-  return { profile: FALLBACK_PROFILE, label: repo.stack_label ?? "Unclassified" };
+  return { profile: FALLBACK_PROFILE, label: repo.stack_label ?? i18n.t("assurance.app.unclassified") };
 }
 
 function isBehind(repo: ApplicationRepository, latestPackVersion: string | null): boolean {
@@ -93,7 +94,7 @@ function meshStatuses(repo: ApplicationRepository): Partial<Record<MeshAgentId, 
 
 function groupLabel(repo: ApplicationRepository, groupBy: GroupBy): string {
   if (groupBy === "stack") return repoStack(repo).label;
-  return repo.part ?? "Other";
+  return repo.part ?? i18n.t("assurance.app.otherPart");
 }
 
 function adoptionSegments(repos: ApplicationRepository[]): AdoptionSegment[] {
@@ -113,7 +114,7 @@ function adoptionSegments(repos: ApplicationRepository[]): AdoptionSegment[] {
     count: byVersion.get(version) ?? 0,
     latest: version === latest,
   }));
-  if (unpinned > 0) segments.push({ version: "Unpinned", count: unpinned });
+  if (unpinned > 0) segments.push({ version: i18n.t("assurance.app.unpinned"), count: unpinned });
   return segments;
 }
 
@@ -252,7 +253,7 @@ function RepoGroup({
             key={repo.id}
             data-testid="assurance-app-repo-row"
             name={repo.full_name}
-            note={`Standards ${repo.pinned_pack ?? "—"}${isBehind(repo, latestPackVersion) ? ` · ${t("assurance.app.repoRow.behind")}` : ""}`}
+            note={t(isBehind(repo, latestPackVersion) ? "assurance.app.repoNoteBehind" : "assurance.app.repoNote", { pack: repo.pinned_pack ?? "—" })}
             stack={repoStack(repo)}
             findings={
               repo.latest_run

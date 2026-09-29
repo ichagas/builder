@@ -31,13 +31,13 @@ export interface RailProps {
   ariaLabel?: string;
 }
 
-export function Rail({ sections, phases, versionCard, ariaLabel = "Project" }: RailProps) {
+export function Rail({ sections, phases, versionCard, ariaLabel }: RailProps) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useBoolPref("rail.collapsed", false);
 
   return (
     <nav
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? t("shell.nav.project")}
       className={cn(
         "hidden shrink-0 flex-col overflow-y-auto border-r border-rail-line bg-rail-bg text-rail-ink md:flex",
         collapsed ? "w-[76px]" : "w-[248px]",
@@ -76,7 +76,7 @@ export function Rail({ sections, phases, versionCard, ariaLabel = "Project" }: R
       {versionCard ? <div className="border-t border-rail-line px-2.5 py-2">{versionCard}</div> : null}
 
       {phases && phases.length > 0 ? (
-        <div role="list" aria-label="Phases" className="flex flex-col gap-0.5 border-t border-rail-line px-1.5 py-2">
+        <div role="list" aria-label={t("shell.nav.phases")} className="flex flex-col gap-0.5 border-t border-rail-line px-1.5 py-2">
           {phases.map((phase) => (
             <div role="listitem" key={phase.id}>
               <PhaseNode phase={phase} collapsed={collapsed} />

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * MobileTabBar (T027). See contracts/design-system.md §2:
@@ -21,10 +22,11 @@ export interface MobileTabBarProps {
   ariaLabel?: string;
 }
 
-export function MobileTabBar({ items, ariaLabel = "Project" }: MobileTabBarProps) {
+export function MobileTabBar({ items, ariaLabel }: MobileTabBarProps) {
+  const { t } = useTranslation();
   return (
     <nav
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? t("shell.nav.project")}
       className="fixed inset-x-0 bottom-0 z-20 flex h-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] items-stretch border-t border-rail-line bg-rail-bg pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {items.map((item) => (

@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUndo } from "@/lib/state/useUndo";
 import type { ActionSpec } from "./types";
+import { useTranslation } from "react-i18next";
 
 /**
  * ActionButton (T028). See contracts/design-system.md §2:
@@ -42,6 +43,7 @@ export function ActionButton({
   tone = "primary",
   className,
 }: ActionButtonProps) {
+  const { t } = useTranslation();
   const [status, setStatus] = React.useState<ActionButtonStatus>("idle");
   const [awaitingConfirm, setAwaitingConfirm] = React.useState(false);
 
@@ -66,7 +68,7 @@ export function ActionButton({
     void run();
   };
 
-  const text = awaitingConfirm ? confirm : status === "failed" ? `${label} failed — retry` : label;
+  const text = awaitingConfirm ? confirm : status === "failed" ? t("shell.actionFailed", { label }) : label;
 
   return (
     <button
