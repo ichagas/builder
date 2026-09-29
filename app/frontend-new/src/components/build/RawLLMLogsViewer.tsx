@@ -211,7 +211,7 @@ export function RawLLMLogsViewer({ projectId, shareToken, agentType }: RawLLMLog
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Session:</span>
         <Select value={selectedSessionId || ""} onValueChange={setSelectedSessionId}>
-          <SelectTrigger className="w-full max-w-md">
+          <SelectTrigger data-readonly-allow className="w-full max-w-md">
             <SelectValue placeholder="Select a session" />
           </SelectTrigger>
           <SelectContent>

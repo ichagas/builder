@@ -648,7 +648,7 @@ export function KnowledgeGraph({
                 <TooltipTrigger asChild>
                   <div className="flex items-center">
                     <Select value={graphDensity} onValueChange={(v) => setGraphDensity(v as GraphDensity)}>
-                      <SelectTrigger className="h-8 w-[110px] text-xs">
+                      <SelectTrigger data-readonly-allow className="h-8 w-[110px] text-xs">
                         <Layers className="h-3 w-3 mr-1" />
                         <SelectValue placeholder="Density" />
                       </SelectTrigger>
