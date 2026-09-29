@@ -161,8 +161,12 @@ test.describe("NV-06 version scoping", () => {
     await expect(page.getByText(/v1\.4\.2 is released and read-only/)).toBeVisible();
     const locked = page.getByTestId("version-scope-readonly");
     await expect(locked).toBeVisible();
-    // Every native control inside the tool is disabled.
-    await expect(locked.locator("button:enabled, input:enabled, textarea:enabled, select:enabled")).toHaveCount(0);
+    // Every native control inside the tool is disabled, except navigation
+    // controls (tabs, disclosures) which ReadOnlyGuard deliberately leaves on.
+    const nav = ':not([role="tab"]):not([aria-expanded]):not([data-readonly-allow])';
+    await expect(
+      locked.locator(`button:enabled${nav}, input:enabled${nav}, textarea:enabled${nav}, select:enabled${nav}`),
+    ).toHaveCount(0);
   });
 
   test("an open version shows its changes and requirement deltas above the tool", async ({ page }) => {
