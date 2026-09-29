@@ -54,8 +54,10 @@ export const governanceKeys = {
 };
 
 /** GET /packs -- published Standards packs, newest first. */
-export function usePacks(): UseQueryResult<StandardsPack[]> {
+export function usePacks(enabled = true): UseQueryResult<StandardsPack[]> {
   return useQuery({
+    enabled,
+    retry: false,
     queryKey: governanceKeys.packs,
     queryFn: async () => {
       const data = await apiClient.get<unknown>("/api/v1/packs");

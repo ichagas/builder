@@ -52,6 +52,16 @@ describe("latestPackOf", () => {
     expect(latestPackOf([])).toBeNull();
     expect(latestPackOf([portfolio("a", [repo("x", "2026.1"), repo("y", null)]), portfolio("b", [repo("z", "2026.2")])])).toBe("2026.2");
   });
+
+  it("compares versions numerically, not as strings (2026.10 > 2026.9)", () => {
+    expect(latestPackOf([portfolio("a", [repo("x", "2026.9"), repo("y", "2026.10")])])).toBe("2026.10");
+    expect(latestPackOf([portfolio("a", [repo("x", "2026.10"), repo("y", "2026.9")])])).toBe("2026.10");
+  });
+
+  it("prefers the newest published pack from the packs list", () => {
+    const pack = (version: string, published_at: string) => ({ version, published_at, notes: null, changes: null, workflow_ref: null });
+    expect(latestPackOf([], [pack("2026.9", "2026-09-01T00:00:00Z"), pack("2026.10", "2026-10-01T00:00:00Z"), pack("2026.1", "2026-01-01T00:00:00Z")])).toBe("2026.10");
+  });
 });
 
 describe("AllTeams (NA-07)", () => {

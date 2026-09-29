@@ -206,15 +206,22 @@ export function useTeamsAll(enabled: boolean): UseQueryResult<OrgTeamSummary[]> 
   });
 }
 
+/** GET /teams/:teamId/portfolio, parsed. Shared by every portfolio query so the cache entry is identical. */
+export async function fetchTeamPortfolio(teamId: string): Promise<TeamPortfolio> {
+  const data = await apiClient.get<unknown>(`/api/v1/teams/${teamId}/portfolio`);
+  return teamPortfolioSchema.parse(data);
+}
+
+/** Portfolios change on realtime events (which invalidate); this only bounds refetch churn. */
+export const PORTFOLIO_STALE_TIME_MS = 30_000;
+
 /** GET /teams/:teamId/portfolio — the team portfolio (NA-02). */
 export function useTeamPortfolio(teamId: string | undefined): UseQueryResult<TeamPortfolio> {
   return useQuery({
     queryKey: assuranceKeys.portfolio(teamId ?? ""),
-    queryFn: async () => {
-      const data = await apiClient.get<unknown>(`/api/v1/teams/${teamId}/portfolio`);
-      return teamPortfolioSchema.parse(data);
-    },
+    queryFn: () => fetchTeamPortfolio(teamId as string),
     enabled: !!teamId,
+    staleTime: PORTFOLIO_STALE_TIME_MS,
   });
 }
 
