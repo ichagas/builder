@@ -6,6 +6,8 @@ const TeamPortfolio = lazyWithRetry(() => import("@/pages/assurance/TeamPortfoli
 const Application = lazyWithRetry(() => import("@/pages/assurance/Application"));
 const AppRuns = lazyWithRetry(() => import("@/pages/assurance/AppRuns"));
 const OnboardingWizard = lazyWithRetry(() => import("@/pages/assurance/OnboardingWizard"));
+const Packs = lazyWithRetry(() => import("@/pages/assurance/Packs"));
+const Policy = lazyWithRetry(() => import("@/pages/assurance/Policy"));
 
 /**
  * Assurance routes (T130, WP-A1; T131, WP-A2; T150, WP-O1). See
@@ -32,4 +34,7 @@ export const ASSURANCE_ROUTES: SimpleRoute[] = [
     usePrimaryAction: useOnboardingWizardPrimaryAction,
     Component: OnboardingWizard,
   },
+  // T133, WP-A4 (NA-06): organization-level pages (no team in the path).
+  { path: "packs", title: "Standards packs", usePrimaryAction: useNoPrimaryAction, Component: Packs },
+  { path: "policy", title: "Mesh policy", usePrimaryAction: useNoPrimaryAction, Component: Policy },
 ];

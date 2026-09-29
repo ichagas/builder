@@ -67,7 +67,9 @@
     "rail": {
       "ariaLabel": "Assurance",
       "portfolio": "Portfolio",
-      "onboard": "Onboard"
+      "onboard": "Onboard",
+      "packs": "Standards packs",
+      "policy": "Mesh policy"
     },
     "mode": {
       "label": "Standards"
@@ -258,6 +260,100 @@
         "openIssueConfirm": "Open an issue for the new findings?",
         "issueCreated": "Issue opened: {{ref}}",
         "issueExisting": "An issue already exists for this run."
+      }
+    },
+    "governance": {
+      "crumb": "Organization",
+      "tabsAria": "Policy sections",
+      "tabs": {
+        "policy": "Policy",
+        "exceptions": "Exceptions"
+      },
+      "noTeams": {
+        "title": "No teams yet",
+        "description": "Join or create a team to see its policy and exceptions."
+      },
+      "packs": {
+        "title": "Standards packs",
+        "intro": "Packs are published from the assurance mesh standards repository. Publishing a pack lets every team send update pull requests to its repositories.",
+        "team": "Adoption for team",
+        "latest": "Latest pack",
+        "pack": "Standards pack",
+        "repos_one": "{{count}} repo",
+        "repos_other": "{{count}} repos",
+        "loading": "Loading Standards packs…",
+        "error": {
+          "title": "Couldn't load Standards packs",
+          "description": "Try again in a moment."
+        },
+        "empty": {
+          "title": "No packs published yet",
+          "description": "Published Standards packs appear here."
+        }
+      },
+      "policy": {
+        "title": "Mesh policy",
+        "heading": "Mesh policy per check",
+        "adminHint": "As an organization admin you can set any mode. Teams can tighten, not loosen.",
+        "ownerHint": "Team owners can only tighten the policy set above them.",
+        "scope": "Scope",
+        "team": "Team",
+        "application": "Application",
+        "scopes": {
+          "organization": "Organization",
+          "team": "Team",
+          "application": "Application"
+        },
+        "checks": {
+          "green": "Green",
+          "yellow": "Yellow",
+          "red": "Red",
+          "blue": "Blue"
+        },
+        "checkRole": {
+          "green": "Code quality and hygiene",
+          "yellow": "Plain language",
+          "red": "Attacker view",
+          "blue": "Defender summary"
+        },
+        "mode": {
+          "off": "Off",
+          "notify": "Notify",
+          "issue": "Issue",
+          "block": "Block"
+        },
+        "explicit": "set here",
+        "inherited": "inherited",
+        "modeAria": "{{check}} policy mode",
+        "apply": "Apply {{check}}",
+        "loosenConfirm": "Loosen {{check}}? Confirm",
+        "saved": "Mesh policy updated",
+        "saveFailed": "Couldn't update mesh policy",
+        "undoText": "{{check}} set back to {{mode}}",
+        "loading": "Loading mesh policy…",
+        "error": {
+          "title": "Couldn't load the mesh policy",
+          "description": "You may not have access to this scope."
+        },
+        "noScope": "Choose a scope to see its policy.",
+        "readOnly": "You can read this policy. Team owners and organization admins can change it.",
+        "sandbox": {
+          "title": "Cyber Risk sandbox",
+          "description": "An optional sandbox stage in the generated CI. Owners can enable it, not disable it.",
+          "aria": "Cyber Risk sandbox"
+        }
+      },
+      "exceptions": {
+        "heading": "Exceptions",
+        "hint": "Approved deviations per repository, for example Red recon without a test environment.",
+        "application": "Application",
+        "request": "Request an exception",
+        "loading": "Loading exceptions…",
+        "error": "Couldn't load exceptions",
+        "empty": "No exceptions for this application.",
+        "noApps": "This team has no applications yet.",
+        "expires": "expires {{date}}",
+        "expired": "expired {{date}}"
       }
     }
   },

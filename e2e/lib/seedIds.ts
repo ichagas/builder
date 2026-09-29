@@ -110,4 +110,9 @@ export const seed = {
   runApiClosedId: "00000000-0000-4000-8000-000000000962", // permits-api, 3 days ago, closed PR 208 (excluded)
   runWorkerFailId: "00000000-0000-4000-8000-000000000963", // permits-worker, 12 days ago, merged PR 207, Red fail, 2 findings
   runWorkerOldId: "00000000-0000-4000-8000-000000000964", // permits-worker, 20 days ago, open PR 206
+
+  // US5 Packs, policy, exceptions (T133, WP-A4, NA-06): block 970..97f. Two
+  // exceptions on permits-portal (assuranceApp2Id): one active, one lapsed.
+  governanceExceptionActiveId: "00000000-0000-4000-8000-000000000970",
+  governanceExceptionExpiredId: "00000000-0000-4000-8000-000000000971",
 } as const;
