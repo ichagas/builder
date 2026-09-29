@@ -67,4 +67,9 @@ export const seed = {
   onboardingGitHubConnectionId: "00000000-0000-4000-8000-000000000904",
   onboardingAllowedOwner: "e2e-goa",
   onboardingOutOfScopeFullName: "e2e-unauthorized-org/some-repo",
+  // NV-06 version scoping (T113, WP-V4): two requirement deltas recorded
+  // against workItemScheduledId (scheduled into versionNextId), shown above
+  // the phase tool on /p/:versionsProjectId/v/<versionNextId>/...
+  reqChangeNewId: "00000000-0000-4000-8000-000000000940",
+  reqChangeChangedId: "00000000-0000-4000-8000-000000000941",
 } as const;
