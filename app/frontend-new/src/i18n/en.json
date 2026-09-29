@@ -202,6 +202,63 @@
           "submit": "Request exception"
         }
       }
+    },
+    "runs": {
+      "link": "Mesh runs by day",
+      "crumb": "{{team}} / {{app}}",
+      "title": "Mesh runs",
+      "backToApp": "Back to application",
+      "loading": "Loading mesh runs…",
+      "days_one": "Last {{count}} day",
+      "days_other": "Last {{count}} days",
+      "dayCount_one": "{{count}} run",
+      "dayCount_other": "{{count}} runs",
+      "noPr": "No PR",
+      "error": {
+        "title": "Couldn't load mesh runs",
+        "description": "Try again in a moment."
+      },
+      "empty": {
+        "title_one": "No mesh runs in the last day",
+        "title_other": "No mesh runs in the last {{count}} days",
+        "description": "Runs appear here when a pull request to the default branch is opened or merged."
+      },
+      "row": {
+        "findings_one": "{{count}} new finding",
+        "findings_other": "{{count}} new findings"
+      },
+      "agent": {
+        "green": "Green (code)",
+        "yellow": "Yellow (dependencies)",
+        "red": "Red (recon)",
+        "blue": "Blue (standards)"
+      },
+      "verdict": {
+        "pass": "Pass",
+        "warn": "Warning",
+        "fail": "Fail",
+        "skip": "Skipped",
+        "none": "Not run"
+      },
+      "evidence": {
+        "heading": "Run evidence",
+        "loading": "Loading evidence…",
+        "error": "Couldn't load this run's evidence",
+        "verdictsLabel": "Verdict per check",
+        "newFindings": "New findings",
+        "asvs": "ASVS passed",
+        "alberta": "Alberta passed",
+        "pack": "Standards pack",
+        "commit": "Commit",
+        "trigger": "Trigger",
+        "received": "Received",
+        "report": "Open the full report",
+        "noReport": "No report attached",
+        "openIssue": "Open an issue",
+        "openIssueConfirm": "Open an issue for the new findings?",
+        "issueCreated": "Issue opened: {{ref}}",
+        "issueExisting": "An issue already exists for this run."
+      }
     }
   },
   "versions": {
