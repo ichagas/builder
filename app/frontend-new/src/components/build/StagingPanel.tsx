@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ interface StagingPanelProps {
 }
 
 export function StagingPanel({ projectId, shareToken, onViewDiff, autoCommit, onAutoCommitChange, refreshTrigger, onFilesChanged }: StagingPanelProps) {
+  // P4 (NV-06): a released version is inspect-only (false outside VersionScope).
+  const { readOnly } = useVersionScopeContext();
 
   const [stagedChanges, setStagedChanges] = useState<StagedChange[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,6 +159,7 @@ export function StagingPanel({ projectId, shareToken, onViewDiff, autoCommit, on
   };
 
   const handleCommit = async () => {
+    if (readOnly) return;
     if (!repoId || !commitMessage.trim()) {
       toast.error("Please enter a commit message");
       return;
@@ -192,6 +196,7 @@ export function StagingPanel({ projectId, shareToken, onViewDiff, autoCommit, on
   };
 
   const handlePushToGitHub = async () => {
+    if (readOnly) return;
     if (!projectId || allRepos.length === 0) {
       toast.error("No repositories configured");
       return;
@@ -321,6 +326,7 @@ export function StagingPanel({ projectId, shareToken, onViewDiff, autoCommit, on
   };
 
   const handleUnstageFile = async (filePath: string) => {
+    if (readOnly) return;
     if (!repoId) return;
 
     try {
@@ -339,6 +345,7 @@ export function StagingPanel({ projectId, shareToken, onViewDiff, autoCommit, on
   };
 
   const handleUnstageSelected = async () => {
+    if (readOnly) return;
     if (!repoId || selectedFiles.size === 0) return;
 
     try {
@@ -358,6 +365,7 @@ export function StagingPanel({ projectId, shareToken, onViewDiff, autoCommit, on
   };
 
   const handleDiscardAll = async () => {
+    if (readOnly) return;
     if (!repoId) return;
 
     try {
