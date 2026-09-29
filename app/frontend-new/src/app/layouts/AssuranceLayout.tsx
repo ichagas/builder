@@ -48,6 +48,8 @@ export function AssuranceLayout() {
   const railSections = [
     { id: "portfolio", label: t("assurance.rail.portfolio"), href: portfolioHref },
     { id: "onboard", label: t("assurance.rail.onboard"), href: onboardHref },
+    { id: "packs", label: t("assurance.rail.packs"), href: "/assurance/packs" },
+    { id: "policy", label: t("assurance.rail.policy"), href: "/assurance/policy" },
   ];
 
   return (
