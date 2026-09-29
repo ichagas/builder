@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { ChevronRight, ChevronDown, File, Folder, FolderOpen, FilePlus, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTreeContextMenu } from "./FileTreeContextMenu";
 import { CreateFileDialog } from "./CreateFileDialog";
@@ -237,6 +238,8 @@ export function EnhancedFileTree({ files, onFileSelect, selectedPath, onFileCrea
   const [createType, setCreateType] = useState<"file" | "folder">("file");
   const [fileNameFilter, setFileNameFilter] = useState("");
   const [contentSearchOpen, setContentSearchOpen] = useState(false);
+  // P4 (NV-06): the tree can be rendered inside the portaled IDE dialog, outside the page's ReadOnlyGuard.
+  const { readOnly } = useVersionScopeContext();
 
   // Filter files based on file name
   const filteredFiles = useMemo(() => {
@@ -307,6 +310,7 @@ export function EnhancedFileTree({ files, onFileSelect, selectedPath, onFileCrea
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={readOnly}
                     onClick={() => {
                       setCreateType("file");
                       setCreateDialogOpen(true);
@@ -319,6 +323,7 @@ export function EnhancedFileTree({ files, onFileSelect, selectedPath, onFileCrea
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={readOnly}
                     onClick={() => {
                       setCreateType("folder");
                       setCreateDialogOpen(true);

@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, Maximize2, FilePlus, FolderPlus } from "lucide-react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { EnhancedFileTree } from "./EnhancedFileTree";
 import { CodeEditor } from "./CodeEditor";
 import { CreateFileDialog } from "./CreateFileDialog";
@@ -42,8 +43,11 @@ export function IDEModal({
 }: IDEModalProps) {
   const [rootCreateDialogOpen, setRootCreateDialogOpen] = useState(false);
   const [rootCreateType, setRootCreateType] = useState<"file" | "folder">("file");
+  // P4 (NV-06): the dialog is portaled outside the page's ReadOnlyGuard, so it gates itself.
+  const { readOnly } = useVersionScopeContext();
 
   const handleRootCreateConfirm = (name: string) => {
+    if (readOnly) return;
     onFileCreate(name, rootCreateType === "folder");
   };
 
@@ -69,6 +73,7 @@ export function IDEModal({
               <Button
                 variant="outline"
                 size="sm"
+                disabled={readOnly}
                 className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                 onClick={() => {
                   setRootCreateType("file");
@@ -81,6 +86,7 @@ export function IDEModal({
               <Button
                 variant="outline"
                 size="sm"
+                disabled={readOnly}
                 className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                 onClick={() => {
                   setRootCreateType("folder");

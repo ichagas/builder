@@ -26,6 +26,7 @@ import JSZip from "jszip";
 import { GitHubConnectBanner } from "@/components/repository/GitHubConnectBanner";
 import { SuperadminGitHubManager } from "@/components/superadmin/SuperadminGitHubManager";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { useUrlState } from "@/lib/state/useUrlState";
 
 interface FileNode {
@@ -36,6 +37,8 @@ interface FileNode {
 }
 
 export default function Repository() {
+  // P4 (NV-06): a released version is browse-only (false outside VersionScope, so v/current is unchanged).
+  const { readOnly } = useVersionScopeContext();
   const { projectId } = useParams<{ projectId: string }>();
   const { token: shareToken, isTokenSet, tokenMissing } = useShareToken(projectId);
   const { user } = useAuth();
@@ -287,6 +290,7 @@ export default function Repository() {
   };
 
   const handleDeleteRepo = async (repoId: string) => {
+    if (readOnly) return;
     const repo = repos.find(r => r.id === repoId);
     if (!repo) return;
 
@@ -325,6 +329,7 @@ export default function Repository() {
   };
 
   const handleCreateEmpty = async (name: string, isPrivate: boolean) => {
+    if (readOnly) return;
     if (!projectId) return;
     
     try {
@@ -348,6 +353,7 @@ export default function Repository() {
   };
 
   const handleCreateFromTemplate = async (name: string, templateOrg: string, templateRepo: string, isPrivate: boolean) => {
+    if (readOnly) return;
     if (!projectId) return;
     
     try {
@@ -373,6 +379,7 @@ export default function Repository() {
   };
 
   const handleClonePublic = async (name: string, sourceOrg: string, sourceRepo: string, sourceBranch: string, isPrivate: boolean) => {
+    if (readOnly) return;
     if (!projectId) return;
     
     try {
@@ -399,6 +406,7 @@ export default function Repository() {
   };
 
   const handleLinkExisting = async (org: string, repo: string, branch: string, pat?: string) => {
+    if (readOnly) return;
     if (!projectId) return;
     
     try {
@@ -424,6 +432,7 @@ export default function Repository() {
   };
 
   const handleSyncWithConfig = async (config: SyncConfig, isPush: boolean) => {
+    if (readOnly) return;
     try {
       // Find Prime repo
       const primeRepo = repos.find(r => r.is_prime);
@@ -552,6 +561,7 @@ export default function Repository() {
   };
 
   const handleSync = () => {
+    if (readOnly) return;
     if (repos.length === 0) {
       toast.error("Please add a repository first");
       return;
@@ -561,6 +571,7 @@ export default function Repository() {
   };
 
   const handleFileCreate = async (path: string, isFolder: boolean) => {
+    if (readOnly) return;
     if (!selectedRepoId) return;
 
     try {
@@ -599,10 +610,12 @@ export default function Repository() {
   };
 
   const handleRootCreateConfirm = (name: string) => {
+    if (readOnly) return;
     handleFileCreate(name, rootCreateType === "folder");
   };
 
   const handleFileRename = async (oldPath: string, newPath: string) => {
+    if (readOnly) return;
     if (!selectedRepoId) return;
 
     try {
@@ -649,6 +662,7 @@ export default function Repository() {
   };
 
   const handleFileDelete = async (path: string) => {
+    if (readOnly) return;
     if (!selectedRepoId) return;
 
     try {
@@ -693,6 +707,7 @@ export default function Repository() {
   };
 
   const handlePull = () => {
+    if (readOnly) return;
     // Pull only from Prime repository
     const primeRepo = repos.find(r => r.is_prime);
     if (!primeRepo) {
@@ -704,6 +719,7 @@ export default function Repository() {
   };
 
   const performAutoSync = async () => {
+    if (readOnly) return;
     if (!autoSync || repos.length === 0) return;
 
     const config: SyncConfig = {
@@ -717,6 +733,7 @@ export default function Repository() {
   };
 
   const handleZipUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     const file = event.target.files?.[0];
     if (!file || !projectId) return;
 
@@ -934,6 +951,7 @@ export default function Repository() {
                           }}
                           size="sm"
                           variant="outline"
+                          disabled={readOnly}
                           className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                         >
                           <FilePlus className="h-3 w-3" />
@@ -946,6 +964,7 @@ export default function Repository() {
                           }}
                           size="sm"
                           variant="outline"
+                          disabled={readOnly}
                           className="h-8 px-2 gap-1 bg-[var(--ide-hover)] text-[var(--ide-ink)] border-[var(--ide-border)] hover:bg-[var(--ide-panel-2)]"
                         >
                           <FolderPlus className="h-3 w-3" />
