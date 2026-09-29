@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
+import { pronghornApi } from "@/integrations/pronghorn-api/client";
 
 /**
  * Assurance API (T130, WP-A1). Typed TanStack Query hooks over the B2
@@ -259,6 +260,8 @@ export const meshPolicySchema = z.object({
 export type MeshPolicy = z.infer<typeof meshPolicySchema>;
 
 export const meshPolicyKeys = {
+  /** Prefix matching every scope's policy query (for broad invalidation). */
+  all: ["assurance", "meshPolicy"] as const,
   policy: (scope: MeshPolicyScope, scopeId: string) => ["assurance", "meshPolicy", scope, scopeId] as const,
 };
 
@@ -295,9 +298,34 @@ export function useSetMeshPolicy() {
       return meshPolicySchema.parse(data);
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: meshPolicyKeys.policy(variables.scope, variables.scopeId) });
+      // An org- or team-level change alters the effective policy of every
+      // narrower scope, so refresh all mesh-policy queries, not just this one.
+      void queryClient.invalidateQueries({ queryKey: meshPolicyKeys.all });
     },
   });
+}
+
+/**
+ * The caller's organization id. The auth context carries no organization,
+ * so it comes from the caller's teams (`/teams`, `/teams/mine`); with no
+ * teams at all (e.g. a fresh organization admin) it falls back to the
+ * caller's organization row, as the dashboard does.
+ */
+export function useOrganizationId(isAdmin: boolean): string | undefined {
+  const { data: mine } = useTeamsMine();
+  const { data: allTeams } = useTeamsAll(isAdmin);
+  const fromTeams = allTeams?.[0]?.organization_id ?? mine?.[0]?.organization_id;
+  const teamsSettled = mine !== undefined && (!isAdmin || allTeams !== undefined);
+  const { data: fallback } = useQuery({
+    queryKey: ["assurance", "organizationId"],
+    enabled: isAdmin && teamsSettled && !fromTeams,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await pronghornApi.from("organizations").select("id").limit(1);
+      return (data?.[0]?.id as string | undefined) ?? null;
+    },
+  });
+  return fromTeams ?? fallback ?? undefined;
 }
 
 /**

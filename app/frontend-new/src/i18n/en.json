@@ -331,6 +331,7 @@
         "loosenConfirm": "Loosen {{check}}? Confirm",
         "saved": "Mesh policy updated",
         "saveFailed": "Couldn't update mesh policy",
+        "undoFailed": "Couldn't undo the change to {{check}}",
         "undoText": "{{check}} set back to {{mode}}",
         "loading": "Loading mesh policy…",
         "error": {

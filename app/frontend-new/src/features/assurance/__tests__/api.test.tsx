@@ -241,6 +241,19 @@ describe("mesh policy api", () => {
     expect(result.current.data?.explicit).toBeUndefined();
   });
 
+  it("useSetMeshPolicy invalidates every scope's policy query, not just its own", async () => {
+    putMock.mockResolvedValueOnce({ scope: "organization", scopeId: "org1", effective: { green: "block" }, cyberRiskSandbox: false });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(["assurance", "meshPolicy", "team", "t1"], { stale: true });
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    const w = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useSetMeshPolicy(), { wrapper: w });
+    result.current.mutate({ scope: "organization", scopeId: "org1", agent: "green", mode: "block" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["assurance", "meshPolicy"] });
+    expect(queryClient.getQueryState(["assurance", "meshPolicy", "team", "t1"])?.isInvalidated).toBe(true);
+  });
+
   it("useSetMeshPolicy PUTs cyberRiskSandbox at application scope", async () => {
     putMock.mockResolvedValueOnce({
       scope: "application",

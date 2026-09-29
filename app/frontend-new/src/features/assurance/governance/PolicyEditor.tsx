@@ -55,7 +55,14 @@ function PolicyRow({ agent, current, scope, scopeId, isOrgAdmin, canWrite, expli
     if (canSetMode(pending, previous, isOrgAdmin)) {
       pushUndo({
         text: t("assurance.governance.policy.undoText", { check: name, mode: t(`assurance.governance.policy.mode.${previous}`) }),
-        undo: () => void setPolicy.mutateAsync({ scope, scopeId, agent, mode: previous }),
+        // NOTE: there is no delete/reset endpoint (contracts/api.md), so undoing a
+        // change to an inherited check writes an explicit row at this scope with the
+        // previous effective mode rather than removing the override.
+        undo: () => {
+          setPolicy.mutateAsync({ scope, scopeId, agent, mode: previous }).catch(() => {
+            toast.error(t("assurance.governance.policy.undoFailed", { check: name }));
+          });
+        },
       });
     }
   };

@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { EmptyState } from "@/components/shell/atoms";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useUrlState } from "@/lib/state/useUrlState";
-import { useTeamsAll, useTeamsMine, useTeamPortfolio, type MeshPolicyScope } from "@/features/assurance/api";
+import { useTeamsAll, useTeamsMine, useTeamPortfolio, useOrganizationId, type MeshPolicyScope } from "@/features/assurance/api";
 import { PolicyEditor } from "@/features/assurance/governance/PolicyEditor";
 import { ExceptionsPanel } from "@/features/assurance/governance/ExceptionsPanel";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,7 @@ export function Policy() {
   const applications = portfolio?.applications ?? [];
   const appId = applications.some((a) => a.id === appParam) ? appParam : (applications[0]?.id ?? "");
 
-  const orgId = allTeams?.[0]?.organization_id ?? mine[0]?.organization_id;
+  const orgId = useOrganizationId(isAdmin);
   const isOwner = isAdmin || mine.some((tm) => tm.id === teamId && tm.role === "owner");
   const scopeId = scope === "organization" ? orgId : scope === "team" ? teamId : appId;
 
