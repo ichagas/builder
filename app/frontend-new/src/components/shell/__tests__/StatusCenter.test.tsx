@@ -37,4 +37,26 @@ describe("StatusCenter", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("moves focus into the popover, returns it to the pill on Escape (T160)", async () => {
+    const user = userEvent.setup();
+    render(<StatusCenter />);
+    const pill = screen.getByRole("button");
+    await user.click(pill);
+    expect(screen.getByRole("dialog")).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(pill).toHaveFocus();
+  });
+
+  it("announces async completion through a polite live region (T160)", () => {
+    render(<StatusCenter />);
+    const live = screen.getByRole("status");
+    expect(live).toHaveTextContent("");
+    act(() => {
+      startLongTask({ id: "status-center-agent-2", label: "Fixing WI-7" });
+    });
+    expect(live).toHaveTextContent("1 running");
+    act(() => __resetLongTasksForTests());
+    expect(live).toHaveTextContent("All tasks finished");
+  });
 });

@@ -77,6 +77,7 @@ export const designSystemPreset = {
 
         // Phases (Define / Design / Build / Ship)
         define: themeColor("--c-define-rgb"),
+        "define-ink": themeColor("--c-define-ink-rgb"),
         design: themeColor("--c-design-rgb"),
         build: themeColor("--c-build-rgb"),
         ship: themeColor("--c-ship-rgb"),

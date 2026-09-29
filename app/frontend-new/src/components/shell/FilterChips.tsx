@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useUrlState } from "@/lib/state/useUrlState";
 
@@ -21,10 +22,11 @@ export interface FilterChipsProps {
 }
 
 export function FilterChips({ options, paramKey = "f", defaultValue = "all", className }: FilterChipsProps) {
+  const { t } = useTranslation();
   const [active, setActive] = useUrlState(paramKey, defaultValue);
 
   return (
-    <div role="group" aria-label="Filters" className={cn("flex flex-wrap gap-1.5", className)}>
+    <div role="group" aria-label={t("a11y.filters")} className={cn("flex flex-wrap gap-1.5", className)}>
       {options.map((option) => {
         const isActive = option.id === active;
         return (
@@ -34,7 +36,7 @@ export function FilterChips({ options, paramKey = "f", defaultValue = "all", cla
             aria-pressed={isActive}
             onClick={() => setActive(option.id)}
             className={cn(
-              "flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
+              "flex h-11 items-center gap-1.5 md:h-7 rounded-full border px-2.5 text-xs font-medium",
               isActive ? "border-primary bg-primary-soft text-primary" : "border-line bg-surface text-muted-foreground",
             )}
           >

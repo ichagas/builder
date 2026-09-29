@@ -24,11 +24,11 @@ export function UndoBar({ className }: { className?: string }) {
     >
       <span className="text-sm text-ink">{current.text}</span>
       <div className="flex shrink-0 items-center gap-1">
-        <button type="button" onClick={trigger} className="rounded-xs px-2 py-1 text-sm font-semibold text-primary">
+        <button type="button" onClick={trigger} className="min-h-11 rounded-xs px-3 py-1 text-sm font-semibold text-primary sm:min-h-0 sm:px-2">
           {t("shell.undo.undo")}
         </button>
-        <button type="button" onClick={dismiss} aria-label={t("shell.undo.dismiss")} className="rounded-xs px-2 py-1 text-sm text-muted-foreground">
-          ×
+        <button type="button" onClick={dismiss} aria-label={t("shell.undo.dismiss")} className="min-h-11 min-w-11 rounded-xs px-2 py-1 text-sm text-muted-foreground sm:min-h-0 sm:min-w-0">
+          <span aria-hidden="true">×</span>
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   CommandDialog,
   CommandEmpty,
@@ -60,7 +61,9 @@ export function CommandPalette({ open, onOpenChange, items }: CommandPaletteProp
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder={t("commandPalette.placeholder")} />
+      <DialogTitle className="sr-only">{t("a11y.commandPalette.title")}</DialogTitle>
+      <DialogDescription className="sr-only">{t("a11y.commandPalette.description")}</DialogDescription>
+      <CommandInput placeholder={t("commandPalette.placeholder")} aria-label={t("a11y.commandPalette.title")} />
       <CommandList>
         <CommandEmpty>{t("commandPalette.empty")}</CommandEmpty>
         {GROUP_ORDER.map((group) => {

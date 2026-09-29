@@ -10,9 +10,9 @@ export type PrChipState = "open" | "merged" | "none";
 const STATE_CLASSES: Record<PrChipState, string> = {
   open: "border-primary text-primary",
   // The prototype's literal "merged" bg/text (#F1EAFE / #6D28D9) is a violet
-  // tint close to --c-define; reuse that token (with an opacity modifier for
-  // the tint) rather than adding a raw color.
-  merged: "border-transparent bg-define/10 text-define",
+  // tint close to --c-define; reuse that token for the tint; text uses --c-define-ink because
+  // --c-define on its own 10% tint is only ~4.1:1 (AA needs 4.5:1).
+  merged: "border-transparent bg-define/10 text-define-ink",
   none: "border-line-2 text-muted-foreground",
 };
 

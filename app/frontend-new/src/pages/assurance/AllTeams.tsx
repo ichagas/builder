@@ -59,7 +59,7 @@ export function AllTeams() {
           body={t("assurance.teams.banner.body")}
         />
         {overview.hasPartialError ? (
-          <p role="alert" className="text-sm text-warn">
+          <p role="alert" className="border-l-2 border-warn pl-2 text-sm text-ink">
             {t("assurance.teams.partialError")}
           </p>
         ) : null}

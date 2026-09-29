@@ -40,7 +40,7 @@ export function GlobalBar({ switcher, mode, onSearch, statusPill, accountMenu, l
       className={cn("relative flex h-14 shrink-0 items-center gap-3 border-b border-gbar-line bg-gbar px-3 text-gbar-ink", className)}
     >
       <span aria-hidden="true" className={cn("absolute inset-x-0 top-0 h-[3px]", mode ? BAND_CLASS[mode.kind] : "bg-transparent")} />
-      <a href={logoHref} className="flex shrink-0 items-center gap-2 font-semibold" aria-label="Pronghorn home">
+      <a href={logoHref} className="flex min-h-11 shrink-0 items-center gap-2 font-semibold" aria-label={t("a11y.homeLink")}>
         <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-xs bg-primary text-sm font-bold text-primary-foreground">
           P
         </span>
@@ -62,7 +62,7 @@ export function GlobalBar({ switcher, mode, onSearch, statusPill, accountMenu, l
         type="button"
         onClick={onSearch}
         aria-label={t("shell.search.ariaLabel")}
-        className="flex h-8 w-8 items-center justify-center rounded-xs sm:hidden"
+        className="flex h-11 w-11 items-center justify-center rounded-xs sm:hidden"
       >
         <Search aria-hidden="true" className="h-4 w-4" />
       </button>

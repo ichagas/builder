@@ -58,10 +58,31 @@ const SelectScrollDownButton = React.forwardRef<
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
+/**
+ * On phones the page scrolls under a fixed MobileTabBar, so a Select near the
+ * bottom of a long page (e.g. Admin -> Integrations "Team") gets its `popper`
+ * placed below the fold (T160 WP-P1: options at y~898 in an 844px viewport,
+ * unreachable). `item-aligned` positions the list by clamping to the viewport
+ * itself (Radix keeps a 10px margin and scrolls the list), so it can never land
+ * off-screen. Desktop keeps the `popper` look. Read synchronously (not via a
+ * state hook) so the content does not remount from popper to item-aligned
+ * right after it opens.
+ */
+export const MOBILE_SELECT_QUERY = "(max-width: 767px)";
+function defaultSelectPosition(): "popper" | "item-aligned" {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "popper";
+  return window.matchMedia(MOBILE_SELECT_QUERY).matches ? "item-aligned" : "popper";
+}
+
+// Desktop popper: keep clear of the viewport edges (flip earlier than 0px).
+const POPPER_COLLISION_PADDING = 12;
+
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
+>(({ className, children, position: positionProp, ...props }, ref) => {
+  const position = positionProp ?? defaultSelectPosition();
+  return (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
@@ -72,6 +93,7 @@ const SelectContent = React.forwardRef<
         className,
       )}
       position={position}
+      {...(position === "popper" ? { collisionPadding: POPPER_COLLISION_PADDING } : {})}
       {...props}
     >
       <SelectScrollUpButton />
@@ -87,7 +109,8 @@ const SelectContent = React.forwardRef<
       <SelectScrollDownButton />
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
-));
+  );
+});
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
 const SelectLabel = React.forwardRef<

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,8 +25,9 @@ export interface StepperProps {
 }
 
 export function Stepper({ steps, current, onSelect, className }: StepperProps) {
+  const { t } = useTranslation();
   return (
-    <ol className={cn("flex items-stretch gap-1", className)}>
+    <ol aria-label={t("a11y.stepper.label")} className={cn("flex items-stretch gap-1", className)}>
       {steps.map((step, index) => {
         const isCurrent = step.id === current;
         // A step in the future (todo, and not yet reached) is disabled — a
@@ -41,7 +43,7 @@ export function Stepper({ steps, current, onSelect, className }: StepperProps) {
               aria-current={isCurrent ? "step" : undefined}
               title={step.note}
               className={cn(
-                "flex w-full flex-col items-start gap-1 rounded-xs border-b-2 px-2.5 py-2 text-left text-xs",
+                "flex min-h-11 w-full flex-col items-start gap-1 rounded-xs border-b-2 px-2.5 py-2 text-left text-xs",
                 isCurrent ? "border-primary text-ink" : "border-transparent text-muted-foreground",
                 isFuture && "cursor-not-allowed opacity-50",
               )}
@@ -55,6 +57,8 @@ export function Stepper({ steps, current, onSelect, className }: StepperProps) {
                   </span>
                 )}
                 {step.label}
+                {step.state === "done" ? <span className="sr-only">{t("a11y.stepper.done")}</span> : null}
+                {isFuture ? <span className="sr-only">{t("a11y.stepper.locked")}</span> : null}
               </span>
               {step.note ? <span className="truncate text-muted-foreground">{step.note}</span> : null}
             </button>
