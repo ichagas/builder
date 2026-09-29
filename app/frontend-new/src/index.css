@@ -147,10 +147,10 @@ contracts/design-system.md for the mapping table.
   }
 
   /* T160: one visible keyboard-focus indicator for every control (WCAG 2.4.7,
-   * 1.4.11: primary is >= 3:1 on surface/bg in both themes). Components that
+   * 1.4.11: the --focus token is >= 3:1 on surface/bg in both themes). Components that
    * draw their own ring (Radix inputs use focus:ring) keep it on top. */
   :focus-visible {
-    outline: 2px solid rgb(var(--primary-rgb));
+    outline: 2px solid rgb(var(--focus-rgb));
     outline-offset: 2px;
   }
 
