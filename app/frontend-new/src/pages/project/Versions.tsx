@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -60,6 +60,7 @@ function TriageRow({
   pushUndo: (entry: { text: string; undo: () => void }) => void;
 }) {
   const { t } = useTranslation();
+  const { projectId = "" } = useParams<{ projectId: string }>();
   const hotfixSuggested = item.type === "bug" && item.severity === "high";
 
   const scheduleUndo = { text: t("versions.triage.scheduledUndo", { key: item.key }), onUndo: () => onUnschedule(item) };
@@ -105,6 +106,9 @@ function TriageRow({
           <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
           {suggestionText}
         </p>
+        <Link className="w-fit text-sm font-semibold text-primary underline underline-offset-2" to={`/p/${projectId}/changes/${item.id}`}>
+          {t("versions.change.openLink")}
+        </Link>
         <div className="flex flex-wrap gap-2">
           {primaryAction ? (
             <ActionButton label={primaryAction.label} onAction={primaryAction.onAction} tone="primary" pushUndo={pushUndo} undo={scheduleUndo} />

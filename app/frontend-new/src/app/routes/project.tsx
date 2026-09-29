@@ -11,6 +11,7 @@ import { useDeployPrimaryAction } from "@/pages/project/deploy.primaryAction";
 import { useDatabasePrimaryAction } from "@/pages/project/database.primaryAction";
 import { useBuildPrimaryAction } from "@/pages/project/build.primaryAction";
 import { useAuditPrimaryAction } from "@/pages/project/audit.primaryAction";
+import { useChangePrimaryAction } from "@/pages/project/change.primaryAction";
 
 // Same lazy-loaded page components as the pre-router App.tsx (unchanged —
 // this task moves routing, not pages; see plan.md "not in the recipe").
@@ -28,6 +29,7 @@ const Audit = lazyWithRetry(() => import("@/pages/project/Audit"));
 const Present = lazyWithRetry(() => import("@/pages/project/Present"));
 const ProjectSettings = lazyWithRetry(() => import("@/pages/project/ProjectSettings"));
 const Versions = lazyWithRetry(() => import("@/pages/project/Versions"));
+const Change = lazyWithRetry(() => import("@/pages/project/Change"));
 
 /**
  * Project settings row (T041, WP-P3). See contracts/routes.md §1:
@@ -56,6 +58,19 @@ export const PROJECT_VERSIONS_ROUTE: SimpleRoute = {
   title: "All versions",
   usePrimaryAction: useNoPrimaryAction,
   Component: Versions,
+};
+
+/**
+ * Change page row (T111, WP-V2, NV-03/NV-04). contracts/routes.md §1:
+ * `/p/:id/changes/:changeId/:step?` (step = define|design|build|ship). Like
+ * All versions it sits outside `PROJECT_TOOL_ROUTES`; `app/router.tsx`
+ * mounts it as its own child route of `ProjectLayout`.
+ */
+export const PROJECT_CHANGE_ROUTE: SimpleRoute = {
+  path: "changes/:changeId/:step?",
+  title: "Change",
+  usePrimaryAction: useChangePrimaryAction,
+  Component: Change,
 };
 
 /**
