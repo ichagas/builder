@@ -10,8 +10,7 @@
     "test:new": "rm -f baselines/axe-legacy.raw.jsonl && APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8141}} playwright test regression shell",
     "test:shell": "APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8141}} playwright test shell",
     "test:new-capabilities": "APP=new BASE_URL=${BASE_URL:-http://localhost:${FE_PORT:-8141}} playwright test new",
-    "report": "playwright show-report",
-    "seed": "node --loader ts-node/esm scripts/seed.ts"
+    "report": "playwright show-report"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",
