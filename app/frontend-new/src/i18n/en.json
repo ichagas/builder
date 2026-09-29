@@ -262,6 +262,29 @@
     "empty": {
       "title": "No versions yet",
       "description": "Versions appear here once this project starts building."
+    },
+    "scope": {
+      "released": {
+        "title": "{{version}} is released and read-only",
+        "body": "This is the locked baseline. To change it, schedule a change into an open version."
+      },
+      "unknown": {
+        "title": "Version not found",
+        "body": "This version doesn't exist in this project. Showing the tool for the current version."
+      },
+      "open": {
+        "heading": "Changes in {{version}}",
+        "body": "What this version changes, shown above the tool.",
+        "loading": "Loading changes…",
+        "error": "Couldn't load this version's changes.",
+        "empty": "No changes are scheduled into this version yet.",
+        "noDeltas": "No requirement changes recorded."
+      },
+      "delta": {
+        "new": "New",
+        "changed": "Changed",
+        "regression": "Regression"
+      }
     }
   },
   "integrations": {
