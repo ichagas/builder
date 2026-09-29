@@ -62,7 +62,7 @@ function buildOnboardPath(teamId: string, step: "team" | "connect"): string {
 }
 
 /** Never echoes a raw/unexpected error; falls back to a generic message. */
-function extractErrorMessage(error: unknown, fallback: string): string {
+export function extractErrorMessage(error: unknown, fallback: string): string {
   const apiError = error as ApiError | undefined;
   if (!apiError) return fallback;
   const details = apiError.details as Record<string, unknown> | undefined;
