@@ -3,6 +3,17 @@ import { useMutation, useQuery, useQueryClient, type UseMutationResult, type Use
 import apiClient from "@/lib/apiClient";
 import { pronghornApi } from "@/integrations/pronghorn-api/client";
 import { versionsKeys, workItemSchema, type WorkItem } from "./api";
+import {
+  releaseChecksKey,
+  releaseChecksSchema,
+  requirementChangeSchema,
+  requirementChangesKey,
+  requirementChangesSchema,
+  withToken,
+  type ReleaseChecks,
+  type RequirementChange,
+  type RequirementChangeKind,
+} from "./shared";
 
 /**
  * Change page API (T111, WP-V2, NV-03/NV-04). Hooks for one change
@@ -30,21 +41,6 @@ export const bugReportSchema = z.object({
 });
 export type BugReport = z.infer<typeof bugReportSchema>;
 
-export const requirementChangeKindSchema = z.enum(["new", "changed", "regression"]);
-export type RequirementChangeKind = z.infer<typeof requirementChangeKindSchema>;
-
-export const requirementChangeSchema = z.object({
-  id: z.string(),
-  work_item_id: z.string(),
-  requirement_id: z.string().nullable(),
-  kind: requirementChangeKindSchema,
-  title: z.string(),
-  criterion: z.string().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
-export type RequirementChange = z.infer<typeof requirementChangeSchema>;
-
 /** A canvas node reduced to what the scoped canvas shows. */
 export const canvasNodeSchema = z.object({
   id: z.string(),
@@ -64,31 +60,12 @@ export const agentSessionSchema = z.object({
 });
 export type AgentSession = z.infer<typeof agentSessionSchema>;
 
-export const releaseCheckSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  passed: z.boolean(),
-  detail: z.string().optional().nullable(),
-});
-export type ReleaseCheck = z.infer<typeof releaseCheckSchema>;
-
-export const releaseChecksSchema = z.object({
-  projectId: z.string().optional(),
-  checks: z.array(releaseCheckSchema),
-  canRelease: z.boolean(),
-});
-export type ReleaseChecks = z.infer<typeof releaseChecksSchema>;
-
-function withToken(path: string, shareToken?: string | null): string {
-  return shareToken ? `${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(shareToken)}` : path;
-}
-
 export const changeKeys = {
   item: (projectId: string, id: string) => [...versionsKeys.all(projectId), "work-item", id] as const,
-  deltas: (projectId: string, id: string) => [...versionsKeys.all(projectId), "requirement-changes", id] as const,
+  deltas: (projectId: string, id: string) => requirementChangesKey(projectId, id),
   canvas: (projectId: string) => [...versionsKeys.all(projectId), "canvas"] as const,
   agent: (projectId: string, sessionId: string) => [...versionsKeys.all(projectId), "agent-session", sessionId] as const,
-  checks: (projectId: string, versionId: string) => [...versionsKeys.all(projectId), "release-checks", versionId] as const,
+  checks: (projectId: string, versionId: string) => releaseChecksKey(projectId, versionId),
 };
 
 /** GET /work-items/:id -- the change page (NV-03). */
@@ -113,9 +90,7 @@ export function useRequirementChanges(
   return useQuery({
     queryKey: changeKeys.deltas(projectId ?? "", id ?? ""),
     queryFn: async () =>
-      z
-        .array(requirementChangeSchema)
-        .parse(await apiClient.get<unknown>(withToken(`/api/v1/work-items/${id}/requirement-changes`, shareToken))),
+      requirementChangesSchema.parse(await apiClient.get<unknown>(withToken(`/api/v1/work-items/${id}/requirement-changes`, shareToken))),
     enabled: !!projectId && !!id,
   });
 }

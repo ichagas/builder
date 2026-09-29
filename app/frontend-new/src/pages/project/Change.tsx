@@ -38,6 +38,12 @@ import { usePublishChangePrimaryAction } from "./change.primaryAction";
  * Reference: docs/design/frontend-redesign/option-a-styles/shared/
  * versions.js `changeView()`.
  */
+/** A 4xx from the API (404 unknown id, 403, ...): the change is not there for this user, so retrying won't help. */
+function isClientError(error: unknown): boolean {
+  const status = (error as { statusCode?: number } | null)?.statusCode;
+  return typeof status === "number" && status >= 400 && status < 500;
+}
+
 export function Change() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -50,6 +56,10 @@ export function Change() {
   useRealtimeVersions(projectId);
   useRealtimeWorkItem(projectId, changeId);
 
+  // A step is "active" only if `phase_state` says so, but the backend never
+  // advances `phase_state` on schedule/accept (it stays all "todo"; only
+  // `steps/:step/complete` moves the next todo step). `stepStates` therefore
+  // reads the first todo step of an active item as the active one.
   const states = React.useMemo(() => stepStates(item ?? { phase_state: null }), [item]);
   const step = resolveStep(stepParam, states);
   const version = versions.find((v) => v.id === item?.version_id);
@@ -83,8 +93,10 @@ export function Change() {
       setActionError(false);
       try {
         await fn();
-      } catch {
+      } catch (err) {
         setActionError(true);
+        // Rethrow so the ActionButton shows "<label> failed — retry" and skips undo.
+        throw err;
       }
     };
     switch (action.action.kind) {
@@ -120,6 +132,28 @@ export function Change() {
     return (
       <div role="status" className="p-9 text-center text-muted-foreground">
         {t("versions.change.loading")}
+      </div>
+    );
+  }
+  if (!item && itemQuery.isError && !isClientError(itemQuery.error)) {
+    // Network/server failure: distinct from "not found", and retryable.
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <PageHeader crumb={t("versions.crumb")} title={t("versions.change.error.title")} />
+        <EmptyState
+          role="alert"
+          title={t("versions.change.error.title")}
+          description={t("versions.change.error.description")}
+          cta={
+            <button
+              type="button"
+              className="h-11 rounded-xs bg-primary px-4 text-sm font-semibold text-primary-foreground"
+              onClick={() => void itemQuery.refetch()}
+            >
+              {t("versions.change.error.retry")}
+            </button>
+          }
+        />
       </div>
     );
   }

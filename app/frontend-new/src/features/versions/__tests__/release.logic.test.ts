@@ -50,6 +50,12 @@ describe("release logic", () => {
     expect(resolveReleaseTarget(list, "v9.9.9")).toBeUndefined();
   });
 
+  it("resolves a target by id too (ProjectLayout navigates with ids)", () => {
+    const list = [v("v1.0.0", "released", "id-a"), v("v1.2.0", "planned", "id-b"), v("v1.1.0", "next", "id-c")];
+    expect(resolveReleaseTarget(list, "id-b")?.name).toBe("v1.2.0");
+    expect(resolveReleaseTarget(list, "id-zzz")).toBeUndefined();
+  });
+
   it("finds an open earlier version that must release first", () => {
     const list = [v("v1.0.0", "released"), v("v1.0.1", "hotfix"), v("v1.1.0", "next")];
     expect(findBlockingVersion(list, list[2])?.name).toBe("v1.0.1");

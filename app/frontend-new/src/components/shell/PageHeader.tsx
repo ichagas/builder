@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { usePublishPrimaryAction } from "./PrimaryActionContext";
 import { usePageRoute } from "./usePageRoute";
 import { ActionSpecButton } from "./ActionButton";
+import { useShellReadOnly } from "./ReadOnlyContext";
 import type { ActionSpec } from "./types";
 
 /** A no-op fallback for routes whose registry entry has no `usePrimaryAction`
@@ -37,7 +38,17 @@ export function PageHeader({ crumb, title, primary, className }: PageHeaderProps
   const useRoutePrimaryAction = route?.usePrimaryAction ?? useNoPrimaryAction;
   const routePrimary = useRoutePrimaryAction();
   const resolvedTitle = title ?? route?.title ?? "";
-  const resolvedPrimary = primary ?? routePrimary;
+  const { readOnly, reason } = useShellReadOnly();
+  const requestedPrimary = primary ?? routePrimary;
+  // A read-only view (released version) never offers a live primary action:
+  // disable it with the reason. Published disabled, so PrimaryActionSlot follows.
+  const resolvedPrimary = React.useMemo(
+    () =>
+      requestedPrimary && readOnly
+        ? { ...requestedPrimary, disabled: true, disabledReason: reason ?? requestedPrimary.disabledReason }
+        : requestedPrimary,
+    [requestedPrimary, readOnly, reason],
+  );
   usePublishPrimaryAction(resolvedPrimary);
 
   return (

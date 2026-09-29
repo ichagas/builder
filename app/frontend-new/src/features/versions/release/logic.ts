@@ -1,5 +1,5 @@
 import type { Version, WorkItem } from "../api";
-import type { ReleaseCheck } from "../release.api";
+import type { ReleaseCheck } from "../shared";
 
 /**
  * Pure release-page logic (NV-05). Mirrors the backend's rules in
@@ -34,12 +34,14 @@ export function hasFirstRelease(versions: Version[]): boolean {
 }
 
 /**
- * Resolves the `:version` route param. `current` (or an unknown name in the
- * building era) means "the version that goes out next": the lowest open one.
+ * Resolves the `:version` route param: a version name (canonical, used in
+ * generated links) or a version id (`ProjectLayout.goToVersions` navigates
+ * with ids). `current` (or no param) means "the version that goes out next":
+ * the lowest open one.
  */
 export function resolveReleaseTarget(versions: Version[], param: string | undefined): Version | undefined {
-  const byName = versions.find((v) => v.name === param);
-  if (byName) return byName;
+  const match = param ? versions.find((v) => v.name === param || v.id === param) : undefined;
+  if (match) return match;
   if (param && param !== "current") return undefined;
   return [...versions].filter((v) => v.kind !== "released").sort((a, b) => compareVersions(a.name, b.name))[0];
 }

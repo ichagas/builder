@@ -68,6 +68,21 @@ function PaletteHost({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
   return <CommandPalette open={open} onOpenChange={onOpenChange} items={items} />;
 }
 
+type ToolRoute = (typeof PROJECT_TOOL_ROUTES)[number];
+
+/** One phase-tool route row under `v/<segment>/...`, wrapped in VersionScope (a passthrough for `current`). */
+function scopedToolRoute(segment: "current" | ":versionId", route: ToolRoute) {
+  return {
+    path: `v/${segment}/${route.phase}/${route.tool}`,
+    element: (
+      <VersionScope>
+        <route.Component />
+      </VersionScope>
+    ),
+    handle: route,
+  };
+}
+
 export const router = createBrowserRouter([
   {
     element: <RootProviders />,
@@ -124,24 +139,7 @@ export const router = createBrowserRouter([
           // NV-06 (T113, WP-V4): the one place phase tools get version
           // scoping. `v/current` is a passthrough (D-7 fallback, PR-xx
           // specs); `v/:versionId` renders the same tool under VersionScope.
-          ...PROJECT_TOOL_ROUTES.map((route) => ({
-            path: `v/current/${route.phase}/${route.tool}`,
-            element: (
-              <VersionScope>
-                <route.Component />
-              </VersionScope>
-            ),
-            handle: route,
-          })),
-          ...PROJECT_TOOL_ROUTES.map((route) => ({
-            path: `v/:versionId/${route.phase}/${route.tool}`,
-            element: (
-              <VersionScope>
-                <route.Component />
-              </VersionScope>
-            ),
-            handle: route,
-          })),
+          ...(["current", ":versionId"] as const).flatMap((segment) => PROJECT_TOOL_ROUTES.map((route) => scopedToolRoute(segment, route))),
         ],
       },
       {

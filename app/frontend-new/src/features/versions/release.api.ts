@@ -2,6 +2,7 @@ import { z } from "zod";
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
 import { versionSchema, versionsKeys } from "./api";
+import { releaseChecksKey, releaseChecksSchema, withToken, type ReleaseChecks } from "./shared";
 
 /**
  * Release API (T112, WP-V3, NV-05). Typed TanStack Query hooks over the
@@ -11,21 +12,6 @@ import { versionSchema, versionsKeys } from "./api";
  * match `services/versions/releaseService.ts`. Kept in its own file (not
  * `api.ts`) so the parallel V2/V4 WPs don't conflict on it.
  */
-
-export const releaseCheckSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  passed: z.boolean(),
-  detail: z.string().optional().nullable(),
-});
-export type ReleaseCheck = z.infer<typeof releaseCheckSchema>;
-
-export const releaseChecksSchema = z.object({
-  projectId: z.string(),
-  checks: z.array(releaseCheckSchema),
-  canRelease: z.boolean(),
-});
-export type ReleaseChecks = z.infer<typeof releaseChecksSchema>;
 
 /** The released version row, plus the best-effort deploy outcome. */
 export const releasedVersionSchema = versionSchema
@@ -44,15 +30,11 @@ export const firstReleaseResultSchema = z.object({
 });
 export type FirstReleaseResult = z.infer<typeof firstReleaseResultSchema>;
 
-function withToken(path: string, shareToken?: string | null): string {
-  return shareToken ? `${path}?token=${encodeURIComponent(shareToken)}` : path;
-}
-
 export const releaseKeys = {
   // Nested under versionsKeys.all so realtime `version_released` (and every
   // mutation below) refreshes the checks together with the timeline.
   checks: (projectId: string, versionId: string | undefined) =>
-    [...versionsKeys.all(projectId), "release-checks", versionId ?? "first"] as const,
+    releaseChecksKey(projectId, versionId),
 };
 
 /**

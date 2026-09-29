@@ -1,3 +1,4 @@
+import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -66,10 +67,18 @@ function item(overrides: Record<string, unknown> = {}) {
 
 function Probe() {
   const primary = useChangePrimaryAction();
+  const [rejected, setRejected] = React.useState(false);
   return primary ? (
-    <button type="button" disabled={primary.disabled} onClick={() => void primary.onClick?.()}>
-      {`primary: ${primary.label}`}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={primary.disabled}
+        onClick={() => void Promise.resolve(primary.onClick?.()).catch(() => setRejected(true))}
+      >
+        {`primary: ${primary.label}`}
+      </button>
+      {rejected ? <span data-testid="primary-rejected" /> : null}
+    </>
   ) : null;
 }
 
@@ -142,6 +151,16 @@ describe("Change page (NV-03/NV-04)", () => {
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(`/p/${P}/changes/wi1/build`));
   });
 
+  it("surfaces a failed primary action and rethrows so the button can show failure", async () => {
+    postMock.mockRejectedValue(new Error("500"));
+    const user = userEvent.setup();
+    setup(item());
+
+    await user.click(await screen.findByRole("button", { name: "primary: Mark definition ready" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(await screen.findByTestId("primary-rejected")).toBeInTheDocument();
+  });
+
   it("adds a design step to a bug from the Design step", async () => {
     postMock.mockResolvedValue(item({ phase_state: { define: "done", design: "todo", build: "todo", ship: "todo" } }));
     const user = userEvent.setup();
@@ -195,7 +214,7 @@ describe("Change page (NV-03/NV-04)", () => {
   it("shows a not found state for an unknown change", async () => {
     getMock.mockImplementation(async (p: string) => {
       if (p === `/api/v1/projects/${P}/versions`) return VERSIONS;
-      throw new Error("404");
+      throw Object.assign(new Error("Not found"), { statusCode: 404 });
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
@@ -208,5 +227,35 @@ describe("Change page (NV-03/NV-04)", () => {
       </QueryClientProvider>,
     );
     expect((await screen.findAllByText("Change not found")).length).toBeGreaterThan(0);
+  });
+
+  it("shows a retryable error (not 'not found') when loading the change fails", async () => {
+    let fail = true;
+    getMock.mockImplementation(async (p: string) => {
+      if (p === `/api/v1/projects/${P}/versions`) return VERSIONS;
+      if (p === "/api/v1/work-items/wi1") {
+        if (fail) throw Object.assign(new Error("Server exploded"), { statusCode: 500 });
+        return item();
+      }
+      if (p === "/api/v1/work-items/wi1/requirement-changes") return [];
+      throw new Error(`unexpected path ${p}`);
+    });
+    rpcMock.mockResolvedValue({ data: [], error: null });
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/p/${P}/changes/wi1`]}>
+          <Routes>
+            <Route path="/p/:projectId/changes/:changeId/:step?" element={<Change />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect((await screen.findAllByText("Couldn't load this change")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Change not found")).not.toBeInTheDocument();
+    fail = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "Upload fails on iPhone" })).toBeInTheDocument();
   });
 });

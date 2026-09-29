@@ -1,7 +1,8 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { DeltaChip } from "@/components/shell/atoms";
-import { useAddRequirementChange, type RequirementChange, type RequirementChangeKind } from "../change.api";
+import { useAddRequirementChange } from "../change.api";
+import type { RequirementChange, RequirementChangeKind } from "../shared";
 
 /**
  * Requirement deltas (NV-03 Define step). Lists the change's

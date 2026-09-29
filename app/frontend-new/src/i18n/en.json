@@ -266,7 +266,18 @@
     "scope": {
       "released": {
         "title": "{{version}} is released and read-only",
-        "body": "This is the locked baseline. To change it, schedule a change into an open version."
+        "body": "This is the locked baseline. To change it, schedule a change into an open version.",
+        "actionDisabled": "This version is released and read-only."
+      },
+      "loading": {
+        "title": "Loading version",
+        "body": "Editing is locked until this version has loaded.",
+        "actionDisabled": "Available once the version has loaded."
+      },
+      "error": {
+        "title": "Couldn't load this version",
+        "body": "We can't tell whether this version is released, so it is read-only for now. Reload to try again.",
+        "actionDisabled": "Unavailable: this version couldn't be loaded."
       },
       "unknown": {
         "title": "Version not found",
@@ -352,6 +363,11 @@
       "notFound": {
         "title": "Change not found",
         "description": "It may have been removed, or the link is for another project."
+      },
+      "error": {
+        "title": "Couldn't load this change",
+        "description": "Something went wrong reaching the server. Check your connection and try again.",
+        "retry": "Try again"
       },
       "unscheduled": "Not scheduled",
       "severity": "{{severity}} severity",
