@@ -104,4 +104,9 @@ export const seed = {
   changeNodeOtherId: "00000000-0000-4000-8000-000000000928", // "Marketing site" (not affected)
   changeShipItemId: "00000000-0000-4000-8000-00000000092b", // WI-923: on Ship, with a preview
   changeLockedItemId: "00000000-0000-4000-8000-00000000092c", // WI-922: shipped in released v2.0.0
+
+  // US5 Packs, policy, exceptions (T133, WP-A4, NA-06): block 970..97f. Two
+  // exceptions on permits-portal (assuranceApp2Id): one active, one lapsed.
+  governanceExceptionActiveId: "00000000-0000-4000-8000-000000000970",
+  governanceExceptionExpiredId: "00000000-0000-4000-8000-000000000971",
 } as const;

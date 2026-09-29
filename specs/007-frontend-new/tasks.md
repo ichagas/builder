@@ -122,7 +122,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 - [X] T130 [US5] (WP-A1) `AssuranceLayout`, TeamSwitcher (header only), team portfolio. NA-01, NA-02.
 - [X] T131 [US5] (WP-A2) Application page (adoption bar, grouped grid, group actions, exceptions). NA-03, NA-04.
 - [ ] T132 [US5] (WP-A3) Mesh runs by day (PRs to the default branch, open and merged) and evidence. NA-05.
-- [ ] T133 [P] [US5] (WP-A4) Packs, policy, exceptions. NA-06.
+- [X] T133 [P] [US5] (WP-A4) Packs, policy, exceptions. NA-06.
 - [ ] T134 [P] [US5] (WP-A5) All teams. NA-07.
 - [X] T136 [P] [US5] (WP-A6) **Admin → Integrations** page: GitHub App status, Azure DevOps connection (service connection or PAT), test connection, and the mesh policy per check (issue, notify, block, off) with the Cyber Risk sandbox toggle. NA-08.
 - [ ] T135 [US5] E2E `e2e/new/us5.assurance.spec.ts` (15-repo seed).

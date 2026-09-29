@@ -406,3 +406,116 @@ test.describe("Assurance axe: zero violations", () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// NA-06 packs, policy, exceptions (T133, WP-A4). Written, not run: the batch
+// tester runs it. Runs at desktop and mobile (playwright projects).
+// ---------------------------------------------------------------------------
+test.describe("NA-06 packs, policy, exceptions", () => {
+  test("packs page lists the published packs, newest first, with team adoption", async ({ page }) => {
+    await page.goto("/assurance/packs");
+    await expect(page.getByRole("heading", { name: "Standards packs", level: 1 })).toBeVisible();
+
+    const cards = page.getByTestId("governance-pack-card");
+    await expect(cards).toHaveCount(2);
+    await expect(cards.first()).toContainText("2026.2");
+    await expect(cards.first()).toContainText("Latest pack");
+    // seed.sql: Permits Platform has 2 repos on 2026.2 (api, portal) and 1 on 2026.1 (worker).
+    await expect(cards.first()).toContainText("2 repos");
+    await expect(cards.nth(1)).toContainText("2026.1");
+    await expect(cards.nth(1)).toContainText("1 repo");
+  });
+
+  test("the rail links to packs and policy", async ({ page }) => {
+    await page.goto(`/assurance/t/${seed.assuranceTeamId}`);
+    await page.getByRole("link", { name: "Mesh policy" }).first().click();
+    await expect(page).toHaveURL(/\/assurance\/policy/);
+    await expect(page.getByRole("heading", { name: "Mesh policy", level: 1 })).toBeVisible();
+  });
+
+  test("exceptions tab lists an application's exceptions with an expired marker", async ({ page }) => {
+    await page.goto(`/assurance/policy?tab=exceptions&team=${seed.assuranceTeamId}&app=${seed.assuranceApp2Id}`);
+    const rows = page.getByTestId("governance-exception-row");
+    await expect(rows).toHaveCount(2);
+    await expect(rows.filter({ hasText: "static site, no test environment" })).toContainText("e2e-goa/permits-portal");
+    await expect(rows.filter({ hasText: "lapsed deviation" })).toContainText(/expired/);
+    await expect(page.getByRole("link", { name: "Request an exception" })).toHaveAttribute(
+      "href",
+      `/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp2Id}`,
+    );
+  });
+
+  test.describe("policy changes", () => {
+    // Writes the mesh policy of application 813 (Licensing API), which no
+    // other spec reads. Put every check back afterwards.
+    const policyPath = `/api/v1/mesh/policy?scope=application&scopeId=${seed.assuranceOtherTeamAppId}`;
+    let before: Record<string, string>;
+
+    test.beforeEach(async () => {
+      const current = await api.get<{ effective: Record<string, string> }>(policyPath, defaultOwner);
+      before = current.effective;
+    });
+
+    test.afterEach(async () => {
+      const current = await api.get<{ effective: Record<string, string> }>(policyPath, defaultOwner);
+      for (const [agent, mode] of Object.entries(before)) {
+        if (current.effective[agent] !== mode) await api.put(policyPath, defaultOwner, { agent, mode });
+      }
+    });
+
+    const url = `/assurance/policy?scope=application&team=${seed.assuranceOtherTeamId}&app=${seed.assuranceOtherTeamAppId}`;
+
+    test("tightens a check, and it persists", async ({ page }) => {
+      await page.goto(url);
+      const red = page.getByRole("combobox", { name: "Red policy mode" });
+      await red.selectOption("block");
+      await page.getByRole("button", { name: "Apply Red" }).click();
+      await expect(page.getByText("Mesh policy updated")).toBeVisible();
+
+      await page.reload();
+      await expect(page.getByRole("combobox", { name: "Red policy mode" })).toHaveValue("block");
+    });
+
+    test("loosening asks for confirmation first (organization admins may loosen)", async ({ page }) => {
+      await api.put(policyPath, defaultOwner, { agent: "blue", mode: "block" });
+      await page.goto(url);
+      await page.getByRole("combobox", { name: "Blue policy mode" }).selectOption("notify");
+      await page.getByRole("button", { name: "Apply Blue" }).click();
+      // First click only asks; nothing is written yet.
+      await expect(page.getByRole("button", { name: /Loosen Blue/ })).toBeVisible();
+      const still = await api.get<{ effective: Record<string, string> }>(policyPath, defaultOwner);
+      expect(still.effective.blue).toBe("block");
+
+      await page.getByRole("button", { name: /Loosen Blue/ }).click();
+      await expect(page.getByText("Mesh policy updated")).toBeVisible();
+      await page.reload();
+      await expect(page.getByRole("combobox", { name: "Blue policy mode" })).toHaveValue("notify");
+    });
+  });
+
+  for (const theme of ["light", "dark"] as const) {
+    test(`packs and policy pages have no axe violations -- ${theme}`, async ({ page }, testInfo) => {
+      await page.addInitScript((t) => {
+        try {
+          window.localStorage.setItem("theme", t);
+        } catch {
+          // ignore
+        }
+      }, theme);
+      for (const path of [
+        "/assurance/packs",
+        `/assurance/policy?scope=team&team=${seed.assuranceTeamId}`,
+        `/assurance/policy?tab=exceptions&team=${seed.assuranceTeamId}&app=${seed.assuranceApp2Id}`,
+      ]) {
+        await page.goto(path);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await page.waitForLoadState("networkidle");
+        const results = await new AxeBuilder({ page }).analyze();
+        const description = results.violations
+          .map((v) => `[${theme}/${testInfo.project.name}] ${path} ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)
+          .join("\n");
+        expect(results.violations, description).toEqual([]);
+      }
+    });
+  }
+});

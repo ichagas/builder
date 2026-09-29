@@ -443,4 +443,15 @@ VALUES ('00000000-0000-4000-8000-00000000092a', '00000000-0000-4000-8000-0000000
         'Order total includes discounts', 'A valid discount code lowers the checkout total')
 ON CONFLICT (id) DO NOTHING;
 
+-- US5 Packs, policy, exceptions (T133, WP-A4, NA-06): ids ...970-...97f -------
+-- Two exceptions on Permits Portal's repository (application 812, whose
+-- exceptions no other spec counts): one active, one already expired, for the
+-- Policy page's Exceptions tab. (Not on Permits API: NA-03/NA-04 assert its
+-- exception count.)
+INSERT INTO public.mesh_exceptions (id, repository_id, rule, reason, approved_by, expires_at)
+VALUES
+  ('00000000-0000-4000-8000-000000000970', '00000000-0000-4000-8000-000000000823', 'Red recon', 'Governance fixture: static site, no test environment', '00000000-0000-4000-8000-0000000000a1', now() + interval '365 days'),
+  ('00000000-0000-4000-8000-000000000971', '00000000-0000-4000-8000-000000000823', 'Green coverage', 'Governance fixture: lapsed deviation', '00000000-0000-4000-8000-0000000000a1', now() - interval '30 days')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
