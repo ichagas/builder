@@ -1,6 +1,6 @@
 /**
  * US6 Onboarding wizard, steps 1-2 (spec 007). Covers WP-O1 (T150):
- * OnboardingWizard's "Team & app" and "Connect repos" steps --
+ * OnboardingWizard's "Team and application" and "Connect repositories" steps --
  * NO-01 (start a draft run from a team's portfolio, advance to Connect
  * repos, cancel) and NO-02 (repository import/selection: scoped to the
  * organization's configured connections, a repository outside that scope
@@ -72,13 +72,13 @@ async function createDraftRun(applicationName: string): Promise<{ id: string }> 
 }
 
 test.describe("NO-01: start and cancel an onboarding run", () => {
-  test("starts a draft run from Team & app and advances to Connect repos", async ({ page }) => {
+  test("starts a draft run from Team and application and advances to Connect repositories", async ({ page }) => {
     const appName = unique("E2E Onboarded App");
     await page.goto(`/assurance/t/${seed.assuranceTeamId}/onboard`);
-    await expect(page.getByRole("heading", { name: "Onboard an app" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Onboard an application" })).toBeVisible();
 
-    // Stepper: "Team & app" is the only clickable/active step before a run exists.
-    await expect(page.getByRole("button", { name: /connect repos/i })).toBeDisabled();
+    // Stepper: "Team and application" is the only clickable/active step before a run exists.
+    await expect(page.getByRole("button", { name: /connect repositories/i })).toBeDisabled();
 
     await page.getByLabel("Application name").fill(appName);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -87,9 +87,9 @@ test.describe("NO-01: start and cancel an onboarding run", () => {
     await expect(page.getByRole("heading", { name: appName })).toBeVisible();
     await expect(page.getByText("Selected repositories")).toBeVisible();
 
-    // The "Team & app" step is now done (its own button navigates back to a
-    // read-only summary) and "Connect repos" is the active step.
-    await page.getByRole("button", { name: /team & app/i }).click();
+    // The "Team and application" step is now done (its own button navigates back to a
+    // read-only summary) and "Connect repositories" is the active step.
+    await page.getByRole("button", { name: /team and application/i }).click();
     await expect(page.getByRole("heading", { name: appName })).toBeVisible();
     await expect(page.getByLabel("Application name")).toBeDisabled();
     await expect(page.getByText("Draft started")).toBeVisible();
@@ -180,7 +180,7 @@ test.describe("NO-02: connect repos -- scope, duplicates, saved selection", () =
 
 test.describe("Onboarding wizard axe: zero violations", () => {
   for (const theme of ["light", "dark"] as const) {
-    test(`Team & app step -- ${theme} theme`, async ({ page }, testInfo) => {
+    test(`Team and application step -- ${theme} theme`, async ({ page }, testInfo) => {
       await page.addInitScript((t) => {
         try {
           window.localStorage.setItem("theme", t);
@@ -189,7 +189,7 @@ test.describe("Onboarding wizard axe: zero violations", () => {
         }
       }, theme);
       await page.goto(`/assurance/t/${seed.assuranceTeamId}/onboard`);
-      await expect(page.getByRole("heading", { name: "Onboard an app" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Onboard an application" })).toBeVisible();
 
       const results = await new AxeBuilder({ page }).analyze();
       const description = results.violations
@@ -198,7 +198,7 @@ test.describe("Onboarding wizard axe: zero violations", () => {
       expect(results.violations, description).toEqual([]);
     });
 
-    test(`Connect repos step -- ${theme} theme`, async ({ page }, testInfo) => {
+    test(`Connect repositories step -- ${theme} theme`, async ({ page }, testInfo) => {
       await page.addInitScript((t) => {
         try {
           window.localStorage.setItem("theme", t);

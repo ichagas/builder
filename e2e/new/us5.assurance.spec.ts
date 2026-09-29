@@ -96,7 +96,7 @@ test.describe("NA-02: team portfolio", () => {
     await page.goto(`/assurance/t/${seed.assuranceTeamId}`);
     await expect(page.getByText("Permits API")).toBeVisible();
 
-    // Two "Open →" links exist (one per application) -- scope to Permits
+    // Two "Open application" links exist (one per application) -- scope to Permits
     // API's row via its testid container.
     await page
       .locator('[data-testid="assurance-app-row"]', { hasText: "Permits API" })
@@ -127,7 +127,7 @@ test.describe("NA-03: application page", () => {
 
     // permits-worker's latest mesh run (seed.sql, run 832) has a yellow
     // warning -- MeshDots' aria-label names each agent's verdict.
-    await expect(page.getByLabel(/Assurance Mesh: Green Pass, Yellow Warning, Red Pass, Blue Skipped/)).toBeVisible();
+    await expect(page.getByLabel(/Assurance mesh: Green Pass, Yellow Warning, Red Pass, Blue Skipped/)).toBeVisible();
   });
 
   test("filters to repositories behind the latest pack (URL-held state)", async ({ page }) => {
@@ -149,7 +149,7 @@ test.describe("NA-03: application page", () => {
     // permits-worker's latest run has 1 new finding (seed.sql, run 832).
     await expect(page.getByText(/1 repository has new findings/i)).toBeVisible();
 
-    await page.getByRole("button", { name: /show them/i }).click();
+    await page.getByRole("button", { name: /show repositories/i }).click();
     await expect(page).toHaveURL(/[?&]f=new/);
     await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-worker" })).toBeVisible();
     await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-api" })).not.toBeVisible();
@@ -292,7 +292,7 @@ test.describe("NA-08: Admin -> Integrations", () => {
       await page.goto("/admin/integrations");
       await page.getByLabel("Display name").first().fill("GOA GitHub import");
       await page.getByLabel(/Owners/i).fill("goa-standards");
-      await page.getByRole("button", { name: "Save" }).click();
+      await page.getByRole("button", { name: "Save connection" }).click();
 
       await expect(page.getByText("GitHub App connection saved")).toBeVisible();
       // A saved github_app connection has no secret at all (BE8) -- its
@@ -528,9 +528,9 @@ test.describe("NA-06 packs, policy, exceptions", () => {
     await expect(cards.first()).toContainText("2026.2");
     await expect(cards.first()).toContainText("Latest pack");
     // seed.sql: Permits Platform has 2 repos on 2026.2 (api, portal) and 1 on 2026.1 (worker).
-    await expect(cards.first()).toContainText("2 repos");
+    await expect(cards.first()).toContainText("2 repositories");
     await expect(cards.nth(1)).toContainText("2026.1");
-    await expect(cards.nth(1)).toContainText("1 repo");
+    await expect(cards.nth(1)).toContainText("1 repository");
   });
 
   test("the rail links to packs and policy", async ({ page }) => {
@@ -545,7 +545,7 @@ test.describe("NA-06 packs, policy, exceptions", () => {
     const rows = page.getByTestId("governance-exception-row");
     await expect(rows).toHaveCount(2);
     await expect(rows.filter({ hasText: "static site, no test environment" })).toContainText("e2e-goa/permits-portal");
-    await expect(rows.filter({ hasText: "lapsed deviation" })).toContainText(/expired/);
+    await expect(rows.filter({ hasText: "lapsed deviation" })).toContainText(/Expired/);
     await expect(page.getByRole("link", { name: "Request an exception" })).toHaveAttribute(
       "href",
       `/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp2Id}`,
@@ -589,11 +589,11 @@ test.describe("NA-06 packs, policy, exceptions", () => {
       await page.getByRole("combobox", { name: "Blue policy mode" }).selectOption("notify");
       await page.getByRole("button", { name: "Apply Blue" }).click();
       // First click only asks; nothing is written yet.
-      await expect(page.getByRole("button", { name: /Loosen Blue/ })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Confirm: loosen Blue/ })).toBeVisible();
       const still = await api.get<{ effective: Record<string, string> }>(policyPath, defaultOwner);
       expect(still.effective.blue).toBe("block");
 
-      await page.getByRole("button", { name: /Loosen Blue/ }).click();
+      await page.getByRole("button", { name: /Confirm: loosen Blue/ }).click();
       await expect(page.getByText("Mesh policy updated")).toBeVisible();
       await page.reload();
       await expect(page.getByRole("combobox", { name: "Blue policy mode" })).toHaveValue("notify");
