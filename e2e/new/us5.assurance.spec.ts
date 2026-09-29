@@ -113,8 +113,8 @@ test.describe("NA-03: application page", () => {
     await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
 
     await expect(page.getByRole("heading", { name: "Permits API" })).toBeVisible();
-    await expect(page.getByText("e2e-goa/permits-api")).toBeVisible();
-    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-api" })).toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-worker" })).toBeVisible();
 
     // Adoption bar: 1 repo on 2026.1 (permits-worker, behind), 1 on 2026.2
     // (permits-api, latest) -- seed.sql's application_repositories rows.
@@ -132,16 +132,16 @@ test.describe("NA-03: application page", () => {
 
   test("filters to repositories behind the latest pack (URL-held state)", async ({ page }) => {
     await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
-    await expect(page.getByText("e2e-goa/permits-api")).toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-api" })).toBeVisible();
 
     await page.getByRole("button", { name: /^behind/i }).click();
     await expect(page).toHaveURL(/[?&]f=behind/);
-    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
-    await expect(page.getByText("e2e-goa/permits-api")).not.toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-worker" })).toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-api" })).not.toBeVisible();
 
     await page.reload();
-    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
-    await expect(page.getByText("e2e-goa/permits-api")).not.toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-worker" })).toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-api" })).not.toBeVisible();
   });
 
   test("the fresh-findings banner filters to repositories with new findings", async ({ page }) => {
@@ -151,8 +151,8 @@ test.describe("NA-03: application page", () => {
 
     await page.getByRole("button", { name: /show them/i }).click();
     await expect(page).toHaveURL(/[?&]f=new/);
-    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
-    await expect(page.getByText("e2e-goa/permits-api")).not.toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-worker" })).toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-api" })).not.toBeVisible();
   });
 
   test("lists the application's exceptions", async ({ page }) => {
@@ -168,7 +168,7 @@ test.describe("NA-03: application page", () => {
 test.describe("NA-04: group actions and exceptions", () => {
   test("sending update PRs for a group requires confirmation (ActionButton two-step confirm)", async ({ page }) => {
     await page.goto(`/assurance/t/${seed.assuranceTeamId}/apps/${seed.assuranceApp1Id}`);
-    await expect(page.getByText("e2e-goa/permits-worker")).toBeVisible();
+    await expect(page.getByTestId("assurance-app-repo-row").filter({ hasText: "e2e-goa/permits-worker" })).toBeVisible();
 
     // permits-worker is behind (2026.1) with no update PR open -- its
     // "worker" group gets a "Send update PR(s)" action.
@@ -285,7 +285,7 @@ test.describe("NA-08: Admin -> Integrations", () => {
       // seed.sql's azure_devops connection (id 903).
       await expect(page.getByText("GOA Azure DevOps")).toBeVisible();
       await expect(page.getByText("https://dev.azure.com/e2e-goa")).toBeVisible();
-      await expect(page.getByText("No secret stored")).toBeVisible();
+      await expect(page.getByTestId("integrations-azure-connection").getByText("No secret stored")).toBeVisible();
     });
 
     test("configures the GitHub App connection's owners (main write)", async ({ page }) => {
@@ -297,7 +297,7 @@ test.describe("NA-08: Admin -> Integrations", () => {
       await expect(page.getByText("GitHub App connection saved")).toBeVisible();
       // A saved github_app connection has no secret at all (BE8) -- its
       // footer still shows the status/secret row, same as Azure DevOps.
-      await expect(page.getByText("No secret stored")).toBeVisible();
+      await expect(page.getByTestId("integrations-github-app").getByText("No secret stored")).toBeVisible();
 
       await page.reload();
       await expect(page.getByLabel("Display name").first()).toHaveValue("GOA GitHub import");
@@ -396,7 +396,7 @@ test.describe("Assurance axe: zero violations", () => {
       await expect(page.getByRole("heading", { name: "Permits API" })).toBeVisible();
       // Open the Exceptions disclosure and its create-exception form too,
       // so axe also covers the form controls (T131, WP-A2).
-      await page.getByText(/Exceptions/).click();
+      await page.getByText(/Exceptions ·/).click();
 
       const results = await new AxeBuilder({ page }).analyze();
       const description = results.violations
