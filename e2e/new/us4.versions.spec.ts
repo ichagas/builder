@@ -39,8 +39,10 @@ test.describe("NV-01: version timeline", () => {
   test("selecting a version on the strip opens All versions", async ({ page }) => {
     await page.goto(REQUIREMENTS_URL);
 
+    // NV-06 (WP-V4): on a phase tool, selecting a version reopens the same
+    // tool scoped to it (the strip only falls back to All versions off a tool).
     await page.getByRole("tab", { name: /v1\.5\.0/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/p/${PROJECT_ID}/versions$`));
+    await expect(page).toHaveURL(new RegExp(`/p/${PROJECT_ID}/v/${seed.versionNextId}/define/requirements$`));
   });
 
   test("doesn't remount the shell when navigating from the timeline", async ({ page }) => {
@@ -49,7 +51,7 @@ test.describe("NV-01: version timeline", () => {
     await page.evaluate(() => document.querySelector("header")?.setAttribute("data-e2e-marker", "1"));
 
     await page.getByRole("tab", { name: /v1\.5\.0/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/p/${PROJECT_ID}/versions$`));
+    await expect(page).toHaveURL(new RegExp(`/p/${PROJECT_ID}/v/${seed.versionNextId}/define/requirements$`));
 
     await expect(page.locator("header[data-e2e-marker='1']")).toHaveCount(1);
   });
@@ -269,7 +271,7 @@ test.describe("NV-05 release", () => {
     await page.goto(`/p/${ORDERED}/v/v1.0.0/ship/release`);
 
     await expect(page.getByText("v1.0.0 is released and read-only")).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Release v1\.0\.0/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Release v1\.0\.0/ })).toBeDisabled();
   });
 
   test("release needs a second confirming click and goes to All versions", async ({ page }) => {
@@ -423,7 +425,7 @@ test.describe("NV-03/NV-04 change page", () => {
 
     await expect(page.getByText("2 components affected")).toBeVisible();
     const affected = page.getByTestId("scoped-canvas-affected");
-    await expect(affected.getByText("Checkout API")).toBeVisible();
+    await expect(affected.getByText("Checkout API", { exact: true })).toBeVisible();
     await expect(affected.getByText("Connects to Orders database")).toBeVisible();
     await expect(affected.getByText("Marketing site")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Approve design" })).toBeEnabled();

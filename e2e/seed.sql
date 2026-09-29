@@ -149,10 +149,13 @@ ON CONFLICT (id) DO NOTHING;
 -- so one signed-in user covers both NA-01's "your teams" and "all teams for
 -- org admins" (D-8) cases: team 801 they belong to, team 802 they don't
 -- (visible only through GET /teams).
-INSERT INTO public.standards_packs (version, notes)
+-- published_at is set explicitly: the API picks the latest pack with
+-- ORDER BY published_at DESC, and rows inserted by one statement would
+-- otherwise tie on now().
+INSERT INTO public.standards_packs (version, notes, published_at)
 VALUES
-  ('2026.1', 'Seeded for US5 adoption coverage (older pack).'),
-  ('2026.2', 'Seeded for US5 adoption coverage (latest pack).')
+  ('2026.1', 'Seeded for US5 adoption coverage (older pack).', now() - interval '30 days'),
+  ('2026.2', 'Seeded for US5 adoption coverage (latest pack).', now() - interval '1 day')
 ON CONFLICT (version) DO NOTHING;
 
 INSERT INTO public.teams (id, organization_id, name)
