@@ -24,4 +24,22 @@ describe("Stepper", () => {
     await user.click(screen.getByRole("button", { name: /Define/ }));
     expect(onSelect).toHaveBeenCalledWith("define");
   });
+
+  it("keeps items shrinkable and truncates labels so five steps fit a phone", () => {
+    render(<Stepper steps={steps} current="build" onSelect={() => {}} />);
+    const items = screen.getAllByRole("listitem");
+    items.forEach((li) => expect(li.className).toContain("min-w-0"));
+    const labels = screen.getAllByTestId("step-label");
+    // current step: label visible and truncating; others: compact (sr-only) below sm
+    expect(labels[1].className).toContain("truncate");
+    expect(labels[1].className).not.toContain("sr-only");
+    expect(labels[0].className).toContain("sr-only");
+    expect(labels[0].className).toContain("sm:truncate");
+  });
+
+  it("keeps the full label as the accessible name in compact form", () => {
+    render(<Stepper steps={steps} current="build" onSelect={() => {}} />);
+    expect(screen.getByRole("button", { name: /Define.*completed/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ship.*not available yet/ })).toBeInTheDocument();
+  });
 });
