@@ -23,6 +23,11 @@ import {
 import {
   usePublishOnboardingWizardPrimaryAction,
 } from "./onboardingWizard.primaryAction";
+import { extractErrorMessage } from "@/features/onboarding/errors";
+import { STEP_ORDER, furthestStep, resolveStep, type WizardStep } from "@/features/onboarding/wizardSteps";
+import { SandboxStep } from "@/features/onboarding/steps/SandboxStep";
+import { OutputStep } from "@/features/onboarding/steps/OutputStep";
+import { PullRequestsStep } from "@/features/onboarding/steps/PullRequestsStep";
 import type { ApiError } from "@/lib/apiClient";
 
 /**
@@ -45,11 +50,9 @@ import type { ApiError } from "@/lib/apiClient";
  *     selection is refused with 422 (contracts/api.md, BE5 fix rounds 1/3)
  *     -- both surfaced here as a plain inline message, never the raw error.
  *
- * Steps 3-5 (run in sandbox, review output, open pull requests) and the
- * `onboarding-{runId}` realtime log are WP-O2 (T151); the Stepper disables
- * them until this run reaches "sandbox" and beyond, and the "connect" step
- * shows a lock-toned banner once a selection is saved instead of a dead
- * "Continue" button.
+ * Steps 3-5 (run in sandbox, review output, open pull requests; T151, WP-O2)
+ * live in `features/onboarding/steps/`; the Stepper unlocks them in order
+ * (`furthestStep`) and the URL step is clamped to what the run has unlocked.
  *
  * The run id isn't part of the URL path (contracts/routes.md's
  * `/onboard/:step?` has no `:runId` slot -- onboarding is scoped to one
@@ -57,20 +60,11 @@ import type { ApiError } from "@/lib/apiClient";
  * held in the `?run=` query param (useUrlState) alongside `step`, which is
  * the path segment itself.
  */
-function buildOnboardPath(teamId: string, step: "team" | "connect"): string {
-  return step === "team" ? `/assurance/t/${teamId}/onboard` : `/assurance/t/${teamId}/onboard/connect`;
+function buildOnboardPath(teamId: string, step: WizardStep): string {
+  return step === "team" ? `/assurance/t/${teamId}/onboard` : `/assurance/t/${teamId}/onboard/${step}`;
 }
 
-/** Never echoes a raw/unexpected error; falls back to a generic message. */
-export function extractErrorMessage(error: unknown, fallback: string): string {
-  const apiError = error as ApiError | undefined;
-  if (!apiError) return fallback;
-  const details = apiError.details as Record<string, unknown> | undefined;
-  const detailMessage = details && typeof details.repositories === "string" ? details.repositories : undefined;
-  if (detailMessage) return detailMessage;
-  if (typeof apiError.message === "string" && apiError.message && apiError.statusCode !== 500) return apiError.message;
-  return fallback;
-}
+export { extractErrorMessage };
 
 interface RepoOption {
   fullName: string;
@@ -101,29 +95,35 @@ export function OnboardingWizard() {
 
   const { data: run, isLoading: isRunLoading, isError: isRunError, error: runError } = useOnboardingRun(runId || undefined);
 
-  // The URL's :step segment only ever selects between the two steps this WP
-  // implements; anything else (a stale/typed-in "sandbox" etc.) falls back
-  // to "connect" if a run already exists, or "team" otherwise -- see the
-  // module docstring.
-  const step: "team" | "connect" = run && rawStep && rawStep !== "team" ? "connect" : "team";
+  // The URL's :step segment is clamped to what the run has unlocked; an
+  // unknown one falls back to "connect", "team" without a run.
+  const step = resolveStep(rawStep, run);
+  const furthest = furthestStep(run);
+  const furthestIndex = STEP_ORDER.indexOf(furthest);
+  const finished = run?.status === "prs_open" || run?.status === "completed";
 
   const goToStep = React.useCallback(
-    (target: "team" | "connect") => {
-      if (target === "connect" && !run) return;
+    (target: WizardStep) => {
+      if (target !== "team" && !run) return;
       const qs = searchParams.toString();
       navigate(`${buildOnboardPath(teamId, target)}${qs ? `?${qs}` : ""}`);
     },
     [navigate, run, searchParams, teamId],
   );
 
-  const hasSelection = (run?.repositories.length ?? 0) > 0;
-  const steps: Step[] = [
-    { id: "team", label: t("onboarding.wizard.steps.team"), state: run ? "done" : "active" },
-    { id: "connect", label: t("onboarding.wizard.steps.connect"), state: !run ? "todo" : hasSelection ? "done" : "active" },
-    { id: "sandbox", label: t("onboarding.wizard.steps.sandbox"), state: "todo" },
-    { id: "output", label: t("onboarding.wizard.steps.output"), state: "todo" },
-    { id: "prs", label: t("onboarding.wizard.steps.prs"), state: "todo" },
-  ];
+  const steps: Step[] = STEP_ORDER.map((id, index) => ({
+    id,
+    label: t(`onboarding.wizard.steps.${id}`),
+    state: !run
+      ? index === 0
+        ? "active"
+        : "todo"
+      : index < furthestIndex || (finished && index === furthestIndex)
+        ? "done"
+        : index === furthestIndex
+          ? "active"
+          : "todo",
+  }));
 
   const cancelRun = useCancelOnboardingRun();
   const handleCancel = React.useCallback(async () => {
@@ -141,7 +141,7 @@ export function OnboardingWizard() {
         title={run?.application_name || t("onboarding.wizard.title")}
       />
 
-      <Stepper steps={steps} current={step} onSelect={(id) => goToStep(id === "team" ? "team" : "connect")} />
+      <Stepper steps={steps} current={step} onSelect={(id) => goToStep(id as WizardStep)} />
 
       {runId && isRunLoading ? (
         <div role="status" className="p-9 text-center text-muted-foreground">
@@ -166,11 +166,21 @@ export function OnboardingWizard() {
                 navigate(`/assurance/t/${teamId}/onboard/connect?run=${newRunId}`);
               }}
             />
+          ) : step === "connect" ? (
+            <ConnectStep teamId={teamId} run={run ?? null} onContinue={() => goToStep("sandbox")} />
+          ) : !run ? null : step === "sandbox" ? (
+            <SandboxStep
+              run={run}
+              onContinue={() => goToStep("output")}
+              onStartOver={() => navigate(`/assurance/t/${teamId}/onboard`)}
+            />
+          ) : step === "output" ? (
+            <OutputStep runId={run.id} onContinue={() => goToStep("prs")} />
           ) : (
-            <ConnectStep teamId={teamId} run={run ?? null} />
+            <PullRequestsStep runId={run.id} teamId={teamId} />
           )}
 
-          {run && run.status === "draft" ? (
+          {run && (run.status === "draft" || run.status === "running") ? (
             <div className="flex justify-end">
               <ActionButton
                 label={t("onboarding.wizard.cancel.label")}
@@ -278,7 +288,15 @@ function TeamStep({
 // Step 2: Connect repos
 // ---------------------------------------------------------------------------
 
-function ConnectStep({ teamId, run }: { teamId: string; run: ReturnType<typeof useOnboardingRun>["data"] | null }) {
+function ConnectStep({
+  teamId,
+  run,
+  onContinue,
+}: {
+  teamId: string;
+  run: ReturnType<typeof useOnboardingRun>["data"] | null;
+  onContinue: () => void;
+}) {
   const { t } = useTranslation();
   // FilterChips (below) owns writing this param; read the same key here so
   // the two stay in sync without duplicating state.
@@ -335,7 +353,9 @@ function ConnectStep({ teamId, run }: { teamId: string; run: ReturnType<typeof u
 
   const setRepositories = useSetRunRepositories();
   const alreadySaved = (run?.repositories.length ?? 0) > 0;
-  const canSave = !!run && selected.size > 0 && !setRepositories.isPending;
+  const savedNames = React.useMemo(() => (run?.repositories ?? []).filter((r) => r.selected).map((r) => r.full_name).sort(), [run]);
+  const dirty = savedNames.join("\n") !== Array.from(selected).sort().join("\n");
+  const canSave = !!run && run.status === "draft" && selected.size > 0 && dirty && !setRepositories.isPending;
 
   const handleSave = React.useCallback(async () => {
     if (!run || !canSave) return;
@@ -347,8 +367,14 @@ function ConnectStep({ teamId, run }: { teamId: string; run: ReturnType<typeof u
     }
   }, [canSave, run, selected, setRepositories, t]);
 
+  // Save while the selection is new or changed; once it's saved the same
+  // slot becomes "Continue" to the sandbox step (FR-003: one primary action).
   usePublishOnboardingWizardPrimaryAction(
-    run ? { label: t("onboarding.wizard.connect.save"), onClick: handleSave, disabled: !canSave } : undefined,
+    !run
+      ? undefined
+      : alreadySaved && !dirty
+        ? { label: t("onboarding.wizard.continue"), onClick: onContinue }
+        : { label: t("onboarding.wizard.connect.save"), onClick: handleSave, disabled: !canSave },
   );
 
   if (!run) {
@@ -396,11 +422,11 @@ function ConnectStep({ teamId, run }: { teamId: string; run: ReturnType<typeof u
         ) : null}
       </section>
 
-      {alreadySaved ? (
+      {alreadySaved && !dirty ? (
         <NextStepBanner
-          tone="lock"
-          title={t("onboarding.wizard.comingSoon.title")}
-          body={t("onboarding.wizard.comingSoon.body")}
+          tone="ok"
+          title={t("onboarding.wizard.connect.saved.title")}
+          body={t("onboarding.wizard.connect.saved.body")}
         />
       ) : null}
 

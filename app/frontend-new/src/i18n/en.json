@@ -654,10 +654,6 @@
         "label": "Cancel onboarding",
         "confirm": "Cancel this run?"
       },
-      "comingSoon": {
-        "title": "Run in sandbox is coming in a future update",
-        "body": "Your repository selection is saved. You can add or remove repositories here until the sandbox step ships."
-      },
       "team": {
         "teamLabel": "Team",
         "appNameLabel": "Application name",
@@ -707,8 +703,120 @@
         "banner": {
           "title": "Pick every repository that belongs to this app",
           "body": "Imported from your organization's configured GitHub or Azure DevOps connection. Leave out archived or experimental repositories."
+        },
+        "saved": {
+          "title": "Selection saved",
+          "body": "Continue to run the sandbox on these repositories, or change the selection first."
         }
       }
+    },
+    "sandbox": {
+      "start": "Run in sandbox",
+      "startDisabled": "Save a repository selection first",
+      "startError": "Couldn't start the sandbox run. Try again.",
+      "review": "Review output",
+      "startOver": "Start over",
+      "longTask": "Sandbox run: {{name}}",
+      "reposHeading": "Repositories in this run",
+      "noRepos": "No repositories selected",
+      "draft": {
+        "title": "Ready to run in the sandbox",
+        "body_one": "The sandbox will scan {{count}} repository: build, stack and CI detection. Nothing is written to it.",
+        "body_other": "The sandbox will scan {{count}} repositories: build, stack and CI detection. Nothing is written to them."
+      },
+      "running": {
+        "title": "Sandbox is running",
+        "body": "Progress streams in below. You can leave this page; the run continues."
+      },
+      "ready": {
+        "title": "Sandbox finished",
+        "body": "Review what it detected and generated before anything is opened in your repositories."
+      },
+      "failed": {
+        "title": "The sandbox run failed",
+        "body": "Nothing was changed in your repositories. Start a new onboarding to try again."
+      },
+      "cancelled": {
+        "title": "This run was cancelled",
+        "body": "Start a new onboarding to try again."
+      },
+      "logHeading": "Sandbox log",
+      "logWaiting": "Waiting for the sandbox to report progress…",
+      "logEmpty": "No log output was recorded."
+    },
+    "output": {
+      "continue": "Continue to pull requests",
+      "nothingToOpen": "No repository has generated files to open a pull request from",
+      "error": {
+        "title": "Couldn't load the output",
+        "description": "The sandbox output isn't available for this run yet."
+      },
+      "none": {
+        "title": "Nothing to open",
+        "body": "The sandbox produced no files for any repository. Check the errors below, then start a new onboarding."
+      },
+      "banner": {
+        "title": "Review what will be added",
+        "body": "{{ready}} of {{total}} repositories have generated files. Nothing is written until you open the pull requests."
+      },
+      "okChip": "Ready",
+      "failedChip": "Failed",
+      "sandboxError": "The sandbox couldn't process this repository: {{reason}}",
+      "unknown": "Not detected",
+      "profile": "Profile",
+      "stack": "Stack",
+      "build": "Build",
+      "ci": "CI",
+      "part": "Part",
+      "baseline": {
+        "heading": "Baseline",
+        "green_one": "{{count}} green",
+        "green_other": "{{count}} green",
+        "yellow_one": "{{count}} yellow",
+        "yellow_other": "{{count}} yellow",
+        "red_one": "{{count}} red",
+        "red_other": "{{count}} red",
+        "blue_one": "{{count}} blue",
+        "blue_other": "{{count}} blue"
+      },
+      "filesHeading_one": "{{count}} generated file",
+      "filesHeading_other": "{{count}} generated files",
+      "noFiles": "No generated files",
+      "fileContent": "Contents of {{path}}",
+      "noContent": "(content not included)"
+    },
+    "prs": {
+      "open_one": "Open {{count}} pull request",
+      "open_other": "Open {{count}} pull requests",
+      "confirm_one": "Open {{count}} pull request in your repository?",
+      "confirm_other": "Open {{count}} pull requests in your repositories?",
+      "nothingToOpen": "There are no pull requests left to open",
+      "error": "Couldn't open the pull requests. Try again.",
+      "banner": {
+        "title": "One pull request per repository",
+        "body_one": "Opening adds the generated CI to {{count}} repository through a pull request. Nothing is merged for you.",
+        "body_other": "Opening adds the generated CI to {{count}} repositories through pull requests. Nothing is merged for you."
+      },
+      "done": {
+        "title": "Pull requests opened",
+        "body": "Merge them in your repositories to start the assurance mesh."
+      },
+      "partial": {
+        "title": "Some pull requests didn't open",
+        "body": "See the warnings below. Opening again retries only the ones that are missing."
+      },
+      "warnings": "Warnings",
+      "heading": "Pull requests",
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} files",
+      "state": {
+        "open": "open",
+        "merged": "merged",
+        "closed": "closed"
+      },
+      "notOpened": "Not opened",
+      "pending": "Not opened yet",
+      "viewApplication": "View application"
     }
   }
 }
