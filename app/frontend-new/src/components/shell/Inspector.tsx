@@ -47,14 +47,35 @@ export interface InspectorProps {
 export function Inspector({ title, onClose, children, detent = "half", onDetentChange, className }: InspectorProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
+  // Focus management (T160): on open, remember the control that opened the
+  // panel and move focus into it; on close (unmount), give focus back. Escape
+  // closes from anywhere inside.
+  React.useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    panelRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, []);
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape" && !event.defaultPrevented) {
+      event.stopPropagation();
+      onClose();
+    }
+  };
 
   if (isMobile) {
     return (
       <div
+        ref={panelRef}
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
         role="dialog"
         aria-label={title}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-md border-t border-line bg-surface shadow-xl transition-[height]",
+          "fixed inset-x-0 bottom-0 z-40 flex flex-col focus:outline-none rounded-t-md border-t border-line bg-surface shadow-xl transition-[height]",
           DETENT_HEIGHT[detent],
         )}
       >
@@ -66,7 +87,7 @@ export function Inspector({ title, onClose, children, detent = "half", onDetentC
               type="button"
               onClick={() => onDetentChange?.(NEXT_DETENT[detent])}
               aria-label={t("shell.inspector.resize", { detent })}
-              className="flex h-8 w-8 items-center justify-center rounded-xs text-muted-foreground"
+              className="flex h-11 w-11 items-center justify-center rounded-xs text-muted-foreground"
             >
               <ChevronDown aria-hidden="true" className={cn("h-4 w-4 transition-transform", detent === "full" && "rotate-180")} />
             </button>
@@ -79,8 +100,11 @@ export function Inspector({ title, onClose, children, detent = "half", onDetentC
 
   return (
     <aside
+      ref={panelRef}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
       aria-label={title}
-      className={cn("flex w-80 shrink-0 flex-col border-l border-line bg-surface", className)}
+      className={cn("flex w-80 shrink-0 flex-col focus:outline-none border-l border-line bg-surface", className)}
     >
       <InspectorHeader title={title} onClose={onClose} />
       <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
@@ -95,7 +119,7 @@ function InspectorHeader({ title, onClose, detentButton }: { title: string; onCl
       <h2 className="text-sm font-semibold text-ink">{title}</h2>
       <div className="flex items-center gap-1">
         {detentButton}
-        <button type="button" onClick={onClose} aria-label={t("shell.inspector.close")} className="flex h-8 w-8 items-center justify-center rounded-xs text-muted-foreground">
+        <button type="button" onClick={onClose} aria-label={t("shell.inspector.close")} className="flex h-11 w-11 items-center md:h-8 md:w-8 justify-center rounded-xs text-muted-foreground">
           <X aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>

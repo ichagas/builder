@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,11 +11,11 @@ import { cn } from "@/lib/utils";
 export type MeshAgentId = "green" | "yellow" | "red" | "blue";
 export type MeshAgentStatus = "pass" | "warn" | "fail" | "skip" | "none";
 
-const AGENTS: { id: MeshAgentId; letter: string; name: string }[] = [
-  { id: "green", letter: "G", name: "Green" },
-  { id: "yellow", letter: "Y", name: "Yellow" },
-  { id: "red", letter: "R", name: "Red" },
-  { id: "blue", letter: "B", name: "Blue" },
+const AGENTS: { id: MeshAgentId; letter: string }[] = [
+  { id: "green", letter: "G" },
+  { id: "yellow", letter: "Y" },
+  { id: "red", letter: "R" },
+  { id: "blue", letter: "B" },
 ];
 
 const AGENT_BG: Record<MeshAgentId, string> = {
@@ -39,14 +40,6 @@ const AGENT_TEXT: Record<MeshAgentId, string> = {
   blue: "text-primary-foreground",
 };
 
-const STATUS_WORD: Record<MeshAgentStatus, string> = {
-  pass: "Pass",
-  warn: "Warning",
-  fail: "Fail",
-  skip: "Skipped",
-  none: "Not run",
-};
-
 // warn/fail get a ring in the corresponding status token; skip fades out;
 // none renders as an empty dashed square instead of a filled agent color.
 const STATUS_CLASSES: Record<MeshAgentStatus, string> = {
@@ -63,18 +56,26 @@ export interface MeshDotsProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function MeshDots({ statuses, className, ...props }: MeshDotsProps) {
-  const label = `Assurance Mesh: ${AGENTS.map(
-    (a) => `${a.name} ${STATUS_WORD[statuses[a.id] ?? "none"]}`,
-  ).join(", ")}`;
+  const { t } = useTranslation();
+  const word = (status: MeshAgentStatus) => t(`a11y.mesh.status.${status}`);
+  // T160: the whole group is ONE image with one label ("Assurance Mesh: Green
+  // Pass, Yellow Warning, ..."). role="img" makes the children presentational,
+  // so a screen reader reads the summary once instead of four unlabeled
+  // letters, and aria-label is legal on it (it is not on a bare span).
+  const summary = AGENTS.map((a) =>
+    t("a11y.mesh.entry", { agent: t(`a11y.mesh.agent.${a.id}`), status: word(statuses[a.id] ?? "none") }),
+  ).join(", ");
+  const label = t("a11y.mesh.label", { summary });
 
   return (
-    <span className={cn("inline-flex items-center gap-1", className)} aria-label={label} {...props}>
+    <span role="img" className={cn("inline-flex items-center gap-1", className)} aria-label={label} {...props}>
       {AGENTS.map((a) => {
         const status = statuses[a.id] ?? "none";
         return (
           <span
             key={a.id}
-            title={`${a.name}: ${STATUS_WORD[status]}`}
+            aria-hidden="true"
+            title={`${t(`a11y.mesh.agent.${a.id}`)}: ${word(status)}`}
             className={cn(
               "grid h-[22px] w-[22px] place-items-center rounded-xs font-mono text-[11px] font-bold",
               AGENT_TEXT[a.id],

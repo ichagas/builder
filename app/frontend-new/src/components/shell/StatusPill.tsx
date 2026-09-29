@@ -37,7 +37,7 @@ export function StatusPill({ runningCount, failedCount = 0, onClick, expanded, .
       aria-haspopup="true"
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 text-xs font-semibold",
+        "inline-flex h-11 min-w-11 items-center justify-center gap-1.5 sm:h-8 sm:min-w-0 rounded-full border border-line bg-surface-2 px-2.5 text-xs font-semibold",
         failedCount > 0 ? "text-bad" : runningCount > 0 ? "text-ink" : "text-muted-foreground",
       )}
       {...rest}

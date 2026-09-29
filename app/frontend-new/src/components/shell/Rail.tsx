@@ -60,6 +60,9 @@ export function Rail({ sections, phases, versionCard, ariaLabel = "Project" }: R
           <a
             key={section.id}
             href={section.href}
+            // Collapsed rows hide their text: keep an accessible name.
+            aria-label={collapsed ? (section.count !== undefined ? `${section.label} (${section.count})` : section.label) : undefined}
+            title={collapsed ? section.label : undefined}
             className="flex items-center gap-2 rounded-xs px-2.5 py-2 text-sm text-rail-muted hover:bg-rail-hover hover:text-rail-ink"
           >
             {section.statusDot ? (
@@ -76,7 +79,7 @@ export function Rail({ sections, phases, versionCard, ariaLabel = "Project" }: R
       {versionCard ? <div className="border-t border-rail-line px-2.5 py-2">{versionCard}</div> : null}
 
       {phases && phases.length > 0 ? (
-        <div role="list" aria-label="Phases" className="flex flex-col gap-0.5 border-t border-rail-line px-1.5 py-2">
+        <div role="list" aria-label={t("a11y.phases")} className="flex flex-col gap-0.5 border-t border-rail-line px-1.5 py-2">
           {phases.map((phase) => (
             <div role="listitem" key={phase.id}>
               <PhaseNode phase={phase} collapsed={collapsed} />

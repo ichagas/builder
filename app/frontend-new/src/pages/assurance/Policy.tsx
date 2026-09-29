@@ -6,6 +6,7 @@ import { useUrlState } from "@/lib/state/useUrlState";
 import { useTeamsAll, useTeamsMine, useTeamPortfolio, useOrganizationId, type MeshPolicyScope } from "@/features/assurance/api";
 import { PolicyEditor } from "@/features/assurance/governance/PolicyEditor";
 import { ExceptionsPanel } from "@/features/assurance/governance/ExceptionsPanel";
+import { handleTablistKeyDown } from "@/lib/a11y/rovingTabs";
 import { cn } from "@/lib/utils";
 
 type Tab = "policy" | "exceptions";
@@ -48,13 +49,14 @@ export function Policy() {
     <div className="flex flex-col gap-4 p-4">
       <PageHeader crumb={t("assurance.governance.crumb")} title={t("assurance.governance.policy.title")} />
 
-      <div role="tablist" aria-label={t("assurance.governance.tabsAria")} className="flex gap-1.5">
+      <div role="tablist" aria-label={t("assurance.governance.tabsAria")} onKeyDown={handleTablistKeyDown} className="flex gap-1.5">
         {(["policy", "exceptions"] as const).map((id) => (
           <button
             key={id}
             type="button"
             role="tab"
             aria-selected={tab === id}
+            tabIndex={tab === id ? 0 : -1}
             onClick={() => setTab(id)}
             className={cn(
               "flex h-11 items-center rounded-full border px-4 text-sm font-medium sm:h-9",
