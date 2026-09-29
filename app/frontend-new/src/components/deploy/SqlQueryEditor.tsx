@@ -8,6 +8,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { useVersionScopeContext } from "@/features/versions/scope/context";
 import { Play, Trash2, History, Loader2, AlignLeft, AlertTriangle, ShieldAlert, Save } from "lucide-react";
 
 interface SqlQueryEditorProps {
@@ -50,6 +51,11 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
     }
   });
   const editorRef = useRef<any>(null);
+  // P4 (NV-06): a released version is read-only: nothing runs (SQL can write) and nothing is saved.
+  // The Monaco commands below are registered once at mount, so they read the flag through a ref.
+  const { readOnly } = useVersionScopeContext();
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
 
   // Sync internal state when parent intentionally changes query (e.g. schema tree, saved queries)
   useEffect(() => {
@@ -75,13 +81,14 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
 
     // Add Ctrl+Enter keyboard shortcut - use ref to avoid stale closure
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      if (readOnlyRef.current) return;
       executeRef.current?.();
     });
 
     // Add Ctrl+S keyboard shortcut for save
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       const currentValue = editor.getValue();
-      if (onSaveQuery && currentValue.trim()) {
+      if (!readOnlyRef.current && onSaveQuery && currentValue.trim()) {
         onSaveQuery(currentValue);
       }
     });
@@ -93,7 +100,7 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
 
   const handleExecute = useCallback(async () => {
     const sql = internalQuery.trim();
-    if (!sql || isExecuting) return;
+    if (!sql || isExecuting || readOnlyRef.current) return;
 
     // Add to history
     const newHistory = [sql, ...queryHistory.filter((q) => q !== sql)].slice(0, MAX_HISTORY);
@@ -161,7 +168,7 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
           <Button
             size="sm"
             onClick={handleExecute}
-            disabled={isExecuting || !editorValue.trim()}
+            disabled={readOnly || isExecuting || !editorValue.trim()}
             className="h-7 gap-1.5"
           >
             {isExecuting ? (
@@ -193,7 +200,7 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
               variant="ghost"
               size="sm"
               onClick={() => onSaveQuery(editorValue)}
-              disabled={!editorValue.trim()}
+              disabled={readOnly || !editorValue.trim()}
               className="h-7 px-2 text-muted-foreground hover:text-foreground"
               title="Save Query (Ctrl+S)"
             >
@@ -254,6 +261,8 @@ export function SqlQueryEditor({ query, onQueryChange, onExecute, isExecuting, o
           onChange={handleEditorChange}
           onMount={handleEditorMount}
           options={{
+            readOnly,
+            domReadOnly: readOnly,
             minimap: { enabled: false },
             fontSize: 13,
             lineNumbers: "on",
