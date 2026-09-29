@@ -999,7 +999,7 @@
           "description": "Go back to Team and application to start a draft run."
         },
         "banner": {
-          "title": "Pick every repository that belongs to this app",
+          "title": "Pick every repository that belongs to this application",
           "body": "Imported from your organization's configured GitHub or Azure DevOps connection. Leave out archived or experimental repositories."
         },
         "saved": {
