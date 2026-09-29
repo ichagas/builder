@@ -58,7 +58,7 @@ const formatSize = (chars: number): string => {
 
 const getSizeClass = (chars: number): { class: string; warning: boolean } => {
   if (chars >= 200000) return { class: "bg-destructive text-destructive-foreground", warning: true };
-  if (chars >= 100000) return { class: "bg-warn text-white", warning: true };
+  if (chars >= 100000) return { class: "bg-warn text-warn-foreground", warning: true };
   if (chars >= 50000) return { class: "bg-warn text-black", warning: false };
   return { class: "", warning: false };
 };
@@ -394,7 +394,7 @@ export function RepositoryFilesSelector({
                   variant="secondary"
                   className={cn(
                     "text-xs ml-auto",
-                    folderStats.hasWarning ? "bg-warn text-white" : "bg-warn text-black"
+                    folderStats.hasWarning ? "bg-warn text-warn-foreground" : "bg-warn text-black"
                   )}
                 >
                   {folderStats.largeFileCount} large

@@ -1170,7 +1170,7 @@ export default function Build() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmLoadLargeFile}
-              className="bg-warn text-white hover:bg-warn"
+              className="bg-warn text-warn-foreground hover:bg-warn"
             >
               Load Anyway
             </AlertDialogAction>

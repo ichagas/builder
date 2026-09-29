@@ -33,7 +33,7 @@ const formatSize = (chars: number): string => {
 
 const getSizeClass = (chars: number): { class: string; warning: boolean } => {
   if (chars >= 200000) return { class: "bg-destructive text-destructive-foreground", warning: true };
-  if (chars >= 100000) return { class: "bg-warn text-white", warning: true };
+  if (chars >= 100000) return { class: "bg-warn text-warn-foreground", warning: true };
   if (chars >= 50000) return { class: "bg-warn text-black", warning: false };
   return { class: "bg-muted text-muted-foreground", warning: false };
 };
