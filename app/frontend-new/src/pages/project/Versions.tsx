@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -135,6 +135,7 @@ const OPEN_KIND_LABEL: Record<Exclude<Version["kind"], "released">, string> = {
 
 function OpenVersionRow({ version }: { version: Version }) {
   const { t } = useTranslation();
+  const { projectId = "" } = useParams<{ projectId: string }>();
   return (
     <div className="flex flex-wrap items-center gap-3 px-pad py-2.5" data-testid="open-version-row">
       <VersionTag version={version.name} />
@@ -145,6 +146,13 @@ function OpenVersionRow({ version }: { version: Version }) {
           {version.work_item_count > 0 ? ` · ${t("versions.lane.activeCount", { count: version.active_work_item_count })}` : ""}
         </span>
       </span>
+      <Link
+        to={`/p/${projectId}/v/${version.name}/ship/release`}
+        aria-label={t("versions.release.openLabel", { version: version.name })}
+        className="flex h-10 items-center rounded-xs border border-line px-3 text-sm font-semibold text-primary"
+      >
+        {t("versions.release.open")}
+      </Link>
     </div>
   );
 }

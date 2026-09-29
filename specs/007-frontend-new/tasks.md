@@ -103,7 +103,7 @@ Each task applies the **move and restyle recipe** (plan.md) to one page: remove 
 
 - [x] T110 [US4] (WP-V1) Timeline from `/versions` + All versions route with triage (hotfix and next suggestion). NV-01, NV-02.
 - [ ] T111 [US4] (WP-V2) Change page with step bar, bug report, deltas, scoped canvas, branch and agent, checks, version picker. NV-03, NV-04.
-- [ ] T112 [US4] (WP-V3) Release tool: first-release checks, release in order with carry-over, two-step confirm. NV-05.
+- [x] T112 [US4] (WP-V3) Release tool: first-release checks, release in order with carry-over, two-step confirm. NV-05.
 - [x] T113 [US4] (WP-V4) Version scoping for phase tools: released = read-only banner; an open version shows its changes' deltas above the existing tool. NV-06.
 - [x] T114 [US4] E2E `e2e/new/us4.versions.spec.ts`.
 

@@ -72,4 +72,23 @@ export const seed = {
   // the phase tool on /p/:versionsProjectId/v/<versionNextId>/...
   reqChangeNewId: "00000000-0000-4000-8000-000000000940",
   reqChangeChangedId: "00000000-0000-4000-8000-000000000941",
+
+  // US4 Release tool (T112, WP-V3, NV-05): block 930..93f. Two isolated
+  // projects so no release spec touches the shared versions project.
+  // releaseFirstProjectId: building era (stage 'building'), v1.0.0 building,
+  // one shipped + one unfinished change (the unfinished one blocks the first
+  // release). releaseOrderedProjectId: stage 'released', v1.0.0 released,
+  // v1.0.1 hotfix (open, ranks first) and v1.1.0 next (blocked by the hotfix,
+  // has one shipped and one unfinished change that carries over).
+  releaseFirstProjectId: "00000000-0000-4000-8000-000000000930",
+  releaseFirstVersionId: "00000000-0000-4000-8000-000000000931",
+  releaseFirstShippedItemId: "00000000-0000-4000-8000-000000000932",
+  releaseFirstActiveItemId: "00000000-0000-4000-8000-000000000933",
+  releaseOrderedProjectId: "00000000-0000-4000-8000-000000000934",
+  releaseOrderedReleasedVersionId: "00000000-0000-4000-8000-000000000935",
+  releaseOrderedHotfixVersionId: "00000000-0000-4000-8000-000000000936",
+  releaseOrderedNextVersionId: "00000000-0000-4000-8000-000000000937",
+  releaseOrderedNextShippedItemId: "00000000-0000-4000-8000-000000000938",
+  releaseOrderedNextActiveItemId: "00000000-0000-4000-8000-000000000939",
+  releaseOrderedHotfixShippedItemId: "00000000-0000-4000-8000-00000000093a",
 } as const;

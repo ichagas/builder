@@ -285,6 +285,67 @@
         "changed": "Changed",
         "regression": "Regression"
       }
+    },
+    "release": {
+      "title": "Release {{version}}",
+      "unknown": "version",
+      "loading": "Loading release…",
+      "task": "Releasing {{version}}",
+      "action": "Release {{version}}",
+      "confirm": "Confirm: release {{version}}",
+      "notFound": {
+        "title": "Version not found",
+        "description": "That version doesn't exist for this project."
+      },
+      "first": {
+        "title": "Complete the release checks",
+        "readyTitle": "{{version}} is ready",
+        "body": "Releasing places the First release flag on the timeline and locks the baseline. After that, work is scheduled into versions."
+      },
+      "ready": {
+        "title": "{{version}} is ready",
+        "body": "Releasing tags this version and deploys through your existing settings. Unfinished changes move to the next version."
+      },
+      "blocked": {
+        "title": "Release {{version}} first",
+        "body": "Versions are released in order, so the baseline stays linear.",
+        "open": "Open release {{version}}",
+        "reason": "Release {{version}} first. Versions go out in order."
+      },
+      "locked": {
+        "title": "{{version}} is released and read-only",
+        "body": "Changes go into a newer version."
+      },
+      "checks": {
+        "heading": "Release checks for {{version}}",
+        "count": "{{passing}}/{{total}}",
+        "loading": "Running release checks…",
+        "errorTitle": "Couldn't run the release checks",
+        "errorDescription": "Try again in a moment.",
+        "incomplete": "Complete every release check first",
+        "state": {
+          "pass": "Passed",
+          "fail": "Blocks the release",
+          "info": "For information"
+        }
+      },
+      "notes": {
+        "heading": "Release notes (drafted by the agent)",
+        "empty": "No changes shipped in this release.",
+        "fixed": "Fixed:",
+        "new": "New:"
+      },
+      "carry": {
+        "heading": "Carry-over",
+        "none": "Nothing to carry over. Every change is shipped or declined.",
+        "body_one": "{{count}} unfinished change moves to {{version}} when you release.",
+        "body_other": "{{count}} unfinished changes move to {{version}} when you release."
+      },
+      "error": {
+        "failed": "The release didn't go out. Nothing was changed."
+      },
+      "open": "Release",
+      "openLabel": "Release {{version}}"
     }
   },
   "integrations": {
