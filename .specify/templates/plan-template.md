@@ -45,7 +45,7 @@
   post-deploy validation expectations for the change.
 - **UI/UX Layout Contract**: For `app/frontend-new/`, confirm the change follows
   `specs/007-frontend-new/contracts/design-system.md`. Changes to the contract
-  itself need an updated contract and prototypes in the same pull request. For the legacy `app/frontend/`, confirm no layout changes.
+  itself need an updated contract and prototypes in the same pull request.
 
 ## Affected Layers
 
@@ -54,7 +54,7 @@ required for each.*
 
 | Layer                         | Touched? | Validation Required                               |
 | ----------------------------- | -------- | ------------------------------------------------- |
-| Web App (`app/frontend/src/`) | Yes/No   | `npm run lint` + `npm run build` in app/frontend/ |
+| Web App (`app/frontend-new/src/`) | Yes/No | `npm run lint` + `npm run build` + `npm test` in app/frontend-new/ |
 | API (`app/backend/`)          | Yes/No   | `npm run build` in app/backend/                   |
 | Infrastructure (`infra/`)     | Yes/No   | `terraform plan`                                  |
 | CI/CD (`.github/workflows/`)  | Yes/No   | Workflow syntax check                             |

@@ -129,7 +129,7 @@ npm run dev:reset         # Wipe DB volumes and recreate
 
 # Individual layers
 cd app/backend  && npm run dev     # ts-node + nodemon, port 8080
-cd app/frontend && npm run dev     # Vite dev server, port 8080
+cd app/frontend-new && npm run dev     # Vite dev server, port 8080
 ```
 
 Docker Compose runs **databases only** — API and frontend run natively via npm for fast iteration.

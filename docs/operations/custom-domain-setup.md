@@ -43,7 +43,7 @@ Set the two override variables in your environment tfvars (see
 # Public custom domain fronting the frontend. Bakes the domain into the frontend
 # build as VITE_AZURE_REDIRECT_URI (MSAL redirect), registers it as the Entra App
 # Registration redirect URI, and adds it to the API CORS allow-list.
-frontend_app_url_override = "https://app.<your-domain>"
+frontend_new_app_url_override = "https://app.<your-domain>"
 
 # Public custom domain fronting the API. Sets VITE_API_BASE_URL and derives
 # VITE_WS_URL (wss://api.<your-domain>) for the WebSocket path. Required because
@@ -58,7 +58,7 @@ them through `coalesce()` so they fall back to the internal URLs when left unset
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | `api_base_url_override` | internal APIM gateway URL |
 | `VITE_WS_URL` | `wss://` form of `api_base_url_override` | Container Apps app URL |
-| `VITE_AZURE_REDIRECT_URI` | `frontend_app_url_override` | frontend Container App URL |
+| `VITE_AZURE_REDIRECT_URI` | `frontend_new_app_url_override` | frontend Container App URL |
 
 > ⚠️ These are **build-time** values baked into the frontend image, so a
 > **redeploy is required** for changes to take effect.
@@ -74,7 +74,7 @@ platform (landing-zone) resources, not created by this Terraform. Confirm:
    and the API host (`api.<domain>`), with backend pools pointing at the
    **internal** App Gateway's private IP. The frontend may be served from the
    apex (`<domain>`) or a subdomain (`app.<domain>`) — match whatever the public
-   listener / certificate uses and set `frontend_app_url_override` to the same.
+   listener / certificate uses and set `frontend_new_app_url_override` to the same.
 2. **Internal App Gateway** routes:
    - frontend listener → frontend Container App backend pool
    - API listener → path-based map: `/ws*` → API Container App, default → APIM
@@ -91,7 +91,7 @@ Browser ──► Public App Gateway  foxtenant1-appgw   (RG pubsec-public-acces
                                               ┌────────────────────────────────────────┘
                                               ▼
             Internal App Gateway  pronghorn-agw-internal  (RG networking, Standard_v2, private IP 10.x.y.z)
-   listener pronghorn      (frontend.pronghorn.internal) ─► pool aca-frontend-pool ─► ca-pronghorn-frontend.<env>.privatelink.canadacentral.azurecontainerapps.io
+   listener pronghorn      (frontend.pronghorn.internal) ─► pool aca-frontend-pool ─► ca-pronghorn-frontend-new.<env>.privatelink.canadacentral.azurecontainerapps.io
    listener pronghorn-api  (api.pronghorn.internal)      ─► urlPathMap pronghorn-api
                                                               ├─ /ws*  ─► pool aca-backend-pool ─► ca-pronghorn-api.<env>.privatelink...azurecontainerapps.io
                                                               └─ /*    ─► pool apim-backend-pool ─► 10.x.y.z (APIM private IP)  ─► APIM ─► API container
@@ -116,7 +116,7 @@ az network private-endpoint show -n <cae-pe-name> -g <app-rg> `
   --query "customDnsConfigs[].ipAddresses" -o json   # → the env PE IP (e.g. 10.x.y.z)
 
 # Container App ingress FQDNs (public form, used as Host headers)
-az containerapp show -n ca-pronghorn-frontend -g <app-rg> --query "properties.configuration.ingress.fqdn" -o tsv
+az containerapp show -n ca-pronghorn-frontend-new -g <app-rg> --query "properties.configuration.ingress.fqdn" -o tsv
 az containerapp show -n ca-pronghorn-api      -g <app-rg> --query "properties.configuration.ingress.fqdn" -o tsv
 
 # APIM private IP + gateway hostname
@@ -164,9 +164,9 @@ $apim = "apim-pronghorn-<suffix>.azure-api.net"; $apimIp = "<apim-private-ip>"
 
 # Frontend pool + Host header
 az network application-gateway address-pool update --gateway-name $agw -g $rg -n aca-frontend-pool `
-  --servers "ca-pronghorn-frontend.$env.privatelink.canadacentral.azurecontainerapps.io"
+  --servers "ca-pronghorn-frontend-new.$env.privatelink.canadacentral.azurecontainerapps.io"
 az network application-gateway http-settings update --gateway-name $agw -g $rg -n aca-frontend-https `
-  --host-name "ca-pronghorn-frontend.$env.canadacentral.azurecontainerapps.io"
+  --host-name "ca-pronghorn-frontend-new.$env.canadacentral.azurecontainerapps.io"
 
 # API (WebSocket) pool + Host header + probe
 az network application-gateway address-pool update --gateway-name $agw -g $rg -n aca-backend-pool `
@@ -251,7 +251,7 @@ az network private-dns record-set a delete   -g $dnsRg -z $zone -n "<oldApimName
 
    > **Why both.** The app signs in via an MSAL **popup** whose redirect URI is
    > `window.location.origin + /auth-redirect.html`
-   > (`app/frontend/src/lib/msalConfig.ts` → `popupRedirectUri`). Registering only
+   > (`app/frontend-new/src/lib/msalConfig.ts` → `popupRedirectUri`). Registering only
    > the bare origin causes sign-in to fail with
    > `AADSTS50011: The redirect URI 'https://<domain>/auth-redirect.html' ... does
    > not match`. Both must be registered as **SPA** (not Web) platform URIs.
@@ -314,6 +314,6 @@ point at the old environment. After any environment or APIM recreate, re-run
 env-domain regeneration.
 
 > **Custom domain recommendation.** Assign a **custom domain** to the Container
-> App, set `frontend_app_url_override` in tfvars to that domain, and register the
+> App, set `frontend_new_app_url_override` in tfvars to that domain, and register the
 > auth redirect URIs against the custom domain **once** — this avoids re-doing
 > auth wiring on every environment rebuild.

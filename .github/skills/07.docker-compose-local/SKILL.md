@@ -19,7 +19,7 @@ This skill implements step 7 from `LOCAL_DEVELOPMENT.md` and automates the full-
 ## Prerequisites
 
 - Docker Desktop is installed and running.
-- Repository dependencies can be installed (`npm install` in `app/frontend/` and `app/backend/`).
+- Repository dependencies can be installed (`npm install` in `app/frontend-new/` and `app/backend/`).
 - Frontend/API source builds are valid.
 
 ---

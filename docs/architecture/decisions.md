@@ -69,7 +69,7 @@ The repository uses `.github/instructions/` files that auto-attach based on file
 
 | Instruction File | Applies To | Enforces |
 |-----------------|------------|----------|
-| `frontend.instructions.md` | `app/frontend/src/**` | React/Tailwind patterns, UI/UX immutability |
+| `frontend.instructions.md` | `app/frontend-new/src/**` | React/Tailwind patterns, UI/UX immutability |
 | `api.instructions.md` | `app/backend/**` | Express/PostgreSQL/JWT patterns, versioned routes |
 | `infra.instructions.md` | `infra/**` | Terraform/Azure module conventions |
 | `cicd.instructions.md` | `.github/workflows/**` | GitHub Actions patterns |

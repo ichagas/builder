@@ -30,9 +30,9 @@ The platform operates in four modes:
 
 ---
 
-## Frontend redesign in progress
+## Frontend
 
-`app/frontend/` is being superseded by a redesigned frontend under active development at `app/frontend-new/` (see `specs/007-frontend-new/`). As of this pre-go-live pivot, **`app/frontend/` receives no more feature work** — it is kept only as the regression reference (visual/behavioral parity baseline) until `app/frontend-new/` cuts over and replaces it as the production frontend. Bug fixes required to keep the regression baseline meaningful are still permitted in `app/frontend/`; new features and redesign work belong in `app/frontend-new/`.
+The frontend lives in `app/frontend-new/` (the spec 007 redesign, built to the layout contract in `specs/007-frontend-new/contracts/design-system.md`). It is the only frontend: the former legacy frontend (`app/frontend-new/`) was removed in T074. Legacy URLs are mapped to their new equivalents by redirects (T072).
 
 ---
 
@@ -76,11 +76,11 @@ The platform operates in four modes:
 npm install
 
 # 2. Install frontend and backend dependencies
-npm install --prefix app/frontend
+npm install --prefix app/frontend-new
 npm install --prefix app/backend
 
 # 3. Configure environment variables
-cp app/frontend/.env.example app/frontend/.env
+cp app/frontend-new/.env.example app/frontend-new/.env
 cp app/backend/.env.example app/backend/.env
 
 # 4. Start everything (databases + API + frontend)
@@ -109,12 +109,12 @@ This repository ships with **placeholder values** in place of any organization-s
 
 **Local development (no cloud needed):** copy the `.env.example` files (see Quick Start) and set `VITE_AUTH_MODE=mock` (frontend) and `SKIP_AUTH=true` (backend) to run the full stack against local Docker Postgres with no Azure account. All secrets in `.env` are yours and are never committed.
 
-**Authentication (Microsoft Entra ID).** Set your real IDs in the env files — backend `ENTRA_TENANT_ID` / `ENTRA_CLIENT_ID` (`app/backend/.env`) and frontend `VITE_ENTRA_CLIENT_ID` / `VITE_ENTRA_TENANT_ID` (`app/frontend/.env`). Then update the one static file that cannot read env at runtime:
+**Authentication (Microsoft Entra ID).** Set your real IDs in the env files — backend `ENTRA_TENANT_ID` / `ENTRA_CLIENT_ID` (`app/backend/.env`) and frontend `VITE_ENTRA_CLIENT_ID` / `VITE_ENTRA_TENANT_ID` (`app/frontend-new/.env`). Then update the one static file that cannot read env at runtime:
 
 | File | Placeholder | Replace with |
 | --- | --- | --- |
-| `app/frontend/public/auth-redirect.html` | `clientId` `11111111-1111-1111-1111-111111111111` | your Entra **Application (client) ID** |
-| `app/frontend/public/auth-redirect.html` | tenant `00000000-0000-0000-0000-000000000000` in the `authority` URL | your Entra **Directory (tenant) ID** |
+| `app/frontend-new/public/auth-redirect.html` | `clientId` `11111111-1111-1111-1111-111111111111` | your Entra **Application (client) ID** |
+| `app/frontend-new/public/auth-redirect.html` | tenant `00000000-0000-0000-0000-000000000000` in the `authority` URL | your Entra **Directory (tenant) ID** |
 
 **API Management policies** (`infra/config/apim-policy.xml`, `apim-policy-minimal.xml`):
 
@@ -139,16 +139,15 @@ This repository ships with **placeholder values** in place of any organization-s
 ```
 pronghorn/
 ├── app/
-│   ├── frontend/              # React + Vite + TypeScript (regression reference only; no more feature work — see "Frontend redesign in progress" above)
+│   ├── frontend-new/          # React + Vite + TypeScript frontend (spec 007 redesign)
 │   │   ├── src/
-│   │   │   ├── components/    # UI components (canvas, build, audit, present, etc.)
-│   │   │   ├── hooks/         # React hooks
+│   │   │   ├── components/    # UI components (shell, ui, etc.)
+│   │   │   ├── features/      # Feature modules (versions, onboarding, admin, ...)
 │   │   │   ├── pages/         # Route-level pages
 │   │   │   ├── contexts/      # React context providers
 │   │   │   ├── lib/           # Auth, API clients, helpers
 │   │   │   └── utils/         # Utility functions
 │   │   └── .env.example
-│   ├── frontend-new/          # Redesigned frontend under active development (spec 007); will replace app/frontend/ at cutover
 │   └── backend/               # Express.js API + TypeScript
 │       ├── src/
 │       │   ├── __tests__/     # Jest test suites

@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Reviews code changes against constitution principles, layer conventions, and the UI/UX layout contract (app/frontend-new) or immutability (legacy app/frontend). Runs build and lint validation per affected layer.
+description: Reviews code changes against constitution principles, layer conventions, and the UI/UX layout contract (app/frontend-new). Runs build and lint validation per affected layer.
 model: Claude Opus 4.6 (copilot)
 user-invokable: true
 tools:
@@ -34,7 +34,6 @@ The user will provide a description of changes to review, a PR number, or a set 
 ### 2. Classify by Layer
 Determine which layers are affected based on file paths:
 - `app/frontend-new/**` → Frontend (Web App, new)
-- `app/frontend/src/**` → Frontend (Web App, legacy until switch-over)
 - `api/**` → API
 - `infra/**` → Infrastructure
 - `.github/workflows/**` → CI/CD
@@ -51,11 +50,6 @@ Determine which layers are affected based on file paths:
   - a restyle PR that changes page behavior (logic, data calls)
 - **REQUIRE** the contract (`contracts/design-system.md`) and the prototypes to be updated in the same PR for changes to the contract itself (shell structure, information architecture, tokens, interaction patterns). Flag with: "⚠️ LAYOUT CONTRACT CHANGE — update the contract and the prototypes in this PR."
 
-**For changes in `app/frontend/src/**` (legacy): immutability check.**
-- **REJECT** feature work and any layout change. This app is reference only until switch-over.
-- **ALLOW** only changes spec 007 explicitly requires (for example, test hooks for the regression suite).
-- Flag violations with: "⚠️ LEGACY UI CHANGE — app/frontend is frozen as the regression reference. Make the change in app/frontend-new."
-
 ### 4. Constitution Compliance
 Check against the Pronghorn constitution principles:
 - **I. Contract Preservation**: Do changes break existing API contracts, data formats, or frontend expectations?
@@ -67,7 +61,6 @@ Check against the Pronghorn constitution principles:
 
 ### 5. Layer-Specific Validation
 - **Frontend (new)**: Run `npm run lint` + `npm run build` + `npm test` in `app/frontend-new/`, plus the spec 007 E2E for touched routes.
-- **Frontend (legacy)**: Run `npm run lint` + `npm run build` in `app/frontend/`.
 - **API**: Run `npm run build` in `app/backend/`.
 - **Infrastructure**: Review terraform plan output.
 - **Cross-cutting**: Validate both layers.

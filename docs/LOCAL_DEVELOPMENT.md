@@ -191,7 +191,7 @@ Pronghorn uses a **two-tier environment variable strategy** to minimise duplicat
 | ----------------------- | ----------------------------------------------------- | ------------------------------------------ |
 | **Root `.env`**         | Shared local-dev defaults (DB creds, auth IDs, ports) | Docker Compose (DB) + `npm run dev` script |
 | **`app/backend/.env`**  | Backend-specific overrides (APIM, GitHub, deployment) | `npm run dev` script                       |
-| **`app/frontend/.env`** | Frontend-specific `VITE_*` vars                       | Vite only                                  |
+| **`app/frontend-new/.env`** | Frontend-specific `VITE_*` vars                       | Vite only                                  |
 
 The backend `npm run dev` script sources the root `.env` first (shared defaults),
 then sources `app/backend/.env` second — so backend-specific values override root
@@ -228,10 +228,10 @@ the root `.env` automatically — no need to duplicate them here.
 > root `.env`. To override a shared default for the backend only, add it to
 > `app/backend/.env`.
 
-#### Step 3 — `app/frontend/.env`
+#### Step 3 — `app/frontend-new/.env`
 
 ```bash
-cp app/frontend/.env.example app/frontend/.env
+cp app/frontend-new/.env.example app/frontend-new/.env
 ```
 
 The frontend requires `VITE_`-prefixed variables (Vite security boundary). These
@@ -265,7 +265,7 @@ open http://localhost:3001/api-docs
 
 ### 5.1 Install Dependencies
 
-From `app/frontend/`:
+From `app/frontend-new/`:
 
 ```bash
 npm install
@@ -282,7 +282,7 @@ npm install --legacy-peer-deps
 Copy from the frontend example:
 
 ```bash
-cp app/frontend/.env.example app/frontend/.env
+cp app/frontend-new/.env.example app/frontend-new/.env
 ```
 
 Review and update the values:
@@ -363,7 +363,7 @@ npm run dev
 This runs three processes in parallel:
 - **`[db]`** — `docker compose up` (both PostgreSQL containers)
 - **`[api]`** — `npm run dev --prefix app/backend` (Express with hot-reload)
-- **`[fe]`** — `npm run dev --prefix app/frontend` (Vite with HMR)
+- **`[fe]`** — `npm run dev --prefix app/frontend-new` (Vite with HMR)
 
 Output is color-coded and prefixed:
 
@@ -410,7 +410,7 @@ applied by the API at startup via `runMigrations()`.
 | `npm run dev`          | Starts db + api + frontend          | Full stack in one terminal      |
 | `npm run dev:db`       | `docker compose up`                 | Databases only                  |
 | `npm run dev:api`      | `npm run dev --prefix app/backend`  | API with hot-reload             |
-| `npm run dev:frontend` | `npm run dev --prefix app/frontend` | Frontend with Vite HMR          |
+| `npm run dev:frontend` | `npm run dev --prefix app/frontend-new` | Frontend with Vite HMR          |
 | `npm run dev:stop`     | `docker compose down`               | Stop databases (preserves data) |
 | `npm run dev:reset`    | `docker compose down -v && up -d`   | Wipe databases and recreate     |
 | `npm run build`        | Build backend then frontend         | CI-style build for both layers  |
@@ -450,7 +450,7 @@ http://localhost:8080/auth-redirect.html
 
 ### 8.3 MSAL Configuration
 
-The MSAL config is located at `app/frontend/src/lib/msalConfig.ts`. Key settings:
+The MSAL config is located at `app/frontend-new/src/lib/msalConfig.ts`. Key settings:
 
 - **Cache Location:** `localStorage` (persists across tabs)
 - **Login scopes:** `openid`, `profile`, `email`, `User.Read`
@@ -492,7 +492,7 @@ Pronghorn uses **Azure AI Foundry** for AI model inference (chat, code generatio
 | o4-mini      | `o4-mini`       | Efficient reasoning                          | 20K       |
 
 Model configuration is centralized in:
-- **Frontend:** `app/frontend/src/config/aiModels.ts`
+- **Frontend:** `app/frontend-new/src/config/aiModels.ts`
 - **Backend API:** `app/backend/src/config/aiModels.ts`
 - **Infrastructure:** `infra/config/ai-models.json`
 
@@ -738,7 +738,7 @@ Realtime collaboration uses native WebSocket built into the API server. No exter
 - **Local development**: WebSocket is available at `ws://localhost:3001/ws` when the API is running.
 - **Azure deployment**: WebSocket is proxied through APIM or Container Apps ingress.
 
-The frontend connects automatically when `VITE_WS_URL` is set in `app/frontend/.env`.
+The frontend connects automatically when `VITE_WS_URL` is set in `app/frontend-new/.env`.
 For local development, leave `VITE_WS_URL` blank — the client auto-derives it from
 `VITE_API_BASE_URL`.
 
@@ -798,7 +798,7 @@ Variables specific to the backend. Not needed in the root file.
 | `AZURE_ACR_LOGIN_SERVER`      | —        | —           | ACR login server FQDN                            |
 | `AZURE_CONTAINER_APPS_ENV`    | —        | —           | Container Apps environment resource ID           |
 
-### Frontend — `app/frontend/.env`
+### Frontend — `app/frontend-new/.env`
 
 | Variable                     | Required | Default                  | Description                                                 |
 | ---------------------------- | -------- | ------------------------ | ----------------------------------------------------------- |
@@ -845,12 +845,12 @@ Variables specific to the backend. Not needed in the root file.
 
 | Action               | Command                                                                                     | Directory       |
 | -------------------- | ------------------------------------------------------------------------------------------- | --------------- |
-| Start frontend (dev) | `npm run dev`                                                                               | `app/frontend/` |
+| Start frontend (dev) | `npm run dev`                                                                               | `app/frontend-new/` |
 | Start API (dev)      | `npm run dev`                                                                               | `app/backend/`  |
-| Build frontend       | `npm run build`                                                                             | `app/frontend/` |
+| Build frontend       | `npm run build`                                                                             | `app/frontend-new/` |
 | Build API            | `npm run build`                                                                             | `app/backend/`  |
 | Run migration        | `psql -h localhost -U pronghorn_admin -d pronghorn -f infra/migrations/001_full_schema.sql` | repo root       |
-| Lint frontend        | `npm run lint`                                                                              | `app/frontend/` |
+| Lint frontend        | `npm run lint`                                                                              | `app/frontend-new/` |
 | API health check     | `curl http://localhost:3001/health`                                                         | anywhere        |
 | API Swagger          | Open `http://localhost:3001/api-docs`                                                       | browser         |
 
@@ -873,12 +873,12 @@ Variables specific to the backend. Not needed in the root file.
 | Problem                                                                            | Solution                                                                                                                                                                                                                                                                                                                                                                              |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Port 5432 already in use**                                                       | Another PostgreSQL instance is running. Keep `POSTGRES_PORT=5432`; the PostgreSQL setup script now stops/disables conflicting Windows PostgreSQL services when possible, and API runtime can auto-fail over to `5433` when needed.                                                                                                                                                    |
-| **Port 3001 already in use**                                                       | Change `PORT` in root `.env` and update `VITE_API_BASE_URL` in `app/frontend/.env`                                                                                                                                                                                                                                                                                                   |
+| **Port 3001 already in use**                                                       | Change `PORT` in root `.env` and update `VITE_API_BASE_URL` in `app/frontend-new/.env`                                                                                                                                                                                                                                                                                                   |
 | **CORS errors in browser**                                                         | Ensure `ALLOWED_ORIGINS` in root `.env` includes your frontend URL (e.g., `http://localhost:8080,http://localhost:8081`)                                                                                                                                                                                                                                                              |
 | **Database connection refused**                                                    | Verify PostgreSQL is running: `pg_isready -h localhost` or `docker ps`                                                                                                                                                                                                                                                                                                                |
 | **Migration fails on extensions**                                                  | Ensure your DB user has superuser privileges                                                                                                                                                                                                                                                                                                                                          |
 | **Frontend shows Azure data after build**                                          | You built with `npm run build` (production mode). Use `npx vite build --mode development` instead                                                                                                                                                                                                                                                                                     |
-| **Frontend `npm install` fails with `ERESOLVE` (`vite-plugin-pwa` peer conflict)** | Run `npm install --legacy-peer-deps` in `app/frontend/`                                                                                                                                                                                                                                                                                                                               |
+| **Frontend `npm install` fails with `ERESOLVE` (`vite-plugin-pwa` peer conflict)** | Run `npm install --legacy-peer-deps` in `app/frontend-new/`                                                                                                                                                                                                                                                                                                                               |
 | **Projects from Azure appear locally**                                             | Clear browser cache/service worker: DevTools → Application → Storage → Clear site data. Or use Incognito                                                                                                                                                                                                                                                                              |
 | **MSAL redirect fails**                                                            | Ensure `http://localhost:8080` (or your port) is registered as a redirect URI in Azure AD App Registration                                                                                                                                                                                                                                                                            |
 | **AI features not working**                                                        | Verify `APIM_OPENAI_URL` is set in `app/backend/.env`. See [Section 9](#9-azure-ai-foundry--model-deployment)                                                                                                                                                                                                                                                                        |

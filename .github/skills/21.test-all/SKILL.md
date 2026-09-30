@@ -14,14 +14,14 @@ user-invokable: true
 
 ## Pre-requisites
 - Node.js 18+ installed
-- `npm install` completed in both `app/frontend/` and `app/backend/`
+- `npm install` completed in both `app/frontend-new/` and `app/backend/`
 - For API tests: local PostgreSQL running (or mock configuration)
 
 ## Steps
 
-1. **Run frontend tests** (`app/frontend/` — Vitest):
+1. **Run frontend tests** (`app/frontend-new/` — Vitest):
    ```bash
-   cd app/frontend && npm test
+   cd app/frontend-new && npm test
    ```
 
 2. **Run API tests** (`app/backend/` — Jest):
@@ -36,7 +36,7 @@ user-invokable: true
 
 ## Trigger
 - Before creating a pull request.
-- After modifying business logic in `app/frontend/src/` or `app/backend/src/`.
+- After modifying business logic in `app/frontend-new/src/` or `app/backend/src/`.
 - As part of the testing agent workflow.
 
 ## Rollback

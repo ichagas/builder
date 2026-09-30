@@ -3,9 +3,9 @@
 How to run the redesigned frontend, run the E2E suites against it, sign in with
 mock auth, and seed data. Everything below was written from the scripts and
 config in the repo (`e2e/`, `app/frontend-new/`); when one changes, change this
-file. The Cutover section (T073) and the onboarding sandbox check (T152) follow.
+file. The Cutover section (T073, done in code by T074) and the onboarding sandbox check (T152) follow.
 
-Contents: [Run the app](#run-the-app-locally) | [Backend](#backend) | [E2E stack](#e2e-stack) | [Running suites](#running-the-e2e-suites) | [Mock auth](#mock-auth) | [Seed data](#seed-data) | [Axe baselines](#axe-baselines) | [Low-memory machines](#low-memory-machines) | [Cutover](#cutover-t073-switching-the-primary-host-to-frontend-new) | [Onboarding sandbox](#onboarding-real-sandbox-run-t152)
+Contents: [Run the app](#run-the-app-locally) | [Backend](#backend) | [E2E stack](#e2e-stack) | [Running suites](#running-the-e2e-suites) | [Mock auth](#mock-auth) | [Seed data](#seed-data) | [Axe baselines](#axe-baselines) | [Low-memory machines](#low-memory-machines) | [Cutover](#cutover-t073t074-frontend-new-is-the-only-frontend) | [Onboarding sandbox](#onboarding-real-sandbox-run-t152)
 
 ## Run the app locally
 
@@ -30,7 +30,7 @@ Environment variables (`.env.example` documents each):
 | `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_TENANT_ID` | Entra app registration ids (MSAL). `VITE_AZURE_*` is accepted as a fallback. |
 | `VITE_AZURE_REDIRECT_URI` | OAuth redirect URI; must match the registration and the origin you serve from. |
 | `VITE_AUTH_MODE` | `mock` or `msal`. See [Mock auth](#mock-auth): the app does not branch on it; the E2E harness fakes sign-in through MSAL's cache. |
-| `VITE_APP_CHANNEL` | `next` marks this build as the redesigned app on `next.<domain>`. |
+| `VITE_APP_CHANNEL` | `next` marks the redesigned app build; nothing branches on it today. |
 | `VITE_GITHUB_ORG`, `VITE_COLLABORATION_SNAPSHOT_PREFETCH_LIMIT` | Optional. |
 
 Real sign-in needs a real Entra app registration whose redirect URI matches
@@ -57,19 +57,19 @@ to a fresh database yourself in that case; the E2E stack does it automatically.
 ## E2E stack
 
 The harness in `e2e/` (see also `e2e/README.md`) runs the same Playwright
-specs against either app. Needs Docker (Postgres) plus `npm ci` in
+specs against `app/frontend-new`. Needs Docker (Postgres) plus `npm ci` in
 `app/backend`, the app under test, and `e2e/`.
 
 ```bash
 e2e/scripts/stack.sh up                   # Postgres x2 (compose profile "e2e") + API on :3140
-e2e/scripts/serve-app.sh new 8141         # app/frontend-new via vite dev on :8141 (or: legacy 8140)
+e2e/scripts/serve-app.sh new 8141         # app/frontend-new via vite dev on :8141
 # ... run tests ...
 e2e/scripts/stack.sh down                 # stops the API, `compose down -v` (data is gone)
 ```
 
 Defaults (all overridable by env): `COMPOSE_PROJECT_NAME=pronghorn-e2e`,
 `DB_PORT=55432`, `GENAPPS_DB_PORT=55433`, `API_PORT=3140`. Conventional app
-ports: 8140 legacy, 8141 new (the API's CORS allowlist covers 8140-8149 by
+ports: 8141 (the API's CORS allowlist covers 8140-8149 by
 default; use `ALLOWED_ORIGINS` for anything else). `stack.sh up` starts the API
 with `NODE_ENV=test`, fake Entra ids, `RATE_LIMIT_MAX=100000`, a fake storage
 account and a scratch `STORAGE_BASE_PATH`; the API log is
@@ -89,30 +89,29 @@ A second stack in parallel (only on machines with the memory for it, see
 `e2e/playwright.config.ts`: two projects, `desktop` (1440x900) and `mobile`
 (390x844), both Desktop Chrome; `fullyParallel: false`; 45 s test timeout;
 `testMatch` covers `regression/**`, `shell/**` and `new/**`. `BASE_URL`
-(default `http://localhost:${FE_PORT:-8140}`) picks the served app and `APP`
-(`legacy` default, or `new`) picks the URL shape in `e2e/routes.ts`; tests
+(default `http://localhost:${FE_PORT:-8140}`) picks the served app.
+The legacy app and the `APP` switch were removed (T074); `e2e/routes.ts` maps pages to `app/frontend-new` URLs and tests
 navigate only through `routes.*` helpers. `API_PORT` must be exported for the
 test process too when you changed it.
 
 ```bash
 cd e2e && npm ci
-npm run test:legacy            # APP=legacy, :8140, regression/ only, then builds axe-legacy.json
-npm run test:new               # APP=new, :8141, regression/ + shell/ (PR-01..PR-22)
-npm run test:shell             # APP=new, :8141, shell/ only (remount, redirects, mobile reach, shell axe)
-npm run test:new-capabilities  # APP=new, :8141, new/ (us4.versions, us5.assurance, us6.onboarding)
+npm run test:new               # :8141, regression/ + shell/ (PR-01..PR-22)
+npm run test:shell             # :8141, shell/ only (remount, redirects, mobile reach, shell axe)
+npm run test:new-capabilities  # :8141, new/ (us4.versions, us5.assurance, us6.onboarding)
 ```
 
 Each npm script honors `BASE_URL` or `FE_PORT`. Iterate on one file and one
 viewport:
 
 ```bash
-APP=new BASE_URL=http://localhost:8141 npx playwright test new/us5.assurance.spec.ts --project=desktop --workers=1 --reporter=list
+BASE_URL=http://localhost:8141 npx playwright test new/us5.assurance.spec.ts --project=desktop --workers=1 --reporter=list
 npx playwright test --list      # parses every spec without starting a browser or stack
 npx tsc --noEmit -p e2e         # type-check the specs
 ```
 
 Specs import `test`/`expect` from `e2e/fixtures.ts`, never from
-`@playwright/test`. The `new/` specs are `APP=new` only. Reports:
+`@playwright/test`. Reports:
 `npm run report` (HTML in `e2e/playwright-report`). Playwright is pinned to an
 exact version (see `e2e/README.md`, "Playwright browser version").
 
@@ -122,7 +121,7 @@ onboarding sandbox job (see the manual T152 check below).
 
 ## Mock auth
 
-Nothing in either app branches on `VITE_AUTH_MODE`. Sign-in in the E2E harness
+Nothing in the app branches on `VITE_AUTH_MODE`. Sign-in in the E2E harness
 works in two halves, and the values must agree (`e2e/lib/config.ts`,
 `stack.sh`, `serve-app.sh` all use the same defaults):
 
@@ -190,14 +189,14 @@ Rules for editing the seed:
 
 Every regression spec calls `recordAxeBaseline(page, pageId, testInfo)`, which
 appends one line per (page, viewport) to
-`e2e/baselines/axe-legacy.raw.jsonl` (the raw file is shared by `APP=legacy` and
-`APP=new`; both npm scripts delete it first). It only records; it never fails a
+`e2e/baselines/axe-legacy.raw.jsonl` (`test:new` deletes it first). It only records; it never fails a
 test.
 
-- `npm run test:legacy` then runs `scripts/build-axe-baseline.mjs`, which writes
-  `baselines/axe-legacy.json` (max serious+critical per page and viewport). This
-  is the reference for "no new violations" (spec D-13).
-- For the new app, run `test:new` (or a subset) and then
+- `baselines/axe-legacy.json` is **frozen**: it was recorded once from the legacy
+  app (max serious+critical per page and viewport) before that app was removed
+  (T074) and is never regenerated. It is the reference for "no new violations"
+  (spec D-13).
+- Run `test:new` (or a subset) and then
   `node scripts/build-axe-baseline-new.mjs`. It aggregates the same raw file,
   diffs each row against `axe-legacy.json`, and writes `baselines/axe-new-f3.json`
   (the output name is hard-coded, `outPath` in the script). The other
@@ -225,141 +224,47 @@ The local Mac has 8 GB of RAM: one Docker/E2E stack at a time, and code work
 - Skip the e2e run entirely when you only need a fast check: `npx playwright test
   --list` and `npx tsc --noEmit -p e2e` catch most spec breakage without Docker.
 
-## Cutover (T073: switching the primary host to `frontend-new`)
+## Cutover (T073/T074: `frontend-new` is the only frontend)
 
-T073 made the switch **as code**, controlled by the Terraform variable
-`primary_frontend` (`infra/variables.tf`): `"legacy"` (points production at
-`module.frontend`, the pre-redesign app) or `"new"` (points production at
-`module.frontend_new`, the spec-007 redesign). **Default is `"legacy"`.**
-The cutover to `"new"` is a deliberate, later step — it is **not** performed
-by T015's apply (which creates `module.frontend_new` at `next.<domain>` so
-testers can verify it) and must not happen with no chance to verify first.
-See `infra/variables.tf` for the full rationale.
+**Done in code; applying it is for whoever deploys later.** This repository is a
+dev environment with no Azure behind it (user decision, 2026-09-30), so no
+`terraform apply`, DNS change or Entra change has been run. T074 deleted
+the legacy frontend app, its CI job and image build, and `module "frontend"`, and
+removed the `primary_frontend` switch. Terraform now points production at
+`module.frontend_new` unconditionally (the module name is kept to avoid churn;
+it reuses `infra/modules/frontend`).
 
-`primary_frontend` only decides which app's URL is exposed as the
-`primary_frontend_url` / `primary_frontend` Terraform outputs and which one is
-listed first among Entra redirect URIs. It does **not** move DNS by itself —
-Terraform has no Front Door, Application Gateway, or public DNS record wired
-up for either frontend in this repo (`infra/modules/frontdoor/` and
-`infra/modules/agw/` exist but are not instantiated by `main.tf`; the only
-"host switch" this codebase manages is which `*_app_url_override` variable
-holds the production custom domain, which both the Entra redirect URIs and
-the APIM CORS origins already read unconditionally for **both** frontends).
+What the deployer does, per environment:
 
-The full sequence, run by a human, in order:
+1. **Set the production domain.** In `infra/params/<branch>.tfvars` (or
+   `vars.FRONTEND_NEW_APP_URL_OVERRIDE` in CI) set
+   `frontend_new_app_url_override` to the production URL (for example
+   `https://app.<domain>`). It becomes the MSAL redirect URI baked into the
+   build (`VITE_AZURE_REDIRECT_URI`), the Entra App Registration redirect URI and
+   an API CORS / APIM origin. Leave it unset to use the Container App's own
+   FQDN (`terraform output frontend_new_url`). Any extra domains go in
+   `entra_app_redirect_uris` / `allowed_origins`.
+2. **Apply.** `terraform apply` creates (or, where a legacy app existed,
+   replaces) the frontend Container App `ca-<project>-frontend-new`, its UAMI
+   and AcrPull role assignment. The deploy workflow builds and pushes
+   `pronghorn-frontend-new` and updates `ca-pronghorn-frontend-new`. If an
+   environment still holds the old legacy Container App (`ca-<project>-frontend`),
+   Terraform will destroy it on this apply; its ACR image and identity go with it.
+3. **Repoint DNS.** Point the production domain's CNAME/A record at
+   `terraform output frontend_new_fqdn`.
+4. **Verify.** In Entra ID, App registrations, Authentication, confirm the
+   production redirect URI is present; confirm the APIM CORS origins include the
+   production domain (`terraform output`); smoke test sign-in and API calls.
+5. **Rollback** is a code revert of the T074 commits plus a re-apply; there is
+   no runtime switch any more.
 
-### 1. Apply T015 with `primary_frontend` at its default (`"legacy"`)
+Legacy URLs (for example `/build-books/:id`, `/project/:id/<page>`) keep working
+through the nginx 301 redirects and the router's legacy redirect table (T072).
 
-Creates `module.frontend_new` at `next.<domain>` (via
-`frontend_new_app_url_override`) alongside the still-primary legacy app.
-Production traffic is untouched — `primary_frontend` stays `"legacy"` (leave
-`PRIMARY_FRONTEND` / the tfvars `primary_frontend` line unset/commented so
-the Terraform default applies).
-
-### 2. Verify `next.<domain>`
-
-Testers exercise `app/frontend-new` at `next.<domain>` independently of
-production. Do not proceed to step 3 until this, and the final regression
-run (T071, PR-01…PR-22 at 1440 and 390), are both green.
-
-### 3. Set `primary_frontend = "new"` and apply
-
-Once next.<domain> is verified and the regression run is green, in the
-target environment's `infra/params/<branch>.tfvars` (or `vars.PRIMARY_FRONTEND`
-in the GitHub Environment, for the CI-driven `platform-deploy.yml` path):
-
-- Set `frontend_new_app_url_override` to the production custom domain (the
-  value that used to live in `frontend_app_url_override`), e.g.
-  `frontend_new_app_url_override = "https://app.<domain>"`.
-- Decide the fate of `frontend_app_url_override` (legacy's URL): either leave
-  it pointing at the legacy custom domain (e.g. rename it to
-  `https://legacy.<domain>` — a working, deliberately-secondary alias until
-  T074 deletes `module.frontend`) or clear it so legacy falls back to its
-  auto-generated Container App FQDN. Either is safe: `entra_app_redirect_uris`
-  is a fixed list, and CORS/redirect URIs are populated for both frontends
-  regardless of which is primary.
-- Set `primary_frontend = "new"` explicitly (tfvars line, or
-  `vars.PRIMARY_FRONTEND = "new"`).
-- `terraform plan` and review: expect the Entra app registration's
-  `redirect_uris` list to reorder (new frontend's URI first) and, since
-  `frontend_new_app_url_override` changed, the `frontend_new` build's
-  `VITE_AZURE_REDIRECT_URI` env var to change (redeploys the `frontend_new`
-  revision) plus the APIM CORS origin list.
-- `terraform apply`.
-
-`next.<domain>` itself — what happens to it once `frontend_new_app_url_override`
-points at the production domain instead — is covered separately below.
-
-### 4. Repoint the production DNS record
-
-Update the DNS record for the production custom domain (CNAME / A record,
-managed outside this repo — see the environment's DNS provider) so it
-resolves to `frontend_new`'s Container App FQDN
-(`terraform output frontend_new_fqdn`) instead of legacy's
-(`terraform output frontend_fqdn`). Do this **after** step 3's apply, once
-the Entra redirect URI and CORS origin are live, to avoid a window where the
-domain resolves to `frontend_new` but auth/CORS still expect legacy.
-
-### 5. Verify Entra / APIM, then smoke test
-
-- Verify in the Azure Portal (Entra ID → App registrations → this app →
-  Authentication) that the new redirect URI is present, and in APIM (or
-  `terraform output`) that the CORS origin list includes the production
-  domain.
-- Smoke test: load the production domain, sign in (MSAL), confirm API calls
-  succeed (no CORS errors in the browser console).
-
-### 6. Rollback
-
-Set `primary_frontend = "legacy"` and revert `frontend_app_url_override` /
-`frontend_new_app_url_override` back to their pre-cutover values in
-`infra/params/<branch>.tfvars` (or `vars.PRIMARY_FRONTEND = "legacy"`),
-`terraform apply`, then repoint the DNS record back at legacy's Container
-App FQDN. Both apps stay deployed side by side until T074, so this is a
-config-only rollback — no redeploy of `module.frontend` is needed.
-
-### `next.<domain>` — what happens to it
-
-`next.<domain>` was `frontend_new`'s tester-verification host from step 1/2
-(via `frontend_new_app_url_override`, before the cutover in step 3). Once
-`frontend_new_app_url_override` is repointed to the production domain (step
-3), `next.<domain>` is **no longer** the value Terraform bakes into
-`VITE_AZURE_REDIRECT_URI` / the Entra redirect URI / the CORS origin for
-`frontend_new` — so if the DNS record for `next.<domain>` is left in place
-pointing at `frontend_new`'s Container App FQDN, the app will still *load*
-there, but MSAL sign-in will fail (its redirect URI is no longer registered)
-and, if `api_base_url_override` differs, direct API calls may be CORS-blocked.
-
-Two supported outcomes — pick one per environment:
-
-- **Retire it** (default assumption): once cutover is verified, delete the
-  `next.<domain>` DNS record. It served its purpose (step 1/2's tester
-  verification host) and has no further role after T074 removes
-  `module.frontend`.
-- **Keep it working** (e.g. as a permanent "next channel" preview alias): add
-  `https://next.<domain>/` to `entra_app_redirect_uris` and
-  `https://next.<domain>` to `allowed_origins` in the environment's
-  `infra/params/<branch>.tfvars` — both are generic "additional URIs/origins"
-  lists read unconditionally, independent of `primary_frontend`. The DNS
-  record then keeps resolving to `frontend_new` (same Container App as the
-  production domain — Container Apps serve multiple bound hostnames from the
-  same revision) and both sign-in and CORS keep working.
-
-### What T073 did *not* do
-
-- Did not remove `app/frontend/`, its CI job, or `module "frontend"` — that's
-  T074, done right after this cutover is verified (no transition period,
-  per T074's task text).
-- Did not touch `infra/modules/frontdoor/` or `infra/modules/agw/` — neither
-  is instantiated anywhere in `infra/main.tf` in this repo, so there is no
-  Front Door route / App Gateway backend to repoint.
-- Did not run `terraform apply` or touch any real environment's state,
-  DNS, or Entra app registration — validated with `terraform fmt -check`,
-  `init -backend=false`, and `validate` only (see T073 in
-  `specs/007-frontend-new/tasks.md`).
-- Did not flip `primary_frontend` to `"new"` anywhere by default — the
-  cutover (step 3 above) is always an explicit, later action taken once
-  `next.<domain>` is verified and the final regression run is green.
+Not done here: `terraform apply`, DNS, Entra registration (all out of scope for
+this dev environment). `infra/modules/frontdoor/` and `infra/modules/agw/` are not
+instantiated in `infra/main.tf`, so there is no Front Door route or App Gateway
+backend to repoint from this repository.
 
 ## Onboarding: real sandbox run (T152)
 
