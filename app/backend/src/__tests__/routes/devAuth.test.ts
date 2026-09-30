@@ -2,6 +2,8 @@
  * POST /api/v1/auth/dev-login — mounted only with AUTH_MODE=local.
  */
 import request from "supertest";
+import type { Request } from "express";
+import { remoteRequestReason } from "../../routes/devAuth";
 
 jest.mock("../../utils/logger", () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() },
@@ -54,19 +56,17 @@ jest.mock("../../utils/database", () => ({
 const SECRET = "e".repeat(64);
 const savedEnv = { ...process.env };
 
-function buildV1() {
-  let app!: any;
-  jest.isolateModules(() => {
-    // express (and its async-errors patch) must come from the same isolated registry as the router.
-    const express = require("express");
-    require("express-async-errors");
-    const { errorHandler } = require("../../middleware/errorHandler");
-    const v1 = require("../../routes/v1").default;
-    app = express();
-    app.use(express.json());
-    app.use("/api/v1", v1);
-    app.use(errorHandler);
-  });
+async function buildV1() {
+  jest.resetModules();
+  // express (and its async-errors patch) must come from the same fresh registry as the router.
+  const express = (await import("express")).default;
+  await import("express-async-errors");
+  const { errorHandler } = await import("../../middleware/errorHandler");
+  const v1 = (await import("../../routes/v1")).default;
+  const app = express();
+  app.use(express.json());
+  app.use("/api/v1", v1);
+  app.use(errorHandler);
   return app;
 }
 
@@ -85,7 +85,7 @@ afterEach(() => {
 describe("without AUTH_MODE=local", () => {
   it("dev-login does not exist (404)", async () => {
     delete process.env.AUTH_MODE;
-    const res = await request(buildV1()).post("/api/v1/auth/dev-login").send({ email: "a@b.co", name: "A" });
+    const res = await request(await buildV1()).post("/api/v1/auth/dev-login").send({ email: "a@b.co", name: "A" });
     expect(res.status).toBe(404);
   });
 });
@@ -98,7 +98,7 @@ describe("with AUTH_MODE=local", () => {
   });
 
   it("creates user, admin role, Local Dev org and profile; returns a token", async () => {
-    const res = await request(buildV1()).post("/api/v1/auth/dev-login").send({ email: "Dev@Local.test", name: " Dev " });
+    const res = await request(await buildV1()).post("/api/v1/auth/dev-login").send({ email: "Dev@Local.test", name: " Dev " });
     expect(res.status).toBe(200);
     expect(res.body.user).toMatchObject({ email: "dev@local.test", name: "Dev" });
     expect(typeof res.body.token).toBe("string");
@@ -108,7 +108,7 @@ describe("with AUTH_MODE=local", () => {
   });
 
   it("is idempotent", async () => {
-    const app = buildV1();
+    const app = await buildV1();
     const a = await request(app).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
     const b = await request(app).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
     expect(b.body.user.id).toBe(a.body.user.id);
@@ -117,7 +117,7 @@ describe("with AUTH_MODE=local", () => {
   });
 
   it("returns a token that authenticates a protected route", async () => {
-    const app = buildV1();
+    const app = await buildV1();
     const { body } = await request(app).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
     // /db is protected by authMiddleware; a missing token is 401, a valid one passes auth.
     const anon = await request(app).get("/api/v1/db/anything");
@@ -137,18 +137,18 @@ describe("with AUTH_MODE=local", () => {
     [{ email: "a b@c.co", name: "A" }],
     [null],
   ])("rejects bad input %j with 400", async (body) => {
-    const res = await request(buildV1()).post("/api/v1/auth/dev-login").send(body as any);
+    const res = await request(await buildV1()).post("/api/v1/auth/dev-login").send(body as any);
     expect(res.status).toBe(400);
     expect(state.users).toHaveLength(0);
   });
 
   it("marks users it creates as local-dev", async () => {
-    await request(buildV1()).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
+    await request(await buildV1()).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
     expect(state.users[0].provider).toBe("local-dev");
   });
 
   it("matches an existing dev user case-insensitively", async () => {
-    const app = buildV1();
+    const app = await buildV1();
     const a = await request(app).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
     const b = await request(app).post("/api/v1/auth/dev-login").send({ email: "DEV@Local.Test", name: "Dev" });
     expect(b.status).toBe(200);
@@ -160,7 +160,7 @@ describe("with AUTH_MODE=local", () => {
     state.users.push({ id: "real-1", email: "Real.Person@corp.com", role: "user", name: "Real", provider: "azure" });
     state.users.push({ id: "real-2", email: "legacy@corp.com", role: "user", name: "Legacy" }); // no provider at all
     for (const email of ["real.person@corp.com", "legacy@corp.com"]) {
-      const res = await request(buildV1()).post("/api/v1/auth/dev-login").send({ email, name: "X" });
+      const res = await request(await buildV1()).post("/api/v1/auth/dev-login").send({ email, name: "X" });
       expect(res.status).toBe(409);
       expect(res.body.token).toBeUndefined();
     }
@@ -178,33 +178,33 @@ describe("with AUTH_MODE=local", () => {
       ["X-Forwarded-For", { "X-Forwarded-For": "203.0.113.9" }],
       ["Forwarded", { Forwarded: "for=203.0.113.9" }],
     ])("rejects %s", async (_label, headers) => {
-      const res = await request(buildV1()).post("/api/v1/auth/dev-login").set(headers).send(body);
+      const res = await request(await buildV1()).post("/api/v1/auth/dev-login").set(headers).send(body);
       expect(res.status).toBe(403);
       expect(state.users).toHaveLength(0);
     });
 
     it("rejects a wildcard-only ALLOWED_ORIGINS for a browser Origin", async () => {
       process.env.ALLOWED_ORIGINS = "*";
-      const res = await request(buildV1()).post("/api/v1/auth/dev-login").set("Origin", "https://evil.example.com").send(body);
+      const res = await request(await buildV1()).post("/api/v1/auth/dev-login").set("Origin", "https://evil.example.com").send(body);
       expect(res.status).toBe(403);
     });
 
     it("accepts localhost Hosts and an allowed Origin", async () => {
       process.env.ALLOWED_ORIGINS = "http://localhost:8080";
-      const res = await request(buildV1())
+      const res = await request(await buildV1())
         .post("/api/v1/auth/dev-login")
         .set({ Host: "localhost:3001", Origin: "http://localhost:8080" })
         .send(body);
       expect(res.status).toBe(200);
       for (const host of ["127.0.0.1:3001", "[::1]:3001", "localhost"]) {
-        const r = await request(buildV1()).post("/api/v1/auth/dev-login").set("Host", host).send(body);
+        const r = await request(await buildV1()).post("/api/v1/auth/dev-login").set("Host", host).send(body);
         expect(r.status).toBe(200);
       }
     });
 
     it("AUTH_LOCAL_ALLOW_REMOTE=true lifts the guards", async () => {
       process.env.AUTH_LOCAL_ALLOW_REMOTE = "true";
-      const res = await request(buildV1())
+      const res = await request(await buildV1())
         .post("/api/v1/auth/dev-login")
         .set({ Host: "api.internal", "X-Forwarded-For": "10.1.1.1", Origin: "https://x.example" })
         .send(body);
@@ -212,9 +212,8 @@ describe("with AUTH_MODE=local", () => {
     });
 
     it("rejects a non-loopback socket", () => {
-      const { remoteRequestReason } = require("../../routes/devAuth");
       const req = { socket: { remoteAddress: "192.168.1.20" }, headers: { host: "localhost:3001" } };
-      expect(remoteRequestReason(req)).toMatch(/loopback/);
+      expect(remoteRequestReason(req as unknown as Request)).toMatch(/loopback/);
     });
   });
 });

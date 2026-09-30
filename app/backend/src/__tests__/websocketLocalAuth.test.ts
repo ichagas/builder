@@ -19,11 +19,9 @@ async function connect(token: string | undefined, env: Record<string, string> = 
   delete process.env.ENTRA_TENANT_ID;
   delete process.env.ENTRA_CLIENT_ID;
   Object.assign(process.env, { AUTH_MODE: "local", JWT_SECRET: SECRET, NODE_ENV: "development" }, env);
-  let wss!: import("ws").WebSocketServer;
   const server = http.createServer();
-  jest.isolateModules(() => {
-    wss = require("../websocket").initWebSocket(server);
-  });
+  jest.resetModules();
+  const wss = (await import("../websocket")).initWebSocket(server);
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const port = (server.address() as AddressInfo).port;
   try {

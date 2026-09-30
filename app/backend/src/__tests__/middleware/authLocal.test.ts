@@ -3,6 +3,7 @@
  * tokens are accepted, APIM identity headers are ignored.
  */
 import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
 jest.mock("../../utils/logger", () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() },
@@ -15,14 +16,11 @@ jest.mock("../../utils/database", () => ({
 const SECRET = "c".repeat(64);
 const savedEnv = { ...process.env };
 
-function load() {
-  let mod: typeof import("../../middleware/auth");
-  let cfg: typeof import("../../config/authMode");
-  jest.isolateModules(() => {
-    mod = require("../../middleware/auth");
-    cfg = require("../../config/authMode");
-  });
-  return { mod: mod!, cfg: cfg! };
+async function load() {
+  jest.resetModules();
+  const mod = await import("../../middleware/auth");
+  const cfg = await import("../../config/authMode");
+  return { mod, cfg };
 }
 
 function run(fn: (q: Request, s: Response, n: NextFunction) => void, headers: Record<string, string> = {}) {
@@ -45,26 +43,25 @@ describe("authMiddleware (AUTH_MODE=local)", () => {
     process.env = { ...savedEnv };
   });
 
-  it("loads without ENTRA_* variables", () => {
-    expect(() => load()).not.toThrow();
+  it("loads without ENTRA_* variables", async () => {
+    await expect(load()).resolves.toBeDefined();
   });
 
-  it("refuses to load with NODE_ENV=production", () => {
+  it("refuses to load with NODE_ENV=production", async () => {
     process.env.NODE_ENV = "production";
-    expect(() => load()).toThrow(/production/);
+    await expect(load()).rejects.toThrow(/production/);
   });
 
-  it("authenticates a dev-login token", () => {
-    const { mod, cfg } = load();
+  it("authenticates a dev-login token", async () => {
+    const { mod, cfg } = await load();
     const token = cfg.signLocalToken({ sub: "u1", email: "dev@local.test", name: "Dev", role: "user" });
     const { req, next } = run(mod.authMiddleware, { authorization: `Bearer ${token}` });
     expect(next).toHaveBeenCalled();
     expect(req.user).toEqual({ id: "u1", email: "dev@local.test", name: "Dev", role: "user" });
   });
 
-  it("rejects missing, garbage and foreign-signed tokens with 401", () => {
-    const { mod } = load();
-    const jwt = require("jsonwebtoken");
+  it("rejects missing, garbage and foreign-signed tokens with 401", async () => {
+    const { mod } = await load();
     for (const headers of <Record<string, string>[]>[
       {},
       { authorization: "Bearer nope" },
@@ -76,24 +73,23 @@ describe("authMiddleware (AUTH_MODE=local)", () => {
     }
   });
 
-  it("rejects an expired token with 401", () => {
-    const { mod } = load();
-    const jwt = require("jsonwebtoken");
+  it("rejects an expired token with 401", async () => {
+    const { mod } = await load();
     const expired = jwt.sign({ sub: "u" }, SECRET, { algorithm: "HS256", issuer: "pronghorn-local-dev", expiresIn: -30 });
     const { res, next } = run(mod.authMiddleware, { authorization: `Bearer ${expired}` });
     expect(res.status).toHaveBeenCalledWith(401);
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("ignores APIM identity headers", () => {
-    const { mod } = load();
+  it("ignores APIM identity headers", async () => {
+    const { mod } = await load();
     const { res, next } = run(mod.authMiddleware, { "x-user-id": "u", "x-user-email": "a@b.co" });
     expect(res.status).toHaveBeenCalledWith(401);
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("optionalAuthMiddleware attaches user for a valid token and continues anonymously otherwise", () => {
-    const { mod, cfg } = load();
+  it("optionalAuthMiddleware attaches user for a valid token and continues anonymously otherwise", async () => {
+    const { mod, cfg } = await load();
     const token = cfg.signLocalToken({ sub: "u2", email: "x@y.zz" });
     expect(run(mod.optionalAuthMiddleware, { authorization: `Bearer ${token}` }).req.user?.id).toBe("u2");
     const anon = run(mod.optionalAuthMiddleware, { authorization: "Bearer bad", "x-user-id": "u", "x-user-email": "a@b.co" });

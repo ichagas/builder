@@ -53,6 +53,7 @@ jest.mock("express", () => {
 });
 
 import { startServer } from "../index";
+import { logger } from "../utils/logger";
 import { getJobDispatcher, InMemoryJobDispatcher, FailClosedJobDispatcher } from "../services/onboarding/jobDispatcher";
 
 describe("API startup blob staging initialization", () => {
@@ -128,7 +129,6 @@ describe("onboarding job dispatcher startup wiring (WP-BE6, T141)", () => {
 
 describe("local auth mode startup (AUTH_MODE=local)", () => {
     const ORIGINAL_ENV = process.env;
-    const { logger } = require("../utils/logger");
 
     beforeEach(() => {
         initBlobStagingStoreMock.mockReset();
