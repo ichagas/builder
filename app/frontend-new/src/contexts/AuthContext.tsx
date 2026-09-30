@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
-import { User, Session, createSession } from "@/lib/authTypes";
+import { User, Session, createSession, apiUserToUser } from "@/lib/authTypes";
+import { isMockAuth } from "@/lib/authMode";
+import {
+  getLocalSession,
+  getLocalToken,
+  signInLocal,
+  clearLocalSession,
+  subscribeLocalSession,
+} from "@/lib/localSession";
 import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
 import { AccountInfo, InteractionStatus, SilentRequest, PopupRequest } from "@azure/msal-browser";
 import { loginRequest, popupRedirectUri } from "@/lib/msalConfig";
@@ -19,6 +27,8 @@ interface AuthContextType {
   validateSignupCode: (code: string) => Promise<{ error: any }>;
   refreshAuth: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
+  /** Local dev sign-in (VITE_AUTH_MODE=mock only; undefined with MSAL). */
+  signInLocal?: (email: string, name: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +50,7 @@ function msalAccountToUser(account: AccountInfo): User {
   };
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+function MsalAuthProvider({ children }: { children: ReactNode }) {
   const { instance, accounts, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const account = useAccount(accounts[0] || null);
@@ -231,6 +241,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }}>
       {children}
     </AuthContext.Provider>
+  );
+}
+
+const localUnsupported = async () => ({
+  error: { message: "Not available with local development sign-in." },
+});
+
+/**
+ * Local dev sign-in provider (VITE_AUTH_MODE=mock). Never touches MSAL; exposes
+ * the same context shape so the rest of the app doesn't care which mode is on.
+ */
+function LocalAuthProvider({ children }: { children: ReactNode }) {
+  const [local, setLocal] = useState(() => getLocalSession());
+
+  useEffect(() => {
+    const sync = () => setLocal(getLocalSession());
+    const unsubscribe = subscribeLocalSession(sync);
+    window.addEventListener("storage", sync); // other tabs
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  const user = useMemo(() => (local ? apiUserToUser(local.user) : null), [local]);
+  const session = useMemo(() => (local ? createSession(local.token, user) : null), [local, user]);
+
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      session,
+      loading: false,
+      isSignupValidated: true,
+      signUp: localUnsupported,
+      signIn: localUnsupported,
+      signInWithGoogle: localUnsupported,
+      signInWithAzure: localUnsupported,
+      signOut: async () => {
+        clearLocalSession();
+        // Back to the sign-in screen.
+        if (window.location.pathname !== "/auth") window.location.assign("/auth");
+      },
+      resetPassword: localUnsupported,
+      updatePassword: localUnsupported,
+      validateSignupCode: async () => ({ error: null }),
+      refreshAuth: async () => setLocal(getLocalSession()),
+      getAccessToken: async () => getLocalToken(),
+      signInLocal: async (email: string, name: string) => {
+        try {
+          await signInLocal(email, name);
+          return { error: null };
+        } catch (err: any) {
+          return { error: { message: err?.message || "Sign-in failed" } };
+        }
+      },
+    }),
+    [user, session],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/** Picks the provider for the active auth mode (see lib/authMode.ts). */
+export function AuthProvider({ children }: { children: ReactNode }) {
+  return isMockAuth() ? (
+    <LocalAuthProvider>{children}</LocalAuthProvider>
+  ) : (
+    <MsalAuthProvider>{children}</MsalAuthProvider>
   );
 }
 

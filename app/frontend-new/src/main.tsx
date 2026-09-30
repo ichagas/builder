@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,12 +8,20 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { msalInstance } from "@/lib/msalInstance";
+import { isMockAuth } from "@/lib/authMode";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 import { router } from "@/app/router";
 import "./index.css";
 import "./styles/public.css";
 import "@/i18n";
+
+// Local dev sign-in (VITE_AUTH_MODE=mock) never loads or constructs MSAL; the
+// MSAL singleton is only imported (top-level await, es2022 target) otherwise.
+const msalInstance = isMockAuth() ? null : (await import("@/lib/msalInstance")).msalInstance;
+
+function MsalBoundary({ children }: { children: ReactNode }) {
+  return msalInstance ? <MsalBoundary>{children}</MsalBoundary> : <>{children}</>;
+}
 
 // T033: routing moved from App.tsx (Routes/Route) to a data router
 // (createBrowserRouter, src/app/router.tsx) with layouts and a route
@@ -23,7 +31,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <MsalProvider instance={msalInstance}>
+        <MsalBoundary>
           <AuthProvider>
             <AdminProvider>
               <RouterProvider router={router} />
@@ -31,7 +39,7 @@ createRoot(document.getElementById("root")!).render(
               <Toaster position="top-right" />
             </AdminProvider>
           </AuthProvider>
-        </MsalProvider>
+        </MsalBoundary>
       </QueryClientProvider>
     </ThemeProvider>
   </StrictMode>

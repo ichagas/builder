@@ -1178,5 +1178,19 @@
       "title": "Search",
       "description": "Type to search projects, tools and library. Use the arrow keys to choose a result and Enter to open it."
     }
+  },
+  "auth": {
+    "local": {
+      "title": "Local development sign-in",
+      "description": "Sign in without Microsoft Entra ID. The API creates the user on first use.",
+      "notice": "Local development sign-in — not for production",
+      "emailLabel": "Email",
+      "nameLabel": "Display name",
+      "defaultEmail": "dev@local.test",
+      "defaultName": "Local Developer",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "errorPrefix": "Sign-in failed"
+    }
   }
 }

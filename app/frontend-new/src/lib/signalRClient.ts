@@ -3,6 +3,8 @@
  * 
  * Class names kept as SignalR* for backward compatibility with imports.
  */
+import { isMockAuth } from "./authMode";
+import { getLocalToken } from "./localSession";
 
 // ============================================================================
 // Types
@@ -342,6 +344,9 @@ private buildWsUrl(): void {
    */
   private async getAuthToken(): Promise<string> {
     if (this.authToken) return this.authToken;
+
+    // Mock mode (local dev sign-in): the dev-login JWT; MSAL is never loaded.
+    if (isMockAuth()) return getLocalToken() ?? "";
 
     try {
       // Try to get MSAL token dynamically
