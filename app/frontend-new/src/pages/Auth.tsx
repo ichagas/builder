@@ -184,5 +184,5 @@ function MsalAuthPage() {
 
 /** `/auth`: local dev sign-in form in local mode, Microsoft SSO otherwise. */
 export default function Auth() {
-  return isLocalAuth() ? <LocalSignIn /> : <MsalAuthPage />;
+  return import.meta.env.DEV && isLocalAuth() ? <LocalSignIn /> : <MsalAuthPage />;
 }

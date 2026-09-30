@@ -306,7 +306,9 @@ function LocalAuthProvider({ children }: { children: ReactNode }) {
 
 /** Picks the provider for the active auth mode (see lib/authMode.ts). */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  return isLocalAuth() ? (
+  // `import.meta.env.DEV &&` lets the bundler drop the local branch (and lib/localSession)
+  // from production builds.
+  return import.meta.env.DEV && isLocalAuth() ? (
     <LocalAuthProvider>{children}</LocalAuthProvider>
   ) : (
     <MsalAuthProvider>{children}</MsalAuthProvider>

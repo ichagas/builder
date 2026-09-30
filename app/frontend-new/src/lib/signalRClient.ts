@@ -346,7 +346,7 @@ private buildWsUrl(): void {
     if (this.authToken) return this.authToken;
 
     // Local dev sign-in: the dev-login JWT (MSAL is never used).
-    if (isLocalAuth()) return getLocalToken() ?? "";
+    if (import.meta.env.DEV && isLocalAuth()) return getLocalToken() ?? "";
 
     try {
       // Try to get MSAL token dynamically

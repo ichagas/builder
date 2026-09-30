@@ -32,7 +32,8 @@ const isSameOrigin = (): boolean => {
  */
 export async function getAccessToken(): Promise<string | null> {
   // Local dev sign-in: the dev-login JWT (msalInstance is null in this mode).
-  if (isLocalAuth() || !msalInstance) return getLocalToken();
+  if (import.meta.env.DEV && isLocalAuth()) return getLocalToken();
+  if (!msalInstance) return null;
   try {
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length === 0) {
@@ -149,7 +150,7 @@ class ApiClient {
   private async getMsalToken(): Promise<string | null> {
     // Local mode: read the stored dev token every time (no 5-minute cache), so
     // sign-out / sign-in take effect immediately.
-    if (isLocalAuth()) return getLocalToken();
+    if (import.meta.env.DEV && isLocalAuth()) return getLocalToken();
 
     // If we have a cached token, use it
     if (this.cachedToken) {
@@ -199,7 +200,7 @@ class ApiClient {
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 401 && isLocalAuth() && getLocalToken()) {
+    if (import.meta.env.DEV && response.status === 401 && isLocalAuth() && getLocalToken()) {
       // Expired/invalid dev token: back to the sign-in screen.
       handleLocalUnauthorized();
     }
@@ -340,7 +341,8 @@ export const authApi = {
 
   // Check if authenticated via MSAL
   async isAuthenticated(): Promise<boolean> {
-    if (isLocalAuth() || !msalInstance) return getLocalToken() !== null;
+    if (import.meta.env.DEV && isLocalAuth()) return getLocalToken() !== null;
+    if (!msalInstance) return false;
     const accounts = msalInstance.getAllAccounts();
     return accounts.length > 0;
   },
