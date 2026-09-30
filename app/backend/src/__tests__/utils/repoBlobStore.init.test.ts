@@ -59,4 +59,14 @@ describe("RepoBlobStore initialization", () => {
     it("throws when accessing the store before initialization", () => {
         expect(() => getRepoBlobStore()).toThrow("Blob staging store has not been initialized");
     });
+
+    it("getRepoBlobStore explains that blob storage is off in local auth mode", () => {
+        process.env.AUTH_MODE = "local";
+        try {
+            expect(() => getRepoBlobStore()).toThrow("Azure blob storage is not configured (local mode)");
+        } finally {
+            delete process.env.AUTH_MODE;
+        }
+        expect(() => getRepoBlobStore()).toThrow("Blob staging store has not been initialized");
+    });
 });
