@@ -8,7 +8,7 @@ Worktrees: `../PRONGHORN-BLUE-wt/<WP-ID>`.
 
 ## Current state
 
-- **Wave:** batch N2b in progress (A3, A4, A5, O2 + N2a defect fixes), 2026-09-29. Local macOS machine. Remote `origin` = ichagas/builder
+- **Wave:** COMPLETE (2026-09-30). All tasks done except T141, T142 (BLOCKED-EXTERNAL). See "Final report". Local macOS machine. Remote `origin` = ichagas/builder
 - **Open blockers:** none in code. Spend limit hit twice (see wave log).
 - **Baseline (before fork, 2026-09-25):** legacy FE lint 0 errors / 102 warnings, 307 unit tests pass, build OK. BE build OK, 489 tests pass. Docker available. Terraform CLI **not installed** (terraform fmt/validate cannot run locally).
 
@@ -274,3 +274,29 @@ Open branches/worktrees: `wp/X3`, `wp/V2`, `wp/V3`, `wp/V4` (merged; delete), `w
 ## Paused state (2026-09-29, after T071): resume here
 
 Waiting on the user's decision about T074. The user said this is a dev env with no Terraform/Azure. The options: treat T015/T073 (and maybe T141/T142) as code-complete with the apply out of scope, then do the full T074; or keep them BLOCKED-EXTERNAL and do the partial T074 (code + CI + docs, keep the legacy Terraform module). Everything else is done: 0 open tasks except T074; BLOCKED-EXTERNAL T015, T073, T141, T142. No worktrees, no agents, no stack. After T074: final report in progress.md, then push feature/frontend-new.
+- **User decision (2026-09-30):** dev environment with no Azure behind it → T015 and T073 are code-complete, apply out of scope. **Merged WP-X2b (T074):** app/frontend/ removed (plus its ignored dist/node_modules on disk), CI legacy jobs and deploy steps removed, `module.frontend` and the `primary_frontend` switch removed (frontend_new is the only frontend), e2e harness new-only (axe-legacy.json kept frozen), constitution v2.1.0, README, instructions, skills and docs updated. Verified: lint 0 errors, tsc OK, **1039 FE tests**, build OK, **BE 1197 tests**, 416 e2e tests listed, workflows parse. E2E sanity after T074 (pr-01, pr-08, shell redirects + remount, NA-01; desktop + mobile): all green, no fixes.
+
+## Final report (2026-09-30)
+
+**Done:** Phases 0–12 and T170–T171. Every task in tasks.md is `[X]` except T141 and T142 (`[~]` BLOCKED-EXTERNAL). The new frontend (`app/frontend-new`) replaces the legacy one: 20 restyled pages, the new shell, and the new capabilities (US4 versions and changes, US5 assurance console, US6 onboarding), plus backend WPs BE1–BE8.
+
+**BLOCKED-EXTERNAL, and the human step each needs:**
+- **T141** (onboarding sandbox job): `terraform apply` of the Container Apps Job with restricted egress, in a real Azure environment; the image and dispatcher code are done.
+- **T142** (`goa-standards/assurance-mesh`): create the external repo and move `external/goa-standards-assurance-mesh/` into it, publish the `mesh.yml@v3` workflow and the Azure Pipelines template, and grant the GitHub App access.
+- **T015 and T073** are code-complete with the apply out of scope (dev environment, user decision). Anyone deploying to Azure later: `terraform fmt -check` and `validate` (not available locally), then follow quickstart.md "Cutover". An apply against an environment that still has the legacy Container App destroys it.
+
+**Test results (local stack; staging is BLOCKED-EXTERNAL):**
+- Regression PR-01…PR-21 green at 1440 and 390; PR-22 shell suite green at both. See checklists/regression.md.
+- New capabilities: us4 44/44, us5 47/47, us6 31/31, each at desktop and mobile.
+- Axe: zero violations on the shell and new screens; the regression rows have no new violations vs the legacy baseline.
+- Unit tests: frontend 1039, backend 1197. Lint 0 errors (163 warnings). Build OK.
+- pr-14 was flaky on mobile (a test race with the Radix Select dismiss layer), fixed in the spec with a stricter wait, 18/18 after the fix. NV-05 was flaky once (strict-mode locator), fixed.
+
+**Escalations to Opus 5.5:** one, WP-BE5 (T140), fix round 3, after two Sonnet rounds (see "Escalations"). The orchestrator runs on Opus 5.5.
+
+**Deviations from the spec:**
+- The user switched to a short path (2026-09-28): no per-WP tester or E2E; developers wrote specs, and E2E ran in batches of 3–5 WPs plus one final pass, serially on one stack (8 GB machine).
+- T071 ran on the local stack, not staging, and T074 happened before a live host switch (dev environment, user decision).
+- Phase R: strict D-14 scoring selected Chat, Repository, Build and Canvas. Spec 009 (Artifacts) is Deferred.
+- Known gaps are in checklists/followups.md: an org aggregate endpoint, policy-row delete, exception revoke, a caller org-id endpoint, per-change staged files, the backend not advancing `phase_state`, and realtime log replay.
+- Also unresolved: `infra/scripts/tests` fail 7/7 (failing before T074), and `VITE_APP_CHANNEL` is set but unused.
