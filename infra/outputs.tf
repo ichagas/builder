@@ -163,11 +163,6 @@ output "api_uami_id" {
   value       = azurerm_user_assigned_identity.api.id
 }
 
-output "frontend_uami_id" {
-  description = "Resource ID of the frontend container app's user-assigned managed identity"
-  value       = azurerm_user_assigned_identity.frontend.id
-}
-
 output "frontend_new_uami_id" {
   description = "Resource ID of the frontend-new (redesigned frontend, spec 007) container app's user-assigned managed identity"
   value       = azurerm_user_assigned_identity.frontend_new.id
@@ -191,39 +186,14 @@ output "workload_environment_name" {
 # Frontend Outputs
 # -----------------------------------------------------------------------------
 
-output "frontend_url" {
-  description = "Frontend Container App URL"
-  value       = module.frontend.app_url
-}
-
-output "frontend_app_url" {
-  description = "DEPRECATED: Use frontend_url instead. Frontend Container App URL."
-  value       = module.frontend.app_url
-}
-
-output "frontend_fqdn" {
-  description = "Frontend Container App FQDN"
-  value       = module.frontend.app_fqdn
-}
-
 output "frontend_new_url" {
-  description = "Frontend-new (redesigned frontend, spec 007) Container App URL"
+  description = "Frontend (spec 007 redesign) Container App URL"
   value       = module.frontend_new.app_url
 }
 
 output "frontend_new_fqdn" {
-  description = "Frontend-new (redesigned frontend, spec 007) Container App FQDN"
+  description = "Frontend (spec 007 redesign) Container App FQDN"
   value       = module.frontend_new.app_fqdn
-}
-
-output "primary_frontend" {
-  description = "Which frontend Container App is production-primary (var.primary_frontend): \"legacy\" (module.frontend) or \"new\" (module.frontend_new). See specs/007-frontend-new/quickstart.md \"Cutover\" (WP-X2, T073)."
-  value       = var.primary_frontend
-}
-
-output "primary_frontend_url" {
-  description = "Public URL of the currently-primary frontend (module.frontend or module.frontend_new per var.primary_frontend), preferring its *_app_url_override when set. This is the URL end users and the Entra primary redirect should resolve to after cutover."
-  value       = local.primary_frontend_app_url
 }
 
 # -----------------------------------------------------------------------------
@@ -294,27 +264,22 @@ output "entra_app_object_id" {
 }
 
 output "vite_auth_mode" {
-  description = "DEPRECATED: Use frontend_build_env_vars instead."
+  description = "DEPRECATED: Use frontend_new_build_env_vars instead."
   value       = var.vite_auth_mode
 }
 
 output "vite_github_org" {
-  description = "DEPRECATED: Use frontend_build_env_vars instead."
+  description = "DEPRECATED: Use frontend_new_build_env_vars instead."
   value       = local.configured_github_org
 }
 
 output "vite_use_azure_api" {
-  description = "DEPRECATED: Use frontend_build_env_vars instead."
+  description = "DEPRECATED: Use frontend_new_build_env_vars instead."
   value       = tostring(var.vite_use_azure_api)
 }
 
-output "frontend_build_env_vars" {
-  description = "Frontend build-time env vars for `npm run build`. Merges static config from frontend_build_vars with infrastructure-derived values."
-  value       = local.frontend_build_environment_variables
-}
-
 output "frontend_new_build_env_vars" {
-  description = "Frontend-new (redesigned frontend, spec 007) build-time env vars for `npm run build`. Merges static config from frontend_new_build_vars with infrastructure-derived values."
+  description = "Frontend (spec 007 redesign) build-time env vars for `npm run build`. Merges static config from frontend_new_build_vars with infrastructure-derived values."
   value       = local.frontend_new_build_environment_variables
 }
 
@@ -329,7 +294,7 @@ output "api_container_env_vars" {
     local.api_environment_variables,
     { for k, v in local.api_secret_environment_variables : k => "secretref:${v}" },
     # Override bootstrap values with effective Entra outputs (can't live in
-    # the local because module.entra_app_registration → module.frontend →
+    # the local because module.entra_app_registration → module.frontend_new →
     # module.container_apps → local.api_environment_variables would cycle).
     # Names are ENTRA_* (not AZURE_*) to avoid @azure/identity SDK conflict —
     # see infra/locals.tf api_environment_variables for full explanation.
@@ -376,7 +341,7 @@ output "deployment_summary" {
     postgresql_database     = module.postgresql.database_name
     high_availability       = var.enable_high_availability
     container_app_url       = module.container_apps.app_url
-    frontend_url            = module.frontend.app_url
+    frontend_url            = module.frontend_new.app_url
     apim_gateway_url        = module.api_management.gateway_url
     acr_login_server        = local.acr_login_server
     keyvault_uri            = module.keyvault.vault_uri

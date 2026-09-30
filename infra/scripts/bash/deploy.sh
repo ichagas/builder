@@ -222,7 +222,7 @@ if [[ "$SKIP_BUILD" == false ]]; then
   npm run build || die "Frontend build failed"
   ok "Frontend built successfully"
 
-  FRONTEND_IMAGE="$ACR_LOGIN_SERVER/pronghorn-frontend:latest"
+  FRONTEND_IMAGE="$ACR_LOGIN_SERVER/pronghorn-frontend-new:latest"
   info "Building frontend Docker image..."
   docker build -t "$FRONTEND_IMAGE" -f Dockerfile . || die "Frontend Docker build failed"
   ok "Frontend image built"
@@ -261,7 +261,7 @@ if [[ "$SKIP_CONTAINER_APPS" == false ]]; then
     "-var-file=$TFVARS_FILE"
     "-var=apim_publisher_email=$APIM_PUBLISHER_EMAIL"
     "-var=container_image=${ACR_LOGIN_SERVER}/pronghorn-api:latest"
-    "-var=frontend_container_image=${ACR_LOGIN_SERVER}/pronghorn-frontend:latest"
+    "-var=frontend_new_container_image=${ACR_LOGIN_SERVER}/pronghorn-frontend-new:latest"
   )
 
   [[ -n "$POSTGRES_PASSWORD" ]] && TF_ARGS+=("-var=administrator_password=$POSTGRES_PASSWORD")
@@ -279,7 +279,7 @@ if [[ "$SKIP_CONTAINER_APPS" == false ]]; then
     step "Deployment Complete!"
 
     API_URL="$(terraform output -raw container_app_url 2>/dev/null || echo 'N/A')"
-    FRONTEND_URL="$(terraform output -raw frontend_app_url 2>/dev/null || echo 'N/A')"
+    FRONTEND_URL="$(terraform output -raw frontend_new_url 2>/dev/null || echo 'N/A')"
     APIM_URL="$(terraform output -raw api_management_gateway_url 2>/dev/null || echo 'N/A')"
 
     printf '\n\033[36mDeployed Resources:\033[0m\n'

@@ -31,7 +31,6 @@ locals {
   # alphanumeric — "repo" infix keeps it distinct from local.storage_name.
   repo_storage_name     = "st${var.project_name}repo${random_string.suffix.result}"
   container_app_name    = "ca-${var.project_name}-api"
-  frontend_app_name     = "ca-${var.project_name}-frontend"
   frontend_new_app_name = "ca-${var.project_name}-frontend-new"
   # Onboarding sandbox job (spec 007, epic B3, WP-BE6, T141).
   onboarding_sandbox_job_name = "caj-${var.project_name}-onboarding-sandbox"
@@ -168,40 +167,15 @@ locals {
   )
 
   # ---------------------------------------------------------------------------
-  # Frontend build-time environment variables (mirrors api_environment_variables)
-  # Static/configurable vars → var.frontend_build_vars (set in tfvars)
-  # Computed vars (module outputs) → merged here automatically
-  # All keys MUST be VITE_ prefixed (Vite build requirement).
-  # ---------------------------------------------------------------------------
-  frontend_build_environment_variables = merge(
-    var.frontend_build_vars,
-    {
-      # Infrastructure-derived values (override-aware)
-      # VITE_API_BASE_URL / VITE_WS_URL: when api_base_url_override is set (public
-      # custom domain fronting the API), the browser must use it instead of the
-      # internal APIM gateway URL, which is not reachable from a public client.
-      # VITE_AZURE_REDIRECT_URI: when frontend_app_url_override is set (public
-      # custom domain fronting the frontend), bake it as the MSAL redirect URI.
-      "VITE_ENTRA_CLIENT_ID"    = local.effective_client_id
-      "VITE_ENTRA_TENANT_ID"    = local.effective_tenant_id
-      "VITE_API_BASE_URL"       = coalesce(var.api_base_url_override, module.api_management.gateway_url)
-      "VITE_AZURE_REDIRECT_URI" = coalesce(var.frontend_app_url_override, module.frontend.app_url)
-      "VITE_WS_URL"             = var.api_base_url_override != null ? replace(var.api_base_url_override, "https://", "wss://") : module.container_apps.app_url
-    },
-    # Derive VITE_GITHUB_ORG from canonical github_org (with compatibility fallback)
-    local.configured_github_org != "" ? {
-      "VITE_GITHUB_ORG" = local.configured_github_org
-    } : {}
-  )
-
-  # ---------------------------------------------------------------------------
-  # Frontend-new (redesigned frontend, spec 007) build-time environment
-  # variables. Mirrors frontend_build_environment_variables above, but points
-  # at the "next" channel's own host (module.frontend_new / the next.<domain>
-  # custom domain via frontend_new_app_url_override) instead of the legacy
-  # frontend host. Kept as a separate map (not merged into the legacy one) so
-  # the two frontends can have independent redirect URIs / channel flags while
-  # sharing the same API/APIM backend.
+  # Frontend build-time environment variables (spec 007 redesign, module
+  # "frontend_new"). Static/configurable vars -> var.frontend_new_build_vars
+  # (tfvars); computed vars (module outputs) are merged here. All keys MUST be
+  # VITE_ prefixed (Vite build requirement).
+  # VITE_API_BASE_URL / VITE_WS_URL: when api_base_url_override is set (public
+  # custom domain fronting the API), the browser must use it instead of the
+  # internal APIM gateway URL, which is not reachable from a public client.
+  # VITE_AZURE_REDIRECT_URI: when frontend_new_app_url_override is set (public
+  # custom domain fronting the frontend), bake it as the MSAL redirect URI.
   # ---------------------------------------------------------------------------
   frontend_new_build_environment_variables = merge(
     var.frontend_new_build_vars,
@@ -217,12 +191,6 @@ locals {
       "VITE_GITHUB_ORG" = local.configured_github_org
     } : {}
   )
-
-  # ---------------------------------------------------------------------------
-  # Primary frontend switch (spec 007, WP-X2, T073). See var.primary_frontend.
-  # ---------------------------------------------------------------------------
-  primary_frontend_is_new  = var.primary_frontend == "new"
-  primary_frontend_app_url = local.primary_frontend_is_new ? coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url) : coalesce(var.frontend_app_url_override, module.frontend.app_url)
 }
 
 # =============================================================================

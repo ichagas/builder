@@ -176,17 +176,15 @@ genapp_workflow_file = "genapp-deploy.yml"
 run_migrations_on_startup = true
 
 # ── Container Apps ────────────────────────────────────────────────────────────
-api_container_name       = "api"
-api_target_port          = 8080
-api_ingress_transport    = "auto"
-frontend_container_name  = "frontend"
-container_image          = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" # Placeholder — overridden after ACR build
-frontend_container_image = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" # Placeholder — overridden after ACR build
-container_cpu            = 2.0                                                           # Production: more CPU
-container_memory         = "4Gi"                                                         # Production: more memory
-container_min_replicas   = 2                                                             # Production: minimum 2 for HA
-container_max_replicas   = 10
-aca_environment_name     = "goa-cc-pronghorn-uat-cae-001"
+api_container_name     = "api"
+api_target_port        = 8080
+api_ingress_transport  = "auto"
+container_image        = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" # Placeholder — overridden after ACR build
+container_cpu          = 2.0                                                           # Production: more CPU
+container_memory       = "4Gi"                                                         # Production: more memory
+container_min_replicas = 2                                                             # Production: minimum 2 for HA
+container_max_replicas = 10
+aca_environment_name   = "goa-cc-pronghorn-uat-cae-001"
 
 # VNet Injection — Container Apps Environment deployed inside this subnet
 container_apps_internal_only = true # PBMM: internal load balancer only
@@ -196,10 +194,10 @@ workload_aca_environment_name = "goa-cc-pronghorn-uat-workload-cae-001"
 workload_aca_internal_only    = true
 
 # Frontend
-frontend_container_cpu    = 0.5   # Production: more CPU than dev default (0.25)
-frontend_container_memory = "1Gi" # Production: more memory than dev default (0.5Gi)
-frontend_min_replicas     = 2     # Production: minimum 2 for HA
-frontend_max_replicas     = 10
+frontend_new_container_cpu    = 0.5   # Production: more CPU than dev default (0.25)
+frontend_new_container_memory = "1Gi" # Production: more memory than dev default (0.5Gi)
+frontend_new_min_replicas     = 2     # Production: minimum 2 for HA
+frontend_new_max_replicas     = 10
 
 # ── API Management ───────────────────────────────────────────────────────────
 apim_sku                  = "Premium_1" # PBMM: Premium required for Internal VNet integration + multi-AZ + SLA
@@ -256,7 +254,7 @@ vite_auth_mode                = "msal"
 vite_use_azure_api            = true
 
 # ── Frontend Build-Time Environment Variables ────────────────────────────────
-frontend_build_vars = {
+frontend_new_build_vars = {
   VITE_AUTH_MODE     = "msal"
   VITE_USE_AZURE_API = "true"
 }
@@ -269,8 +267,8 @@ frontend_build_vars = {
 # browser cannot reach). The frontend makes direct browser calls to the API, so
 # api_base_url_override MUST be publicly reachable. Leave commented to use the
 # auto-generated internal URLs.
-# frontend_app_url_override = "REPLACE: https://app.<your-domain>"     # MSAL redirect URI + CORS + Entra redirect
-# api_base_url_override     = "REPLACE: https://api.<your-domain>"     # VITE_API_BASE_URL + derived VITE_WS_URL
+# frontend_new_app_url_override = "REPLACE: https://app.<your-domain>" # MSAL redirect URI + CORS + Entra redirect (set to your production domain)
+# api_base_url_override         = "REPLACE: https://api.<your-domain>" # VITE_API_BASE_URL + derived VITE_WS_URL
 
 # ── Azure AI Foundry ──────────────────────────────────────────────────────────
 enable_ai_foundry                = true
