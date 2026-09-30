@@ -159,6 +159,44 @@ describe("authMiddleware", () => {
     delete process.env.JWT_SECRET;
   });
 
+  it("pins HS256 on the JWT_SECRET fallback", () => {
+    process.env.JWT_SECRET = "test-secret-key-for-unit-tests";
+    (jwt.verify as jest.Mock).mockImplementation((_t, _k, options, callback) => {
+      if (callback) {
+        callback(new Error("Azure AD fail"), null);
+        return undefined;
+      }
+      expect(options).toEqual({ algorithms: ["HS256"] });
+      return { sub: "u", email: "e@x.co" };
+    });
+    const { req, res, next } = mockReqRes({ authorization: "Bearer some-jwt" });
+    authMiddleware(req, res, next);
+    expect(next).toHaveBeenCalled();
+    delete process.env.JWT_SECRET;
+  });
+
+  it("never uses the JWT_SECRET fallback when NODE_ENV=production", () => {
+    const prevEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.JWT_SECRET = "test-secret-key-for-unit-tests";
+    (jwt.verify as jest.Mock).mockImplementation((_t, _k, options, callback) => {
+      if (callback) {
+        callback(new Error("Azure AD fail"), null);
+        return undefined;
+      }
+      return { sub: "local-user", email: "local@test.com" };
+    });
+    const { req, res, next } = mockReqRes({ authorization: "Bearer some-jwt" });
+    authMiddleware(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+    const opt = mockReqRes({ authorization: "Bearer some-jwt" });
+    optionalAuthMiddleware(opt.req, opt.res, opt.next);
+    expect(opt.req.user).toBeUndefined();
+    process.env.NODE_ENV = prevEnv;
+    delete process.env.JWT_SECRET;
+  });
+
   it("sets user from Azure AD token on successful Azure AD verification", async () => {
     (jwt.verify as jest.Mock).mockImplementation((_token, _key, _opts, callback) => {
       if (callback) {

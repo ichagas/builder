@@ -131,22 +131,6 @@ async function validateToken(token: string): Promise<{ userId: string; email?: s
     }
   }
 
-  // Development mode: accept APIM-style headers encoded in token
-  if (process.env.NODE_ENV === "development" || process.env.SKIP_AUTH === "true") {
-    try {
-      // Try simple JWT decode for dev tokens
-      const decoded = jwt.decode(token) as any;
-      if (decoded) {
-        return {
-          userId: decoded.sub || decoded.oid || decoded.id || "dev-user",
-          email: decoded.email || decoded.preferred_username,
-        };
-      }
-    } catch {
-      // Fall through to Azure AD validation
-    }
-  }
-
   return new Promise((resolve) => {
     jwt.verify(
       token,

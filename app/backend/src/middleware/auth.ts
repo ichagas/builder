@@ -68,7 +68,7 @@ if (!LOCAL_AUTH && !CLIENT_ID) {
   );
 }
 
-const AUTH_AUDIENCES: [string, string] = [CLIENT_ID as string, `api://${CLIENT_ID}`];
+const AUTH_AUDIENCES: [string, string] = [CLIENT_ID ?? "", `api://${CLIENT_ID ?? ""}`];
 
 // JWKS client for Azure AD token validation
 const jwksClient = jwksRsa({
@@ -169,6 +169,15 @@ function localUserFromToken(token: string): Express.Request["user"] | undefined 
 }
 
 /**
+ * The JWT_SECRET (HS256) fallback exists for the E2E harness (NODE_ENV=test)
+ * and local development. It must NEVER run in production, even when Entra
+ * validation is the configured mode.
+ */
+function hs256FallbackAllowed(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
+/**
  * APIM-aware Authentication Middleware
  * 
  * First checks for APIM headers (set by validate-jwt policy):
@@ -249,9 +258,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
         if (err) {
           // Fall back to local JWT secret for development
           const jwtSecret = process.env.JWT_SECRET;
-          if (jwtSecret) {
+          if (jwtSecret && hs256FallbackAllowed()) {
             try {
-              const localDecoded = jwt.verify(token, jwtSecret) as JwtPayload;
+              const localDecoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] }) as JwtPayload;
               req.user = {
                 id: localDecoded.sub,
                 email: localDecoded.email || localDecoded.preferred_username || "",
@@ -360,14 +369,14 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
       }
 
       const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) {
+      if (!jwtSecret || !hs256FallbackAllowed()) {
         req.user = undefined;
         next();
         return;
       }
 
       try {
-        const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+        const decoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] }) as JwtPayload;
         req.user = {
           id: decoded.sub,
           email: decoded.email || decoded.preferred_username || "",
