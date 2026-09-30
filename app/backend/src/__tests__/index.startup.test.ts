@@ -125,3 +125,65 @@ describe("onboarding job dispatcher startup wiring (WP-BE6, T141)", () => {
         });
     });
 });
+
+describe("local auth mode startup (AUTH_MODE=local)", () => {
+    const ORIGINAL_ENV = process.env;
+    const { logger } = require("../utils/logger");
+
+    beforeEach(() => {
+        initBlobStagingStoreMock.mockReset();
+        runMigrationsMock.mockReset().mockResolvedValue(undefined);
+        initWebSocketMock.mockReset().mockReturnValue({ close: jest.fn() });
+        listenMock.mockReset().mockImplementation((_port: number, callback: () => void) => {
+            callback();
+            return { close: serverCloseMock };
+        });
+        (logger.warn as jest.Mock).mockClear();
+        (logger.info as jest.Mock).mockClear();
+        process.env = {
+            ...ORIGINAL_ENV,
+            AUTH_MODE: "local",
+            NODE_ENV: "development",
+            JWT_SECRET: "a".repeat(64),
+            POSTGRES_HOST: "localhost",
+        };
+        delete process.env.AZURE_STORAGE_ACCOUNT_NAME;
+    });
+    afterAll(() => {
+        process.env = ORIGINAL_ENV;
+    });
+
+    it("skips blob store init (with a WARN) when no storage account is set, and logs the mode", async () => {
+        await startServer();
+        expect(initBlobStagingStoreMock).not.toHaveBeenCalled();
+        expect(listenMock).toHaveBeenCalledTimes(1);
+        expect((logger.warn as jest.Mock).mock.calls.flat().join("\n")).toMatch(/AZURE_STORAGE_ACCOUNT_NAME/);
+        expect((logger.info as jest.Mock).mock.calls.flat().join("\n")).toMatch(/Auth mode: local/);
+    });
+
+    it("still initialises blob storage when an account name is set", async () => {
+        process.env.AZURE_STORAGE_ACCOUNT_NAME = "repofilesaccount";
+        await startServer();
+        expect(initBlobStagingStoreMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("warns when POSTGRES_HOST is not local", async () => {
+        process.env.POSTGRES_HOST = "pg-shared.postgres.database.azure.com";
+        await startServer();
+        expect((logger.warn as jest.Mock).mock.calls.flat().join("\n")).toMatch(/POSTGRES_HOST/);
+    });
+
+    it("refuses to start without NODE_ENV=development|test", async () => {
+        delete process.env.NODE_ENV;
+        await expect(startServer()).rejects.toThrow(/NODE_ENV/);
+        expect(listenMock).not.toHaveBeenCalled();
+    });
+
+    it("keeps Entra-mode fail-fast on blob init", async () => {
+        delete process.env.AUTH_MODE;
+        initBlobStagingStoreMock.mockImplementationOnce(() => {
+            throw new Error("AZURE_STORAGE_ACCOUNT_NAME is required");
+        });
+        await expect(startServer()).rejects.toThrow("AZURE_STORAGE_ACCOUNT_NAME is required");
+    });
+});

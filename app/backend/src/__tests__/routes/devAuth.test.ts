@@ -10,7 +10,7 @@ jest.mock("../../utils/logger", () => ({
 // Minimal stateful fake of the tables dev-login touches.
 const state = {
   orgs: [] as { id: string; name: string }[],
-  users: [] as { id: string; email: string; role: string; name: string }[],
+  users: [] as { id: string; email: string; role: string; name: string; provider?: string }[],
   roles: new Set<string>(),
   profiles: new Map<string, { org_id: string | null }>(),
 };
@@ -22,9 +22,13 @@ function fakeQuery(text: string, params: any[] = []) {
     state.orgs.push(o);
     return { rows: [{ id: o.id }] };
   }
-  if (text.includes("FROM auth.users")) return { rows: state.users.filter((u) => u.email === params[0]) };
+  if (text.includes("FROM auth.users")) {
+    expect(text).toContain("lower(email) = $1");
+    return { rows: state.users.filter((u) => u.email.toLowerCase() === params[0]) };
+  }
   if (text.includes("INSERT INTO auth.users")) {
-    const u = { id: params[0], email: params[1], role: "user", name: JSON.parse(params[2]).name };
+    const meta = JSON.parse(params[2]);
+    const u = { id: params[0], email: params[1], role: "user", name: meta.name, provider: meta.provider };
     state.users.push(u);
     return { rows: [u] };
   }
@@ -129,9 +133,88 @@ describe("with AUTH_MODE=local", () => {
     [{ email: "a@b.co", name: "x".repeat(101) }],
     [{ email: `${"x".repeat(250)}@b.co`, name: "A" }],
     [{ email: 5, name: "A" }],
+    [{ email: "a@b.co" }],
+    [{ email: "a b@c.co", name: "A" }],
+    [null],
   ])("rejects bad input %j with 400", async (body) => {
-    const res = await request(buildV1()).post("/api/v1/auth/dev-login").send(body);
+    const res = await request(buildV1()).post("/api/v1/auth/dev-login").send(body as any);
     expect(res.status).toBe(400);
     expect(state.users).toHaveLength(0);
+  });
+
+  it("marks users it creates as local-dev", async () => {
+    await request(buildV1()).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
+    expect(state.users[0].provider).toBe("local-dev");
+  });
+
+  it("matches an existing dev user case-insensitively", async () => {
+    const app = buildV1();
+    const a = await request(app).post("/api/v1/auth/dev-login").send({ email: "dev@local.test", name: "Dev" });
+    const b = await request(app).post("/api/v1/auth/dev-login").send({ email: "DEV@Local.Test", name: "Dev" });
+    expect(b.status).toBe(200);
+    expect(b.body.user.id).toBe(a.body.user.id);
+    expect(state.users).toHaveLength(1);
+  });
+
+  it("409s for a pre-existing user not created by dev-login and does not promote it", async () => {
+    state.users.push({ id: "real-1", email: "Real.Person@corp.com", role: "user", name: "Real", provider: "azure" });
+    state.users.push({ id: "real-2", email: "legacy@corp.com", role: "user", name: "Legacy" }); // no provider at all
+    for (const email of ["real.person@corp.com", "legacy@corp.com"]) {
+      const res = await request(buildV1()).post("/api/v1/auth/dev-login").send({ email, name: "X" });
+      expect(res.status).toBe(409);
+      expect(res.body.token).toBeUndefined();
+    }
+    expect(state.roles.size).toBe(0);
+    expect(state.profiles.size).toBe(0);
+    expect(state.orgs.length).toBeLessThanOrEqual(1); // never attaches the user to an org
+  });
+
+  describe("request guards (403 unless AUTH_LOCAL_ALLOW_REMOTE=true)", () => {
+    const body = { email: "dev@local.test", name: "Dev" };
+    it.each([
+      ["a non-local Host header (DNS rebinding)", { Host: "evil.example.com" }],
+      ["a non-local Host with a port", { Host: "rebind.attacker.net:3001" }],
+      ["an Origin outside ALLOWED_ORIGINS", { Origin: "https://evil.example.com" }],
+      ["X-Forwarded-For", { "X-Forwarded-For": "203.0.113.9" }],
+      ["Forwarded", { Forwarded: "for=203.0.113.9" }],
+    ])("rejects %s", async (_label, headers) => {
+      const res = await request(buildV1()).post("/api/v1/auth/dev-login").set(headers).send(body);
+      expect(res.status).toBe(403);
+      expect(state.users).toHaveLength(0);
+    });
+
+    it("rejects a wildcard-only ALLOWED_ORIGINS for a browser Origin", async () => {
+      process.env.ALLOWED_ORIGINS = "*";
+      const res = await request(buildV1()).post("/api/v1/auth/dev-login").set("Origin", "https://evil.example.com").send(body);
+      expect(res.status).toBe(403);
+    });
+
+    it("accepts localhost Hosts and an allowed Origin", async () => {
+      process.env.ALLOWED_ORIGINS = "http://localhost:8080";
+      const res = await request(buildV1())
+        .post("/api/v1/auth/dev-login")
+        .set({ Host: "localhost:3001", Origin: "http://localhost:8080" })
+        .send(body);
+      expect(res.status).toBe(200);
+      for (const host of ["127.0.0.1:3001", "[::1]:3001", "localhost"]) {
+        const r = await request(buildV1()).post("/api/v1/auth/dev-login").set("Host", host).send(body);
+        expect(r.status).toBe(200);
+      }
+    });
+
+    it("AUTH_LOCAL_ALLOW_REMOTE=true lifts the guards", async () => {
+      process.env.AUTH_LOCAL_ALLOW_REMOTE = "true";
+      const res = await request(buildV1())
+        .post("/api/v1/auth/dev-login")
+        .set({ Host: "api.internal", "X-Forwarded-For": "10.1.1.1", Origin: "https://x.example" })
+        .send(body);
+      expect(res.status).toBe(200);
+    });
+
+    it("rejects a non-loopback socket", () => {
+      const { remoteRequestReason } = require("../../routes/devAuth");
+      const req = { socket: { remoteAddress: "192.168.1.20" }, headers: { host: "localhost:3001" } };
+      expect(remoteRequestReason(req)).toMatch(/loopback/);
+    });
   });
 });

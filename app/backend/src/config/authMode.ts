@@ -8,9 +8,10 @@
  *     are accepted.
  *   - POST /api/v1/auth/dev-login is mounted (it is absent otherwise).
  *
- * Because dev-login is a passwordless sign-in, the process REFUSES TO START
- * when AUTH_MODE=local is combined with NODE_ENV=production, with a hosting
- * marker of Azure Container Apps / App Service, or with a weak JWT_SECRET.
+ * Because dev-login is a passwordless sign-in, local mode is an allow-list:
+ * the process REFUSES TO START unless NODE_ENV is exactly "development" or
+ * "test" (unset is refused), and also with a hosting marker of Azure Container
+ * Apps / App Service, or with a weak / placeholder JWT_SECRET.
  */
 import jwt from "jsonwebtoken";
 
@@ -22,6 +23,27 @@ export const LOCAL_JWT_EXPIRES_IN = "12h";
 export const MIN_LOCAL_JWT_SECRET_LENGTH = 32;
 
 type Env = Record<string, string | undefined>;
+
+/** NODE_ENV values under which AUTH_MODE=local may run (allow-list). */
+export const LOCAL_ALLOWED_NODE_ENVS = ["development", "test"];
+/** Second layer: env markers set by Azure hosting platforms. */
+const AZURE_HOSTING_MARKERS = [
+  "CONTAINER_APP_NAME",
+  "CONTAINER_APP_REVISION",
+  "WEBSITE_SITE_NAME",
+  "WEBSITE_INSTANCE_ID",
+  "IDENTITY_ENDPOINT",
+  "MSI_ENDPOINT",
+];
+const LOCAL_DB_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]", "db"]);
+
+/** True when POSTGRES_HOST points at the developer machine / compose network. */
+export function isLocalDatabaseHost(env: Env = process.env): boolean {
+  return LOCAL_DB_HOSTS.has((env.POSTGRES_HOST || "").trim().toLowerCase());
+}
+
+/** Marks users created by dev-login (auth.users.raw_user_meta_data.provider). */
+export const LOCAL_DEV_PROVIDER = "local-dev";
 
 export function isLocalAuthMode(env: Env = process.env): boolean {
   return (env.AUTH_MODE || "").trim().toLowerCase() === "local";
@@ -38,14 +60,17 @@ export function assertAuthModeConfig(env: Env = process.env): void {
   }
   if (raw !== "local") return;
 
-  if ((env.NODE_ENV || "").trim().toLowerCase() === "production") {
+  if (!LOCAL_ALLOWED_NODE_ENVS.includes(env.NODE_ENV ?? "")) {
     throw new Error(
-      "AUTH_MODE=local is a development-only passwordless sign-in and cannot be used with NODE_ENV=production.",
+      `AUTH_MODE=local is a development-only passwordless sign-in and requires NODE_ENV to be exactly "development" or "test" (got ${
+        env.NODE_ENV ? `"${env.NODE_ENV}"` : "unset"
+      }).`,
     );
   }
-  if (env.CONTAINER_APP_NAME || env.WEBSITE_SITE_NAME) {
+  const azureMarker = AZURE_HOSTING_MARKERS.find((k) => env[k]);
+  if (azureMarker) {
     throw new Error(
-      "AUTH_MODE=local is refused on Azure-hosted runtimes (Container Apps / App Service detected).",
+      `AUTH_MODE=local is refused on Azure-hosted runtimes (${azureMarker} is set).`,
     );
   }
   const secret = env.JWT_SECRET || "";

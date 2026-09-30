@@ -76,6 +76,15 @@ describe("authMiddleware (AUTH_MODE=local)", () => {
     }
   });
 
+  it("rejects an expired token with 401", () => {
+    const { mod } = load();
+    const jwt = require("jsonwebtoken");
+    const expired = jwt.sign({ sub: "u" }, SECRET, { algorithm: "HS256", issuer: "pronghorn-local-dev", expiresIn: -30 });
+    const { res, next } = run(mod.authMiddleware, { authorization: `Bearer ${expired}` });
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it("ignores APIM identity headers", () => {
     const { mod } = load();
     const { res, next } = run(mod.authMiddleware, { "x-user-id": "u", "x-user-email": "a@b.co" });

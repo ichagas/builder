@@ -3,6 +3,7 @@
  */
 import jwt from "jsonwebtoken";
 import {
+  isLocalDatabaseHost,
   assertAuthModeConfig,
   isLocalAuthMode,
   signLocalToken,
@@ -30,20 +31,32 @@ describe("assertAuthModeConfig", () => {
   it("accepts a valid local config", () => {
     expect(() => assertAuthModeConfig(localEnv)).not.toThrow();
   });
-  it("refuses to start with AUTH_MODE=local and NODE_ENV=production", () => {
-    expect(() => assertAuthModeConfig({ ...localEnv, NODE_ENV: "production" })).toThrow(/production/);
+  it("accepts NODE_ENV=test", () => {
+    expect(() => assertAuthModeConfig({ ...localEnv, NODE_ENV: "test" })).not.toThrow();
   });
+  it.each(["production", "staging", "Development", "", undefined])(
+    "refuses NODE_ENV=%j (allow-list: exactly development or test)",
+    (nodeEnv) => {
+      expect(() => assertAuthModeConfig({ ...localEnv, NODE_ENV: nodeEnv })).toThrow(/NODE_ENV/);
+    },
+  );
   it("refuses Azure-hosted runtimes", () => {
     expect(() => assertAuthModeConfig({ ...localEnv, CONTAINER_APP_NAME: "ca-x" })).toThrow(/Azure/);
+    expect(() => assertAuthModeConfig({ ...localEnv, WEBSITE_SITE_NAME: "app" })).toThrow(/Azure/);
   });
   it("requires JWT_SECRET", () => {
-    expect(() => assertAuthModeConfig({ AUTH_MODE: "local" })).toThrow(/JWT_SECRET/);
+    expect(() => assertAuthModeConfig({ AUTH_MODE: "local", NODE_ENV: "development" })).toThrow(/JWT_SECRET/);
   });
   it("rejects short and placeholder secrets", () => {
     expect(() => assertAuthModeConfig({ ...localEnv, JWT_SECRET: "short" })).toThrow(/at least 32/);
     expect(() =>
       assertAuthModeConfig({ ...localEnv, JWT_SECRET: "local-dev-jwt-secret-change-me-please-now" }),
     ).toThrow(/placeholder/);
+  });
+  it("rejects the documented .env.example placeholder secret", () => {
+    expect(() => assertAuthModeConfig({ ...localEnv, JWT_SECRET: "change-me-run-openssl-rand-hex-32" })).toThrow(
+      /placeholder/,
+    );
   });
   it("rejects unknown AUTH_MODE values", () => {
     expect(() => assertAuthModeConfig({ AUTH_MODE: "loca1" })).toThrow(/AUTH_MODE must be/);
@@ -74,5 +87,14 @@ describe("local tokens", () => {
     expect(() =>
       verifyLocalToken(jwt.sign({ sub: "u" }, SECRET, { issuer: "pronghorn-local-dev", expiresIn: -10 })),
     ).toThrow();
+  });
+});
+
+describe("isLocalDatabaseHost", () => {
+  it.each(["localhost", "127.0.0.1", "::1", "db", " LOCALHOST "])("%s is local", (h) => {
+    expect(isLocalDatabaseHost({ POSTGRES_HOST: h })).toBe(true);
+  });
+  it.each(["", "pg-prod.postgres.database.azure.com", "10.0.0.5"])("%j is not local", (h) => {
+    expect(isLocalDatabaseHost({ POSTGRES_HOST: h })).toBe(false);
   });
 });
