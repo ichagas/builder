@@ -74,20 +74,30 @@ The frontend lives in `app/frontend-new/` (the spec 007 redesign, built to the l
 No Microsoft Entra ID app registration needed. Development only.
 
 ```bash
-cp .env.example .env                                  # root: uncomment AUTH_MODE=local + AZURE_STORAGE_ACCOUNT_NAME, set your own JWT_SECRET (openssl rand -hex 32)
-cp app/frontend-new/.env.example app/frontend-new/.env   # VITE_AUTH_MODE=mock, VITE_API_BASE_URL=http://localhost:3001
+cp .env.example .env                                  # root: uncomment AUTH_MODE=local and replace JWT_SECRET (openssl rand -hex 32); NODE_ENV=development is already set
+cp app/frontend-new/.env.example app/frontend-new/.env   # VITE_AUTH_MODE=local, VITE_API_BASE_URL=http://localhost:3001
 npm run dev:db          # Postgres on 5432/5433; migrations run on the first `docker compose up`
-npm run dev:api         # API on http://localhost:3001 (logs "AUTH_MODE=local: dev sign-in enabled")
+npm run dev:api         # API on http://localhost:3001 (logs "Auth mode: local")
 npm run dev:frontend    # http://localhost:8080
 ```
 
 Open http://localhost:8080/auth and sign in (defaults `dev@local.test` /
-`Local Developer`). The API creates the user, an app admin role and a "Local
-Dev" organization on first use. If the database volume predates newer
-migrations, run `npm run dev:reset` (this wipes the local DB volumes).
-`AUTH_MODE=local` is refused with `NODE_ENV=production`; the sign-in form is
-only active in the Vite dev server with `VITE_AUTH_MODE=mock` and no
-`VITE_ENTRA_CLIENT_ID`.
+`Local Developer`). The API creates the user (marked `provider: local-dev`), an
+app admin role and a "Local Dev" organization on first use. It never signs in
+as, or promotes, an existing user it did not create (409). If the database
+volume predates newer migrations, run `npm run dev:reset` (this wipes the local
+DB volumes).
+
+Guard rails: `AUTH_MODE=local` makes the API refuse to start unless `NODE_ENV`
+is exactly `development` or `test`, on Azure-hosted runtimes, or with a
+`JWT_SECRET` that is short or a placeholder (the example value is one on purpose:
+generate yours with `openssl rand -hex 32`). `POST /api/v1/auth/dev-login` only
+accepts direct requests from the local machine: loopback socket, a `localhost`
+`Host` header, an `Origin` listed in `ALLOWED_ORIGINS` (if sent), and no
+`X-Forwarded-For`/`Forwarded` (override with `AUTH_LOCAL_ALLOW_REMOTE=true` when
+the API runs in a container). Blob storage stays off unless you set
+`AZURE_STORAGE_ACCOUNT_NAME`. In the browser the sign-in form is only active in
+the Vite dev server with `VITE_AUTH_MODE=local`; production builds always use MSAL.
 
 ### Quick Start
 
@@ -127,7 +137,7 @@ For the complete local development walkthrough — including auth modes, environ
 
 This repository ships with **placeholder values** in place of any organization-specific identifiers. To run locally you only need the `.env` files; to deploy to your own Azure tenant you must also replace the placeholders in the static and infrastructure files below with your own values.
 
-**Local development (no cloud needed):** copy the `.env.example` files (see Quick Start) and set `VITE_AUTH_MODE=mock` (frontend) and `SKIP_AUTH=true` (backend) to run the full stack against local Docker Postgres with no Azure account. All secrets in `.env` are yours and are never committed.
+**Local development (no cloud needed):** copy the `.env.example` files (see Quick Start) and set `VITE_AUTH_MODE=local` (frontend) and `AUTH_MODE=local` (backend, with `NODE_ENV=development` and your own `JWT_SECRET`) to run the full stack against local Docker Postgres with no Azure account. All secrets in `.env` are yours and are never committed.
 
 **Authentication (Microsoft Entra ID).** Set your real IDs in the env files — backend `ENTRA_TENANT_ID` / `ENTRA_CLIENT_ID` (`app/backend/.env`) and frontend `VITE_ENTRA_CLIENT_ID` / `VITE_ENTRA_TENANT_ID` (`app/frontend-new/.env`). Then update the one static file that cannot read env at runtime:
 

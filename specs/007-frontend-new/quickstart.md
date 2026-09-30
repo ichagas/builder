@@ -12,20 +12,30 @@ Contents: [Run the app](#run-the-app-locally) | [Backend](#backend) | [E2E stack
 No Microsoft Entra ID app registration needed. Development only.
 
 ```bash
-cp .env.example .env                                  # root: uncomment AUTH_MODE=local + AZURE_STORAGE_ACCOUNT_NAME, set your own JWT_SECRET (openssl rand -hex 32)
-cp app/frontend-new/.env.example app/frontend-new/.env   # VITE_AUTH_MODE=mock, VITE_API_BASE_URL=http://localhost:3001
+cp .env.example .env                                  # root: uncomment AUTH_MODE=local and replace JWT_SECRET (openssl rand -hex 32); NODE_ENV=development is already set
+cp app/frontend-new/.env.example app/frontend-new/.env   # VITE_AUTH_MODE=local, VITE_API_BASE_URL=http://localhost:3001
 npm run dev:db          # Postgres on 5432/5433; migrations run on the first `docker compose up`
-npm run dev:api         # API on http://localhost:3001 (logs "AUTH_MODE=local: dev sign-in enabled")
+npm run dev:api         # API on http://localhost:3001 (logs "Auth mode: local")
 npm run dev:frontend    # http://localhost:8080
 ```
 
 Open http://localhost:8080/auth and sign in (defaults `dev@local.test` /
-`Local Developer`). The API creates the user, an app admin role and a "Local
-Dev" organization on first use. If the database volume predates newer
-migrations, run `npm run dev:reset` (this wipes the local DB volumes).
-`AUTH_MODE=local` is refused with `NODE_ENV=production`; the sign-in form is
-only active in the Vite dev server with `VITE_AUTH_MODE=mock` and no
-`VITE_ENTRA_CLIENT_ID`.
+`Local Developer`). The API creates the user (marked `provider: local-dev`), an
+app admin role and a "Local Dev" organization on first use. It never signs in
+as, or promotes, an existing user it did not create (409). If the database
+volume predates newer migrations, run `npm run dev:reset` (this wipes the local
+DB volumes).
+
+Guard rails: `AUTH_MODE=local` makes the API refuse to start unless `NODE_ENV`
+is exactly `development` or `test`, on Azure-hosted runtimes, or with a
+`JWT_SECRET` that is short or a placeholder (the example value is one on purpose:
+generate yours with `openssl rand -hex 32`). `POST /api/v1/auth/dev-login` only
+accepts direct requests from the local machine: loopback socket, a `localhost`
+`Host` header, an `Origin` listed in `ALLOWED_ORIGINS` (if sent), and no
+`X-Forwarded-For`/`Forwarded` (override with `AUTH_LOCAL_ALLOW_REMOTE=true` when
+the API runs in a container). Blob storage stays off unless you set
+`AZURE_STORAGE_ACCOUNT_NAME`. In the browser the sign-in form is only active in
+the Vite dev server with `VITE_AUTH_MODE=local`; production builds always use MSAL.
 
 ## Run the app locally
 
@@ -49,7 +59,7 @@ Environment variables (`.env.example` documents each):
 | `VITE_WS_URL` | Realtime WebSocket URL; blank derives `ws(s)://` from `VITE_API_BASE_URL`. |
 | `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_TENANT_ID` | Entra app registration ids (MSAL). `VITE_AZURE_*` is accepted as a fallback. |
 | `VITE_AZURE_REDIRECT_URI` | OAuth redirect URI; must match the registration and the origin you serve from. |
-| `VITE_AUTH_MODE` | `mock` or `msal`. `mock` (dev server only, and only while `VITE_ENTRA_CLIENT_ID` is empty) shows the local sign-in form and never loads MSAL; see [Run locally without Entra](#run-locally-without-entra). The E2E harness exports `mock` too but also sets fake Entra ids, so it stays in MSAL mode and fakes sign-in through MSAL's cache. |
+| `VITE_AUTH_MODE` | `local` or `msal` (default). `local` (Vite dev server only) shows the local sign-in form and never constructs MSAL; see [Run locally without Entra](#run-locally-without-entra). Any other value, including the `mock` the E2E harness exports, keeps MSAL (the harness fakes sign-in through MSAL's cache). |
 | `VITE_APP_CHANNEL` | `next` marks the redesigned app build; nothing branches on it today. |
 | `VITE_GITHUB_ORG`, `VITE_COLLABORATION_SNAPSHOT_PREFETCH_LIMIT` | Optional. |
 
@@ -94,7 +104,7 @@ default; use `ALLOWED_ORIGINS` for anything else). `stack.sh up` starts the API
 with `NODE_ENV=test`, fake Entra ids, `RATE_LIMIT_MAX=100000`, a fake storage
 account and a scratch `STORAGE_BASE_PATH`; the API log is
 `e2e/.run/<project>/api.log`. `serve-app.sh` exports the `VITE_*` values the
-mock auth needs (`VITE_API_BASE_URL`, `VITE_AUTH_MODE=mock`, the fake tenant and
+mock auth needs (`VITE_API_BASE_URL`, `VITE_AUTH_MODE=mock` (fake MSAL cache, not local mode), the fake tenant and
 client ids, `VITE_AZURE_REDIRECT_URI`) and execs `npx vite --port <port>
 --strictPort`. If vite fails with `EAFNOSUPPORT` on `::` (some sandboxes), run
 vite yourself with `--host 127.0.0.1` and the same env vars.
@@ -141,7 +151,7 @@ onboarding sandbox job (see the manual T152 check below).
 
 ## Mock auth
 
-The app only enters its local sign-in mode (`VITE_AUTH_MODE=mock`) when no `VITE_ENTRA_CLIENT_ID` is set (see [Run locally without Entra](#run-locally-without-entra)); the E2E harness always sets fake Entra ids, so it stays in MSAL mode. Sign-in in the E2E harness
+The app only enters its local sign-in mode with `VITE_AUTH_MODE=local` in the Vite dev server (see [Run locally without Entra](#run-locally-without-entra)); the E2E harness exports `VITE_AUTH_MODE=mock`, which is not `local`, so it stays in MSAL mode. Sign-in in the E2E harness
 works in two halves, and the values must agree (`e2e/lib/config.ts`,
 `stack.sh`, `serve-app.sh` all use the same defaults):
 
