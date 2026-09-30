@@ -9,6 +9,8 @@ import { authRateLimiter } from "../../middleware/rateLimit";
 // Route imports
 import healthRouter from "../health";
 import authRouter from "../auth";
+import devAuthRouter from "../devAuth";
+import { isLocalAuthMode } from "../../config/authMode";
 import chatRouter from "../chat";
 import projectsRouter from "../projects";
 import artifactsRouter from "../artifacts";
@@ -36,6 +38,10 @@ const router = Router();
 // =====================================================================// Public Routes (no auth required)
 // =====================================================================
 router.use("/health", healthRouter);
+// Dev-only passwordless sign-in: exists ONLY when AUTH_MODE=local (404 otherwise).
+if (isLocalAuthMode()) {
+  router.use("/auth/dev-login", authRateLimiter, devAuthRouter);
+}
 router.use("/auth", authRateLimiter, authRouter);
 
 // =====================================================================// Protected Routes (auth required)

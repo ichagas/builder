@@ -70,6 +70,7 @@ import cors from "cors";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { logger } from "./utils/logger";
+import { assertAuthModeConfig, isLocalAuthMode } from "./config/authMode";
 import { errorHandler } from "./middleware/errorHandler";
 import { apiRateLimiter, healthRateLimiter } from "./middleware/rateLimit";
 import { swaggerSpec, getOpenApiSpec } from "./swagger";
@@ -295,6 +296,10 @@ app.use(errorHandler);
 // ============================================================================
 
 export async function startServer() {
+  assertAuthModeConfig();
+  if (isLocalAuthMode()) {
+    logger.warn("AUTH_MODE=local: dev sign-in enabled — never use in production");
+  }
   initRepoBlobStore();
 
   // Onboarding sandbox job dispatcher (spec 007, WP-BE6, T141): resolved
