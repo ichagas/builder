@@ -5,7 +5,7 @@
 			"label": "Start Frontend Dev Server",
 			"type": "npm",
 			"script": "dev",
-			"path": "app/frontend",
+			"path": "app/frontend-new",
 			"isBackground": true,
 			"problemMatcher": {
 				"owner": "vite",
