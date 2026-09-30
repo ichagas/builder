@@ -3,9 +3,9 @@
  * MSAL-only auth (app/frontend-new's MSAL provider) treats
  * Playwright as an already-signed-in user, with zero network calls.
  *
- * Why this exists: `VITE_AUTH_MODE=mock` is a documentation-only
- * placeholder — nothing in the auth layer actually branches on it.
- * The real login path is 100% MSAL + Azure AD, which we cannot drive
+ * Why this exists: `VITE_AUTH_MODE=mock` is not the app's local
+ * sign-in mode (that is `VITE_AUTH_MODE=local`, dev-only); it keeps MSAL.
+ * The real login path is MSAL + Azure AD, which we cannot drive
  * headlessly. Instead we pre-populate the exact cache shape MSAL itself
  * writes after a real login, so `getAllAccounts()` / `acquireTokenSilent()`
  * resolve entirely from cache — msal-common ships hardcoded endpoint/cloud

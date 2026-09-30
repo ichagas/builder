@@ -70,6 +70,8 @@ import cors from "cors";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { logger } from "./utils/logger";
+import { assertAuthModeConfig, isLocalAuthMode, isLocalDatabaseHost } from "./config/authMode";
+import { getAllowedOrigins } from "./config/allowedOrigins";
 import { errorHandler } from "./middleware/errorHandler";
 import { apiRateLimiter, healthRateLimiter } from "./middleware/rateLimit";
 import { swaggerSpec, getOpenApiSpec } from "./swagger";
@@ -121,13 +123,7 @@ app.use(
 );
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
-  "https://ca-pronghorn-frontend.orangeplant-ff11f103.canadacentral.azurecontainerapps.io",
-  "https://pronghorn.blue",
-  "http://localhost:5173",
-  "http://localhost:8080",
-  "http://localhost:3000",
-];
+const allowedOrigins = getAllowedOrigins();
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -295,7 +291,23 @@ app.use(errorHandler);
 // ============================================================================
 
 export async function startServer() {
-  initRepoBlobStore();
+  assertAuthModeConfig();
+  const localAuth = isLocalAuthMode();
+  logger.info(`Auth mode: ${localAuth ? "local" : "entra"} (NODE_ENV=${process.env.NODE_ENV ?? "unset"})`);
+  if (localAuth) {
+    logger.warn("AUTH_MODE=local: dev sign-in enabled — never use in production");
+    if (!isLocalDatabaseHost()) {
+      logger.warn(
+        `AUTH_MODE=local with POSTGRES_HOST="${process.env.POSTGRES_HOST ?? ""}" (not localhost/127.0.0.1/::1/db): ` +
+          "dev-login creates users and admin roles in that database. Use a throwaway local database.",
+      );
+    }
+  }
+  if (localAuth && !process.env.AZURE_STORAGE_ACCOUNT_NAME?.trim()) {
+    logger.warn("AZURE_STORAGE_ACCOUNT_NAME is not set (local mode): Azure blob storage is disabled; blob-backed features will fail.");
+  } else {
+    initRepoBlobStore();
+  }
 
   // Onboarding sandbox job dispatcher (spec 007, WP-BE6, T141): resolved
   // once from ONBOARDING_JOB_DISPATCHER. A misconfigured production deploy

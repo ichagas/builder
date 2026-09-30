@@ -1,6 +1,7 @@
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getAzureCredential } from "./azureCredential";
 import { logger } from "./logger";
+import { isLocalAuthMode } from "../config/authMode";
 
 interface UploadOptions {
     blobHTTPHeaders?: {
@@ -712,6 +713,9 @@ export function initRepoBlobStore(): RepoBlobStore {
  */
 export function getRepoBlobStore(): RepoBlobStore {
     if (!repoBlobStore) {
+        if (isLocalAuthMode() && !process.env[AZURE_STORAGE_ACCOUNT_NAME_ENV]?.trim()) {
+            throw new Error("Azure blob storage is not configured (local mode)");
+        }
         throw new Error("Blob staging store has not been initialized");
     }
 

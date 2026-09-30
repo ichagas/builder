@@ -184,8 +184,8 @@ headers['Ocp-Apim-Subscription-Key'] = subscriptionKey;  // APIM subscription ke
 The WebSocket server (`websocket.ts`) performs its own JWT validation during the handshake:
 
 1. Token from query string `?token=` or `Authorization: Bearer` header
-2. **Dev mode** (`NODE_ENV=development` or `SKIP_AUTH=true`): Accepts unsigned JWT decode (no signature verification)
-3. **Production**: Validates against Azure AD JWKS endpoint (same as REST middleware)
+2. **`AUTH_MODE=local`** (dev only): accepts only HS256 tokens signed with `JWT_SECRET` by `POST /api/v1/auth/dev-login`
+3. **Entra mode**: Validates against Azure AD JWKS endpoint (same as REST middleware)
 4. Seeds `auth.users` on successful WS-first sign-ins (fire-and-forget)
 
 > **Why WebSocket bypasses APIM:** Azure APIM Consumption tier does not support WebSocket protocol upgrades. WebSocket connections go directly to the Container App, which performs its own JWT validation via the Azure AD JWKS endpoint.

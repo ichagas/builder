@@ -11,6 +11,7 @@ import jwt from "jsonwebtoken";
 import jwksRsa from "jwks-rsa";
 import { logger } from "../utils/logger";
 import db from "../utils/database";
+import { assertAuthModeConfig, isLocalAuthMode, verifyLocalToken } from "../config/authMode";
 
 // Extend Express Request type to include user
 declare global {
@@ -46,23 +47,28 @@ interface JwtPayload {
 //
 // Fail-fast: missing values yield an unusable JWKS URL and a redirect loop,
 // so refuse to boot rather than degrade silently.
+//
+// AUTH_MODE=local (dev-only, see config/authMode.ts) skips the Entra
+// requirements: only local JWTs from POST /auth/dev-login are accepted.
+assertAuthModeConfig();
+const LOCAL_AUTH = isLocalAuthMode();
 const TENANT_ID = process.env.ENTRA_TENANT_ID;
 const CLIENT_ID = process.env.ENTRA_CLIENT_ID;
 
-if (!TENANT_ID) {
+if (!LOCAL_AUTH && !TENANT_ID) {
   throw new Error(
     "ENTRA_TENANT_ID is required. Set it in your .env file or in the container environment. " +
     "See app/backend/.env.example for details."
   );
 }
-if (!CLIENT_ID) {
+if (!LOCAL_AUTH && !CLIENT_ID) {
   throw new Error(
     "ENTRA_CLIENT_ID is required. Set it in your .env file or in the container environment. " +
     "See app/backend/.env.example for details."
   );
 }
 
-const AUTH_AUDIENCES: [string, string] = [CLIENT_ID, `api://${CLIENT_ID}`];
+const AUTH_AUDIENCES: [string, string] = [CLIENT_ID ?? "", `api://${CLIENT_ID ?? ""}`];
 
 // JWKS client for Azure AD token validation
 const jwksClient = jwksRsa({
@@ -148,6 +154,30 @@ async function ensureAzureUserSeeded(payload: JwtPayload): Promise<void> {
 }
 
 /**
+ * Local-mode authentication (AUTH_MODE=local): identity comes only from a
+ * dev-login JWT. APIM identity headers are deliberately NOT trusted here.
+ * Returns the user, or undefined when the token is missing/invalid.
+ */
+function localUserFromToken(token: string): Express.Request["user"] | undefined {
+  try {
+    const c = verifyLocalToken(token);
+    if (!c.sub) return undefined;
+    return { id: c.sub, email: c.email || "", name: c.name, role: c.role };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The JWT_SECRET (HS256) fallback exists for the E2E harness (NODE_ENV=test)
+ * and local development. It must NEVER run in production, even when Entra
+ * validation is the configured mode.
+ */
+function hs256FallbackAllowed(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
+/**
  * APIM-aware Authentication Middleware
  * 
  * First checks for APIM headers (set by validate-jwt policy):
@@ -159,6 +189,18 @@ async function ensureAzureUserSeeded(payload: JwtPayload): Promise<void> {
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   try {
+    if (LOCAL_AUTH) {
+      const [localScheme, localToken] = (req.headers.authorization || "").split(" ");
+      const localUser = localScheme === "Bearer" && localToken ? localUserFromToken(localToken) : undefined;
+      if (!localUser) {
+        res.status(401).json({ error: "Unauthorized", message: "Invalid or expired token" });
+        return;
+      }
+      req.user = localUser;
+      next();
+      return;
+    }
+
     // Check for APIM-injected headers first (fastest path)
     const apimUserId = req.headers["x-user-id"] as string;
     const apimUserEmail = req.headers["x-user-email"] as string;
@@ -216,9 +258,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
         if (err) {
           // Fall back to local JWT secret for development
           const jwtSecret = process.env.JWT_SECRET;
-          if (jwtSecret) {
+          if (jwtSecret && hs256FallbackAllowed()) {
             try {
-              const localDecoded = jwt.verify(token, jwtSecret) as JwtPayload;
+              const localDecoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] }) as JwtPayload;
               req.user = {
                 id: localDecoded.sub,
                 email: localDecoded.email || localDecoded.preferred_username || "",
@@ -264,6 +306,13 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  * Optional auth middleware - attaches user if headers/token present but doesn't require it
  */
 export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
+  if (LOCAL_AUTH) {
+    const [localScheme, localToken] = (req.headers.authorization || "").split(" ");
+    req.user = localScheme === "Bearer" && localToken ? localUserFromToken(localToken) : undefined;
+    next();
+    return;
+  }
+
   // Check for APIM headers
   const apimUserId = req.headers["x-user-id"] as string;
   const apimUserEmail = req.headers["x-user-email"] as string;
@@ -320,14 +369,14 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
       }
 
       const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) {
+      if (!jwtSecret || !hs256FallbackAllowed()) {
         req.user = undefined;
         next();
         return;
       }
 
       try {
-        const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+        const decoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] }) as JwtPayload;
         req.user = {
           id: decoded.sub,
           email: decoded.email || decoded.preferred_username || "",

@@ -34,7 +34,7 @@ Complete guide to setting up and running the full Pronghorn stack locally: **Rea
 | **API**        | Express.js, TypeScript, Node.js 20                  | REST API with Swagger docs                                           |
 | **App DB**     | PostgreSQL 16 (`db`, port 5432)                     | Pronghorn Application — system schema, user data                     |
 | **GenApps DB** | PostgreSQL 16 (`db-generated-apps`, port 5433)      | Pronghorn Generated Applications — per-project databases             |
-| **Auth**       | MSAL (Azure Entra ID)                               | Microsoft sign-in via `@azure/msal-browser`                          |
+| **Auth**       | MSAL (Azure Entra ID); dev-only local sign-in       | Microsoft sign-in via `@azure/msal-browser`, or `AUTH_MODE=local` for development |
 | **AI Models**  | Azure AI Foundry                                    | GPT-4.1, GPT-4o, o3, o4-mini                                         |
 
 ---
@@ -212,7 +212,9 @@ cp .env.example .env
 ```
 
 Review and fill in `ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` if you have an Entra ID
-App Registration. For mock-auth local dev, the defaults are sufficient.
+App Registration. Without one, uncomment `AUTH_MODE=local` and replace `JWT_SECRET` with
+your own (`openssl rand -hex 32`); the example value is rejected on purpose. See
+[Run locally without Entra](../README.md#run-locally-without-entra).
 
 #### Step 2 — `app/backend/.env` (backend-specific)
 
@@ -290,8 +292,8 @@ Review and update the values:
 - **`VITE_API_BASE_URL`** — defaults to `http://localhost:8080` (same-origin). If the
   API runs on a different port (e.g., `http://localhost:3001`), update this value.
 - **`VITE_ENTRA_CLIENT_ID`** and **`VITE_ENTRA_TENANT_ID`** — must match your Azure AD
-  App Registration. For local dev without Azure auth, set `VITE_AUTH_MODE=mock`
-  (the default in `.env.example`).
+  App Registration. For local dev without Azure auth, set `VITE_AUTH_MODE=local`
+  (the default in `.env.example`; dev server only, paired with `AUTH_MODE=local` on the API).
 - **`VITE_WS_URL`** — leave blank for local dev; the client auto-derives it from
   `VITE_API_BASE_URL`.
 
@@ -420,6 +422,15 @@ applied by the API at startup via `runMigrations()`.
 ---
 
 ## 8. Azure AD / MSAL Authentication
+
+### 8.0 No Entra app registration? Use local sign-in (development only)
+
+Skip the rest of this section and run with `AUTH_MODE=local` (root `.env`, with
+`NODE_ENV=development` and your own `JWT_SECRET` from `openssl rand -hex 32`) plus
+`VITE_AUTH_MODE=local` (`app/frontend-new/.env`). Start `npm run dev:db`,
+`npm run dev:api` (port 3001) and `npm run dev:frontend` (port 8080), then sign in at
+http://localhost:8080/auth. `ALLOWED_ORIGINS` must include the Vite origin
+(`http://localhost:8080`). Details and guard rails: [README](../README.md#run-locally-without-entra).
 
 Pronghorn uses **Microsoft Entra ID** (Azure AD) for authentication via MSAL (Microsoft Authentication Library). Users sign in with their Microsoft account.
 
@@ -730,6 +741,7 @@ AZURE_STORAGE_ACCOUNT_NAME=stpronghornvdqf8a
 ```
 
 Your signed-in Azure identity needs `Storage Blob Data Contributor` on the storage account.
+With `AUTH_MODE=local` you can leave `AZURE_STORAGE_ACCOUNT_NAME` unset: the API then starts without blob storage (a warning is logged) and blob-backed features fail with "Azure blob storage is not configured (local mode)".
 
 ### 10.2 WebSocket (Realtime Collaboration)
 
@@ -771,8 +783,9 @@ and by the backend API as a fallback (via `dotenv`).
 | `NODE_ENV`                  | —        | `development` | Environment (`development` / `production`)                   |
 | `LOG_LEVEL`                 | —        | `info`        | Winston log level: debug, info, warn, error                  |
 | `ALLOWED_ORIGINS`           | —        | `http://localhost:8081,http://localhost:8080` | CORS origins (comma-separated)                               |
-| `JWT_SECRET`                | ✅        | —             | JWT signing secret                                           |
-| `SKIP_AUTH`                 | —        | `true`        | `true` to bypass auth in local dev                           |
+| `JWT_SECRET`                | ✅        | —             | JWT signing secret; `openssl rand -hex 32` (required for `AUTH_MODE=local`) |
+| `AUTH_MODE`                 | —        | `entra`       | `local` enables dev-only sign-in (needs `NODE_ENV=development\|test` and a strong `JWT_SECRET`) |
+| `AUTH_LOCAL_ALLOW_REMOTE`   | —        | —             | `true` lets dev-login accept non-loopback requests (API in a container) |
 | `FRONTEND_PORT`             | —        | `8081`        | Frontend port (used by orchestration scripts)                |
 
 ### API-only — `app/backend/.env`
@@ -804,7 +817,7 @@ Variables specific to the backend. Not needed in the root file.
 | ---------------------------- | -------- | ------------------------ | ----------------------------------------------------------- |
 | `VITE_API_BASE_URL`          | ✅        | —                        | API URL (e.g., `http://localhost:8080`)                     |
 | `VITE_APIM_SUBSCRIPTION_KEY` | —        | —                        | APIM key (leave blank for local dev)                        |
-| `VITE_AUTH_MODE`             | —        | `mock`                   | `msal` for Microsoft sign-in, `mock` for local testing      |
+| `VITE_AUTH_MODE`             | —        | `local`                  | `msal` for Microsoft sign-in, `local` for dev-only local sign-in (Vite dev server) |
 | `VITE_ENTRA_CLIENT_ID`       | ✅        | —                        | Entra ID App Registration client ID                         |
 | `VITE_ENTRA_TENANT_ID`       | ✅        | —                        | Entra ID tenant ID or `organizations`                       |
 | `VITE_AZURE_REDIRECT_URI`    | —        | `window.location.origin` | MSAL redirect URI                                           |

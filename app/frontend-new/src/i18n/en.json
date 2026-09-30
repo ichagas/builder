@@ -1178,5 +1178,26 @@
       "title": "Search",
       "description": "Type to search projects, tools and library. Use the arrow keys to choose a result and Enter to open it."
     }
+  },
+  "auth": {
+    "local": {
+      "title": "Local development sign-in",
+      "description": "Sign in without Microsoft Entra ID. The API creates the user on first use.",
+      "notice": "Local development sign-in — not for production",
+      "emailLabel": "Email",
+      "nameLabel": "Display name",
+      "defaultEmail": "dev@local.test",
+      "defaultName": "Local Developer",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "errorPrefix": "Sign-in failed",
+      "unsupported": "Not available with local development sign-in.",
+      "errorFallback": "Sign-in failed",
+      "errors": {
+        "unreachable": "Could not reach the API. Is `npm run dev:api` running?",
+        "notAvailable": "dev-login is not available. Start the API with AUTH_MODE=local.",
+        "status": "Sign-in failed ({{status}})"
+      }
+    }
   }
 }

@@ -8,8 +8,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Loader2, Info, AlertTriangle, Shield } from "lucide-react";
 import { PronghornLogo } from "@/components/layout/PronghornLogo";
+import { isLocalAuth } from "@/lib/authMode";
+import LocalSignIn from "@/pages/LocalSignIn";
 
-export default function Auth() {
+function MsalAuthPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
@@ -178,4 +180,9 @@ export default function Auth() {
       </Card>
     </div>
   );
+}
+
+/** `/auth`: local dev sign-in form in local mode, Microsoft SSO otherwise. */
+export default function Auth() {
+  return import.meta.env.DEV && isLocalAuth() ? <LocalSignIn /> : <MsalAuthPage />;
 }

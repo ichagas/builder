@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   getStoredToken,
   getStoredUser,
@@ -91,5 +91,48 @@ describe("apiClient localStorage helpers", () => {
     it("does not throw when keys do not exist", () => {
       expect(() => clearAuthData()).not.toThrow();
     });
+  });
+});
+
+// =============================================================================
+// Local auth mode (local dev sign-in): bearer token comes from the dev session
+// =============================================================================
+
+describe("apiClient in local auth mode", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.stubEnv("VITE_AUTH_MODE", "local");
+    vi.stubEnv("VITE_ENTRA_CLIENT_ID", "");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("sends the dev-login token as Bearer, and stops after sign-out", async () => {
+    const { apiClient } = await import("../apiClient");
+    const future = Math.floor(Date.now() / 1000) + 3600;
+    const token = `${btoa('{"alg":"HS256"}')}.${btoa(JSON.stringify({ exp: future }))}.s`;
+    localStorage.setItem("pronghorn_local_dev_session", JSON.stringify({ token, user: { id: "u", email: "e@x.co" } }));
+
+    expect(await apiClient.getAuthHeaders()).toEqual({ Authorization: `Bearer ${token}` });
+    localStorage.removeItem("pronghorn_local_dev_session");
+    expect(await apiClient.getAuthHeaders()).toEqual({});
+  });
+
+  it("a 401 clears the session and returns to /auth with returnTo", async () => {
+    const { apiClient } = await import("../apiClient");
+    const future = Math.floor(Date.now() / 1000) + 3600;
+    const token = `${btoa('{"alg":"HS256"}')}.${btoa(JSON.stringify({ exp: future }))}.s`;
+    localStorage.setItem("pronghorn_local_dev_session", JSON.stringify({ token, user: { id: "u", email: "e@x.co" } }));
+    const assign = vi.fn();
+    vi.stubGlobal("location", { pathname: "/projects", assign, origin: "http://localhost:8080" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false, status: 401, headers: new Headers(), json: async () => ({ message: "Invalid or expired token" }),
+    }));
+
+    await expect(apiClient.get("/api/v1/projects")).rejects.toMatchObject({ statusCode: 401 });
+    expect(localStorage.getItem("pronghorn_local_dev_session")).toBeNull();
+    expect(assign).toHaveBeenCalledWith("/auth?returnTo=%2Fprojects");
   });
 });

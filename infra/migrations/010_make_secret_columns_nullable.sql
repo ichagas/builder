@@ -21,7 +21,20 @@
 BEGIN;
 
 -- Allow connection strings to be omitted now that they live in Key Vault.
-ALTER TABLE public.project_database_connections
-    ALTER COLUMN connection_string DROP NOT NULL;
+-- Re-runnable: a fresh `docker compose up` applies every file as an initdb
+-- script (including 011, which drops the column) and the API runner then
+-- applies them again, so only alter the column if it still exists.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'project_database_connections'
+          AND column_name = 'connection_string'
+    ) THEN
+        ALTER TABLE public.project_database_connections
+            ALTER COLUMN connection_string DROP NOT NULL;
+    END IF;
+END $$;
 
 COMMIT;

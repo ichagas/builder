@@ -40,6 +40,7 @@ import jwt from "jsonwebtoken";
 import jwksRsa from "jwks-rsa";
 import { logger } from "./utils/logger";
 import { seedUserIfMissing } from "./middleware/auth";
+import { assertAuthModeConfig, isLocalAuthMode, verifyLocalToken } from "./config/authMode";
 
 // ============================================================================
 // Types
@@ -90,16 +91,18 @@ let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 //
 // Fail-fast: missing values yield an unusable JWKS URL and silently rejected
 // connections, so refuse to boot rather than degrade silently.
+assertAuthModeConfig();
+const LOCAL_AUTH = isLocalAuthMode();
 const TENANT_ID = process.env.ENTRA_TENANT_ID;
 const CLIENT_ID = process.env.ENTRA_CLIENT_ID;
 
-if (!TENANT_ID) {
+if (!LOCAL_AUTH && !TENANT_ID) {
   throw new Error(
     "ENTRA_TENANT_ID is required. Set it in your .env file or in the container environment. " +
     "See app/backend/.env.example for details."
   );
 }
-if (!CLIENT_ID) {
+if (!LOCAL_AUTH && !CLIENT_ID) {
   throw new Error(
     "ENTRA_CLIENT_ID is required. Set it in your .env file or in the container environment. " +
     "See app/backend/.env.example for details."
@@ -117,19 +120,14 @@ const jwksClient = jwksRsa({
  * Validate JWT token from Azure AD or local dev token
  */
 async function validateToken(token: string): Promise<{ userId: string; email?: string } | null> {
-  // Development mode: accept APIM-style headers encoded in token
-  if (process.env.NODE_ENV === "development" || process.env.SKIP_AUTH === "true") {
+  // AUTH_MODE=local: only signed dev-login tokens (never the unverified
+  // decode below, never Entra).
+  if (LOCAL_AUTH) {
     try {
-      // Try simple JWT decode for dev tokens
-      const decoded = jwt.decode(token) as any;
-      if (decoded) {
-        return {
-          userId: decoded.sub || decoded.oid || decoded.id || "dev-user",
-          email: decoded.email || decoded.preferred_username,
-        };
-      }
+      const c = verifyLocalToken(token);
+      return c.sub ? { userId: c.sub, email: c.email } : null;
     } catch {
-      // Fall through to Azure AD validation
+      return null;
     }
   }
 
