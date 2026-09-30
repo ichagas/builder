@@ -1190,7 +1190,14 @@
       "defaultName": "Local Developer",
       "submit": "Sign in",
       "submitting": "Signing in…",
-      "errorPrefix": "Sign-in failed"
+      "errorPrefix": "Sign-in failed",
+      "unsupported": "Not available with local development sign-in.",
+      "errorFallback": "Sign-in failed",
+      "errors": {
+        "unreachable": "Could not reach the API. Is `npm run dev:api` running?",
+        "notAvailable": "dev-login is not available. Start the API with AUTH_MODE=local.",
+        "status": "Sign-in failed ({{status}})"
+      }
     }
   }
 }

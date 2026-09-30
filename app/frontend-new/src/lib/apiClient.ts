@@ -7,7 +7,8 @@
  */
 
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
-import { isMockAuth } from "./authMode";
+import { msalInstance } from "./msalInstance";
+import { isLocalAuth } from "./authMode";
 import { getLocalToken, handleLocalUnauthorized } from "./localSession";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -30,9 +31,8 @@ const isSameOrigin = (): boolean => {
  * Uses minimal OIDC scopes to avoid consent issues with resource-specific scopes.
  */
 export async function getAccessToken(): Promise<string | null> {
-  // Mock mode (local dev sign-in): the dev-login JWT; MSAL is never loaded.
-  if (isMockAuth()) return getLocalToken();
-  const { msalInstance } = await import("./msalInstance");
+  // Local dev sign-in: the dev-login JWT (msalInstance is null in this mode).
+  if (isLocalAuth() || !msalInstance) return getLocalToken();
   try {
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length === 0) {
@@ -147,9 +147,9 @@ class ApiClient {
 
   // Get access token from MSAL (with caching to avoid repeated calls)
   private async getMsalToken(): Promise<string | null> {
-    // Mock mode: read the stored dev token every time (no 5-minute cache), so
+    // Local mode: read the stored dev token every time (no 5-minute cache), so
     // sign-out / sign-in take effect immediately.
-    if (isMockAuth()) return getLocalToken();
+    if (isLocalAuth()) return getLocalToken();
 
     // If we have a cached token, use it
     if (this.cachedToken) {
@@ -199,7 +199,7 @@ class ApiClient {
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 401 && isMockAuth() && getLocalToken()) {
+    if (response.status === 401 && isLocalAuth() && getLocalToken()) {
       // Expired/invalid dev token: back to the sign-in screen.
       handleLocalUnauthorized();
     }
@@ -340,8 +340,7 @@ export const authApi = {
 
   // Check if authenticated via MSAL
   async isAuthenticated(): Promise<boolean> {
-    if (isMockAuth()) return getLocalToken() !== null;
-    const { msalInstance } = await import("./msalInstance");
+    if (isLocalAuth() || !msalInstance) return getLocalToken() !== null;
     const accounts = msalInstance.getAllAccounts();
     return accounts.length > 0;
   },

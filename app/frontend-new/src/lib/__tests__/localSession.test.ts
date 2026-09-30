@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import "@/i18n";
 import {
   clearLocalSession,
   getLocalSession,
@@ -87,6 +88,6 @@ describe("session lifecycle", () => {
     vi.stubGlobal("location", { pathname: "/projects", assign });
     handleLocalUnauthorized();
     expect(getLocalToken()).toBeNull();
-    expect(assign).toHaveBeenCalledWith("/auth");
+    expect(assign).toHaveBeenCalledWith("/auth?returnTo=%2Fprojects");
   });
 });

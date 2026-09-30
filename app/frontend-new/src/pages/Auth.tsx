@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Loader2, Info, AlertTriangle, Shield } from "lucide-react";
 import { PronghornLogo } from "@/components/layout/PronghornLogo";
-import { isMockAuth } from "@/lib/authMode";
+import { isLocalAuth } from "@/lib/authMode";
 import LocalSignIn from "@/pages/LocalSignIn";
 
 function MsalAuthPage() {
@@ -182,7 +182,7 @@ function MsalAuthPage() {
   );
 }
 
-/** `/auth`: local dev sign-in form in mock mode, Microsoft SSO otherwise. */
+/** `/auth`: local dev sign-in form in local mode, Microsoft SSO otherwise. */
 export default function Auth() {
-  return isMockAuth() ? <LocalSignIn /> : <MsalAuthPage />;
+  return isLocalAuth() ? <LocalSignIn /> : <MsalAuthPage />;
 }

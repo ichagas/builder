@@ -95,13 +95,13 @@ describe("apiClient localStorage helpers", () => {
 });
 
 // =============================================================================
-// Mock auth mode (local dev sign-in): bearer token comes from the dev session
+// Local auth mode (local dev sign-in): bearer token comes from the dev session
 // =============================================================================
 
-describe("apiClient in mock auth mode", () => {
+describe("apiClient in local auth mode", () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.stubEnv("VITE_AUTH_MODE", "mock");
+    vi.stubEnv("VITE_AUTH_MODE", "local");
     vi.stubEnv("VITE_ENTRA_CLIENT_ID", "");
   });
   afterEach(() => {
@@ -120,7 +120,7 @@ describe("apiClient in mock auth mode", () => {
     expect(await apiClient.getAuthHeaders()).toEqual({});
   });
 
-  it("a 401 clears the session and returns to /auth", async () => {
+  it("a 401 clears the session and returns to /auth with returnTo", async () => {
     const { apiClient } = await import("../apiClient");
     const future = Math.floor(Date.now() / 1000) + 3600;
     const token = `${btoa('{"alg":"HS256"}')}.${btoa(JSON.stringify({ exp: future }))}.s`;
@@ -133,6 +133,6 @@ describe("apiClient in mock auth mode", () => {
 
     await expect(apiClient.get("/api/v1/projects")).rejects.toMatchObject({ statusCode: 401 });
     expect(localStorage.getItem("pronghorn_local_dev_session")).toBeNull();
-    expect(assign).toHaveBeenCalledWith("/auth");
+    expect(assign).toHaveBeenCalledWith("/auth?returnTo=%2Fprojects");
   });
 });

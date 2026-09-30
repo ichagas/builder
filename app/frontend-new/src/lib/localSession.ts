@@ -1,5 +1,5 @@
 /**
- * Local dev sign-in session (VITE_AUTH_MODE=mock).
+ * Local dev sign-in session (VITE_AUTH_MODE=local).
  *
  * Stores the JWT returned by POST /api/v1/auth/dev-login. Kept in
  * localStorage (not sessionStorage) on purpose: it mirrors MSAL's own
@@ -7,6 +7,8 @@
  * tabs are common in dev), and the token is dev-only and expires in 12 h —
  * expiry is also checked client-side. Nothing here ever runs in production.
  */
+import i18n from "i18next";
+
 export interface LocalSessionUser {
   id: string;
   email: string;
@@ -81,10 +83,10 @@ export async function signInLocal(email: string, name: string): Promise<LocalSes
       body: JSON.stringify({ email, name }),
     });
   } catch {
-    throw new Error("Could not reach the API. Is `npm run dev:api` running?");
+    throw new Error(i18n.t("auth.local.errors.unreachable"));
   }
   if (!response.ok) {
-    let message = `Sign-in failed (${response.status})`;
+    let message = i18n.t("auth.local.errors.status", { status: response.status });
     try {
       const body = await response.json();
       message = body.message || body.error || message;
@@ -92,7 +94,7 @@ export async function signInLocal(email: string, name: string): Promise<LocalSes
       // non-JSON body
     }
     if (response.status === 404) {
-      message = "dev-login is not available. Start the API with AUTH_MODE=local.";
+      message = i18n.t("auth.local.errors.notAvailable");
     }
     throw new Error(message);
   }
@@ -102,10 +104,12 @@ export async function signInLocal(email: string, name: string): Promise<LocalSes
   return session;
 }
 
-/** 401 handling in mock mode: drop the session and go back to the sign-in screen. */
+/** 401 handling in local mode: drop the session and go back to the sign-in screen. */
 export function handleLocalUnauthorized(): void {
   clearLocalSession();
   if (typeof window !== "undefined" && window.location.pathname !== "/auth") {
-    window.location.assign("/auth");
+    // Keep where the user was so sign-in can return there.
+    const returnTo = `${window.location.pathname}${window.location.search ?? ""}`;
+    window.location.assign(`/auth?returnTo=${encodeURIComponent(returnTo)}`);
   }
 }

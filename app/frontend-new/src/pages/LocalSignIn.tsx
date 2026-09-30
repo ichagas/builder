@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,13 +10,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PronghornLogo } from "@/components/layout/PronghornLogo";
 
+function safeReturnTo(value: string | null): string | null {
+  return value && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\") ? value : null;
+}
+
 /**
- * Sign-in screen for local development (VITE_AUTH_MODE=mock): no Entra app
+ * Sign-in screen for local development (VITE_AUTH_MODE=local): no Entra app
  * registration needed. Posts to the API's dev-login (AUTH_MODE=local only).
  */
 export default function LocalSignIn() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, signInLocal } = useAuth();
   const [email, setEmail] = useState(t("auth.local.defaultEmail"));
   const [name, setName] = useState(t("auth.local.defaultName"));
@@ -24,8 +29,10 @@ export default function LocalSignIn() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) navigate("/projects", { replace: true });
-  }, [user, navigate]);
+    // Same as the MSAL sign-in page (/dashboard redirects to /projects), or back
+    // to where a 401 sent the user from (same-origin paths only).
+    if (user) navigate(safeReturnTo(searchParams.get("returnTo")) ?? "/dashboard", { replace: true });
+  }, [user, navigate, searchParams]);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -41,7 +48,7 @@ export default function LocalSignIn() {
   };
 
   return (
-    <main className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-dvh bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -57,14 +64,14 @@ export default function LocalSignIn() {
           </Alert>
 
           {error && (
-            <Alert className="mb-4 border-destructive/50 bg-destructive/10" role="alert">
+            <Alert id="local-error" className="mb-4 border-destructive/50 bg-destructive/10" role="alert">
               <AlertDescription className="text-destructive">
                 {t("auth.local.errorPrefix")}: {error}
               </AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-4" aria-busy={submitting}>
             <div className="space-y-2">
               <Label htmlFor="local-email">{t("auth.local.emailLabel")}</Label>
               <Input
@@ -72,6 +79,7 @@ export default function LocalSignIn() {
                 type="email"
                 autoComplete="email"
                 required
+                aria-describedby={error ? "local-error" : undefined}
                 maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -84,6 +92,7 @@ export default function LocalSignIn() {
                 type="text"
                 autoComplete="name"
                 required
+                aria-describedby={error ? "local-error" : undefined}
                 maxLength={100}
                 value={name}
                 onChange={(e) => setName(e.target.value)}

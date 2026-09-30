@@ -57,7 +57,7 @@ export function isLocalDevelopment(): boolean {
  */
 export function isEasyAuthEnabled(): boolean {
   const authMode = import.meta.env.VITE_AUTH_MODE;
-  if (authMode === "msal" || authMode === "mock") {
+  if (authMode === "msal" || authMode === "mock" || authMode === "local") {
     return false;
   }
   return !isLocalDevelopment();

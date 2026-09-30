@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import { User, Session, createSession, apiUserToUser } from "@/lib/authTypes";
-import { isMockAuth } from "@/lib/authMode";
+import i18n from "i18next";
+import { isLocalAuth } from "@/lib/authMode";
 import {
   getLocalSession,
   getLocalToken,
@@ -27,7 +28,7 @@ interface AuthContextType {
   validateSignupCode: (code: string) => Promise<{ error: any }>;
   refreshAuth: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
-  /** Local dev sign-in (VITE_AUTH_MODE=mock only; undefined with MSAL). */
+  /** Local dev sign-in (VITE_AUTH_MODE=local only; undefined with MSAL). */
   signInLocal?: (email: string, name: string) => Promise<{ error: any }>;
 }
 
@@ -245,11 +246,11 @@ function MsalAuthProvider({ children }: { children: ReactNode }) {
 }
 
 const localUnsupported = async () => ({
-  error: { message: "Not available with local development sign-in." },
+  error: { message: i18n.t("auth.local.unsupported") },
 });
 
 /**
- * Local dev sign-in provider (VITE_AUTH_MODE=mock). Never touches MSAL; exposes
+ * Local dev sign-in provider (VITE_AUTH_MODE=local). Never touches MSAL; exposes
  * the same context shape so the rest of the app doesn't care which mode is on.
  */
 function LocalAuthProvider({ children }: { children: ReactNode }) {
@@ -293,7 +294,7 @@ function LocalAuthProvider({ children }: { children: ReactNode }) {
           await signInLocal(email, name);
           return { error: null };
         } catch (err: any) {
-          return { error: { message: err?.message || "Sign-in failed" } };
+          return { error: { message: err?.message || i18n.t("auth.local.errorFallback") } };
         }
       },
     }),
@@ -305,7 +306,7 @@ function LocalAuthProvider({ children }: { children: ReactNode }) {
 
 /** Picks the provider for the active auth mode (see lib/authMode.ts). */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  return isMockAuth() ? (
+  return isLocalAuth() ? (
     <LocalAuthProvider>{children}</LocalAuthProvider>
   ) : (
     <MsalAuthProvider>{children}</MsalAuthProvider>

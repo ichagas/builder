@@ -44,9 +44,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("AuthProvider in mock mode", () => {
+describe("AuthProvider in local mode", () => {
   beforeEach(() => {
-    vi.stubEnv("VITE_AUTH_MODE", "mock");
+    vi.stubEnv("VITE_AUTH_MODE", "local");
     vi.stubEnv("VITE_ENTRA_CLIENT_ID", "");
   });
 

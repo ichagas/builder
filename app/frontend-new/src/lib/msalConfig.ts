@@ -4,7 +4,7 @@
  * This configures the Microsoft Authentication Library (MSAL) for 
  * authenticating users via Azure Entra ID (formerly Azure AD).
  */
-import { isMockAuth } from "./authMode";
+import { isLocalAuth } from "./authMode";
 import { Configuration, LogLevel, PopupRequest, RedirectRequest } from "@azure/msal-browser";
 
 // Azure AD App Registration details.
@@ -18,20 +18,20 @@ import { Configuration, LogLevel, PopupRequest, RedirectRequest } from "@azure/m
 // and triggering a redirect loop. Throwing here surfaces the misconfig
 // immediately in the browser console / error boundary.
 //
-// VITE_AUTH_MODE=mock (dev sign-in, see authMode.ts) never constructs MSAL,
+// VITE_AUTH_MODE=local (dev sign-in, see authMode.ts) never constructs MSAL,
 // so the ids are not required there and this module stays inert.
-const MOCK_AUTH = isMockAuth();
+const LOCAL_AUTH = isLocalAuth();
 const CLIENT_ID: string = import.meta.env.VITE_ENTRA_CLIENT_ID ?? "";
 const TENANT_ID: string = import.meta.env.VITE_ENTRA_TENANT_ID ?? "";
 const REDIRECT_URI = import.meta.env.VITE_AZURE_REDIRECT_URI || window.location.origin;
 
-if (!MOCK_AUTH && !CLIENT_ID) {
+if (!LOCAL_AUTH && !CLIENT_ID) {
   throw new Error(
     "VITE_ENTRA_CLIENT_ID is required. Set it in app/frontend-new/.env (or pass it at build time). " +
     "See app/frontend-new/.env.example for details."
   );
 }
-if (!MOCK_AUTH && !TENANT_ID) {
+if (!LOCAL_AUTH && !TENANT_ID) {
   throw new Error(
     "VITE_ENTRA_TENANT_ID is required. Set it in app/frontend-new/.env (or pass it at build time). " +
     'Use "organizations" for multi-tenant or your directory (tenant) ID. ' +

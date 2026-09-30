@@ -3,7 +3,7 @@
  * 
  * Class names kept as SignalR* for backward compatibility with imports.
  */
-import { isMockAuth } from "./authMode";
+import { isLocalAuth } from "./authMode";
 import { getLocalToken } from "./localSession";
 
 // ============================================================================
@@ -345,13 +345,14 @@ private buildWsUrl(): void {
   private async getAuthToken(): Promise<string> {
     if (this.authToken) return this.authToken;
 
-    // Mock mode (local dev sign-in): the dev-login JWT; MSAL is never loaded.
-    if (isMockAuth()) return getLocalToken() ?? "";
+    // Local dev sign-in: the dev-login JWT (MSAL is never used).
+    if (isLocalAuth()) return getLocalToken() ?? "";
 
     try {
       // Try to get MSAL token dynamically
       // Use only OIDC scopes — we only need idToken for WS auth
       const { msalInstance } = await import("./msalInstance");
+      if (!msalInstance) return "";
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length > 0) {
         const response = await msalInstance.acquireTokenSilent({
