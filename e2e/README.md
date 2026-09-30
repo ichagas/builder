@@ -1,14 +1,13 @@
 # E2E regression harness (WP-F6, spec 007)
 
-Playwright smoke suite shared by `app/frontend` (legacy) and `app/frontend-new`
-(spec 007). The same spec files run against either app by pointing at a
-different dev server and setting `APP=legacy|new`; `e2e/routes.ts` translates
-each logical page into the right URL shape for whichever app is under test.
+Playwright suite for `app/frontend-new` (spec 007). The legacy frontend
+was removed in T074; the suite now targets only the new app.
+Point `BASE_URL` at a running dev server; `e2e/routes.ts` maps each logical
+page to its URL.
 
 - `e2e/regression/pr-xx.spec.ts` -- one file per regression row (T017),
   PR-01..PR-21. This is the regression gate (`tasks.md` T017): every row must
-  be green **on legacy** before any page-restyle task starts, and green **on
-  the new app** before that page's task is considered done.
+  be green on the new app.
 - `e2e/shell/*.spec.ts` -- foundation E2E for the new app's shell (T037):
   `remount.spec.ts` (no shell remount across tool navigation, tool/tab
   restored on reload), `redirects.spec.ts` (every row of
@@ -25,8 +24,7 @@ each logical page into the right URL shape for whichever app is under test.
   the axe-baseline recorder. Import `test`/`expect` from here, not directly
   from `@playwright/test`.
 - `e2e/routes.ts` -- the logical-page -> URL map. Tests must always navigate
-  through a `routes.*` helper, never by clicking legacy's own sidebar/nav
-  (the new app replaces it).
+  through a `routes.*` helper, never by clicking the sidebar/nav.
 - `e2e/seed.sql` -- fixed-id baseline data (org, owner user, one project, one
   standards category/standard, one tech stack, one build book, one published
   project, two share tokens). Additive and idempotent (`ON CONFLICT DO
@@ -36,13 +34,12 @@ each logical page into the right URL shape for whichever app is under test.
 
 ## Bringing up the stack
 
-Needs Docker (for Postgres) and both `app/backend`'s and `app/frontend*`'s
+Needs Docker (for Postgres) and both `app/backend`'s and `app/frontend-new`'s
 `node_modules` installed (`npm ci` in each). From the repo root:
 
 ```bash
 e2e/scripts/stack.sh up      # Postgres x2 (profile "e2e") + the API on :3140
-e2e/scripts/serve-app.sh legacy 8140    # app/frontend on :8140, or:
-e2e/scripts/serve-app.sh new    8141    # app/frontend-new on :8141
+e2e/scripts/serve-app.sh new 8141    # app/frontend-new on :8141
 ```
 
 `stack.sh up` re-stages `infra/migrations/*.sql` + `seed.sql` into a scratch
@@ -61,16 +58,16 @@ Vite's default host binds to a socket family the sandbox doesn't support
 `--host 127.0.0.1`, e.g.:
 
 ```bash
-cd app/frontend
+cd app/frontend-new
 VITE_API_BASE_URL=http://localhost:3140 VITE_AUTH_MODE=mock \
 VITE_ENTRA_TENANT_ID=00000000-e2e-4000-8000-tenantid0001 \
 VITE_ENTRA_CLIENT_ID=00000000-e2e-4000-8000-clientid0001 \
-VITE_AZURE_REDIRECT_URI=http://localhost:8140 \
-npx vite --port 8140 --strictPort --host 127.0.0.1
+VITE_AZURE_REDIRECT_URI=http://localhost:8141 \
+npx vite --port 8141 --strictPort --host 127.0.0.1
 ```
 
-**`VITE_AUTH_MODE=mock` is dead code in `app/frontend`**: nothing in the
-legacy app reads that env var (grep for it -- only `serve-app.sh` sets it).
+**`VITE_AUTH_MODE=mock` is dead code**: nothing in the app reads that env
+var (only `serve-app.sh` sets it).
 Mock auth instead comes entirely from the harness seeding MSAL's
 `localStorage` cache before any page script runs
 (`fixtures.ts` -> `lib/msalCache.ts`), which the backend's
@@ -107,26 +104,24 @@ npm pack playwright-core@1.56.0 --silent && tar xzf playwright-core-1.56.0.tgz p
 cd e2e
 npm ci
 
-# Legacy smoke suite (T017), both viewports, then aggregates the axe baseline:
-BASE_URL=http://localhost:8140 npm run test:legacy
-
-# New app (once app/frontend-new has routes):
+# Regression + shell suites, both viewports:
 BASE_URL=http://localhost:8141 npm run test:new
 
 # One file, one viewport, while iterating:
-APP=legacy BASE_URL=http://localhost:8140 npx playwright test regression/pr-14.spec.ts --project=desktop --reporter=list
+BASE_URL=http://localhost:8141 npx playwright test regression/pr-14.spec.ts --project=desktop --reporter=list
 ```
 
-`test:legacy` runs `playwright test regression` (both the `desktop`
-(1440x900) and `mobile` (390x844) projects, from `playwright.config.ts`) and
-then `scripts/build-axe-baseline.mjs`, which aggregates every
-`recordAxeBaseline()` call's NDJSON line (`baselines/axe-legacy.raw.jsonl`)
-into `baselines/axe-legacy.json` -- one row per `(pageId, viewport)`, the max
-serious+critical violation count seen. This only **records** a baseline
-(T016/T017, per spec.md D-13); legacy axe violations are expected and don't
-fail the suite. The "no NEW violations vs. this baseline" comparison happens
-later, once the new app exists, by diffing a `test:new` axe run against
-`axe-legacy.json`.
+`test:new` runs `playwright test regression shell` (both the `desktop`
+(1440x900) and `mobile` (390x844) projects, from `playwright.config.ts`).
+Every `recordAxeBaseline()` call appends an NDJSON line to
+`baselines/axe-legacy.raw.jsonl`; `scripts/build-axe-baseline-new.mjs`
+aggregates it into an `axe-new-*.json` baseline and diffs it against
+`baselines/axe-legacy.json`.
+
+**`baselines/axe-legacy.json` is frozen.** It was recorded once (T016/T017,
+spec.md D-13) from the legacy app before that app was removed in T074, and is
+never regenerated. It is the reference the "no NEW serious/critical
+violations" comparison uses.
 
 Tear down when done:
 
@@ -166,13 +161,13 @@ export GENAPPS_DB_PORT=55442
 export API_PORT=3241
 e2e/scripts/stack.sh up
 e2e/scripts/serve-app.sh new 8241   # reads API_PORT from the same shell
-BASE_URL=http://localhost:8241 API_PORT=3241 npm run test:new   # or test:legacy
+BASE_URL=http://localhost:8241 API_PORT=3241 npm run test:new
 ```
 
 If `serve-app.sh`'s `vite` fails to bind (`EAFNOSUPPORT` on `::`, seen in
 some sandboxes), run it directly with `--host 127.0.0.1` instead — see the
-`app/frontend` example earlier in this file for the equivalent explicit
-`vite` invocation; the same flag applies when serving `app/frontend-new`.
+`app/frontend-new` example earlier in this file for the equivalent explicit
+`vite` invocation.
 
 ## Coverage notes (things PR-xx specs intentionally don't exercise)
 
@@ -198,7 +193,7 @@ reasons are:
 - **Needs a second account/session**: PR-01's shared-project/anonymous-save
   flows, PR-03's clipboard-copy token recovery (clipboard access is also
   unreliable under the artifact/CI sandbox).
-- **No such route in `app/frontend`**: PR-20's superadmin cloud/GitHub/render
+- **Never existed in the (removed) legacy frontend**: PR-20's superadmin cloud/GitHub/render
   managers and signup-code validation are new-only capabilities (see
   `contracts/routes.md`); legacy's `/settings/*` only ever renders the admin
   user-management page, and sign-in is SSO-only (no signup flow to
@@ -208,10 +203,9 @@ reasons are:
 
 ## Legacy bugs found while writing this suite
 
-These are pre-existing bugs in `app/frontend`/`app/backend`, found and
-documented (not fixed -- `app/frontend` is immutable pre-cutover per the UI/UX
-Layout Contract, and fixing backend behavior is out of scope for a frontend
-regression harness). Each is also called out in its spec's header comment.
+Historical: these are pre-existing bugs in the legacy frontend
+(removed in T074) and `app/backend`, found while the suite ran against the
+legacy app. Kept for context; the frontend ones went away with the app. Each is also called out in its spec's header comment.
 
 - **`ProjectSettings.tsx`**: the name field is clobbered by a re-sync
   `useEffect` (noted by an earlier WP-F6 pass; see PR-02).

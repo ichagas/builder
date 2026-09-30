@@ -72,14 +72,15 @@ export function countSeriousCritical(results: Awaited<ReturnType<typeof runAxe>>
 
 /**
  * Runs axe and appends one NDJSON line recording (pageId, viewport, serious,
- * critical) counts. This never fails the test (legacy violations are
- * expected — T016/T017 only *record* a baseline, per D-13/tasks.md; the
- * "no NEW violations" comparison happens later once the new app exists).
+ * critical) counts. This never fails the test (violations are only
+ * *recorded*, per D-13/tasks.md; the "no NEW violations" comparison is done
+ * by scripts/build-axe-baseline-new.mjs against the frozen
+ * baselines/axe-legacy.json).
  *
  * Appended (not read-modify-write) so parallel workers never race on the
- * file; e2e/scripts/build-axe-baseline.mjs aggregates it into
- * e2e/baselines/axe-legacy.json after the run (wired into `npm run
- * test:legacy`).
+ * file; e2e/scripts/build-axe-baseline-new.mjs aggregates it into a
+ * per-task axe-new-*.json baseline. (axe-legacy.json itself is frozen: it was
+ * recorded once from the legacy app, which no longer exists.)
  */
 export async function recordAxeBaseline(page: Page, pageId: string, testInfo: { project: { name: string } }) {
   const results = await runAxe(page);

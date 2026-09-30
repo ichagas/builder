@@ -3,11 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * WP-F6 regression harness (spec 007, T016).
  *
- * BASE_URL / APP switch: the same spec files run against either app by
- * pointing at a different dev server and telling e2e/routes.ts which URL
- * shape to use.
- *   APP=legacy BASE_URL=http://localhost:8140  -> app/frontend
- *   APP=new    BASE_URL=http://localhost:8140  -> app/frontend-new
+ * BASE_URL points at a running app/frontend-new dev server, e.g.
+ *   BASE_URL=http://localhost:8140
  *
  * See e2e/README.md for how to bring up the stack and serve an app.
  */

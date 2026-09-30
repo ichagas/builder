@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 // WP-F3 tester: aggregates the per-test NDJSON axe records (appended by
-// recordAxeBaseline() in e2e/fixtures.ts, same raw file regardless of
-// APP=legacy|new) into e2e/baselines/axe-new-f3.json, then diffs each
+// recordAxeBaseline() in e2e/fixtures.ts, same raw file) into e2e/baselines/axe-new-f3.json, then diffs each
 // (pageId, viewport) row's serious+critical count against the recorded
-// axe-legacy.json baseline (T016/T017) so a reviewer can see at a glance
+// frozen axe-legacy.json baseline (recorded once from the legacy app, now
+// removed, T016/T017; never regenerated) so a reviewer can see at a glance
 // whether the new shell introduces any NEW serious/critical violations.
 //
-// Usage (after `APP=new BASE_URL=... playwright test regression`, which
-// populates baselines/axe-legacy.raw.jsonl exactly like the legacy run
-// does -- see fixtures.ts):
+// Usage (after `BASE_URL=... playwright test regression`, which
+// populates baselines/axe-legacy.raw.jsonl -- see fixtures.ts):
 //   node scripts/build-axe-baseline-new.mjs
 import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";

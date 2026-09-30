@@ -38,8 +38,6 @@ import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, seed } from "../fixtures";
 
-test.skip(process.env.APP !== "new", "The shell only exists in app/frontend-new");
-
 type Theme = "light" | "dark";
 
 /** Forces next-themes' theme before the app's first script runs (ThemeProvider.tsx: storageKey defaults to "theme"). */

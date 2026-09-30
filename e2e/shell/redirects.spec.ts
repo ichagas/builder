@@ -10,8 +10,6 @@
  */
 import { test, expect, seed } from "../fixtures";
 
-test.skip(process.env.APP !== "new", "Legacy redirects only apply to app/frontend-new");
-
 const SIMPLE_ROWS: Array<[legacy: string, expectedSuffix: string]> = [
   ["/dashboard", "/projects"],
   ["/gallery", "/library/gallery"],

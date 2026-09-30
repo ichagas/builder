@@ -20,7 +20,7 @@ test("PR-07 chat: loads, creates a session, reloads", async ({ page }, testInfo)
   // Reload deselects the session (no session is "active" on a fresh load).
   // The sessions list panel is collapsed by default on mobile (a toggle
   // button with no accessible name flips it -- see Chat.tsx isSidebarCollapsed
-  // -- a legacy accessibility gap, not fixed here since app/frontend is
+  // -- a legacy accessibility gap, not fixed here since the legacy frontend was
   // immutable), so open it there before re-selecting the session; this
   // proves the session itself, not just in-memory UI state, survived the
   // reload. Located by its chevron icon rather than the `ml-auto` Tailwind

@@ -2,7 +2,7 @@
  * Thin server-side (Node, not browser) API helper for seeding/reading data
  * directly through the API using a mock bearer token — faster and more
  * reliable than driving the same setup through the UI, and independent of
- * whichever app (legacy/new) is under test.
+ * the app under test.
  *
  * Uses the same signMockIdToken() as the browser cache seed (msalCache.ts)
  * so the backend's authMiddleware local-JWT fallback accepts it (see
