@@ -69,6 +69,26 @@ The frontend lives in `app/frontend-new/` (the spec 007 redesign, built to the l
 
 > For Azure deployment you will also need: Azure CLI, Terraform, and PowerShell 7+. See the [Infrastructure README](./infra/README.md) and the deployment guides under [`docs/`](./docs).
 
+### Run locally without Entra
+
+No Microsoft Entra ID app registration needed. Development only.
+
+```bash
+cp .env.example .env                                  # root: set AUTH_MODE=local and your own JWT_SECRET (openssl rand -hex 32)
+cp app/frontend-new/.env.example app/frontend-new/.env   # VITE_AUTH_MODE=mock, VITE_API_BASE_URL=http://localhost:3001
+npm run dev:db          # Postgres on 5432/5433; migrations run on the first `docker compose up`
+npm run dev:api         # API on http://localhost:3001 (logs "AUTH_MODE=local: dev sign-in enabled")
+npm run dev:frontend    # http://localhost:8080
+```
+
+Open http://localhost:8080/auth and sign in (defaults `dev@local.test` /
+`Local Developer`). The API creates the user, an app admin role and a "Local
+Dev" organization on first use. If the database volume predates newer
+migrations, run `npm run dev:reset` (this wipes the local DB volumes).
+`AUTH_MODE=local` is refused with `NODE_ENV=production`; the sign-in form is
+only active in the Vite dev server with `VITE_AUTH_MODE=mock` and no
+`VITE_ENTRA_CLIENT_ID`.
+
 ### Quick Start
 
 ```bash
