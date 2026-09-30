@@ -228,14 +228,7 @@ jobs:
           TF_VAR_ai_foundry_private_endpoint_subnet_id: ${{ vars.AI_FOUNDRY_PRIVATE_ENDPOINT_SUBNET_ID }}
           TF_VAR_central_dns_subscription_id: ${{ vars.CENTRAL_DNS_SUBSCRIPTION_ID }}
           TF_VAR_central_dns_resource_group_name: ${{ vars.CENTRAL_DNS_RESOURCE_GROUP_NAME }}
-          TF_VAR_frontend_app_url_override: ${{ vars.FRONTEND_APP_URL_OVERRIDE }}
           TF_VAR_frontend_new_app_url_override: ${{ vars.FRONTEND_NEW_APP_URL_OVERRIDE }}
-          # Leave PRIMARY_FRONTEND unset until the WP-X2/T073 cutover step: the
-          # Terraform default ("legacy") then applies, so this same job (also
-          # used for T015's frontend_new-at-next.<domain> apply) never switches
-          # production as a side effect. Set it ("new") only once next.<domain>
-          # is verified and the final regression run is green.
-          TF_VAR_primary_frontend: ${{ vars.PRIMARY_FRONTEND }}
           TF_VAR_api_base_url_override: ${{ vars.API_BASE_URL_OVERRIDE }}
         run: |
           set -euo pipefail
@@ -256,9 +249,7 @@ jobs:
             TF_VAR_ai_foundry_private_endpoint_subnet_id \
             TF_VAR_central_dns_subscription_id \
             TF_VAR_central_dns_resource_group_name \
-            TF_VAR_frontend_app_url_override \
             TF_VAR_frontend_new_app_url_override \
-            TF_VAR_primary_frontend \
             TF_VAR_api_base_url_override; do
             val="${!name:-}"
             if [ -n "$val" ]; then
@@ -924,12 +915,6 @@ jobs:
               '/subscriptions/[^"?[:space:]]+/resourceGroups/[^"?[:space:]]+/providers/Microsoft\.App/containerApps/[^"?[:space:]]+' \
               "API container app" || true
 
-            import_existing_resource \
-              "module.frontend.module.frontend.azapi_resource.container_app" \
-              "with module.frontend.module.frontend.azapi_resource.container_app," \
-              '/subscriptions/[^"?[:space:]]+/resourceGroups/[^"?[:space:]]+/providers/Microsoft\.App/containerApps/[^"?[:space:]]+' \
-              "frontend container app" || true
-
             import_role_assignment \
               "azurerm_role_assignment.api_uami_storage_blob_contributor" \
               "with azurerm_role_assignment.api_uami_storage_blob_contributor," \
@@ -941,19 +926,9 @@ jobs:
               "API UAMI ACR pull role assignment" || true
 
             import_role_assignment \
-              "azurerm_role_assignment.frontend_uami_acr_pull" \
-              "with azurerm_role_assignment.frontend_uami_acr_pull," \
-              "frontend UAMI ACR pull role assignment" || true
-
-            import_role_assignment \
               "azurerm_role_assignment.container_app_acr_pull" \
               "with azurerm_role_assignment.container_app_acr_pull," \
               "container app ACR pull role assignment" || true
-
-            import_role_assignment \
-              "azurerm_role_assignment.frontend_acr_pull" \
-              "with azurerm_role_assignment.frontend_acr_pull," \
-              "frontend ACR pull role assignment" || true
 
             import_role_assignment \
               "azurerm_role_assignment.api_workload_env_contributor" \
@@ -1122,11 +1097,8 @@ jobs:
           read_terraform_output "api_uami_id" || true
           printf 'api_uami_id=%s\n' "$TF_OUTPUT_VALUE" >> "$GITHUB_OUTPUT"
 
-          read_terraform_output "frontend_uami_id" || true
-          printf 'frontend_uami_id=%s\n' "$TF_OUTPUT_VALUE" >> "$GITHUB_OUTPUT"
-
-          # Frontend-new (redesigned frontend, spec 007) — may be absent on an
-          # environment that hasn't applied the frontend_new module yet.
+          # Frontend (spec 007 redesign; Terraform module "frontend_new") — may
+          # be absent on an environment that hasn't applied the module yet.
           read_terraform_output "frontend_new_uami_id" || true
           printf 'frontend_new_uami_id=%s\n' "$TF_OUTPUT_VALUE" >> "$GITHUB_OUTPUT"
 
@@ -1135,33 +1107,8 @@ jobs:
           printf 'api_env_vars=%s\n' "$API_ENV_JSON" >> "$GITHUB_OUTPUT"
 
           # Export frontend build env vars as a single JSON blob
-          FRONTEND_ENV_JSON="$(terraform output -json frontend_build_env_vars 2>/dev/null || echo '{}')"
-          printf 'frontend_build_env_vars=%s\n' "$FRONTEND_ENV_JSON" >> "$GITHUB_OUTPUT"
-
-          # Export frontend-new build env vars as a single JSON blob
           FRONTEND_NEW_ENV_JSON="$(terraform output -json frontend_new_build_env_vars 2>/dev/null || echo '{}')"
           printf 'frontend_new_build_env_vars=%s\n' "$FRONTEND_NEW_ENV_JSON" >> "$GITHUB_OUTPUT"
-
-      - name: build-frontend
-        if:
-          ${{ env.PLAN_ONLY != 'true' && (github.event_name != 'workflow_dispatch' ||
-          !inputs.skip_build) && env.AUTO_SKIP_DOWNSTREAM_DEPLOYMENT != 'true'
-          }}
-        working-directory: app/frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # Inject all frontend build vars from Terraform output (single source of truth)
-          FRONTEND_VARS='${{ steps.tfout.outputs.frontend_build_env_vars }}'
-          if [ -n "$FRONTEND_VARS" ] && [ "$FRONTEND_VARS" != "{}" ]; then
-            while IFS='=' read -r key value; do
-              export "$key=$value"
-            done < <(echo "$FRONTEND_VARS" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
-          fi
-
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-          npm run build
 
       - name: build-frontend-new
         if:
@@ -1173,8 +1120,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Frontend-new (redesigned frontend, spec 007) — mirrors build-frontend
-          # above, injecting its own build vars (single source of truth: Terraform).
+          # Inject the frontend build vars from Terraform output (single source of truth).
           FRONTEND_NEW_VARS='${{ steps.tfout.outputs.frontend_new_build_env_vars }}'
           if [ -n "$FRONTEND_NEW_VARS" ] && [ "$FRONTEND_NEW_VARS" != "{}" ]; then
             while IFS='=' read -r key value; do
@@ -1216,7 +1162,7 @@ jobs:
           az account get-access-token --resource https://vault.azure.net --output none
           echo "[OK] Pre-warmed ARM and Key Vault data-plane tokens."
 
-      - name: build-and-push-frontend-image
+      - name: build-and-push-frontend-new-image
         if:
           ${{ env.PLAN_ONLY != 'true' && (github.event_name != 'workflow_dispatch' ||
           !inputs.skip_build) && env.AUTO_SKIP_DOWNSTREAM_DEPLOYMENT != 'true'
@@ -1229,22 +1175,6 @@ jobs:
           # the private endpoint; no public network access, no agent pool, and
           # no trusted-services bypass required — all of which are blocked in a
           # locked-down PBMM landing zone.
-          az acr login --name "${{ steps.tfout.outputs.acr_name }}"
-          FRONTEND_IMAGE="${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend:${IMAGE_TAG}"
-          docker build -t "$FRONTEND_IMAGE" -f app/frontend/Dockerfile app/frontend
-          docker push "$FRONTEND_IMAGE"
-          echo "Pushed frontend image: ${FRONTEND_IMAGE}"
-
-      - name: build-and-push-frontend-new-image
-        if:
-          ${{ env.PLAN_ONLY != 'true' && (github.event_name != 'workflow_dispatch' ||
-          !inputs.skip_build) && env.AUTO_SKIP_DOWNSTREAM_DEPLOYMENT != 'true'
-          }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Frontend-new (redesigned frontend, spec 007) — mirrors
-          # build-and-push-frontend-image above.
           az acr login --name "${{ steps.tfout.outputs.acr_name }}"
           FRONTEND_NEW_IMAGE="${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${IMAGE_TAG}"
           docker build -t "$FRONTEND_NEW_IMAGE" -f app/frontend-new/Dockerfile app/frontend-new
@@ -1309,7 +1239,6 @@ jobs:
             -refresh=false \
             -var-file="${TFVARS_FILE}" \
             -var="container_image=${{ steps.tfout.outputs.acr_login_server }}/pronghorn-api:${IMAGE_TAG}" \
-            -var="frontend_container_image=${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend:${IMAGE_TAG}" \
             -var="frontend_new_container_image=${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${IMAGE_TAG}" \
             ${{ steps.tfvars.outputs.tf_secret_args }}
 
@@ -1324,7 +1253,6 @@ jobs:
           ACR_SERVER="${{ steps.tfout.outputs.acr_login_server }}"
           RG="${{ steps.tfout.outputs.resource_group }}"
           API_UAMI="${{ steps.tfout.outputs.api_uami_id }}"
-          FRONTEND_UAMI="${{ steps.tfout.outputs.frontend_uami_id }}"
           FRONTEND_NEW_UAMI="${{ steps.tfout.outputs.frontend_new_uami_id }}"
 
           echo "Configuring ACR registry on container apps..."
@@ -1333,12 +1261,6 @@ jobs:
             --resource-group "$RG" \
             --server "$ACR_SERVER" \
             --identity "${API_UAMI:-system}"
-
-          az containerapp registry set \
-            --name ca-pronghorn-frontend \
-            --resource-group "$RG" \
-            --server "$ACR_SERVER" \
-            --identity "${FRONTEND_UAMI:-system}"
 
           # Frontend-new (redesigned frontend, spec 007) — skipped gracefully
           # (empty FRONTEND_NEW_UAMI) on an environment that hasn't applied the
@@ -1386,12 +1308,6 @@ jobs:
             --image "${ACR_SERVER}/pronghorn-api:${IMAGE_TAG}" \
             --set-env-vars "${ENV_PAIRS[@]}"
 
-          echo "Updating frontend container app with image tag: ${IMAGE_TAG}"
-          retry_containerapp_update az containerapp update \
-            --name ca-pronghorn-frontend \
-            --resource-group "$RG" \
-            --image "${ACR_SERVER}/pronghorn-frontend:${IMAGE_TAG}"
-
           # Frontend-new (redesigned frontend, spec 007) — skipped gracefully
           # (empty FRONTEND_NEW_UAMI) on an environment that hasn't applied the
           # frontend_new Terraform module yet.
@@ -1415,11 +1331,9 @@ jobs:
         run: |
           set -euo pipefail
           API_URL="$(terraform output -raw container_app_url 2>/dev/null || true)"
-          FRONTEND_URL="$(terraform output -raw frontend_app_url 2>/dev/null || true)"
           FRONTEND_NEW_URL="$(terraform output -raw frontend_new_url 2>/dev/null || true)"
           APIM_URL="$(terraform output -raw api_management_gateway_url 2>/dev/null || true)"
 
-          echo "Frontend URL:     $FRONTEND_URL"
           echo "Frontend-new URL: $FRONTEND_NEW_URL"
           echo "API URL:          $API_URL"
           echo "APIM URL:         $APIM_URL"
@@ -1442,13 +1356,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .rollback
-          FRONTEND_REVISION="$(az containerapp revision list --name ca-pronghorn-frontend --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
           API_REVISION="$(az containerapp revision list --name ca-pronghorn-api --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
           # Frontend-new (redesigned frontend, spec 007) — `|| true` makes this
           # a no-op (empty string) on an environment where ca-pronghorn-frontend-new
           # doesn't exist yet (frontend_new Terraform module not applied).
           FRONTEND_NEW_REVISION="$(az containerapp revision list --name ca-pronghorn-frontend-new --resource-group "${{ steps.tfout.outputs.resource_group }}" --query "[?properties.active] | [0].name" -o tsv 2>/dev/null || true)"
-          printf 'frontend_revision=%s\n' "$FRONTEND_REVISION" >> "$GITHUB_OUTPUT"
           printf 'api_revision=%s\n' "$API_REVISION" >> "$GITHUB_OUTPUT"
           printf 'frontend_new_revision=%s\n' "$FRONTEND_NEW_REVISION" >> "$GITHUB_OUTPUT"
 
@@ -1463,12 +1375,10 @@ jobs:
             -SourceRef "${{ github.sha }}" `
             -SnapshotId "${{ github.ref_name }}-${{ github.run_id }}" `
             -TerraformOutputsPath ".rollback/terraform-outputs.json" `
-            -FrontendImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend:${{ env.IMAGE_TAG }}" `
+            -FrontendImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${{ env.IMAGE_TAG }}" `
             -ApiImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-api:${{ env.IMAGE_TAG }}" `
-            -FrontendNewImage "${{ steps.tfout.outputs.acr_login_server }}/pronghorn-frontend-new:${{ env.IMAGE_TAG }}" `
-            -FrontendRevision "${{ steps.runtime_revisions.outputs.frontend_revision }}" `
             -ApiRevision "${{ steps.runtime_revisions.outputs.api_revision }}" `
-            -FrontendNewRevision "${{ steps.runtime_revisions.outputs.frontend_new_revision }}" `
+            -FrontendRevision "${{ steps.runtime_revisions.outputs.frontend_new_revision }}" `
             -OutputPath ".rollback/deployment-snapshot.json"
 
       - name: upload-deployment-snapshot
@@ -1590,14 +1500,7 @@ jobs:
           TF_VAR_ai_foundry_private_endpoint_subnet_id: ${{ vars.AI_FOUNDRY_PRIVATE_ENDPOINT_SUBNET_ID }}
           TF_VAR_central_dns_subscription_id: ${{ vars.CENTRAL_DNS_SUBSCRIPTION_ID }}
           TF_VAR_central_dns_resource_group_name: ${{ vars.CENTRAL_DNS_RESOURCE_GROUP_NAME }}
-          TF_VAR_frontend_app_url_override: ${{ vars.FRONTEND_APP_URL_OVERRIDE }}
           TF_VAR_frontend_new_app_url_override: ${{ vars.FRONTEND_NEW_APP_URL_OVERRIDE }}
-          # Leave PRIMARY_FRONTEND unset until the WP-X2/T073 cutover step: the
-          # Terraform default ("legacy") then applies, so this same job (also
-          # used for T015's frontend_new-at-next.<domain> apply) never switches
-          # production as a side effect. Set it ("new") only once next.<domain>
-          # is verified and the final regression run is green.
-          TF_VAR_primary_frontend: ${{ vars.PRIMARY_FRONTEND }}
           TF_VAR_api_base_url_override: ${{ vars.API_BASE_URL_OVERRIDE }}
         run: |
           set -euo pipefail
@@ -1618,9 +1521,7 @@ jobs:
             TF_VAR_ai_foundry_private_endpoint_subnet_id \
             TF_VAR_central_dns_subscription_id \
             TF_VAR_central_dns_resource_group_name \
-            TF_VAR_frontend_app_url_override \
             TF_VAR_frontend_new_app_url_override \
-            TF_VAR_primary_frontend \
             TF_VAR_api_base_url_override; do
             val="${!name:-}"
             if [ -n "$val" ]; then

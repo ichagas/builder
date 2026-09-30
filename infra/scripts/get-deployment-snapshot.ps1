@@ -10,10 +10,8 @@ param(
     [string]$TerraformOutputsPath,
     [string]$FrontendImage,
     [string]$ApiImage,
-    [string]$FrontendNewImage,
     [string]$FrontendRevision,
     [string]$ApiRevision,
-    [string]$FrontendNewRevision,
     [string]$AiDeploymentsPath
 )
 
@@ -57,18 +55,12 @@ $snapshot = [pscustomobject]@{
     terraformStateKey = [Environment]::GetEnvironmentVariable("TFSTATE_KEY")
     componentSets     = $componentSets
     runtimeArtifacts  = [pscustomobject]@{
+        # The frontend is the spec-007 redesign (Terraform module "frontend_new",
+        # container app ca-pronghorn-frontend-new). Image/revision are empty
+        # strings when the caller doesn't pass them.
         frontend    = [pscustomobject]@{
             image    = $FrontendImage
             revision = $FrontendRevision
-        }
-        # Frontend-new (redesigned frontend, spec 007) — mirrors `frontend`
-        # above. Image/revision are empty strings (not omitted) when the
-        # caller doesn't pass them, e.g. an environment that hasn't applied
-        # the frontend_new Terraform module / ca-pronghorn-frontend-new
-        # container app yet — a deliberate no-op, not an error.
-        frontendNew = [pscustomobject]@{
-            image    = $FrontendNewImage
-            revision = $FrontendNewRevision
         }
         api         = [pscustomobject]@{
             image    = $ApiImage

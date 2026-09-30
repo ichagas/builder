@@ -99,7 +99,7 @@ $Variables = [ordered]@{
   # ── Conditional / optional ───────────────────────────────────────────────
   CENTRAL_DNS_SUBSCRIPTION_ID                = ''  # Only when delegate_private_dns_to_policy = false
   CENTRAL_DNS_RESOURCE_GROUP_NAME            = ''  # Only when delegate_private_dns_to_policy = false
-  FRONTEND_APP_URL_OVERRIDE                  = ''  # Optional public frontend URL (MSAL redirect / CORS)
+  FRONTEND_NEW_APP_URL_OVERRIDE              = ''  # Optional public frontend URL (MSAL redirect / CORS)
   API_BASE_URL_OVERRIDE                      = ''  # Optional public API URL (VITE_API_BASE_URL + derived VITE_WS_URL)
 }
 

@@ -46,7 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
       frontend-new: ${{ steps.filter.outputs.frontend-new }}
       backend: ${{ steps.filter.outputs.backend }}
       infra: ${{ steps.filter.outputs.infra }}
@@ -59,50 +58,12 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            frontend:
-              - 'app/frontend/**'
             frontend-new:
               - 'app/frontend-new/**'
             backend:
               - 'app/backend/**'
             infra:
               - 'infra/**'
-
-  # ---------------------------------------------------------------------------
-  # Frontend: lint → build → test
-  # ---------------------------------------------------------------------------
-  frontend-ci:
-    name: "Frontend CI"
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: app/frontend
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
-
-      - name: setup-node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: app/frontend/package-lock.json
-
-      - name: install
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
-      - name: lint
-        run: npm run lint
-
-      - name: build
-        run: npm run build
-
-      - name: test
-        run: npm run test
 
   # ---------------------------------------------------------------------------
   # Frontend-new: lint → typecheck → test → build
@@ -220,7 +181,7 @@ jobs:
   security-npm-audit:
     name: "Security: npm audit"
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.frontend-new == 'true' || needs.detect-changes.outputs.backend == 'true'
+    if: needs.detect-changes.outputs.frontend-new == 'true' || needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -231,24 +192,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: audit-frontend
-        working-directory: app/frontend
-        shell: bash
-        run: |
-          if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
-          echo "### Frontend Dependency Audit" >> $GITHUB_STEP_SUMMARY
-          if npm audit --audit-level=critical > /dev/null 2>&1; then
-            echo "No critical vulnerabilities." >> $GITHUB_STEP_SUMMARY
-          else
-            npm audit --json 2>/dev/null | jq -r '
-              "| Severity | Package | Fix Available |",
-              "|----------|---------|---------------|",
-              (.vulnerabilities // {} | to_entries[]
-                | select(.value.severity == "critical" or .value.severity == "high")
-                | "| \(.value.severity) | \(.key) | \(if .value.fixAvailable == true then "Yes" elif .value.fixAvailable == false then "No" else "Partial" end) |")
-            ' >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
-          fi
 
       - name: audit-frontend-new
         working-directory: app/frontend-new
@@ -292,7 +235,7 @@ jobs:
   security-gitleaks:
     name: "Security: Gitleaks"
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.backend == 'true'
+    if: needs.detect-changes.outputs.frontend-new == 'true' || needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -351,7 +294,6 @@ jobs:
     needs:
       [
         detect-changes,
-        frontend-ci,
         frontend-new-ci,
         backend-ci,
         infra-plan,
@@ -365,12 +307,10 @@ jobs:
       - name: evaluate
         shell: bash
         run: |
-          echo "frontend changed:     ${{ needs.detect-changes.outputs.frontend }}"
           echo "frontend-new changed: ${{ needs.detect-changes.outputs.frontend-new }}"
           echo "backend changed:      ${{ needs.detect-changes.outputs.backend }}"
           echo "infra changed:        ${{ needs.detect-changes.outputs.infra }}"
           echo ""
-          echo "frontend-ci:        ${{ needs.frontend-ci.result }}"
           echo "frontend-new-ci:    ${{ needs.frontend-new-ci.result }}"
           echo "backend-ci:         ${{ needs.backend-ci.result }}"
           echo "infra-plan:         ${{ needs.infra-plan.result }}"
@@ -381,7 +321,6 @@ jobs:
           # A job result is 'success', 'failure', 'cancelled', or 'skipped'.
           # Skipped is acceptable (means the layer had no changes).
           for result in \
-            "${{ needs.frontend-ci.result }}" \
             "${{ needs.frontend-new-ci.result }}" \
             "${{ needs.backend-ci.result }}" \
             "${{ needs.infra-plan.result }}" \
