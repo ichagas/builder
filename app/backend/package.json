@@ -7,7 +7,7 @@
     "start": "node dist/index.js",
     "start:dev": "npx ts-node src/index.ts",
     "build": "tsc -p tsconfig.build.json",
-    "dev": "set -a && . ../../.env 2>/dev/null && . ./.env 2>/dev/null; set +a; NODE_ENV=${NODE_ENV:-development} npx nodemon --signal SIGTERM --delay 1 --exec ts-node src/index.ts",
+    "dev": "./dev.sh",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "jest",
