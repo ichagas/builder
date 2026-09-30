@@ -15,8 +15,6 @@
  */
 import { test, expect, seed } from "../fixtures";
 
-test.skip(process.env.APP !== "new", "The shell only exists in app/frontend-new");
-
 async function armShellProbe(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
     (window as unknown as { __shellProbe: number }).__shellProbe = Date.now();

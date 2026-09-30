@@ -2,9 +2,9 @@
 applyTo: "app/frontend-new/**"
 ---
 
-# Frontend Layer (new) — Pronghorn Web App Redesign
+# Frontend Layer — Pronghorn Web App (redesign)
 
-This is the new frontend from spec `specs/007-frontend-new/`. It starts as a copy of `app/frontend/` and is redesigned to the layout contract. It replaces `app/frontend/` at switch-over.
+This is the only frontend, from spec `specs/007-frontend-new/`. It began as a fork of the former legacy app and is built to the layout contract. The legacy frontend was removed in T074.
 
 ## Read before changing anything
 - `specs/007-frontend-new/spec.md`, `plan.md` (especially **the move and restyle recipe**), `research.md`, `agents.md`
@@ -12,7 +12,10 @@ This is the new frontend from spec `specs/007-frontend-new/`. It starts as a cop
 - Prototypes: `docs/design/frontend-redesign/option-a-styles/approach-3-versions.html` (Builder), `onboard-b-console.html` (Assurance)
 
 ## Stack
-- The same as the legacy app: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query, MSAL.
+- React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query, MSAL.
+- Auth: MSAL / Azure Entra ID via `src/config/`, `src/contexts/`. AI config: `src/config/aiModels.ts` (Azure Foundry only; all AI calls go through the API).
+- Direct **Web App → API** communication. All data fetching goes through the API endpoints.
+- Use the `@/` import alias (`@/* → src/*`). Reuse components from `src/components/`, hooks from `src/hooks/`, utilities from `src/lib/` and `src/utils/` before creating new ones.
 - Existing pages keep the forked data layer (`src/lib/pronghornApiAdapter.ts`, `useRealtime*` hooks, contexts).
 - New-capability features (`src/features/versions|changes|teams|portfolio|applications|packs|mesh|onboarding|admin`) use TanStack Query hooks in `features/<domain>/api.ts` with zod validation.
 
@@ -49,9 +52,24 @@ This is the new frontend from spec `specs/007-frontend-new/`. It starts as a cop
 `components/shell`, `components/ui`, `design`, `lib/state`, `app/router.tsx` and `index.css` belong to the foundation work packages. Request changes with a `shell-change` issue.
 
 ## Testing
-- Unit: Vitest (`npm test` in `app/frontend-new/`).
+- Unit: Vitest (`npm test` in `app/frontend-new/`; tests live next to the code and in `src/test/`; config `vitest.config.ts`).
 - E2E: Playwright regression and new-capability specs (see `specs/007-frontend-new/tasks.md`), axe on touched routes.
 - Validate: `npm run lint` + `npm run build` + `npm test` in `app/frontend-new/`.
 
-## Legacy app
-Don't change `app/frontend/`. It's the regression reference only (pre-go-live pivot). Fix bugs here, in `app/frontend-new/`.
+## Patterns
+- Follow existing Tailwind token/theme usage; do not hard-code new design tokens.
+- Keep state/data-fetching patterns consistent with existing React Query and context usage.
+- Respect MSAL/Azure auth integration and existing env-var-driven configuration (`app/frontend-new/.env.example`).
+- When adding or modifying shadcn/ui components, follow the `shadcn-ui` skill guidance for Radix UI primitives, Tailwind CSS theming, and accessible component patterns.
+
+## MCP Tools Available
+- **GitHub MCP**: PR context, code review, file contents
+
+## Production Quality Skills (installed via `npx skills`)
+The following skills are installed in `.agents/skills/` and provide detailed guidance for production-quality frontend development:
+
+- **`accessibility`** — WCAG 2.2 compliance, screen reader support, keyboard navigation, ARIA patterns, color contrast. Use for any new component or UI change.
+- **`performance`** — Web performance optimization: lazy loading, code splitting, bundle analysis, image optimization, caching strategies.
+- **`core-web-vitals`** — LCP, INP, CLS optimization for page experience and search ranking.
+- **`best-practices`** — Modern web security, compatibility, code quality patterns. CSP, HTTPS, input validation.
+- **`shadcn-ui`** — Component patterns for shadcn/ui with Radix UI, Tailwind CSS theming, accessible variants, form validation with Zod.

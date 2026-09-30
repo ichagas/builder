@@ -525,52 +525,10 @@ variable "entra_app_owners" {
   default     = []
 }
 
-variable "frontend_app_url_override" {
-  description = "Legacy frontend (module.frontend) application URL — the public custom domain fronting it, if any. Registered as an Entra App Registration redirect URI and a CORS origin regardless of var.primary_frontend (both frontends stay reachable until T074 removes module.frontend). Required when create_entra_app_registration is true — var.primary_frontend defaults to \"legacy\", so this is the production domain until the cutover step explicitly flips it."
-  type        = string
-  default     = null
-}
-
 variable "frontend_new_app_url_override" {
-  description = "Frontend-new (redesigned frontend, spec 007) application URL — the public custom domain fronting it (e.g. https://next.<domain> for pre-cutover tester verification, or the production domain once var.primary_frontend is explicitly flipped to \"new\"). Registered as an Entra App Registration redirect URI and a CORS origin regardless of var.primary_frontend. Used as VITE_AZURE_REDIRECT_URI for the frontend-new build. Leave null to use the auto-derived Container App URL (module.frontend_new.app_url)."
+  description = "Frontend (spec 007 redesign, module.frontend_new) application URL — the public production domain fronting it (e.g. https://app.example.com). Registered as an Entra App Registration redirect URI and a CORS origin, and used as VITE_AZURE_REDIRECT_URI for the frontend build. Leave null to use the auto-derived Container App URL (module.frontend_new.app_url); set it whenever a custom domain fronts the app."
   type        = string
   default     = null
-}
-
-# =============================================================================
-# Primary Frontend Switch (spec 007, WP-X2, T073)
-# =============================================================================
-# Which of the two parallel frontend Container Apps (module.frontend, the
-# pre-redesign app, vs module.frontend_new, the spec-007 redesign) is treated
-# as production-primary. Both apps stay deployed and both stay registered as
-# valid Entra redirect URIs / API CORS origins no matter which is primary —
-# this variable only picks which one's URL is exposed as the
-# `primary_frontend_url` output and listed first among Entra redirect URIs.
-# The actual host that end users hit is decided outside Terraform, by which
-# *_app_url_override a human points the production custom domain's DNS
-# record at (see specs/007-frontend-new/quickstart.md "Cutover" section) —
-# this variable documents and drives that choice in code so `terraform plan`
-# shows the switch instead of it being a tribal-knowledge DNS change.
-#
-# Default "legacy": the *next* `terraform apply` after this commit is also
-# T015's — creating module.frontend_new at next.<domain> so testers can
-# verify it — and that apply must NOT also switch the primary host with no
-# chance to verify first. The cutover is a deliberate, later step: set
-# primary_frontend = "new" (tfvars, or vars.PRIMARY_FRONTEND in CI) only
-# after next.<domain> is verified and the final regression run is green —
-# see specs/007-frontend-new/quickstart.md "Cutover" for the exact order.
-# Set back to "legacy" to roll back a bad cutover before T074 lands.
-# =============================================================================
-
-variable "primary_frontend" {
-  description = "Which frontend Container App is production-primary: \"legacy\" (module.frontend) or \"new\" (module.frontend_new, spec 007 redesign). Drives the primary_frontend_url output and Entra redirect URI ordering. Default \"legacy\": the WP-X2/T073 cutover is an explicit later step (set to \"new\" only after next.<domain> is verified and the final regression is green — see quickstart.md \"Cutover\"), not something this or T015's apply performs automatically. Set back to \"legacy\" to roll back."
-  type        = string
-  default     = "legacy"
-
-  validation {
-    condition     = contains(["legacy", "new"], var.primary_frontend)
-    error_message = "primary_frontend must be \"legacy\" or \"new\"."
-  }
 }
 
 variable "api_base_url_override" {
@@ -592,41 +550,28 @@ variable "azure_client_id" {
 }
 
 variable "vite_auth_mode" {
-  description = "DEPRECATED: Use frontend_build_vars instead."
+  description = "DEPRECATED: Use frontend_new_build_vars instead."
   type        = string
   default     = "msal"
 }
 
 variable "vite_github_org" {
-  description = "DEPRECATED: Use frontend_build_vars instead."
+  description = "DEPRECATED: Use frontend_new_build_vars instead."
   type        = string
   default     = ""
 }
 
 variable "vite_use_azure_api" {
-  description = "DEPRECATED: Use frontend_build_vars instead."
+  description = "DEPRECATED: Use frontend_new_build_vars instead."
   type        = bool
   default     = true
 }
 
-variable "frontend_build_vars" {
-  description = <<-EOT
-    Static build-time environment variables for the frontend container, set
-    per-environment via tfvars. These are merged with infrastructure-derived
-    values (Entra IDs, APIM URL, etc.) that Terraform computes automatically.
-    Keys must be VITE_ prefixed (Vite requirement). The combined map is
-    exported as the `frontend_build_env_vars` output so the CI workflow can
-    pass them to `npm run build`.
-  EOT
-  type        = map(string)
-  default     = {}
-}
-
 variable "frontend_new_build_vars" {
   description = <<-EOT
-    Static build-time environment variables for the frontend-new (redesigned
-    frontend, spec 007) container, set per-environment via tfvars. Mirrors
-    frontend_build_vars; merged with infrastructure-derived values (Entra IDs,
+    Static build-time environment variables for the frontend (spec 007
+    redesign, module frontend_new) container, set per-environment via tfvars.
+    Merged with infrastructure-derived values (Entra IDs,
     APIM URL, etc.) in local.frontend_new_build_environment_variables and
     exported as the `frontend_new_build_env_vars` output. Keys must be VITE_
     prefixed (Vite requirement).
@@ -737,50 +682,10 @@ variable "frontdoor_custom_domains" {
 }
 
 # =============================================================================
-# Frontend Configuration Variables
+# Frontend Configuration Variables (spec 007 redesign; Terraform module
+# "frontend_new" is the only frontend Container App, at the production domain
+# via frontend_new_app_url_override)
 # =============================================================================
-
-variable "frontend_container_name" {
-  description = "Name of the container inside the frontend container app."
-  type        = string
-  default     = "frontend"
-}
-
-variable "frontend_container_image" {
-  description = "Container image for frontend"
-  type        = string
-  default     = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
-}
-
-variable "frontend_container_cpu" {
-  description = "CPU cores for frontend container"
-  type        = number
-  default     = 0.25
-}
-
-variable "frontend_container_memory" {
-  description = "Memory for frontend container"
-  type        = string
-  default     = "0.5Gi"
-}
-
-variable "frontend_min_replicas" {
-  description = "Minimum frontend container replicas"
-  type        = number
-  default     = 1
-}
-
-variable "frontend_max_replicas" {
-  description = "Maximum frontend container replicas"
-  type        = number
-  default     = 5
-}
-
-# -----------------------------------------------------------------------------
-# Frontend-new (redesigned frontend, spec 007) — mirrors the legacy frontend
-# variables above. Runs as its own Container App (module "frontend_new") at
-# its own host (next.<domain>), alongside the legacy frontend, until cutover.
-# -----------------------------------------------------------------------------
 
 variable "frontend_new_container_name" {
   description = "Name of the container inside the frontend-new container app."

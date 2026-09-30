@@ -7,12 +7,12 @@
     "dev": "concurrently -k -n db,api,fe -c blue,green,magenta \"npm run dev:db\" \"npm run dev:api\" \"npm run dev:frontend\"",
     "dev:db": "docker compose up",
     "dev:api": "npm run dev --prefix app/backend",
-    "dev:frontend": "npm run dev --prefix app/frontend",
+    "dev:frontend": "npm run dev --prefix app/frontend-new",
     "dev:stop": "docker compose down",
     "dev:reset": "docker compose down -v && docker compose up -d",
-    "build": "npm run build --prefix app/backend && npm run build --prefix app/frontend",
-    "lint": "npm run lint --prefix app/frontend && npm run lint --prefix app/backend",
-    "test": "npm run test --prefix app/backend && npm run test --prefix app/frontend"
+    "build": "npm run build --prefix app/backend && npm run build --prefix app/frontend-new",
+    "lint": "npm run lint --prefix app/frontend-new && npm run lint --prefix app/backend",
+    "test": "npm run test --prefix app/backend && npm run test --prefix app/frontend-new"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

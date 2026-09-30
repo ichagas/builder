@@ -1,6 +1,6 @@
 ---
 name: 20.build-and-lint
-description: Runs lint and build validation for both the frontend (app/frontend/) and API (app/backend/) layers. Use this skill to validate that code compiles and passes lint rules before committing.
+description: Runs lint and build validation for both the frontend (app/frontend-new/) and API (app/backend/) layers. Use this skill to validate that code compiles and passes lint rules before committing.
 argument-hint: Run build and lint for all layers
 compatibility:
   - linux
@@ -14,18 +14,18 @@ user-invokable: true
 
 ## Pre-requisites
 - Node.js 18+ installed
-- `npm install` completed in both `app/frontend/` and `app/backend/`
+- `npm install` completed in both `app/frontend-new/` and `app/backend/`
 
 ## Steps
 
-1. **Lint frontend** (`app/frontend/`):
+1. **Lint frontend** (`app/frontend-new/`):
    ```bash
-   cd app/frontend && npm run lint
+   cd app/frontend-new && npm run lint
    ```
 
-2. **Build frontend** (`app/frontend/`):
+2. **Build frontend** (`app/frontend-new/`):
    ```bash
-   cd app/frontend && npm run build
+   cd app/frontend-new && npm run build
    ```
 
 3. **Build API** (`app/backend/`):
@@ -39,7 +39,7 @@ user-invokable: true
 - Build output should show no TypeScript compilation errors.
 
 ## Trigger
-- Before committing changes that touch `app/frontend/src/` or `app/backend/` files.
+- Before committing changes that touch `app/frontend-new/src/` or `app/backend/` files.
 - As part of the code-review agent workflow.
 - Before creating a pull request.
 

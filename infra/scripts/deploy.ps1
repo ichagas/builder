@@ -198,7 +198,7 @@ if (-not $SkipBuild) {
     
     # Build Frontend Docker Image Locally (uses cache, much faster!)
     Write-Info "Building frontend Docker image locally..."
-    $frontendImage = "$acrLoginServer/pronghorn-frontend:latest"
+    $frontendImage = "$acrLoginServer/pronghorn-frontend-new:latest"
     docker build -t $frontendImage -f Dockerfile .
     if ($LASTEXITCODE -ne 0) { 
         Write-Error "Frontend Docker build failed"
@@ -260,7 +260,7 @@ if (-not $SkipContainerApps) {
         "-var-file=$TfVarsFile",
         "-var=apim_publisher_email=$ApimPublisherEmail",
         "-var=container_image=${acrLoginServer}/pronghorn-api:latest",
-        "-var=frontend_container_image=${acrLoginServer}/pronghorn-frontend:latest"
+        "-var=frontend_new_container_image=${acrLoginServer}/pronghorn-frontend-new:latest"
     )
     
     if ($PostgresPassword) {
@@ -287,7 +287,7 @@ if (-not $SkipContainerApps) {
     Write-Step "Deployment Complete!"
     
     $apiUrl = terraform output -raw container_app_url 2>$null
-    $frontendUrl = terraform output -raw frontend_app_url 2>$null
+    $frontendUrl = terraform output -raw frontend_new_url 2>$null
     $apimUrl = terraform output -raw api_management_gateway_url 2>$null
     
     Write-Host "`nDeployed Resources:" -ForegroundColor Cyan

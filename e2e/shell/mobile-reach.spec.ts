@@ -16,8 +16,6 @@
  */
 import { test, expect, seed } from "../fixtures";
 
-test.skip(process.env.APP !== "new", "The shell only exists in app/frontend-new");
-
 const BOTTOM_35_PERCENT_Y = 844 * 0.65; // top edge of the viewport's bottom 35%
 
 test.describe("mobile reach (contracts/design-system.md §2, spec.md SC-005)", () => {

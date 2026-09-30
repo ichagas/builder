@@ -31,10 +31,10 @@ This skill guides you through setting up the Pronghorn React frontend for local 
 
 ## Step 5.1: Install Dependencies
 
-From `app/frontend/`, install frontend dependencies:
+From `app/frontend-new/`, install frontend dependencies:
 
 ```bash
-cd app/frontend
+cd app/frontend-new
 npm install
 ```
 
@@ -55,7 +55,7 @@ npm install
 
 ## Step 5.2: Create `.env.local`
 
-Create `.env.local` in `app/frontend/` using the values from `LOCAL_DEVELOPMENT.md` step 5.2.
+Create `.env.local` in `app/frontend-new/` using the values from `LOCAL_DEVELOPMENT.md` step 5.2.
 
 ### Automated Setup (Recommended)
 
@@ -100,7 +100,7 @@ bash ./setup-frontend-env.sh --force
 
 ### Manual Fallback
 
-Create `.env.local` in `app/frontend/`:
+Create `.env.local` in `app/frontend-new/`:
 
 ```env
 # ──────────────────────────────────────────────
@@ -145,7 +145,7 @@ VITE_WS_URL=ws://localhost:3001/ws
 
 ## Step 5.3: Start the Frontend
 
-From `app/frontend/`, run:
+From `app/frontend-new/`, run:
 
 ```bash
 npm run dev
@@ -165,7 +165,7 @@ http://localhost:8080
 
 Verify frontend setup is complete:
 
-- [ ] `.env.local` exists in `app/frontend/`
+- [ ] `.env.local` exists in `app/frontend-new/`
 - [ ] `VITE_API_BASE_URL=http://localhost:3001`
 - [ ] Frontend starts with `npm run dev`
 - [ ] Browser opens `http://localhost:8080`
@@ -174,7 +174,7 @@ Verify frontend setup is complete:
 Quick checks:
 
 ```bash
-# from app/frontend
+# from app/frontend-new
 ls -la .env.local
 npm run dev
 ```
@@ -186,7 +186,7 @@ npm run dev
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | `Port 8080 already in use` | Another process is using port 8080 | Stop conflicting process or adjust Vite port config |
-| `npm install` fails with `ERESOLVE` (Vite/PWA peer deps) | Peer dependency mismatch in local npm resolution | Run `npm install --legacy-peer-deps` from `app/frontend/` |
+| `npm install` fails with `ERESOLVE` (Vite/PWA peer deps) | Peer dependency mismatch in local npm resolution | Run `npm install --legacy-peer-deps` from `app/frontend-new/` |
 | `CORS errors in browser` | API origin not allowed | Ensure API `.env` has `ALLOWED_ORIGINS=http://localhost:8080,http://localhost:8081` |
 | Frontend calls wrong backend | `VITE_API_BASE_URL` incorrect | Set `VITE_API_BASE_URL=http://localhost:3001` in `.env.local` |
 | MSAL login redirect fails | Redirect URI mismatch | Add `http://localhost:8080` and `/auth-redirect.html` in Azure AD App Registration |

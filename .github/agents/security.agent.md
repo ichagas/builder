@@ -27,7 +27,7 @@ The user will ask for a security review of specific files, a PR, or the overall 
 Run dependency vulnerability checks:
 ```bash
 # Frontend dependencies
-cd app/frontend && npm audit
+cd app/frontend-new && npm audit
 
 # API dependencies
 cd app/backend && npm audit

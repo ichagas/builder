@@ -204,7 +204,7 @@ Users are assigned roles via the `user_roles` database table.
 | `admin` | Middle | Administrative capabilities |
 | `user` | Default | Standard user access |
 
-- **Frontend:** The `AdminContext` (`app/frontend/src/contexts/AdminContext.tsx`) queries the `user_roles` table and exposes `isAdmin`, `isSuperAdmin`, and `role`.
+- **Frontend:** The `AdminContext` (`app/frontend-new/src/contexts/AdminContext.tsx`) queries the `user_roles` table and exposes `isAdmin`, `isSuperAdmin`, and `role`.
 - **Backend:** The `requireRole()` middleware (`app/backend/src/middleware/auth.ts`) enforces role requirements on specific routes. Returns 403 if the user's role is insufficient.
 
 ### 5.2 Project-Level Permissions
@@ -217,7 +217,7 @@ Projects can be shared via tokens stored in the `project_tokens` database table.
 | `editor` | 2 | Can modify project content |
 | `viewer` | 1 (lowest) | Read-only access |
 
-Token-based access is managed via `app/backend/src/utils/rpcHelpers.ts`. Share tokens are captured from the URL path (`/project/:id/page/t/:token`) by the `useShareToken` hook (`app/frontend/src/hooks/useShareToken.ts`).
+Token-based access is managed via `app/backend/src/utils/rpcHelpers.ts`. Share tokens are captured from the URL path (`/project/:id/page/t/:token`) by the `useShareToken` hook (`app/frontend-new/src/hooks/useShareToken.ts`).
 
 ### 5.3 Route Protection Matrix
 
@@ -280,7 +280,7 @@ The Entra ID App Registration can be **created and managed by Terraform** (recom
 | URI | Environment |
 |-----|-------------|
 | `https://pronghorn.blue` | Production (custom domain) |
-| `https://ca-pronghorn-frontend.<env>.canadacentral.azurecontainerapps.io` | Production (Container App FQDN) |
+| `https://ca-pronghorn-frontend-new.<env>.canadacentral.azurecontainerapps.io` | Production (Container App FQDN) |
 | `http://localhost:5173` | Local development |
 
 #### API Permissions (Delegated)
@@ -325,7 +325,7 @@ create_entra_app_registration       = true
 entra_app_display_name              = "Pronghorn Demo"
 entra_app_sign_in_audience          = "AzureADMyOrg"
 entra_app_include_localhost_redirect = true
-frontend_app_url_override           = "https://pronghorn.blue"
+frontend_new_app_url_override           = "https://pronghorn.blue"
 ```
 
 **What the Terraform module creates:**
@@ -501,19 +501,19 @@ Use this checklist to verify the Entra App Registration is correctly configured,
 | `azure_tenant_id` | When manual | Entra Tenant ID |
 | `azure_client_id` | When manual | Entra App Client ID |
 | `entra_app_display_name` | No | Display name (default: `"Pronghorn"`) |
-| `frontend_app_url_override` | When automated | Primary redirect URI |
+| `frontend_new_app_url_override` | When automated | Primary redirect URI |
 
 ## Appendix: Key File Reference
 
 | File | Purpose |
 |------|---------|
-| `app/frontend/src/lib/msalConfig.ts` | MSAL configuration — client ID, authority, scopes, cache |
-| `app/frontend/src/lib/msalInstance.ts` | MSAL `PublicClientApplication` singleton |
-| `app/frontend/src/contexts/AuthContext.tsx` | React auth context — login, logout, token acquisition |
-| `app/frontend/src/lib/apiClient.ts` | HTTP client — Bearer token and subscription key injection |
-| `app/frontend/src/lib/signalRClient.ts` | WebSocket client — MSAL token as query param |
-| `app/frontend/src/contexts/AdminContext.tsx` | RBAC context — queries `user_roles` table |
-| `app/frontend/src/hooks/useShareToken.ts` | Project share token extraction and caching |
+| `app/frontend-new/src/lib/msalConfig.ts` | MSAL configuration — client ID, authority, scopes, cache |
+| `app/frontend-new/src/lib/msalInstance.ts` | MSAL `PublicClientApplication` singleton |
+| `app/frontend-new/src/contexts/AuthContext.tsx` | React auth context — login, logout, token acquisition |
+| `app/frontend-new/src/lib/apiClient.ts` | HTTP client — Bearer token and subscription key injection |
+| `app/frontend-new/src/lib/signalRClient.ts` | WebSocket client — MSAL token as query param |
+| `app/frontend-new/src/contexts/AdminContext.tsx` | RBAC context — queries `user_roles` table |
+| `app/frontend-new/src/hooks/useShareToken.ts` | Project share token extraction and caching |
 | `app/backend/src/middleware/auth.ts` | Backend auth middleware — 3-tier validation |
 | `app/backend/src/routes/auth.ts` | Legacy auth routes (email/password, OAuth) |
 | `app/backend/src/websocket.ts` | WebSocket server — JWKS JWT validation |

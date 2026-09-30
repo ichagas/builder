@@ -20,8 +20,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, seed, api, unique, defaultOwner } from "../fixtures";
 
-test.skip(process.env.APP !== "new", "Versions/changes only exist in app/frontend-new");
-
 const PROJECT_ID = seed.versionsProjectId;
 const REQUIREMENTS_URL = `/p/${PROJECT_ID}/v/current/define/requirements`;
 const VERSIONS_URL = `/p/${PROJECT_ID}/versions`;

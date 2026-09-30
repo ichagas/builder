@@ -1,11 +1,10 @@
 /**
- * Seeds @azure/msal-browser's localStorage cache so the legacy app's
- * MSAL-only AuthContext (app/frontend/src/contexts/AuthContext.tsx) treats
+ * Seeds @azure/msal-browser's localStorage cache so the app's
+ * MSAL-only auth (app/frontend-new's MSAL provider) treats
  * Playwright as an already-signed-in user, with zero network calls.
  *
- * Why this exists: app/frontend's `VITE_AUTH_MODE=mock` / localAuthMock.ts
- * are documentation-only placeholders — nothing in AuthContext, App, or
- * apiClient actually branches on them (verified by reading the source).
+ * Why this exists: `VITE_AUTH_MODE=mock` is a documentation-only
+ * placeholder — nothing in the auth layer actually branches on it.
  * The real login path is 100% MSAL + Azure AD, which we cannot drive
  * headlessly. Instead we pre-populate the exact cache shape MSAL itself
  * writes after a real login, so `getAllAccounts()` / `acquireTokenSilent()`

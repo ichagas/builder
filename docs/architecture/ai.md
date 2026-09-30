@@ -65,7 +65,7 @@ Model configuration is maintained in **three layers** that must be kept in sync.
 | File | Purpose | When to Edit |
 |------|---------|-------------|
 | `app/backend/src/config/aiModels.ts` | Backend model catalog — deployment IDs, token limits, capabilities, endpoint URL construction | Adding/changing a model the API serves |
-| `app/frontend/src/config/aiModels.ts` | Frontend model catalog — display names, descriptions, capabilities shown in UI model selector | Adding/changing a model visible to users |
+| `app/frontend-new/src/config/aiModels.ts` | Frontend model catalog — display names, descriptions, capabilities shown in UI model selector | Adding/changing a model visible to users |
 | `infra/config/ai-models.json` | Terraform-managed deployments — the base set of models provisioned by IaC | Adding a model to automated infrastructure |
 | `infra/params/dev.tfvars` | Per-environment deployment list with SKU capacity | Adjusting capacity or enabling/disabling models per environment |
 
@@ -79,7 +79,7 @@ infra/params/dev.tfvars              ← per-env capacity overrides
         │
         ▼
 app/backend/src/config/aiModels.ts   ← backend must know the deployment IDs to build URLs
-app/frontend/src/config/aiModels.ts  ← frontend must know model capabilities for UI
+app/frontend-new/src/config/aiModels.ts  ← frontend must know model capabilities for UI
 ```
 
 > **Important:** Models can also be deployed manually via the Azure portal or `Deploy-AIModels.ps1` script — these won't appear in `ai-models.json` but still need entries in the application config files to be usable.
@@ -246,7 +246,7 @@ Add an entry to `AI_MODELS` in `app/backend/src/config/aiModels.ts`:
 
 ### Step 3: Add to Frontend Config
 
-Add the same entry to `AI_MODELS` in `app/frontend/src/config/aiModels.ts` (with `displayName`, `description`, and `costPerMInputTokens`/`costPerMOutputTokens` for UI display).
+Add the same entry to `AI_MODELS` in `app/frontend-new/src/config/aiModels.ts` (with `displayName`, `description`, and `costPerMInputTokens`/`costPerMOutputTokens` for UI display).
 
 ### Step 4: Add to Terraform (Optional)
 
@@ -312,7 +312,7 @@ All models must be compatible with the **OpenAI Chat Completions API** format us
 | `app/backend/src/routes/chat.ts` | Chat streaming endpoint (`/api/v1/chat/stream/foundry`) |
 | `app/backend/src/routes/functions.ts` | RPC functions that call AI models |
 | `app/backend/src/utils/azureCredential.ts` | Azure AD token acquisition for Cognitive Services |
-| `app/frontend/src/config/aiModels.ts` | Frontend model catalog for UI |
+| `app/frontend-new/src/config/aiModels.ts` | Frontend model catalog for UI |
 | `infra/config/ai-models.json` | Terraform-managed model deployment definitions |
 | `infra/modules/ai-foundry/main.tf` | AI Foundry Terraform module |
 | `infra/params/dev.tfvars` | Dev environment model deployments and capacity |

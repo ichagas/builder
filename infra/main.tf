@@ -431,15 +431,6 @@ resource "azurerm_user_assigned_identity" "api" {
   depends_on = [time_sleep.wait_for_resource_group]
 }
 
-resource "azurerm_user_assigned_identity" "frontend" {
-  name                = "${local.frontend_app_name}-identity"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = local.common_tags
-
-  depends_on = [time_sleep.wait_for_resource_group]
-}
-
 # AcrPull granted on the UAMI — exists before container apps are created
 resource "azurerm_role_assignment" "api_uami_acr_pull" {
   scope                = local.acr_id
@@ -447,14 +438,7 @@ resource "azurerm_role_assignment" "api_uami_acr_pull" {
   principal_id         = azurerm_user_assigned_identity.api.principal_id
 }
 
-resource "azurerm_role_assignment" "frontend_uami_acr_pull" {
-  scope                = local.acr_id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.frontend.principal_id
-}
-
-# Frontend-new (redesigned frontend, spec 007) — own UAMI, mirrors the legacy
-# frontend identity/role-assignment pair above.
+# Frontend (spec 007 redesign, module "frontend_new") — own UAMI with AcrPull.
 resource "azurerm_user_assigned_identity" "frontend_new" {
   name                = "${local.frontend_new_app_name}-identity"
   location            = var.location
@@ -660,12 +644,6 @@ resource "azurerm_role_assignment" "container_app_acr_pull" {
   principal_id         = module.container_apps.principal_id
 }
 
-resource "azurerm_role_assignment" "frontend_acr_pull" {
-  scope                = local.acr_id
-  role_definition_name = "AcrPull"
-  principal_id         = module.frontend.principal_id
-}
-
 # -----------------------------------------------------------------------------
 # Non-VNet ACR Dedicated Agent Pool (PBMM)
 # -----------------------------------------------------------------------------
@@ -731,14 +709,11 @@ module "api_management" {
   enable_entra_auth = var.create_entra_app_registration || var.azure_client_id != null
 
   # CORS allowed origins - include frontend URL and localhost for development.
-  # When frontend_app_url_override is set (public custom domain), the browser's
+  # When frontend_new_app_url_override is set (public custom domain), the browser's
   # Origin header is that domain, so it must be in the allow-list. Note: Origin
   # headers never carry a trailing slash, so the override is added verbatim.
   cors_allowed_origins = concat(
     var.allowed_origins,
-    [module.frontend.app_url],
-    var.frontend_app_url_override != null ? [var.frontend_app_url_override] : [],
-    # Frontend-new (redesigned frontend, spec 007) — own host, own origin.
     [module.frontend_new.app_url],
     var.frontend_new_app_url_override != null ? [var.frontend_new_app_url_override] : [],
     var.enable_development_access ? ["http://localhost:5173"] : []
@@ -750,61 +725,12 @@ module "api_management" {
 }
 
 # =============================================================================
-# Frontend Container App Module
+# Frontend Container App Module (spec 007 redesign)
 # =============================================================================
-
-module "frontend" {
-  source = "./modules/frontend"
-
-  subscription_id              = var.subscription_id
-  resource_group_name          = var.resource_group_name
-  location                     = var.location
-  container_app_name           = local.frontend_app_name
-  container_app_environment_id = module.container_apps.environment_id
-
-  # User-Assigned Managed Identity for ACR access (avoids bootstrap race)
-  user_assigned_identity_id = azurerm_user_assigned_identity.frontend.id
-
-  # Bootstrap uses public MCR image for initial deploy (online archetype)
-  container_image = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
-
-  # Container configuration
-  container_name   = var.frontend_container_name
-  container_cpu    = var.frontend_container_cpu
-  container_memory = var.frontend_container_memory
-
-  # Scaling
-  min_replicas = var.frontend_min_replicas
-  max_replicas = var.frontend_max_replicas
-
-  # Container Registry — Terraform owns the registries block (see API container app comment).
-  registry_server               = local.acr_login_server
-  use_managed_identity_for_acr  = true
-  registry_username             = null
-  registry_password_secret_name = null
-
-  secrets = {}
-
-  tags = local.common_tags
-
-  depends_on = [
-    time_sleep.wait_for_resource_group,
-    module.container_apps,
-    azurerm_role_assignment.frontend_uami_acr_pull
-  ]
-}
-
-# =============================================================================
-# Frontend-new Container App Module (redesigned frontend, spec 007)
-# =============================================================================
-# Reuses the same ./modules/frontend module as the legacy frontend above,
-# at its own host (next.<domain> via frontend_new_app_url_override) so
-# testers can verify it independently of production (T015). WP-X2/T073 adds
-# var.primary_frontend (default "legacy") to switch production over to this
-# app as a later, deliberate step — set primary_frontend = "new" only after
-# next.<domain> is verified and the final regression is green; see
-# specs/007-frontend-new/quickstart.md "Cutover". module.frontend stays
-# deployed until T074 removes it. See specs/007-frontend-new/.
+# The only frontend. Instantiates ./modules/frontend as "frontend_new" (name
+# kept to avoid churn in state addresses and references). Its public host is
+# var.frontend_new_app_url_override (the production domain); without it the
+# Container App's own FQDN is used. See specs/007-frontend-new/quickstart.md.
 # =============================================================================
 
 module "frontend_new" {
@@ -1299,40 +1225,22 @@ module "entra_app_registration" {
   owners                   = var.entra_app_owners
 
   redirect_uris = concat(
-    # Primary redirect: whichever frontend is primary per var.primary_frontend
-    # (spec 007, WP-X2, T073 cutover — default "legacy"; flip to "new" as an
-    # explicit later step once next.<domain> is verified and the final
-    # regression is green). Both frontends' redirect URIs are always included
-    # below regardless of which is primary, so flipping var.primary_frontend
-    # is a safe, reversible switch until T074 removes module.frontend
-    # entirely.
+    # The frontend's redirect URI: the production domain when
+    # frontend_new_app_url_override is set, else the Container App's own URL.
     # Azure AD requires a trailing slash on URIs without a path segment.
     [
       "${trimsuffix(
-        local.primary_frontend_is_new
-        ? coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url)
-        : coalesce(var.frontend_app_url_override, module.frontend.app_url),
+        coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url),
         "/"
       )}/"
     ],
-    # The non-primary frontend's redirect URI (e.g. https://next.<domain>/
-    # pre-cutover, or the legacy host post-cutover).
-    [
-      "${trimsuffix(
-        local.primary_frontend_is_new
-        ? coalesce(var.frontend_app_url_override, module.frontend.app_url)
-        : coalesce(var.frontend_new_app_url_override, module.frontend_new.app_url),
-        "/"
-      )}/"
-    ],
-    # Additional redirect URIs (e.g. custom domains, such as next.<domain> if
-    # it must keep working post-cutover — see quickstart.md "Cutover")
+    # Additional redirect URIs (e.g. extra custom domains)
     var.entra_app_redirect_uris,
     # Optional localhost for dev
     var.entra_app_include_localhost_redirect ? ["http://localhost:5173/"] : []
   )
 
-  depends_on = [module.frontend, module.frontend_new]
+  depends_on = [module.frontend_new]
 }
 
 # =============================================================================

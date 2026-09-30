@@ -22,15 +22,15 @@ const REDIRECT_URI = import.meta.env.VITE_AZURE_REDIRECT_URI || window.location.
 
 if (!CLIENT_ID) {
   throw new Error(
-    "VITE_ENTRA_CLIENT_ID is required. Set it in app/frontend/.env (or pass it at build time). " +
-    "See app/frontend/.env.example for details."
+    "VITE_ENTRA_CLIENT_ID is required. Set it in app/frontend-new/.env (or pass it at build time). " +
+    "See app/frontend-new/.env.example for details."
   );
 }
 if (!TENANT_ID) {
   throw new Error(
-    "VITE_ENTRA_TENANT_ID is required. Set it in app/frontend/.env (or pass it at build time). " +
+    "VITE_ENTRA_TENANT_ID is required. Set it in app/frontend-new/.env (or pass it at build time). " +
     'Use "organizations" for multi-tenant or your directory (tenant) ID. ' +
-    "See app/frontend/.env.example for details."
+    "See app/frontend-new/.env.example for details."
   );
 }
 

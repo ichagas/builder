@@ -150,7 +150,7 @@ All modules follow: resource creation → optional private endpoint → optional
 2. Add Swagger JSDoc annotations for OpenAPI spec
 3. Register in `app/backend/src/routes/v1/index.ts` with appropriate auth middleware
 4. Add corresponding tests in `app/backend/src/__tests__/routes/{domain}.test.ts`
-5. Update `app/frontend/src/lib/apiClient.ts` if new client methods needed
+5. Update `app/frontend-new/src/lib/apiClient.ts` if new client methods needed
 
 ### Adding a New Service Module
 
@@ -173,10 +173,10 @@ services/{domain}/{archetype}/
 
 ### Adding a Frontend Feature
 
-1. Create component directory: `app/frontend/src/components/{feature}/`
-2. Create page component: `app/frontend/src/pages/{Feature}Page.tsx`
+1. Create component directory: `app/frontend-new/src/components/{feature}/`
+2. Create page component: `app/frontend-new/src/pages/{Feature}Page.tsx`
 3. Add route in `App.tsx` (follow existing Suspense/lazy pattern)
-4. Create data hooks: `app/frontend/src/hooks/use{Feature}.ts`
+4. Create data hooks: `app/frontend-new/src/hooks/use{Feature}.ts`
 5. Reuse `components/ui/` primitives — do not create new base components
 6. Add tests in `__tests__/` directories beside source
 

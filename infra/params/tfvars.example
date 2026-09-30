@@ -181,17 +181,15 @@ genapp_workflow_file = "genapp-deploy.yml"
 run_migrations_on_startup = true
 
 # ── Container Apps ────────────────────────────────────────────────────────────
-api_container_name       = "api"
-api_target_port          = 8080
-api_ingress_transport    = "auto"
-frontend_container_name  = "frontend"
-container_image          = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" # Placeholder — overridden after ACR build
-frontend_container_image = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" # Placeholder — overridden after ACR build
-container_cpu            = 2.0                                                           # Production: more CPU
-container_memory         = "4Gi"                                                         # Production: more memory
-container_min_replicas   = 2                                                             # Production: minimum 2 for HA
-container_max_replicas   = 10
-aca_environment_name     = "cae-pronghorn-pbmm"
+api_container_name     = "api"
+api_target_port        = 8080
+api_ingress_transport  = "auto"
+container_image        = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" # Placeholder — overridden after ACR build
+container_cpu          = 2.0                                                           # Production: more CPU
+container_memory       = "4Gi"                                                         # Production: more memory
+container_min_replicas = 2                                                             # Production: minimum 2 for HA
+container_max_replicas = 10
+aca_environment_name   = "cae-pronghorn-pbmm"
 
 # VNet Injection — Container Apps Environment deployed inside this subnet
 container_apps_subnet_id     = "REPLACE: /subscriptions/.../resourceGroups/networking/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<aca-platform-subnet>"
@@ -207,10 +205,10 @@ workload_aca_internal_only              = true
 workload_aca_private_endpoint_subnet_id = "REPLACE: /subscriptions/.../resourceGroups/networking/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<pe-subnet>"
 
 # Frontend
-frontend_container_cpu    = 0.5   # Production: more CPU than dev default (0.25)
-frontend_container_memory = "1Gi" # Production: more memory than dev default (0.5Gi)
-frontend_min_replicas     = 2     # Production: minimum 2 for HA
-frontend_max_replicas     = 10
+frontend_new_container_cpu    = 0.5   # Production: more CPU than dev default (0.25)
+frontend_new_container_memory = "1Gi" # Production: more memory than dev default (0.5Gi)
+frontend_new_min_replicas     = 2     # Production: minimum 2 for HA
+frontend_new_max_replicas     = 10
 
 # ── API Management ───────────────────────────────────────────────────────────
 apim_sku                  = "Premium_1" # PBMM: Premium required for Internal VNet integration + multi-AZ + SLA
@@ -271,7 +269,7 @@ vite_auth_mode                = "msal"
 vite_use_azure_api            = true
 
 # ── Frontend Build-Time Environment Variables ────────────────────────────────
-frontend_build_vars = {
+frontend_new_build_vars = {
   VITE_AUTH_MODE     = "msal"
   VITE_USE_AZURE_API = "true"
 }
@@ -284,22 +282,8 @@ frontend_build_vars = {
 # browser cannot reach). The frontend makes direct browser calls to the API, so
 # api_base_url_override MUST be publicly reachable. Leave commented to use the
 # auto-generated internal URLs.
-# frontend_app_url_override     = "REPLACE: https://app.<your-domain>"      # legacy frontend (module.frontend) — MSAL redirect URI + CORS + Entra redirect
-# frontend_new_app_url_override = "REPLACE: https://app.<your-domain>"      # frontend-new (module.frontend_new, spec 007) — same, its own redirect URI + CORS origin
+# frontend_new_app_url_override = "REPLACE: https://app.<your-domain>"      # frontend (module.frontend_new): MSAL redirect URI + CORS origin + Entra redirect; set to your production domain
 # api_base_url_override         = "REPLACE: https://api.<your-domain>"      # VITE_API_BASE_URL + derived VITE_WS_URL
-
-# ── Primary Frontend Switch (spec 007, WP-X2, T073) ───────────────────────────
-# Which of the two frontend Container Apps is production-primary. Default
-# "legacy" — do NOT set this to "new" as part of the same apply that first
-# creates module.frontend_new (T015, at next.<domain>): that apply is for
-# testers to verify frontend_new independently of production, not to cut
-# production over. Cutover is a deliberate, later step: once next.<domain>
-# is verified and the final regression run is green, set
-# frontend_new_app_url_override above to your real production domain AND
-# primary_frontend = "new" together, then apply. Set back to "legacy" to
-# roll back. Both frontends' redirect URIs / CORS origins stay registered
-# either way. See specs/007-frontend-new/quickstart.md "Cutover".
-# primary_frontend = "legacy" # "legacy" | "new"
 
 # ── Azure AI Foundry ──────────────────────────────────────────────────────────
 enable_ai_foundry                     = true

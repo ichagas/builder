@@ -318,7 +318,7 @@ az network private-dns link vnet create -g private-dns-rg -z $zone -n "whitebay-
 az network application-gateway address-pool update --gateway-name pronghorn-agw-internal -g networking `
   -n aca-backend-pool  --servers "ca-pronghorn-api.<env-suffix>.canadacentral.azurecontainerapps.io"
 az network application-gateway address-pool update --gateway-name pronghorn-agw-internal -g networking `
-  -n aca-frontend-pool --servers "ca-pronghorn-frontend.<env-suffix>.canadacentral.azurecontainerapps.io"
+  -n aca-frontend-pool --servers "ca-pronghorn-frontend-new.<env-suffix>.canadacentral.azurecontainerapps.io"
 ```
 
 **Step 4 — Fix the Host/SNI header on the HTTP settings AND the probe host.**
@@ -329,7 +329,7 @@ even once DNS resolves:
 az network application-gateway http-settings update --gateway-name pronghorn-agw-internal -g networking `
   -n aca-api-https      --host-name "ca-pronghorn-api.<env-suffix>.canadacentral.azurecontainerapps.io"
 az network application-gateway http-settings update --gateway-name pronghorn-agw-internal -g networking `
-  -n aca-frontend-https --host-name "ca-pronghorn-frontend.<env-suffix>.canadacentral.azurecontainerapps.io"
+  -n aca-frontend-https --host-name "ca-pronghorn-frontend-new.<env-suffix>.canadacentral.azurecontainerapps.io"
 az network application-gateway probe update --gateway-name pronghorn-agw-internal -g networking `
   -n pronghorn-api --host "ca-pronghorn-api.<env-suffix>.canadacentral.azurecontainerapps.io"
 ```

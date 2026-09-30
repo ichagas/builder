@@ -28,7 +28,7 @@ param(
     [string]$AcrName = "PronghornContainerRegistry",
     [string]$AcrLoginServer = "pronghorncontainerregistry.azurecr.io",
     [string]$ResourceGroup = "Pronghorn-App",
-    [string]$FrontendApp = "ca-pronghorn-frontend",
+    [string]$FrontendApp = "ca-pronghorn-frontend-new",
     [string]$ApiApp = "ca-pronghorn-api",
     [string]$KeyVaultName = "kv-pronghorn-ptle86"
 )
@@ -154,7 +154,7 @@ try {
     # =============================================================================
     if ($Frontend) {
         Write-Step "Building & Pushing Frontend Container"
-        $frontendImage = "$AcrLoginServer/pronghorn-frontend:$Tag"
+        $frontendImage = "$AcrLoginServer/pronghorn-frontend-new:$Tag"
 
         Invoke-Checked "Docker build frontend → $frontendImage" {
             docker build -t $frontendImage -f "$RootDir\Dockerfile" $RootDir
@@ -165,7 +165,7 @@ try {
         }
 
         # Also tag as latest for local reference
-        docker tag $frontendImage "$AcrLoginServer/pronghorn-frontend:latest" 2>$null
+        docker tag $frontendImage "$AcrLoginServer/pronghorn-frontend-new:latest" 2>$null
     }
 
     if ($Api) {
@@ -189,7 +189,7 @@ try {
     Write-Step "Updating Container Apps"
 
     if ($Frontend) {
-        $frontendImage = "$AcrLoginServer/pronghorn-frontend:$Tag"
+        $frontendImage = "$AcrLoginServer/pronghorn-frontend-new:$Tag"
 
         Invoke-Checked "Set frontend registry (managed identity)" {
             az containerapp registry set `

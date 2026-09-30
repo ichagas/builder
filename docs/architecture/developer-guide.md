@@ -24,12 +24,12 @@
 | New API endpoint | `app/backend/src/routes/v1/{domain}.ts` |
 | New service logic | `app/backend/src/services/{domain}/{archetype}/` |
 | New middleware | `app/backend/src/middleware/{name}.ts` |
-| New page/view | `app/frontend/src/pages/{Name}Page.tsx` |
-| New feature component | `app/frontend/src/components/{feature}/` |
-| New shared UI primitive | `app/frontend/src/components/ui/` (shadcn/ui pattern) |
-| New React hook | `app/frontend/src/hooks/use{Name}.ts` |
-| New API client method | `app/frontend/src/lib/apiClient.ts` |
-| New utility function | `app/frontend/src/utils/` or `app/backend/src/utils/` |
+| New page/view | `app/frontend-new/src/pages/{Name}Page.tsx` |
+| New feature component | `app/frontend-new/src/components/{feature}/` |
+| New shared UI primitive | `app/frontend-new/src/components/ui/` (shadcn/ui pattern) |
+| New React hook | `app/frontend-new/src/hooks/use{Name}.ts` |
+| New API client method | `app/frontend-new/src/lib/apiClient.ts` |
+| New utility function | `app/frontend-new/src/utils/` or `app/backend/src/utils/` |
 | New database table | `infra/migrations/{NNN}_{name}.sql` |
 | New Azure resource | `infra/modules/{service}/` + wire in `main.tf` |
 | New environment config | `infra/params/{env}.tfvars` |
@@ -41,7 +41,7 @@
 
 Before submitting changes:
 
-- [ ] Frontend: `cd app/frontend && npm run lint && npm run build`
+- [ ] Frontend: `cd app/frontend-new && npm run lint && npm run build`
 - [ ] Backend: `cd app/backend && npm run build`
 - [ ] Tests: `npm run test` (from root)
 - [ ] Database: Changes compatible with `infra/migrations/001_full_schema.sql`
@@ -59,12 +59,12 @@ Before submitting changes:
 git clone <repo-url> && cd pronghorn-organization
 npm install
 cd app/backend && npm install && cd ../..
-cd app/frontend && npm install && cd ../..
+cd app/frontend-new && npm install && cd ../..
 
 # 2. Configure environment
 cp .env.example .env
 cp app/backend/.env.example app/backend/.env
-cp app/frontend/.env.example app/frontend/.env
+cp app/frontend-new/.env.example app/frontend-new/.env
 
 # 3. Start everything
 npm run dev

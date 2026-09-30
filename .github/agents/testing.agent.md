@@ -29,11 +29,11 @@ The user will describe what needs testing — a feature, a file, a function, or 
 
 ### 1. Detect Layer
 Based on the files or feature described:
-- `app/frontend/src/**` → Frontend layer → Vitest
+- `app/frontend-new/src/**` → Frontend layer → Vitest
 - `app/backend/**` → API layer → Jest
 
 ### 2. Examine Existing Patterns
-- **Frontend tests**: Look at `app/frontend/src/test/` for existing Vitest patterns, imports, and test utilities.
+- **Frontend tests**: Look at `app/frontend-new/src/test/` for existing Vitest patterns, imports, and test utilities.
 - **API tests**: Look at `app/backend/src/__tests__/` for existing Jest patterns, mocking strategies, and test utilities.
 
 ### 3. For API Tests — Use PostgreSQL MCP
@@ -50,7 +50,7 @@ Write tests that:
 - Include descriptive test names that explain the expected behavior.
 
 ### 5. Run Tests
-- Frontend: `cd app/frontend && npm test`
+- Frontend: `cd app/frontend-new && npm test`
 - API: `cd app/backend && npm test`
 - Report results including pass/fail counts and any coverage changes.
 

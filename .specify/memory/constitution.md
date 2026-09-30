@@ -1,30 +1,30 @@
 <!--
 Sync Impact Report
-Version change: 1.1.0 -> 2.0.0 (MAJOR: Principle VI redefined)
+Version change: 2.0.0 -> 2.1.0 (MINOR: the legacy-frontend immutability clause
+is removed now that the legacy frontend is deleted (spec 007 T074); governance is
+materially narrowed, no principle is removed or redefined)
 Modified principles:
 - I–V (unchanged)
-- VI. UI/UX Layout Immutability -> VI. UI/UX Layout Contract (NON-NEGOTIABLE):
-  the redesign (spec 007) becomes the layout contract for
-  app/frontend-new/; the legacy app/frontend/ keeps the immutability rule
-  until switch-over and receives no feature work.
+- VI. UI/UX Layout Contract (NON-NEGOTIABLE): the layout contract for
+  app/frontend-new/ is now the only UI/UX rule; the legacy-frontend
+  clause (immutability, no feature work) is dropped.
 Added sections:
-- Web App (new) row in Layer-Aware Development
-Removed sections:
 - None
+Removed sections:
+- Web App (legacy, until switch-over) row in Layer-Aware Development
+- Legacy-frontend bullet in Principle VI
 Templates requiring updates:
-- ✅ .specify/templates/plan-template.md (UI/UX check now references the
-  layout contract for app/frontend-new and immutability for app/frontend)
-- ✅ .github/instructions/frontend.instructions.md (legacy scope, reference only)
-- ✅ .github/instructions/frontend-new.instructions.md (new; contract rules)
-- ✅ .github/agents/code-review.agent.md (contract check for app/frontend-new,
-  immutability check for app/frontend)
+- ✅ .specify/templates/plan-template.md (UI/UX check references only the
+  layout contract for app/frontend-new)
+- ✅ .github/instructions/frontend.instructions.md (deleted; legacy-only)
+- ✅ .github/instructions/frontend-new.instructions.md (contract rules, now the
+  only frontend instruction file)
+- ✅ .github/agents/code-review.agent.md (contract check only)
 - ✅ .github/copilot-instructions.md (section, layer list, anti-patterns)
 Follow-up TODOs:
 - Client sign-off is not required while the app is pre-go-live. Revisit a
   sign-off step once the UI is stable (it can be added back with a MINOR
   amendment).
-- At switch-over (spec 007, T074): remove the legacy clause and the Web App
-  (legacy) layer row; the contract becomes the only rule (PATCH or MINOR).
 -->
 
 # Pronghorn Constitution
@@ -102,10 +102,6 @@ together with the prototypes in `docs/design/frontend-redesign/`.
   contract itself (shell structure, information architecture, design tokens,
   interaction patterns) MUST update the contract and the prototypes in the same
   pull request and MUST pass code review.
-- **`app/frontend/**` (legacy, until switch-over)**: the existing layout,
-  visual hierarchy, page structure, navigation, and component arrangement MUST
-  NOT be modified. The legacy app receives no feature work and is kept only as
-  the regression reference for spec 007 until it is removed.
 
 Styling and content changes within the contract are permitted. Any proposed
 change to the contract MUST be flagged in the feature spec and plan.
@@ -138,7 +134,6 @@ tooling, validation requirements, and auto-attached instruction files:
 | Layer          | Directory            | Instruction File           | Validation                                       |
 | -------------- | -------------------- | -------------------------- | ------------------------------------------------ |
 | Web App (new)  | `app/frontend-new/`  | `frontend-new.instructions.md` | `npm run lint` + `npm run build` + `npm test` (app/frontend-new/) |
-| Web App (legacy, until switch-over) | `app/frontend/src/` | `frontend.instructions.md` | `npm run lint` + `npm run build` (app/frontend/) |
 | API            | `app/backend/`       | `api.instructions.md`      | `npm run build` (app/backend/)                   |
 | Infrastructure | `infra/`             | `infra.instructions.md`    | `terraform plan`                                 |
 | CI/CD          | `.github/workflows/` | `cicd.instructions.md`     | Workflow syntax check                            |
@@ -203,4 +198,4 @@ that do not change expected behavior. Compliance review happens during
 planning, before merge, and whenever deployment or migration risk changes
 materially.
 
-**Version**: 2.0.0 | **Ratified**: 2026-03-27 | **Last Amended**: 2026-09-25
+**Version**: 2.1.0 | **Ratified**: 2026-03-27 | **Last Amended**: 2026-09-30

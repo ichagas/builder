@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
-# WP-F6 (T016): serve app/frontend (legacy) or app/frontend-new against the
-# E2E stack's API, on a configurable port, with the same fake Entra
+# WP-F6 (T016): serve app/frontend-new against the E2E stack's API, on a configurable port, with the same fake Entra
 # client/tenant ids the mock-auth cache in e2e/lib/msalCache.ts signs
 # tokens for (see stack.sh for the matching backend-side values).
 #
 # Usage:
-#   e2e/scripts/serve-app.sh legacy 8140
 #   e2e/scripts/serve-app.sh new 8141
 #
 # Env vars (all optional): API_PORT (default 3140), E2E_ENTRA_TENANT_ID,
 # E2E_ENTRA_CLIENT_ID.
 set -euo pipefail
 
-APP="${1:?Usage: serve-app.sh <legacy|new> <port>}"
-PORT="${2:?Usage: serve-app.sh <legacy|new> <port>}"
+APP="${1:?Usage: serve-app.sh new <port>}"
+PORT="${2:?Usage: serve-app.sh new <port>}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# The legacy frontend was removed (T074); "new" is kept as the app name so
+# existing callers (quickstart, orchestration scripts) keep working.
 case "$APP" in
-  legacy) APP_DIR="$REPO_ROOT/app/frontend" ;;
   new) APP_DIR="$REPO_ROOT/app/frontend-new" ;;
   *)
-    echo "Unknown app '$APP'. Use 'legacy' or 'new'." >&2
+    echo "Unknown app '$APP'. Only 'new' (app/frontend-new) exists." >&2
     exit 1
     ;;
 esac

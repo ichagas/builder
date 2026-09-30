@@ -16,7 +16,7 @@
     },
     "js/ts.tsdk.path": "node_modules/typescript/lib",
     "eslint.workingDirectories": [
-        "app/frontend",
+        "app/frontend-new",
         "app/backend"
     ],
     "eslint.useFlatConfig": true,

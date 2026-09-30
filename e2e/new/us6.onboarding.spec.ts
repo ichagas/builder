@@ -44,8 +44,6 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect, seed, api, tokenFor, defaultOwner, unique } from "../fixtures";
 import { config } from "../lib/config";
 
-test.skip(process.env.APP !== "new", "The onboarding wizard only exists in app/frontend-new");
-
 const API_BASE = config.apiBaseUrl;
 
 interface RawResponse {

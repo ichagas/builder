@@ -298,7 +298,7 @@ the PBMM post-deploy steps — no App Gateway wiring is needed.
 ### 9.1 Get the deployed frontend FQDN
 
 ```powershell
-az containerapp show -n ca-pronghorn-frontend -g <resource-group> `
+az containerapp show -n ca-pronghorn-frontend-new -g <resource-group> `
   --query "properties.configuration.ingress.fqdn" -o tsv
 ```
 

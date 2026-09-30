@@ -10,12 +10,11 @@
 	- WebSocket endpoint at `/ws`
 
 ## UI/UX Layout Contract (NON-NEGOTIABLE)
-The redesign is the layout contract (Constitution Principle VI, v2.0.0):
+The redesign is the layout contract (Constitution Principle VI, v2.1.0):
 - **`app/frontend-new/`** (the new frontend, spec `specs/007-frontend-new/`): follow `specs/007-frontend-new/contracts/design-system.md` and the prototypes in `docs/design/frontend-redesign/`. New layouts, navigation and page structure that follow the contract ARE permitted. Changes to the contract itself update the contract and the prototypes in the same pull request.
-- **`app/frontend/`** (legacy, until switch-over): the existing layout MUST NOT be modified. It receives no feature work and is the regression reference only.
 
 ## Repository Layout (Authoritative)
-- Frontend app: `app/frontend/src/`
+- Frontend app: `app/frontend-new/src/`
 - API service: `app/backend/src/`
 - Infrastructure as Code (Terraform): `infra/`
 - SQL migrations: `infra/migrations/`
@@ -25,7 +24,6 @@ The redesign is the layout contract (Constitution Principle VI, v2.0.0):
 ## Layer-Scoped Development
 This repository uses layer-scoped instruction files (`.github/instructions/`) that auto-attach based on which files you're editing:
 - **`frontend-new.instructions.md`** → `app/frontend-new/**` — new frontend (redesign): layout contract, move-and-restyle recipe, tokens only
-- **`frontend.instructions.md`** → `app/frontend/src/**` — legacy frontend, reference only until switch-over, layout immutable
 - **`api.instructions.md`** → `api/**` — Express/PostgreSQL/JWT, versioned routes (mapped to `app/backend/**` after restructure)
 - **`infra.instructions.md`** → `infra/**` — Terraform/Azure modules
 - **`cicd.instructions.md`** → `.github/workflows/**` — GitHub Actions
@@ -86,7 +84,7 @@ This repository uses layer-scoped instruction files (`.github/instructions/`) th
 	- `npm run dev:reset` (wipes database volumes and recreates)
 	- `npm run build` (builds backend then frontend)
 	- `npm run test` (runs Jest + Vitest)
-- Frontend (`app/frontend/`):
+- Frontend (`app/frontend-new/`):
 	- `npm install`
 	- `npm run dev` (Vite on port 8080)
 	- `npm run build`
@@ -144,7 +142,7 @@ When writing or modifying functions (frontend or backend):
 - For API additions, prefer versioned endpoints in `app/backend/src/routes/v1` and keep OpenAPI/Swagger alignment.
 
 ## Frontend-Specific Guidance
-- Reuse existing components and utilities from `app/frontend/src/components`, `app/frontend/src/lib`, `app/frontend/src/hooks`, and `app/frontend/src/utils` before creating new primitives.
+- Reuse existing components and utilities from `app/frontend-new/src/components`, `app/frontend-new/src/lib`, `app/frontend-new/src/hooks`, and `app/frontend-new/src/utils` before creating new primitives.
 - Keep state/data-fetching patterns consistent with existing React Query and context usage.
 - Respect MSAL/Azure auth integration and existing environment-variable driven configuration.
 
@@ -154,9 +152,9 @@ When writing or modifying functions (frontend or backend):
 - Never commit secrets, keys, tokens, or real credentials; use env vars and examples.
 
 ## Validation Expectations for Changes
-- For frontend-only changes: run `npm run lint` in `app/frontend/`, then `npm run build` when feasible.
+- For frontend-only changes: run `npm run lint` in `app/frontend-new/`, then `npm run build` when feasible.
 - For API-only changes: run `npm run build` in `app/backend/`.
-- For cross-cutting changes: validate both `app/frontend/` and `app/backend/` builds.
+- For cross-cutting changes: validate both `app/frontend-new/` and `app/backend/` builds.
 - If behavior depends on database objects, verify against `infra/migrations/001_full_schema.sql` expectations.
 
 ## Documentation and Consistency
@@ -215,7 +213,7 @@ user-invokable: true
 ## What to Avoid (examples of anti-patterns)
 - Do not bypass existing auth/authorization checks in API handlers.
 - Do not hardcode environment-specific URLs in source unless already patterned that way for local dev defaults.
-- Do not deviate from the UI/UX layout contract in `app/frontend-new/`, and do not change the legacy `app/frontend/` layout. Contract changes update the contract and the prototypes in the same pull request.
+- Do not deviate from the UI/UX layout contract in `app/frontend-new/`. Contract changes update the contract and the prototypes in the same pull request.
 
 ### Related Resources
 - Refer to this URL for more details for instructions and guidance using and creating skills: [VS Code Copilot Skills Documentation](https://code.visualstudio.com/docs/copilot/customization/agent-skills)

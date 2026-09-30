@@ -4,7 +4,7 @@
  * signed-in admin; the auth page's "continue without signing in" and
  * "missing code/state" GitHub callback error path when signed out.
  * Not exercised: superadmin cloud/GitHub/render managers (no route exists
- * in app/frontend -- these are new-only capabilities per contracts/routes.md
+ * in the legacy frontend -- these are new-only capabilities per contracts/routes.md
  * and App.tsx), signup code validation (no signup flow in the legacy app;
  * sign-in is SSO-only) -- see e2e/README.md coverage notes.
  */

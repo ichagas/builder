@@ -40,7 +40,7 @@ npm run test                        # Jest + Vitest
 
 # Layer-specific
 cd app/backend  && npm test         # Jest
-cd app/frontend && npm test         # Vitest
+cd app/frontend-new && npm test         # Vitest
 cd app/backend  && npm run test:coverage
-cd app/frontend && npm run test:coverage
+cd app/frontend-new && npm run test:coverage
 ```

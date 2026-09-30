@@ -19,8 +19,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, seed, api, defaultOwner } from "../fixtures";
 
-test.skip(process.env.APP !== "new", "The Assurance console only exists in app/frontend-new");
-
 test.describe("NA-01: team switcher", () => {
   test("lists the caller's teams and switches the portfolio", async ({ page }) => {
     await page.goto(`/assurance/t/${seed.assuranceTeamId}`);

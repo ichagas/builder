@@ -13,7 +13,7 @@ Auto-generated from all feature plans. Last updated: 2026-05-28
 ## Project Structure
 
 ```text
-app/frontend/src/       # React frontend (Vite)
+app/frontend-new/src/       # React frontend (Vite)
 app/backend/src/        # Express API
 infra/                  # Terraform modules + SQL migrations
 .github/workflows/      # GitHub Actions

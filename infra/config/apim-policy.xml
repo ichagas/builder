@@ -4,7 +4,7 @@
         <cors allow-credentials="true">
             <allowed-origins>
                 <origin>https://pronghorn.blue</origin>
-                <origin>https://ca-pronghorn-frontend.<env-suffix>.canadacentral.azurecontainerapps.io</origin>
+                <origin>https://ca-pronghorn-frontend-new.<env-suffix>.canadacentral.azurecontainerapps.io</origin>
                 <origin>http://localhost:5173</origin>
                 <origin>http://localhost:8080</origin>
             </allowed-origins>
@@ -71,7 +71,7 @@
         <set-header name="Access-Control-Allow-Origin" exists-action="override">
             <value>@{
                 var origin = context.Request.Headers.GetValueOrDefault("Origin", "");
-                var allowed = new [] { "https://pronghorn.blue", "https://api.pronghorn.blue", "https://ca-pronghorn-frontend.<env-suffix>.canadacentral.azurecontainerapps.io", "http://localhost:5173", "http://localhost:8080" };
+                var allowed = new [] { "https://pronghorn.blue", "https://api.pronghorn.blue", "https://ca-pronghorn-frontend-new.<env-suffix>.canadacentral.azurecontainerapps.io", "http://localhost:5173", "http://localhost:8080" };
                 return Array.Exists(allowed, o => o == origin) ? origin : "";
             }</value>
         </set-header>
