@@ -12,7 +12,7 @@ Contents: [Run the app](#run-the-app-locally) | [Backend](#backend) | [E2E stack
 No Microsoft Entra ID app registration needed. Development only.
 
 ```bash
-cp .env.example .env                                  # root: set AUTH_MODE=local and your own JWT_SECRET (openssl rand -hex 32)
+cp .env.example .env                                  # root: uncomment AUTH_MODE=local + AZURE_STORAGE_ACCOUNT_NAME, set your own JWT_SECRET (openssl rand -hex 32)
 cp app/frontend-new/.env.example app/frontend-new/.env   # VITE_AUTH_MODE=mock, VITE_API_BASE_URL=http://localhost:3001
 npm run dev:db          # Postgres on 5432/5433; migrations run on the first `docker compose up`
 npm run dev:api         # API on http://localhost:3001 (logs "AUTH_MODE=local: dev sign-in enabled")
